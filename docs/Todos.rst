@@ -1,0 +1,9 @@
+- Creation du virtualenv: ok
+- Gestion des requirements: ok
+- Structure du projet: ok
+- Configuration pycharm
+- Configuration MySQL: ok
+- Gestion des mots de passe
+- Tests
+- Travis
+- Script déploiement Fabric

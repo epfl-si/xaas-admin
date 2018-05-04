@@ -1,0 +1,27 @@
+language: python
+
+python:
+  - "3.5"
+
+sudo: required
+
+dist: trusty
+
+services:
+  - mysql
+
+install:
+  - "pip install -r requirements/ci.txt"
+
+before_script:
+  - mysql -uroot -e 'create database xaas-admin;'
+
+script:
+  - flake8 --exclude=migrations,requirements --max-line-length=120 ./src
+
+notifications:
+  email:
+    recipients:
+      - gregory.charmier@gmail.com
+    on_success: always
+    on_failure: always
