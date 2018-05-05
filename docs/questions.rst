@@ -1,2 +1,2 @@
 Langue des interfaces ? FR ou EN
-repo privé ou public ? 
+repo privé ou public ?
