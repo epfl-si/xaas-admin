@@ -1,4 +1,4 @@
-PROBLEME 1
+Probleme 1
 -----------
 
 tests: pour une raison que j'ignore, je ne parviens pas à exécuter la commande :
@@ -9,14 +9,16 @@ python src/manage.py test quotas
 passe correctement
 
 SOLUTION:
-Dans les tests de pas faire d'import implicite :
+Dans les tests ne pas faire d'import implicite :
 from .models import ItsAdmin
 mais
 from quotas.models import ItsAdmin
 
 Probleme 2
 ----------
-Sur le serveur de test SELinux semble nous embêter :
+Sur le serveur de test SELinux semble nous embêter lors de la commande :
+
+pip install -r /var/www/vhosts/parking.epfl.ch/private/requirements/test.txt
 
 out: /home/kis/xaas-admin/bin/python3: error while loading shared libraries: libpython3.5m.so.rh-python35-1.0: cannot open shared object file: No such file or directory
 
