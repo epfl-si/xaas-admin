@@ -1,8 +1,14 @@
 - Creation du virtualenv: ok
 - Gestion des requirements: ok
+- Installation des paquets
 - Structure du projet: ok
-- Configuration pycharm
+- Gestion des settings: ok
+- Configuration pycharm: ok
 - Configuration MySQL: ok
+- Création de app quotas: ok
+- Génération de la DB: ok
+- PEP8: ok
+- copyright: ok
 - Gestion des mots de passe
 - Tests
 - Travis
