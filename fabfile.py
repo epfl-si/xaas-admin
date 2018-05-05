@@ -209,8 +209,6 @@ def update_sources_from_local():
     # Copy the various configuration files on the server
     with(lcd(local_path)):
         for file_path, dest_path in env.files_to_copy:
-            print(file_path)
-            print(dest_path)
             put(file_path, dest_path)
 
 
@@ -292,12 +290,16 @@ def deploy():
 
     is_ready_or_abort()
     print("is_ready_or_abort() OK")
+
     update_sources()
     print("update_sources() OK")
-    # update_virtualenv()
+
+    update_virtualenv()
     print("update_virtualenv OK")
+
     # fix_selinux_permissions()
-    print("fix_selinux_permissions() OK")
+    # print("fix_selinux_permissions() OK")
+
     restart_http_server()
     print("restart_http_server() OK")
 
