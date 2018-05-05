@@ -13,7 +13,7 @@ class ItsAdmin(models.Model):
 class FacultyAdmin(models.Model):
 
     name = models.CharField(max_length=50)
-    active_directory_group = models.ForeignKey(ItsAdmin)
+    its_admin = models.ForeignKey(ItsAdmin)
 
     def __str__(self):
         return self.name
