@@ -60,6 +60,18 @@ python src/manage.py createsuperuser --username=charmier --email=gregory.charmie
 
 --username must be a gaspar username
 
+How delete a user
+-----------------
+python src/manage.py shell --settings=config.settings.local
+Python 3.5.4 (default, Sep 16 2017, 06:56:51)
+[GCC 5.4.0 20160609] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+(InteractiveConsole)
+>>> from django.contrib.auth.models import User
+>>> User.objects.get(username="charmier").delete()
+(1, {'auth.User_groups': 0, 'admin.LogEntry': 0, 'auth.User_user_permissions': 0, 'auth.User': 1})
+
+
 Best pratices
 =============
 
