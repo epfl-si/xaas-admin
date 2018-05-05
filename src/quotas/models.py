@@ -22,18 +22,18 @@ class FacultyAdmin(models.Model):
 class MyVMQuota(models.Model):
 
     year = models.IntegerField()
-    cpu_number = models.IntegerField()
-    ram_mb = models.IntegerField()
-    hdd_gb = models.IntegerField()
-    cpu_nb_used = models.IntegerField()
-    ram_mb_used = models.IntegerField()
-    hdd_gb_used = models.IntegerField()
-    used_last_update = models.DateTimeField()
-    cpu_nb_reserved = models.IntegerField()
-    ram_mb_reserved = models.IntegerField()
-    hdd_gb_reserved = models.IntegerField()
+    cpu_number = models.IntegerField(null=True)
+    ram_mb = models.IntegerField(null=True)
+    hdd_gb = models.IntegerField(null=True)
+    cpu_nb_used = models.IntegerField(null=True)
+    ram_mb_used = models.IntegerField(null=True)
+    hdd_gb_used = models.IntegerField(null=True)
+    used_last_update = models.DateTimeField(null=True)
+    cpu_nb_reserved = models.IntegerField(null=True)
+    ram_mb_reserved = models.IntegerField(null=True)
+    hdd_gb_reserved = models.IntegerField(null=True)
 
     faculty = models.ForeignKey(FacultyAdmin)
 
     def __str__(self):
-        return self.year
+        return str(self.year)
