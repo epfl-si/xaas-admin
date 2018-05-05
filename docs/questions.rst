@@ -1,2 +1,3 @@
-Langue des interfaces ? FR ou EN
-repo privé ou public ?
+- Langue des interfaces ? FR ou EN
+- Repo privé ou public ? pour l'instant privé
+- MyVMQuota : Champs optionnels ?
