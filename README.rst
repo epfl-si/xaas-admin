@@ -4,10 +4,9 @@ xaas-admin
 
 .. image:: https://travis-ci.com/epfl-idevelop/xaas-admin.svg?token=m9yDqN9WioRf8qE8m6gt&branch=master
     :target: https://travis-ci.com/epfl-idevelop/xaas-admin
-
+.. image:: https://img.shields.io/badge/code%20style-pep8-orange.svg
 .. image:: https://img.shields.io/badge/python-3.5.4-blue.svg
 
-.. image:: https://img.shields.io/badge/code%20style-pep8-orange.svg
 
 General description of the application
 ======================================
