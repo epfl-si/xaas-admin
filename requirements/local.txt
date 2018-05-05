@@ -5,3 +5,4 @@
 django-debug-toolbar==1.9.1
 flake8==3.5.0
 coverage==4.5.1
+Fabric3==1.14.post1
