@@ -18,6 +18,7 @@ before_script:
 
 script:
   - flake8 --exclude=migrations,requirements --max-line-length=120 ./src
+  - coverage run src/manage.py test --exclude-tag=no_travis
 
 notifications:
   email:

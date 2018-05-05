@@ -3,3 +3,4 @@
 
 # Local Specific Requirements
 flake8==3.5.0
+coverage==4.5.1
