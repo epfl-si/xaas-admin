@@ -1,16 +1,17 @@
-"""
-WSGI config for xaasadmin project.
-
-It exposes the WSGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/2.0/howto/deployment/wsgi/
-"""
-
 import os
+import sys
 
-from django.core.wsgi import get_wsgi_application
+activate_this = '/home/kis/xaas-admin/bin/activate_this.py'
+exec(open(activate_this).read(), dict(__file__=activate_this))
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "xaasadmin.settings")
+path = '/var/www/vhosts/xaas-admin.epfl.ch/private/src'
+if path not in sys.path:
+    sys.path.append(path)
 
+os.environ['DJANGO_SETTINGS_MODULE'] = 'config.settings.test'
+os.environ['TMPDIR'] = '/var/www/vhosts/xaas-admin.epfl.ch/private/tmpffi'
+# os.environ['GEM_HOME'] = '/var/www/vhosts/homepage.epfl.ch/private/ruby/'
+
+
+from django.core.wsgi import get_wsgi_application  # noqa
 application = get_wsgi_application()

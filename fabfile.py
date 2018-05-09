@@ -57,7 +57,7 @@ SERVER_APACHE = 'apache'
 env.server = SERVER_APACHE
 
 env.repo_path = '/home/kis/xaas-admin'
-env.vhost_path = '/var/www/vhosts/parking.epfl.ch'
+env.vhost_path = '/var/www/vhosts/xaas-admin.epfl.ch'
 env.public_path = '%(vhost_path)s/htdocs' % env
 env.upload_path = '%(public_path)s/upload' % env
 env.private_path = '%(vhost_path)s/private' % env
@@ -124,7 +124,7 @@ def virtualenv():
     """
     Context manager that activate the virtualenv defined in env.virtualenv_path
     """
-    with prefix('source %(virtualenv_path)s/bin/activate' % env):
+    with prefix('source /opt/rh/rh-python35/enable;source %(virtualenv_path)s/bin/activate' % env):
         yield
 
 
