@@ -107,11 +107,10 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 AUTHENTICATION_BACKENDS = ('django_tequila.django_backend.TequilaBackend',)
-
 TEQUILA_SERVICE_NAME = "XAAS-Admin"
-
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/"
-LOGOUT_URL = '/'
-LOGIN_REDIRECT_IF_NOT_ALLOWED = "/not_allowed"
-LOGIN_REDIRECT_TEXT_IF_NOT_ALLOWED = "Not allowed"
+TEQUILA_NEW_USER_INACTIVE = True
+LOGIN_REDIRECT_IF_NOT_ALLOWED = "/forbidden"
+# AUTH_PROFILE_MODULE = "userprofile"
+# TEQUILA_STRONG_AUTHENTICATION = True
