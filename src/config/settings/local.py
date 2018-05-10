@@ -23,3 +23,5 @@ DATABASES = {
 DEBUG_TOOLBAR_CONFIG = {
     'SHOW_TOOLBAR_CALLBACK': 'config.settings.local.custom_show_toolbar',
 }
+
+SERVER_NAME = "local"
