@@ -26,3 +26,5 @@ DEBUG_TOOLBAR_CONFIG = {
 }
 
 SERVER_NAME = "test"
+
+STATIC_ROOT = '/var/www/vhosts/xaas-admin.epfl.ch/htdocs/'
