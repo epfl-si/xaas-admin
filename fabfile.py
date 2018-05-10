@@ -17,9 +17,6 @@ fab clone
 fab test clone
   Clone the production environment on the test server.
 """
-
-import os
-
 from fabric.api import run, sudo, cd, lcd, local, prompt, prefix, put, settings
 from tempfile import mkdtemp
 from contextlib import contextmanager as _contextmanager
@@ -290,35 +287,17 @@ def fix_permissions():
             run("chcon -t httpd_sys_script_exec_t %s/lib/python3.5/site-packages/%s" %
                 (env.virtualenv_path, file))
 
-    #if env.role == 'test':
-        #run("chown kis:apache /var/www/vhosts/www.epfl.ch/htdocs/xaas-admin/")
-        #run("chmod ug+rw /var/www/vhosts/www.epfl.ch/htdocs/xaas-admin/")
-        #run("chcon -t httpd_sys_rw_content_t /var/www/vhosts/www.epfl.ch/htdocs/xaas-admin/")
-
-    #with settings(warn_only=True):
-    #     run("chown kis:apache /var/www/vhosts/homepage.epfl.ch/private/homepages/")
-    #     run("chmod ug+rw /var/www/vhosts/homepage.epfl.ch/private/homepages/")
-    #     run("chcon -t httpd_sys_rw_content_t /var/www/vhosts/homepage.epfl.ch/private/homepages/")
-    #     run("chown -R kis:apache /var/www/vhosts/homepage.epfl.ch/htdocs/upload/")
-    #     run("chmod -R ug+rw /var/www/vhosts/homepage.epfl.ch/htdocs/upload/")
-    #     run("chcon -R -t httpd_sys_rw_content_t /var/www/vhosts/homepage.epfl.ch/htdocs/upload/")
-
-
-
-
-
-
 
 def deploy():
 
     is_ready_or_abort()
     update_sources()
     update_virtualenv()
-    #fix_permissions()
-    #django_manage('compilemessages')
-    #django_manage('update_epfl_header')
-    #django_manage('collectstatic --noinput')
-    #django_manage('daily')
+    # fix_permissions()
+    # django_manage('compilemessages')
+    # django_manage('update_epfl_header')
+    # django_manage('collectstatic --noinput')
+    # django_manage('daily')
     restart_http_server()
 
 

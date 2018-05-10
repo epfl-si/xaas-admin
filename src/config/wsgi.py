@@ -2,8 +2,13 @@ import os
 import sys
 
 try:
-    from django.conf import settings
-except:
+    # It's a hack to know if the environment is local or not
+    # On local environment we have django
+    # If django is not accessible the environment is test or prod
+    # In this case the path /var/www/vhost... exists
+    from django.conf import settings  # noqa
+
+except Exception:
     activate_this = '/var/www/vhosts/xaas-admin.epfl.ch/private/virtenv/xaas-admin-env/bin/activate_this.py'
     exec(open(activate_this).read(), dict(__file__=activate_this))
 
