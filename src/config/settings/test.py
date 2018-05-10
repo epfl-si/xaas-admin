@@ -14,9 +14,10 @@ ALLOWED_HOSTS = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'OPTIONS': {
-            'read_default_file': '/home/kis/db.cnf',
-        },
+        'HOST': '127.0.0.1',
+        'NAME': 'rdp',
+        'USER': 'rdp',
+        'PASSWORD': 'rdp',
     }
 }
 

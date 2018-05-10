@@ -296,7 +296,7 @@ def deploy():
     # fix_permissions()
     # django_manage('compilemessages')
     # django_manage('update_epfl_header')
-    # django_manage('collectstatic --noinput')
+    django_manage('collectstatic --noinput')
     # django_manage('daily')
     restart_http_server()
 

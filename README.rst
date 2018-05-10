@@ -38,6 +38,11 @@ To install python packages
 --------------------------
 pip install -r requirements/local.txt
 
+Create a symlink
+----------------
+ln -s local.py default.py
+
+
 Django commands
 ===============
 
