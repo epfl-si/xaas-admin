@@ -1,9 +1,9 @@
 import os
 import sys
 
-from django.conf import settings
-
-if settings.SERVER_NAME != 'local':
+try:
+    from django.conf import settings
+except:
     activate_this = '/var/www/vhosts/xaas-admin.epfl.ch/private/virtenv/xaas-admin-env/bin/activate_this.py'
     exec(open(activate_this).read(), dict(__file__=activate_this))
 
