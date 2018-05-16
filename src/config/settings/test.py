@@ -14,10 +14,11 @@ ALLOWED_HOSTS = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': '127.0.0.1',
+        'HOST': 'mysql-scx-p1',
         'NAME': 'rdp',
-        'USER': 'rdp',
-        'PASSWORD': 'rdp',
+        'USER': 'xaas_admin_user',
+        'PASSWORD': 'zjKbPLySbQfA',
+        'PORT': '33001',
     }
 }
 
