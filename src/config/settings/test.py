@@ -15,7 +15,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'HOST': 'mysql-scx-p1',
-        'NAME': 'rdp',
+        'NAME': 'xaas_admin_test',
         'USER': 'xaas_admin_user',
         'PASSWORD': 'zjKbPLySbQfA',
         'PORT': '33001',
