@@ -10,13 +10,12 @@ ALLOWED_HOSTS = [
 
 # Database
 # https://docs.djangoproject.com/en/2.0/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'OPTIONS': {
-            'read_default_file': '/home/greg/workspace-idevelop/xaas-admin/conf/db.cnf',
-        },
+        'NAME': 'xaas-admin',
+        'USER': 'xaas-admin',
+        'PASSWORD': get_secret('DB_USER_PWD'),
     }
 }
 

@@ -13,17 +13,36 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 
 import os
 from unipath import Path
+import json
+
+# Normally you should not import ANYTHING from Django directly
+# into your settings, but ImproperlyConfigured is an exception.
+
+from django.core.exceptions import ImproperlyConfigured
+
+# JSON-based secrets module
+with open('secrets.json') as f:
+    secrets = json.loads(f.read())
+
+
+def get_secret(setting, secrets=secrets):
+    """Get the secret variable or return explicit exception."""
+    try:
+        return secrets[setting]
+    except KeyError:
+        error_msg = 'Set the {0} environment variable'.format(setting)
+        raise ImproperlyConfigured(error_msg)
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = Path(__file__).ancestor(4)
 SRC_DIR = Path(__file__).ancestor(3)
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'd(qyp4*bv0fy018@_xfr^39h^bo7bp5u3-pfz1e%lwq5qa*$vz'
+SECRET_KEY = get_secret('SECRET_KEY')
 
 # Application definition
 

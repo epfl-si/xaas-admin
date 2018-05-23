@@ -51,13 +51,13 @@ How run application
 
 python src/manage.py runserver --settings=config.settings.local
 
-How build DB
-------------
-python src/manage.py migrate --settings=config.settings.local
-
 How build migration
 -------------------
 python src/manage.py makemigrations --settings=config.settings.local
+
+How build DB
+------------
+python src/manage.py migrate --settings=config.settings.local
 
 How create a super user
 -----------------------
@@ -77,9 +77,36 @@ Type "help", "copyright", "credits" or "license" for more information.
 (1, {'auth.User_groups': 0, 'admin.LogEntry': 0, 'auth.User_user_permissions': 0, 'auth.User': 1})
 
 
+Test server
+===========
+
+Create the database
+-------------------
+
+kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private/virtenv$ source /opt/rh/rh-python35/enable
+kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private/virtenv$ source xaas-admin-env/bin/activate
+(xaas-admin-env)kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private/virtenv$ cd ..
+(xaas-admin-env)kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private$ ll
+total 12
+drwxrwsr-x. 2 kis  kis 4096 16 mai 14:02 requirements
+drwxrwsr-x. 4 kis  kis 4096 16 mai 14:02 src
+dr-xrwsr-x. 3 root kis 4096 10 mai 07:36 virtenv
+(xaas-admin-env)kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private$ python src/manage.py migrate --settings=config.settings.test
+
+
 Best pratices
 =============
 
 PEP8 convention
 ---------------
 flake8 --exclude=migrations --max-line-length=120
+
+Run tests
+---------
+coverage run src/manage.py test --settings=config.settings.local
+
+Generate HTML report
+--------------------
+coverage html
+
+Open with your web browser the file htmlcov/index.html

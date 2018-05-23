@@ -1,0 +1,9 @@
+[run]
+source = src
+omit =
+	*migrations*
+	*test_*
+	src/config/settings/test.py
+	src/config/settings/prod.py
+	src/config/settings/ci.py
+	src/config/wsgi.py
