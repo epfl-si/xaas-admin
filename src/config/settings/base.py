@@ -20,8 +20,13 @@ import json
 
 from django.core.exceptions import ImproperlyConfigured
 
+# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+BASE_DIR = Path(__file__).ancestor(4)
+SRC_DIR = Path(__file__).ancestor(3)
+
+
 # JSON-based secrets module
-with open('secrets.json') as f:
+with open(BASE_DIR + "/secrets.json", 'r') as f:
     secrets = json.loads(f.read())
 
 
@@ -33,10 +38,6 @@ def get_secret(setting, secrets=secrets):
         error_msg = 'Set the {0} environment variable'.format(setting)
         raise ImproperlyConfigured(error_msg)
 
-
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = Path(__file__).ancestor(4)
-SRC_DIR = Path(__file__).ancestor(3)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
