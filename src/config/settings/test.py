@@ -14,11 +14,11 @@ ALLOWED_HOSTS = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': get_secret('DB_HOST'),
+        'HOST': get_secret('DB_HOST'),  # noqa
         'NAME': 'xaas_admin_test',
         'USER': 'xaas_admin_user',
-        'PASSWORD': get_secret('DB_USER_PWD'),
-        'PORT': get_secret('DB_PORT'),
+        'PASSWORD': get_secret('DB_USER_PWD'),  # noqa
+        'PORT': get_secret('DB_PORT'),  # noqa
     }
 }
 

@@ -15,7 +15,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'xaas-admin',
         'USER': 'xaas-admin',
-        'PASSWORD': get_secret('DB_USER_PWD'),
+        'PASSWORD': get_secret('DB_USER_PWD'),  # noqa
     }
 }
 
