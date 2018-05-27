@@ -18,52 +18,65 @@ This application ...
 
 Version
 -------
-python 3.5.4 ? to check with the prod environment
-django 2.0
+python 3.5.4
+django 1.11 LTS
 
 How install
 ===========
 
-pyenv https://github.com/pyenv/pyenv
+Clone the git repository
+---------------------------
+git clone git@github.com:epfl-idevelop/xaas-admin.git
+cd xaas-admin
 
-To create a virtualenv
+Create a virtualenv
 ----------------------
+You may install pyenv https://github.com/pyenv/pyenv
 pyenv virtualenv 3.5.4 xaas-admin
 
-To activate a virtualenv
+Activate a virtualenv
 ------------------------
 pyenv activate xaas-admin
 
-To install python packages
+Install python packages
 --------------------------
 pip install -r requirements/local.txt
 
 Create a symlink
 ----------------
-ln -s local.py default.py
+ln -s local.py src/config/settings/default.py
+
+Create MySQL DB and MySQL user
+------------------------------
+You must create a MySQL DB 'xaas-admin'
+You must create a MySQL user 'xaas-admin' with all privileges on xaas-admin DB
+The database information is in the local.txt and secrets.json files
+
+Build migrations
+-------------------
+python src/manage.py makemigrations
+
+Build all tables, index, etc
+----------------------------
+python src/manage.py migrate
+
+Create a super user
+-------------------
+python src/manage.py createsuperuser --username=charmier --email=gregory.charmier@epfl.ch --settings=config.settings.local
+
+--username must be a gaspar username
+
+Run server
+-----------
+python src/manage.py runserver
+
+Go to this URL
+---------------
+http://127.0.0.1:8000/
 
 
 Django commands
 ===============
-
-How run application
--------------------
-
-python src/manage.py runserver --settings=config.settings.local
-
-How build migration
--------------------
-python src/manage.py makemigrations --settings=config.settings.local
-
-How build DB
-------------
-python src/manage.py migrate --settings=config.settings.local
-
-How create a super user
------------------------
-python src/manage.py createsuperuser --username=charmier --email=gregory.charmier@epfl.ch --settings=config.settings.local
-
---username must be a gaspar username
 
 How delete a user
 -----------------
@@ -82,7 +95,6 @@ Test server
 
 Create the database
 -------------------
-
 kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private/virtenv$ source /opt/rh/rh-python35/enable
 kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private/virtenv$ source xaas-admin-env/bin/activate
 (xaas-admin-env)kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private/virtenv$ cd ..
