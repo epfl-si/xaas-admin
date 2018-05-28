@@ -55,7 +55,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_tequila',
-    'quotas',
+    'glob',
+    'myvm',
+    'its',
 ]
 
 MIDDLEWARE = [
