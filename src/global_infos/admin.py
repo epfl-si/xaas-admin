@@ -1,6 +1,6 @@
 """(c) All rights reserved. ECOLE POLYTECHNIQUE FEDERALE DE LAUSANNE, Switzerland, VPSI, 2018"""
 from django.contrib import admin
-from glob.models import FacultyAdmin
+from global_infos.models import FacultyAdmin
 
 
 

@@ -27,5 +27,6 @@ notifications:
   email:
     recipients:
       - gregory.charmier@gmail.com
+      - lucien.chaboudez@gmail.com
     on_success: always
     on_failure: always
