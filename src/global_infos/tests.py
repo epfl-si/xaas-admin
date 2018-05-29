@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from glob.models import FacultyAdmin
+from global_infos.models import FacultyAdmin
 
 
 class ModelTest(TestCase):

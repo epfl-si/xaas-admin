@@ -3,4 +3,4 @@ from django.apps import AppConfig
 
 
 class ITSConfig(AppConfig):
-    name = 'its'
+    name = 'itservices'

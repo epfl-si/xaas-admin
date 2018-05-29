@@ -3,4 +3,4 @@ from django.apps import AppConfig
 
 
 class GlobConfig(AppConfig):
-    name = 'global'
+    name = 'global_infos'

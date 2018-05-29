@@ -1,14 +1,14 @@
 """(c) All rights reserved. ECOLE POLYTECHNIQUE FEDERALE DE LAUSANNE, Switzerland, VPSI, 2018"""
 from django.contrib import admin
-from myvm.models import MyVMQuotas, MyVMStaticMAC
+from myvm.models import MyVMQuota, MyVMStaticMAC
 
 
 class MyVMQuotasAdmin(admin.ModelAdmin):
-    """ To manage MyVMQuotas in Django-Admin """
+    """ To manage MyVMQuota in Django-Admin """
     pass
 
 
-admin.site.register(MyVMQuotas, MyVMQuotasAdmin)
+admin.site.register(MyVMQuota, MyVMQuotasAdmin)
 
 
 class MyVMStaticMACAdmin(admin.ModelAdmin):
