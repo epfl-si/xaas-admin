@@ -20,7 +20,7 @@ before_script:
   - mysql -uroot -e 'create database xaasadmin;'
 
 script:
-  - flake8 --exclude=migrations,requirements --max-line-length=120 ./src
+  - flake8 --exclude=migrations,requirements,tests.py --max-line-length=120 ./src
   - coverage run src/manage.py test --exclude-tag=no_travis
 
 notifications:
