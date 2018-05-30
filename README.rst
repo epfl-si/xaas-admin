@@ -81,12 +81,19 @@ Django commands
 How delete a user
 -----------------
 python src/manage.py shell --settings=config.settings.local
+
 Python 3.5.4 (default, Sep 16 2017, 06:56:51)
+
 [GCC 5.4.0 20160609] on linux
+
 Type "help", "copyright", "credits" or "license" for more information.
+
 (InteractiveConsole)
+
 >>> from django.contrib.auth.models import User
+
 >>> User.objects.get(username="charmier").delete()
+
 (1, {'auth.User_groups': 0, 'admin.LogEntry': 0, 'auth.User_user_permissions': 0, 'auth.User': 1})
 
 
@@ -96,13 +103,21 @@ Test server
 Create the database
 -------------------
 kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private/virtenv$ source /opt/rh/rh-python35/enable
+
 kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private/virtenv$ source xaas-admin-env/bin/activate
+
 (xaas-admin-env)kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private/virtenv$ cd ..
+
 (xaas-admin-env)kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private$ ll
+
 total 12
+
 drwxrwsr-x. 2 kis  kis 4096 16 mai 14:02 requirements
+
 drwxrwsr-x. 4 kis  kis 4096 16 mai 14:02 src
+
 dr-xrwsr-x. 3 root kis 4096 10 mai 07:36 virtenv
+
 (xaas-admin-env)kis@exopgesrv34:/var/www/vhosts/xaas-admin.epfl.ch/private$ python src/manage.py migrate --settings=config.settings.test
 
 
