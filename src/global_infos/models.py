@@ -15,6 +15,5 @@ class FacultyAdmin(models.Model):
     class Meta:
         db_table = "glob_inf_faculty_admins"
 
-
     def __str__(self):
         return self.g_faculty

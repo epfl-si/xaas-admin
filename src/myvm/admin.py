@@ -17,4 +17,3 @@ class MyVMStaticMACAdmin(admin.ModelAdmin):
 
 
 admin.site.register(MyVMStaticMAC, MyVMStaticMACAdmin)
-

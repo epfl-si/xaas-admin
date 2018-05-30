@@ -3,7 +3,6 @@ from django.contrib import admin
 from itservices.models import Service
 
 
-
 class ServiceAdmin(admin.ModelAdmin):
     """ To manage Services in Django-Admin """
     pass

@@ -4,21 +4,20 @@ from global_infos.models import FacultyAdmin
 from myvm.models import MyVMQuota
 
 
-
 class ModelTest(TestCase):
 
     def setUp(self):
         faculty_admin = FacultyAdmin.objects.create(g_faculty="si", g_ad_group="vra_p_approval_si")
 
         myvm_quotas = MyVMQuota.objects.create(myvm_faculty=faculty_admin,
-                                                myvm_quotas_year=2018,
-                                                myvm_quotas_cpu_nb=100,
-                                                myvm_quotas_ram_mb=409600,
-                                                myvm_quotas_hdd_gb=2000,
-                                                myvm_quotas_cpu_nb_used=10,
-                                                myvm_quotas_ram_mb_used=20480,
-                                                myvm_quotas_hdd_gb_used=500,
-                                                myvm_quotas_used_last_update="2018-05-28 12:00:00")
+                                               myvm_quotas_year=2018,
+                                               myvm_quotas_cpu_nb=100,
+                                               myvm_quotas_ram_mb=409600,
+                                               myvm_quotas_hdd_gb=2000,
+                                               myvm_quotas_cpu_nb_used=10,
+                                               myvm_quotas_ram_mb_used=20480,
+                                               myvm_quotas_hdd_gb_used=500,
+                                               myvm_quotas_used_last_update="2018-05-28 12:00:00")
 
     def test_string_representation(self):
         faculty_admin = FacultyAdmin.objects.get(g_ad_group="vra_p_approval_si")
