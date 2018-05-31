@@ -90,6 +90,7 @@ def test():
     env.master_branch_only = False
     # env.host_string = 'kis@exopgesrv34.epfl.ch'
     env.settings_file = 'test.py'
+    env.forward_agent = True
     env.requirements = '%(requirements_path)s/test.txt' % env
 
     # # when deploying on the test server, we synchronize the static files of the homepage

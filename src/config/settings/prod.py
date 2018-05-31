@@ -5,7 +5,7 @@ from .base import *  # noqa
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    'xaas-admin.epfl.ch',
+    'xaas-admin-test.epfl.ch',
     'exopgesrv34.epfl.ch',
 ]
 
@@ -25,4 +25,4 @@ DATABASES = {
 
 SERVER_NAME = "prod"
 
-STATIC_ROOT = '/var/www/vhosts/xaas-admin-test.epfl.ch/htdocs/'
+STATIC_ROOT = '/var/www/vhosts/xaas-admin.epfl.ch/htdocs/'
