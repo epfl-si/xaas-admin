@@ -40,21 +40,13 @@ then
     dbHost="localhost"
 fi
 
+# Getting tables list
+TABLES=$(mysql --host=${dbHost} --port=${dbPort} --user=${DB_USER} $1 --password=${dbPass} --execute='show tables' | awk '{ print $1}' | grep -v '^Tables' )
 
-request="SET FOREIGN_KEY_CHECKS = 0;
-SET @tables = NULL;
-SELECT GROUP_CONCAT(table_schema, '.', table_name) INTO @tables
-  FROM information_schema.tables
-  WHERE table_schema = '$1';
-
-  SET @tables = CONCAT('DROP TABLE ', @tables);
-PREPARE stmt FROM @tables;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-SET FOREIGN_KEY_CHECKS = 1;"
-
-echo "Deleting tables in '$1' database..."
-mysql --host=${dbHost} --port=${dbPort} --user=${DB_USER} $1 --password=${dbPass} --execute="${request}"
-
+for t in $TABLES
+do
+	echo "Deleting $t table from $1 database..."
+	mysql --host=${dbHost} --port=${dbPort} --user=${DB_USER} $1 --password=${dbPass} --execute="drop table $t"
+done
 echo "done"
 
