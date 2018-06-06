@@ -47,8 +47,8 @@ env.default_rsync_flags = [
 # connection string to the production server
 env.prod_host_string = 'kis@.epfl.ch'
 
-env.mysql_db = 'xaas-admin'
-env.mysql_user = 'xaas-admin'
+env.mysql_db = 'xaas_admin_dev'
+env.mysql_user = 'xaas_admin_user'
 env.mysql_pwd = ''
 env.mysql_host = 'localhost'
 

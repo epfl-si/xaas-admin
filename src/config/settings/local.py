@@ -13,8 +13,8 @@ ALLOWED_HOSTS = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'xaas-admin',
-        'USER': 'xaas-admin',
+        'NAME': 'xaas_admin_dev',
+        'USER': 'xaas_admin_user',
         'PASSWORD': get_secret('DB_USER_PWD'),  # noqa
     }
 }
