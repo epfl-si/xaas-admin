@@ -2,7 +2,7 @@
 
 
 SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
-SECRETS_FILE="${SCRIPT_PATH}/../secrets.json"
+SECRETS_FILE="${SCRIPT_PATH}/../../secrets.json"
 DB_USER="xaas_admin_user"
 
 
