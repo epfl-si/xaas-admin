@@ -1,0 +1,16 @@
+{
+	"name": "{{name}}",
+	"description": "{{description}}",
+	"subtenantRoles": null,
+	"extensionData": {
+		"entries": [
+      {
+			"key": "iaas-manager-emails",
+			"value": {
+				"type": "string",
+				"value": "{{managerEmail}}"
+			}
+		}]
+	},
+	"tenant": "{{tenant}}"
+}

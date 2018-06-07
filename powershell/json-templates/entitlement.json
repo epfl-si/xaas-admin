@@ -1,0 +1,14 @@
+{
+    "name": "{{name}}",
+    "description": "{{description}}",
+    "organization": {
+        "tenantRef": "{{tenant}}",
+        "tenantLabel": "{{tenant}}",
+        "subtenantRef": "{{bgID}}",
+        "subtenantLabel": "{{bgName}}"
+    },
+    "allUsers": true,
+    "status": "ACTIVE",
+    "statusName": "Active",
+    "localScopeForActions": true
+}

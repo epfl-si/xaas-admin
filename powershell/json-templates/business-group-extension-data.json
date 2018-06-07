@@ -1,0 +1,7 @@
+{
+    "key": "{{key}}",
+    "value": {
+        "type": "string",
+        "value": "{{value}}"
+    }
+}
