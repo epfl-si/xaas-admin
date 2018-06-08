@@ -68,6 +68,46 @@ class NameGenerator
 
     <#
         -------------------------------------------------------------------------------------
+        BUT : Renvoie l'expression régulière permettant de définir si un nom de groupe est 
+              un nom pour le rôle passé et ceci pour l'environnement donné.
+
+        IN  : $role     -> Nom du rôle pour lequel on veut la RegEX
+                            "CSP_SUBTENANT_MANAGER"
+							"CSP_SUPPORT"
+							"CSP_CONSUMER_WITH_SHARED_ACCESS"
+                            "CSP_CONSUMER"
+
+        RET : L'expression régulières
+    #>
+    [string] getEPFLADGroupNameRegEx([string]$role)
+    {
+        if($role -eq "CSP_SUBTENANT_MANAGER")
+        {
+            # vra_<envShort>_adm_<tenantShort>
+            return "{0}{1}_adm_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+        }
+        # Support
+        elseif($role -eq "CSP_SUPPORT")
+        {
+            # vra_<envShort>_sup_<facultyName>
+            return "{0}{1}_sup_\d+" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName()
+        }
+        # Shared, Users
+        elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
+                $role -eq "CSP_CONSUMER")
+        {
+            # vra_<envShort>_<facultyID>_<unitID>
+            return "{0}{1}_\d+_\d+" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName()
+        }  
+        else
+        {
+            Throw ("Incorrect role given ({0})" -f $role)
+        }
+        
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
         BUT : Renvoie un tableau avec :
                - le nom du groupe à utiliser pour le Role $role d'un BG d'une unité  $unitId, au sein du tenant EPFL.
                En fonction du paramètre $type, on sait si on doit renvoyer un nom de groupe "groups"
@@ -107,7 +147,8 @@ class NameGenerator
         {
             # Même nom de groupe (court) pour AD et "groups"
             # vra_<envShort>_adm_<tenantShort>
-            $groupName = "{0}{1}_adm_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName().ToLower()
+            $groupName = "{0}{1}_adm_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+            $groupDesc = "Administrators for Tenant {0} on Environment {1}" -f $this.tenant.ToUpper(), $this.env.ToUpper()
         }
         # Support
         elseif($role -eq "CSP_SUPPORT")
@@ -115,6 +156,7 @@ class NameGenerator
             # Même nom de groupe (court) pour AD et "groups"
             # vra_<envShort>_sup_<facultyName>
             $groupName = "{0}{1}_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $facultyName.toLower()
+            $groupDesc = "Support for Faculty {0} on Tenant {1} on Environment {2}" -f $facultyName.toUpper(), $this.tenant.ToUpper(), $this.env.ToUpper()
         }
         # Shared, Users
         elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
@@ -142,7 +184,7 @@ class NameGenerator
 
         if($fqdn)
         {
-            $groupName += [NameGenerator]::AD_DOMAIN_SUFFIX
+            $groupName = $this.getADGroupFQDN($groupName)
         }
 
         return @($groupName, $groupDesc)
@@ -158,7 +200,6 @@ class NameGenerator
                    MAUVAIS PROTOTYPE DE FONCTION QUI RISQUE D'ETRE PRIS EN COMPTE.
 
         IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
 							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
                                     "CSP_CONSUMER"
         IN  : $facultyID        -> ID de la faculté du Business Group
@@ -181,12 +222,14 @@ class NameGenerator
     <# 
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom du groupe AD pour les paramètres passés 
-              Utilisé uniquement pour le groupe CSP_SUPPORT. On doit quand même le passer en 
-              paramètre dans le cas où la fonction devrait évoluer dans le futur
+              Utilisé uniquement pour les groupe CSP_SUPPORT et CSP_SUBTENANT_MANAGER. On doit 
+              quand même le passer en  paramètre dans le cas où la fonction devrait évoluer 
+              dans le futur
 
         IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-							        "CSP_SUPPORT"
-        IN  : $facultyName      -> Nom de la faculét
+                                    "CSP_SUPPORT"
+                                    "CSP_SUBTENANT_MANAGER"
+        IN  : $facultyName      -> Nom de la faculté
         IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
                                     $true|$false  
                                     Si pas passé => $false      
@@ -199,9 +242,35 @@ class NameGenerator
 
     [string] getEPFLRoleADGroupName([string]$role, [string]$facultyName)
     {
-        $groupName, $groupDesc = $this.getEPFLRoleADGroupName($role, $facultyName, $false)
-        return $groupName
+        return $this.getEPFLRoleADGroupName($role, $facultyName, $false)
     }
+
+    <# 
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la description du groupe AD pour les paramètres passés 
+              Utilisé uniquement pour les groupe CSP_SUPPORT et CSP_SUBTENANT_MANAGER. On doit 
+              quand même le passer en  paramètre dans le cas où la fonction devrait évoluer 
+              dans le futur
+
+        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
+                                    "CSP_SUPPORT"
+                                    "CSP_SUBTENANT_MANAGER"
+        IN  : $facultyName      -> Nom de la faculté
+        IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
+                                    $true|$false  
+                                    Si pas passé => $false      
+    #>
+    [string] getEPFLRoleADGroupDesc([string]$role, [string]$facultyName, [bool]$fqdn)
+    {
+        $groupName, $groupDesc = $this.getEPFLRoleGroupNameAndDesc($role, $facultyName, "", "", "", $this.GROUP_TYPE_AD, $fqdn)
+        return $groupDesc
+    }
+
+    [string] getEPFLRoleADGroupDesc([string]$role, [string]$facultyName)
+    {
+        return $this.getEPFLRoleADGroupDesc($role, $facultyName, $false)
+    }    
+
     
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
@@ -249,10 +318,8 @@ class NameGenerator
         BUT : Renvoie le nom du groupe "GROUPS" dans Active Directory pour les paramètres passés 
 
         IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
+                                    "CSP_SUPPORT"
+                                    "CSP_MANAGER"
         IN  : $facultyName      -> Le nom de la faculté du Business Group    
     #>
     [string] getEPFLRoleGroupsADGroupName([string]$role, [string]$facultyName)
@@ -260,6 +327,7 @@ class NameGenerator
         $groupName = $this.getEPFLRoleGroupsGroupName($role, $facultyName)
         return $groupName + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
     }
+
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -286,7 +354,7 @@ class NameGenerator
 
         if($fqdn)
         {
-            $groupName += [NameGenerator]::AD_DOMAIN_SUFFIX
+            $groupName = $this.getADGroupFQDN($groupName)
         }
         return $groupName
     }
@@ -359,7 +427,6 @@ class NameGenerator
     }
 
     
-
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# --------------------------------------------------------------------------- IT SERVICES ---------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -394,7 +461,7 @@ class NameGenerator
 
         if($fqdn)
         {
-            $groupName += [NameGenerator]::AD_DOMAIN_SUFFIX
+            $groupName = $this.getADGroupFQDN($groupName)
         }
 
         return @($groupName, $groupDesc)
@@ -512,7 +579,7 @@ class NameGenerator
 
         if($fqdn)
         {
-            $groupName += [NameGenerator]::AD_DOMAIN_SUFFIX
+            $groupName = $this.getADGroupFQDN($groupName)
         }
         return $groupName
     }
@@ -1009,5 +1076,26 @@ class NameGenerator
         }
 
     }
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie le FQDN d'un group AD
+              
+        IN  : $groupShortName   -> Le nom court du groupe
+
+        RET : Le nom avec FQDN
+    #>
+    [string] getADGroupFQDN([string]$groupShortName)
+    {
+        # On check que ça soit bien un nom court qu'on ai donné.
+        if($groupShortName.EndsWith([NameGenerator]::AD_DOMAIN_SUFFIX))
+        {
+            return $groupShortName
+        }
+        else 
+        {
+            return $groupShortName += [NameGenerator]::AD_DOMAIN_SUFFIX   
+        }
+    }
+
 
 }
