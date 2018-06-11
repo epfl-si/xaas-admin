@@ -22,6 +22,14 @@ $TARGET_ENV_MYSQL_DB_NAME = @{$global:TARGET_ENV_DEV = "xaas_admin_dev"
 # Nom de l'utilisateur pour accéder à la base de données MySQL
 $MYSQL_USERNAME = "xaas_admin_user"
 
+# Chemin jusqu'au fichier "mysql.exe"
+$global:MYSQL_CLIENT_EXE = "C:\Program Files\MySQL\MySQL Workbench 6.3 CE\mysql.exe"
+
+# Nom des champs dans la table qui contient la liste des services
+$global:MYSQL_ITS_SERVICES__SHORTNAME = 'its_serv_short_name'
+$global:MYSQL_ITS_SERVICES__LONGNAME = 'its_serv_long_name'
+$global:MYSQL_ITS_SERVICES__SNOWID = 'its_serv_snow_id'
+
 
 <#
 	-------------------------------------------------------------------------------------
