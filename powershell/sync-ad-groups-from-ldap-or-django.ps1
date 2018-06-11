@@ -27,6 +27,8 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "DjangoMySQL.inc.ps1"))
 
 try 
 {
@@ -121,6 +123,8 @@ function handleNotifications
 		# S'il y a des notifications de ce type
 		if($notifications[$notif].count -gt 0)
 		{
+			# Suppression des doublons 
+			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
 			switch($notif)
 			{
 				# ---------------------------------------
@@ -131,8 +135,21 @@ function handleNotifications
 					Write-Warning "Set doc URL"
 					$mailSubject = getvRAMailSubject -shortSubject "Error - Active Directory groups missing" -targetEnv $targetEnv
 					$message = getvRAMailContent -content ("Les groupes Active Directory suivants sont manquants pour l'environnement <b>{0}</b> et le Tenant <b>EPFL</b>. `
+<br>Leur absence empêche la création d'autres groupes AD ainsi que des Business Groups qui les utilisent. `
 <br>Veuillez les créer à la main comme expliqué dans la procédure:`
-<br><ul><li>{1}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{2}'>ici</a>."  -f $targetEnv, ($notifications[$notif] -join "</li>`n<li>"), $docUrl)
+<br><ul><li>{1}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{2}'>ici</a>."  -f $targetEnv, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
+				}
+
+				# ---------------------------------------
+				# Groupe active directory manquants pour création des éléments pour Tenant ITS
+				'missingITSADGroups'
+				{
+					$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=72516653"
+					$mailSubject = getvRAMailSubject -shortSubject "Error - Active Directory groups missing" -targetEnv $targetEnv
+					$message = getvRAMailContent -content ("Les groupes Active Directory suivants sont manquants pour l'environnement <b>{0}</b> et le Tenant <b>ITServices</b>. `
+<br>Leur absence empêche la création d'autres groupes AD ainsi que des Business Groups qui les utilisent. `
+<br>Veuillez les créer à la main comme expliqué dans la procédure:`
+<br><ul><li>{1}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{2}'>ici</a>."  -f $targetEnv, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
 				}
 
 				default
@@ -242,8 +259,11 @@ try
 
 
 
-	# ----------------------------------------------------------------------------------------------
-	# Si on doit traiter le tenant EPFL, 
+	# -------------------------------------------------------------------------------------------------------------------------------------
+	# -------------------------------------------------------------------------------------------------------------------------------------
+	# --------------------------------------------------------- TENANT EPFL ---------------------------------------------------------------
+	# -------------------------------------------------------------------------------------------------------------------------------------
+	# -------------------------------------------------------------------------------------------------------------------------------------
 	if($targetTenant -eq $global:VRA_TENANT_EPFL)
 	{
 		$logHistory.addLineAndDisplay("Processing data for EPFL Tenant")
@@ -272,7 +292,29 @@ try
 
 			# ----------------------------------------------------------------------------------
 			# --------------------------------- FACULTE
+			# ----------------------------------------------------------------------------------
 
+			
+			# --------------------------------- APPROVE
+
+			# Génération du nom du broupe dont on va avoir besoin pour approuver les demandes pour le service. 
+
+			$approveGroupNameAD = $nameGenerator.getEPFLApproveADGroupName($faculty['name'])
+			$approveGroupDescAD = $nameGenerator.getEPFLApproveADGroupDesc($faculty['name'])
+			$approveGroupNameGroups = $nameGenerator.getEPFLApproveGroupsADGroupName($faculty['name'])
+
+			# Création des groupes + gestion des groupes prérequis 
+			if((createADGroupWithContent -groupName $approveGroupNameAD -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+				 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+			{
+				# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
+				$notifications['missingEPFLADGroups'] += $approveGroupNameGroups
+				break
+			}
+
+			
+			# --------------------------------- ROLES
+			
 			# Il faut créer les groupes pour les Roles CSP_SUBTENANT_MANAGER et CSP_SUPPORT s'ils n'existent pas
 
 			# Génération des noms des groupes dont on va avoir besoin.
@@ -290,8 +332,7 @@ try
 			{
 				# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 				$notifications['missingEPFLADGroups'] += $adminGroupNameGroups
-				# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
-				return
+				break
 			}
 			# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
 			$doneADGroupList += $adminGroupNameAD
@@ -302,8 +343,7 @@ try
 			{
 				# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 				$notifications['missingEPFLADGroups'] += $supportGroupNameGroups
-				# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
-				return
+				break
 			}
 			# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
 			$doneADGroupList += $supportGroupNameAD
@@ -312,6 +352,7 @@ try
 
 			# ----------------------------------------------------------------------------------
 			# --------------------------------- UNITÉS
+			# ----------------------------------------------------------------------------------
 
 			# Recherche des unités pour la facultés
 			$unitList = $ldap.getFacultyUnitList($faculty['name'], $EPFL_FAC_UNIT_NB_LEVEL)
@@ -466,61 +507,113 @@ try
 
 				$counters.inc('ADGroupsRemoved')
 			}
-		}
+		}# FIN BOUCLE de parcours des groupes AD qui sont dans l'OU de l'environnement donné
 	}
-	# ----------------------------------------------------------------------------------------------
-	# Si on doit traiter le tenant ITServices, 
+
+
+	# -------------------------------------------------------------------------------------------------------------------------------------
+	# -------------------------------------------------------------------------------------------------------------------------------------
+	# ------------------------------------------------------ TENANT ITSERVICES ------------------------------------------------------------
+	# -------------------------------------------------------------------------------------------------------------------------------------
+	# -------------------------------------------------------------------------------------------------------------------------------------
 	elseif($targetTenant -eq $global:VRA_TENANT_ITSERVICES)
 	{
 		$logHistory.addLineAndDisplay("Processing data for ITServices Tenant")
 
+		# Ajout du nécessaire pour gérer les notifications pour ce Tenant
+		$notifications.missingITSADGroups = @()
+
+		# Ajout des compteurs propres au tenant
+		$counters.add('its.serviceProcessed', '# Service processed')
+
 		# Chargement des infos se trouvant dans le fichier "secrets.json" pour pouvoir accéder à la DB
 		$dbInfos = loadMySQLInfos -file $JSON_SECRETS_FILE -targetEnv $targetEnv
 
+		$django = [DjangoMySQL]::new($dbInfos.DB_HOST, [int]$dbInfos.DB_PORT, $dbInfos.DB_NAME, $dbInfos.DB_USER_NAME, $dbInfos.DB_USER_PWD)
+
+		$servicesList = $django.getServicesList()
+
+		# Si on rencontre une erreur, 
+		if($serviceList -eq $false)
+		{
+			Throw ("Error getting Services list for '{0}' tenant" -f $targetTenant)
+		}
+
+		$serviceNo = 1 
+		# Parcours des services renvoyés par Django
+		ForEach($service in $servicesList)
+		{
+
+			$logHistory.addLineAndDisplay(("-> [{0}/{1}] Service {2}..." -f $serviceNo, $servicesList.Count, $service.$global:MYSQL_ITS_SERVICES__SHORTNAME))
+
+			
+			# --------------------------------- APPROVE
+
+			# Génération du nom du broupe dont on va avoir besoin pour approuver les demandes pour le service. 
+
+			$approveGroupNameAD = $nameGenerator.getITSApproveADGroupName($service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
+			$approveGroupDescAD = $nameGenerator.getITSApproveADGroupDesc($service.$global:MYSQL_ITS_SERVICES__LONGNAME)
+			$approveGroupNameGroups = $nameGenerator.getITSApproveGroupsADGroupName($service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
+
+			# Création des groupes + gestion des groupes prérequis 
+			if((createADGroupWithContent -groupName $approveGroupNameAD -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+				 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+			{
+				# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
+				$notifications['missingITSADGroups'] += $approveGroupNameGroups
+				break
+			}
+			
+			# --------------------------------- ROLES
+
+			# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
+			# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
+			# sera le même
+			$admSupGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
+			$admSupGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_SUBTENANT_MANAGER", $service.$global:MYSQL_ITS_SERVICES__LONGNAME)
+			$admSupGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
+
+			# Création des groupes + gestion des groupes prérequis 
+			if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
+				 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+			{
+				# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
+				$notifications['missingITSADGroups'] += $admSupGroupNameGroups
+				break
+			}
+			# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+			$doneADGroupList += $admSupGroupNameAD
 
 
 
+			# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
+			# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
+			# sera le même
+			$userSharedGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_CONSUMER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
+			$userSharedGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_CONSUMER", $service.$global:MYSQL_ITS_SERVICES__LONGNAME)
+			$userSharedGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_CONSUMER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
 
-			# # Génération des noms des groupes dont on va avoir besoin.
-			# $adminGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $faculty['name'])
-			# $adminGroupDescAD = $nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $faculty['name'])
-			# $adminGroupNameGroups = $nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $faculty['name'])
+			# Création des groupes + gestion des groupes prérequis 
+			if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroups `
+				 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+			{
+				# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
+				$notifications['missingITSADGroups'] += $userSharedGroupNameGroups
+				break
+			}
+			# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+			$doneADGroupList += $userSharedGroupNameAD
 
-			# $supportGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_SUPPORT", $faculty['name'])
-			# $supportGroupDescAD = $nameGenerator.getITSRoleADGroupName("CSP_SUPPORT", $faculty['name'])
-			# $supportGroupNameGroups = $nameGenerator.getITSRoleADGroupName("CSP_SUPPORT", $faculty['name'])		
+			$counters.inc('its.serviceProcessed')
 
-			# # Création des groupes + gestion des groupes prérequis 
-			# if((createADGroupWithContent -groupName $adminGroupNameAD -groupDesc $adminGroupDescAD -groupMemberGroup $adminGroupNameGroups `
-			# 	 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
-			# {
-			# 	# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
-			# 	$notifications['missingEPFLADGroups'] += $adminGroupNameGroups
-			# 	# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
-			# 	return
-			# }
-			# # Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-			# $doneADGroupList += $adminGroupNameAD
+			$serviceNo += 1
 
+		}# FIN BOUCLE de parcours des services renvoyés
 
-			# if((createADGroupWithContent -groupName $supportGroupNameAD -groupDesc $supportGroupDescAD -groupMemberGroup $supportGroupNameGroups `
-			# 	 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
-			# {
-			# 	# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
-			# 	$notifications['missingEPFLADGroups'] += $supportGroupNameGroups
-			# 	# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
-			# 	return
-			# }
-			# # Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-			# $doneADGroupList += $supportGroupNameAD
+	}# FIN SI on doit traiter le Tenant ITServices 
 
-		# Ajout des compteurs propres au tenant
-		#$counters.add('its.facProcessed', '# Faculty processed')
-
-		
-
-	}
-
+	# Gestion des erreurs s'il y en a
+	handleNotifications -notifications $notifications -targetEnv $targetEnv -targetTenant $targetTenant
 
 	if($SIMULATION_MODE)
 	{
@@ -537,6 +630,9 @@ try
 	}
 
 	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
+
+
+
 
 
 }

@@ -406,6 +406,20 @@ class NameGenerator
     
     <#
         -------------------------------------------------------------------------------------
+        BUT : Renvoie la description du groupe AD utilisé pour les approbations des demandes
+              pour le tenant.
+
+        IN  : $facultyName      -> Le nom court de la faculté
+       
+        RET : Description du groupe
+    #>
+    [string] getEPFLApproveADGroupDesc([string]$facultyName)
+    {
+        return "Approval group for Faculty: {0}" -f $facultyName
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
         BUT : Renvoie le nom du groupe GROUPS créé dans AD à utiliser pour le mécanisme 
               d'approbation des demandes pour un Business Group du tenant ITServices
 
@@ -440,7 +454,8 @@ class NameGenerator
             $role -eq "CSP_SUPPORT")
         {
             # vra_<envShort>_adm_sup_its
-            return "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+            $groupName = "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+            $groupDesc = "Administrators/Support for Tenant {0} on Environment {1}" -f $this.tenant.ToUpper(), $this.env.ToUpper()
             
         }
         # Shared, Users
@@ -559,7 +574,7 @@ class NameGenerator
     
     <# 
         -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du groupe d'approbation pour les paramètres passés 
+        BUT : Renvoie le nom du groupe d'approbation et sa description pour les paramètres passés 
               Cette méthode est cachée et est le point d'appel central pour d'autres méthodes publiques.
 
         IN  : $serviceShortName -> Le nom court du service
@@ -569,6 +584,7 @@ class NameGenerator
         IN  : $fqdn             -> Pour dire si on veut le nom FQDN du groupe.
                                     $true|$false    
 
+        RET : Nom du groupe
     #>
     hidden [string] getITSApproveGroupName([string]$serviceShortName, [string]$type, [bool]$fqdn)
     {
@@ -581,6 +597,7 @@ class NameGenerator
         {
             $groupName = $this.getADGroupFQDN($groupName)
         }
+
         return $groupName
     }
 
@@ -650,6 +667,21 @@ class NameGenerator
     [string] getITSApproveGroupsADGroupName([string]$serviceShortName)
     {
         return $this.getITSApproveGroupsADGroupName($serviceShortName, $false)
+    }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la description du groupe utilisé pour approuver les demandes du service
+              dont le nom est passé
+
+        IN  : $serviceName      -> Le nom court du service
+       
+        RET : Description du groupe
+    #>
+    [string] getITSApproveADGroupDesc([string]$serviceName)
+    {
+        return "Approval group for Service: {0}" -f $serviceName
     }
 
 
