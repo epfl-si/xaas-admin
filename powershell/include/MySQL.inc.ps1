@@ -83,8 +83,19 @@ class MySQL
         {
             return $false
         }
+        
+        $result = $MySQLProcess.StandardOutput.ReadToEnd() | ConvertFrom-Csv -Delimiter "`t"
 
-        return $MySQLProcess.StandardOutput.ReadToEnd() | ConvertFrom-Csv -Delimiter "`t"
+        # Transformation du résultat en tableau s'il n'y a qu'un seul enregistrement renvoyé. Ceci permettra de gérer le retour
+        # de cette fonction d'une manière uniforme sans avoir à contrôler si c'est un tableau ou pas.
+
+        # NOTE: Lors du parcours des enregistrements présents dans le tableau, il faudra accéder les champs via $record.<nomDuChamp> et pas
+        # via $record[<nomDuChamp>]
+        if($result -isnot [Array])
+        {
+            $result = @($result)
+        }
+        return $result
 
     }
 }
