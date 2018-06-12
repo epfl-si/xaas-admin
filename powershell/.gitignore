@@ -1,0 +1,7 @@
+src/config/settings/default.py
+.vscode/
+logs/
+IaaS.code-workspace
+test.ps1
+# Users credentials
+vra-credentials.inc.ps1
