@@ -615,6 +615,9 @@ try
 	# Gestion des erreurs s'il y en a
 	handleNotifications -notifications $notifications -targetEnv $targetEnv -targetTenant $targetTenant
 
+	$notifications
+	
+
 	if($SIMULATION_MODE)
 	{
 		$logHistory.addLineAndDisplay("***************************************")

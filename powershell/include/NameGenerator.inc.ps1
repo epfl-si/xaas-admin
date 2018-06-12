@@ -61,6 +61,20 @@ class NameGenerator
         $this.env    = $env
     }
 
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Transforme et renvoie la chaine de caractères passée pour qu'elle corresponde
+                aux attentes du nommage des groupes. 
+                Les - vont être transformés en _ par exemple et tout sera mis en minuscule
+
+        IN  : $str -> la chaine de caractères à transformer
+
+        RET : La chaine corrigée
+    #>
+    hidden [string]transformForGroupName([string]$str)
+    {
+        return $str.replace("-", "_").ToLower()
+    }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# ----------------------------------------------------------------------------- EPFL --------------------------------------------------------------------------------------- #>
@@ -84,20 +98,20 @@ class NameGenerator
         if($role -eq "CSP_SUBTENANT_MANAGER")
         {
             # vra_<envShort>_adm_<tenantShort>
-            return "{0}{1}_adm_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+            return "^{0}{1}_adm_{2}$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
         }
         # Support
         elseif($role -eq "CSP_SUPPORT")
         {
             # vra_<envShort>_sup_<facultyName>
-            return "{0}{1}_sup_\d+" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName()
+            return "^{0}{1}_sup_\d+$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName()
         }
         # Shared, Users
         elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
                 $role -eq "CSP_CONSUMER")
         {
             # vra_<envShort>_<facultyID>_<unitID>
-            return "{0}{1}_\d+_\d+" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName()
+            return "^{0}{1}_\d+_\d+$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName()
         }  
         else
         {
@@ -155,7 +169,7 @@ class NameGenerator
         {
             # Même nom de groupe (court) pour AD et "groups"
             # vra_<envShort>_sup_<facultyName>
-            $groupName = "{0}{1}_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $facultyName.toLower()
+            $groupName = "{0}{1}_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($facultyName)
             $groupDesc = "Support for Faculty {0} on Tenant {1} on Environment {2}" -f $facultyName.toUpper(), $this.tenant.ToUpper(), $this.env.ToUpper()
         }
         # Shared, Users
@@ -350,7 +364,7 @@ class NameGenerator
         # NOTE: Pour le moment, on n'utilise pas le paramètre $type car c'est le même nom de groupe qui est utilisé pour AD et GROUPS.
 
         # vra_<envShort>_approval_<faculty>
-        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $facultyName.ToLower()
+        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($facultyName)
 
         if($fqdn)
         {
@@ -445,6 +459,42 @@ class NameGenerator
     <# --------------------------------------------------------------------------- IT SERVICES ---------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie l'expression régulière permettant de définir si un nom de groupe est 
+              un nom pour le rôle passé et ceci pour l'environnement donné.
+
+        IN  : $role     -> Nom du rôle pour lequel on veut la RegEX
+                            "CSP_SUBTENANT_MANAGER"
+							"CSP_SUPPORT"
+							"CSP_CONSUMER_WITH_SHARED_ACCESS"
+                            "CSP_CONSUMER"
+
+        RET : L'expression régulières
+    #>
+    [string] getITSADGroupNameRegEx([string]$role)
+    {
+        if($role -eq "CSP_SUBTENANT_MANAGER" -or `
+            $role -eq "CSP_SUPPORT")
+        {
+            # vra_<envShort>_adm_sup_<tenantShort>
+            return "^{0}{1}_adm_sup_{2}$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+        }
+        # Shared, Users
+        elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
+                $role -eq "CSP_CONSUMER")
+        {
+            # vra_<envShort>_<serviceShort>
+            # On ajoute une exclusion à la fin pour être sûr de ne pas prendre aussi les éléments qui sont pour les 2 rôles ci-dessus
+            return "^{0}{1}_\w+[^adm_sup_{2}]$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+        }  
+        else
+        {
+            Throw ("Incorrect role given ({0})" -f $role)
+        }
+        
+    }
+
     hidden [System.Collections.ArrayList] getITSRoleGroupNameAndDesc([string]$role, [string]$serviceShortName, [string]$serviceName, [string]$type, [bool]$fqdn)
     {
         # On initialise à vide car la description n'est pas toujours générée. 
@@ -463,9 +513,9 @@ class NameGenerator
                 $role -eq "CSP_CONSUMER")
         {
             # vra_<envShort>_<serviceShort>
-            $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $serviceShortName.ToLower()
+            $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($serviceShortName)
             # <serviceName>
-            $groupDesc = $serviceName
+            $groupDesc = "Users and shared for Service: {0}" -f $serviceName
 
         }
         # Autre EPFL
@@ -592,7 +642,7 @@ class NameGenerator
         # NOTE: Pour le moment, on n'utilise pas le paramètre $type car c'est le même nom de groupe qui est utilisé pour AD et GROUPS.
 
         # vra_<envShort>_approval_<serviceShort>
-        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $serviceShortName.ToLower()
+        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($serviceShortName)
 
         if($fqdn)
         {
@@ -717,7 +767,7 @@ class NameGenerator
         }
 
         # Retour du résultat 
-        return ('OU={0},OU={1},OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch' -f $tenantOU, $envOU)
+        return 'OU={0},OU={1},OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch' -f $tenantOU, $envOU
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -795,7 +845,7 @@ class NameGenerator
     #>
     [string] getVMMachinePrefix([string]$facultyNameOrServiceShortName)
     {
-        return ("{0}-" -f $facultyNameOrServiceShortName.toLower())
+        return "{0}-" -f $this.transformForGroupName($facultyNameOrServiceShortName)
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -812,7 +862,7 @@ class NameGenerator
     #>
     [string] getEPFLBGDescription([string]$facultyName, [string]$unitName)
     {
-        return ("Faculty: {0}`nUnit: {1}" -f $facultyName.toUpper(), $unitName.toUpper())
+        return "Faculty: {0}`nUnit: {1}" -f $facultyName.toUpper(), $unitName.toUpper()
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -830,7 +880,7 @@ class NameGenerator
     #>
     [string] getEntName([string]$facultyName, [string]$unitName)
     {
-        return ("{0}_{1}_{2}" -f $this.getTenantShortName(), $facultyName.ToLower(), $unitName.ToLower())
+        return "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($facultyName), $this.transformForGroupName($unitName)
     }    
     <#
         -------------------------------------------------------------------------------------
@@ -843,7 +893,7 @@ class NameGenerator
     #>
     [string] getEntName([string]$serviceShortName)
     {
-        return ("{0}_{1}" -f $this.getTenantShortName(), $serviceShortName.ToLower())
+        return "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($serviceShortName)
     }    
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -861,7 +911,7 @@ class NameGenerator
     #>
     [string] getEntDescription([string]$facultyName, [string]$unitName)
     {
-        return ("Faculty: {0}`nUnit: {1}" -f $facultyName.toUpper(), $unitName.toUpper())
+        return "Faculty: {0}`nUnit: {1}" -f $facultyName.toUpper(), $unitName.toUpper()
     }    
     <#
         -------------------------------------------------------------------------------------
@@ -1044,7 +1094,7 @@ class NameGenerator
     #>
     [string] getBGName([string]$facultyName, [string]$unitName)
     {
-        return "{0}_{1}_{2}" -f $this.getTenantShortName(), $facultyName.ToLower(), $unitName.ToLower()
+        return "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($facultyName), $this.transformForGroupName($unitName)
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1061,7 +1111,7 @@ class NameGenerator
     #>
     [string] getBGName([string]$serviceShortName)
     {
-        return "{0}_{1}" -f $this.getTenantShortName(), $serviceShortName.ToLower()
+        return "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($serviceShortName)
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1090,7 +1140,7 @@ class NameGenerator
             # Le nom de la Reservation est généré comme suit
             # <tenantShort>_<faculty>_<unit>_<cluster>
 
-            return "{0}_{1}_{2}_{3}" -f $this.getTenantShortName(), $partList[1], $partList[2], $clusterName.ToLower()
+            return "{0}_{1}_{2}_{3}" -f $this.getTenantShortName(), $partList[1], $partList[2], $this.transformForGroupName($clusterName)
         }
         # Si Tenant ITServices
         elseif($this.tenant -eq $global:VRA_TENANT_ITSERVICES)
@@ -1101,7 +1151,7 @@ class NameGenerator
             # Le nom de la Reservation est généré comme suit
             # <tenantShort>_<serviceShortName>_<cluster>
             
-            return "{0}_{1}_{2}" -f $this.getTenantShortName(), $partList[1], $clusterName.ToLower()
+            return "{0}_{1}_{2}" -f $this.getTenantShortName(), $partList[1], $this.transformForGroupName($clusterName)
         }
         else
         {
@@ -1129,6 +1179,5 @@ class NameGenerator
             return $groupShortName += [NameGenerator]::AD_DOMAIN_SUFFIX   
         }
     }
-
 
 }
