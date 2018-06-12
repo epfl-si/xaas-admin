@@ -59,7 +59,7 @@ class MyVMQuota(models.Model):
                                                       verbose_name="Reserved - HDD [GB]",
                                                       default=0)
 
-    myvm_faculty = models.ForeignKey('global_infos.FacultyAdmin', db_column="myvm_faculty", verbose_name="Faculty")
+    myvm_faculty = models.ForeignKey('global_infos.Faculty', db_column="myvm_faculty", verbose_name="Faculty")
 
     class Meta:
         unique_together = ('myvm_quotas_year', 'myvm_faculty')
