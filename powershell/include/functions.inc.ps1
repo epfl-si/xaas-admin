@@ -128,31 +128,7 @@ function sendMailTo
 {
    param([string]$mailAddress, [string] $mailSubject, [string] $mailMessage)
 
-
-   #SMTP server name
-   $smtpServer = "mail.epfl.ch"
-
-   #Creating a Mail object
-   $msg = new-object Net.Mail.MailMessage
-   $msg.BodyEncoding = [System.Text.Encoding]::UTF8
-   
-
-   #Creating SMTP server object
-   $smtp = new-object Net.Mail.SmtpClient($smtpServer)
-
-   #Email structure
-   $msg.From = "noreply+$mailAddress"
-   $msg.ReplyTo = $mailAddress
-   $msg.To.Add($mailAddress)
-
-
-   $msg.subject = "$mailSubject"
-   $msg.body = $mailMessage
-   $msg.IsBodyHTML=$true
-
-   #Sending email
-   $smtp.Send($msg)
-
+   Send-MailMessage -From "noreply+$mailAddress" -To $mailAddress -Subject $mailSubject -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding UTF8
 }
 
 <#
