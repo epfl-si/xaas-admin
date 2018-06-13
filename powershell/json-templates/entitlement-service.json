@@ -1,5 +1,5 @@
 {
-    "approvalPolicyId": null,
+    "approvalPolicyId": "{{approvalPolicyId}}",
     "active": true,
     "serviceRef": {
         "id": "{{id}}",

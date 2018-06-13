@@ -454,6 +454,43 @@ class NameGenerator
         return $this.getEPFLApproveGroupsADGroupName($facultyName, $false)
     }
 
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie un tableau vec le nom et la description de la policy d'approbation à utiliser
+
+        IN  : $facultyName      -> Le nom de la faculté
+       
+        RET : Tableau avec:
+            - Nom de la policy
+            - Description de la policy
+    #>
+    [System.Collections.ArrayList] getEPFLApprovePolicyNameAndDesc([string]$facultyName)
+    {
+        $name = "approval_{0}" -f $this.transformForGroupName($facultyName)
+        $desc = "Approval policy for {0} Faculty" -f $facultyName.ToUpper()
+        return @($name, $desc)
+    }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom et la description d'un Entitlement pour le tenant EPFL
+
+        IN  : $facultyName  -> Nom des la faculté
+        IN  : $unitName     -> Nom de l'unité
+
+        RET : Tableau avec :
+                - Nom de l'Entitlement
+                - Description de l'entitlement
+    #>
+    [System.Collections.ArrayList] getEPFLBGEntNameAndDesc([string] $facultyName, [string]$unitName)
+    {
+        $name = $this.getEntName($facultyName, $unitName)
+        $desc = $this.getEntDescription($facultyName, $unitName)
+        return @($name, $desc)
+        
+    }
+
     
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# --------------------------------------------------------------------------- IT SERVICES ---------------------------------------------------------------------------------- #>
@@ -486,7 +523,7 @@ class NameGenerator
         {
             # vra_<envShort>_<serviceShort>
             # On ajoute une exclusion à la fin pour être sûr de ne pas prendre aussi les éléments qui sont pour les 2 rôles ci-dessus
-            return "^{0}{1}_\w+[^adm_sup_{2}]$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+            return "^{0}{1}(?!_approval)_\w+(?<!_adm_sup_{2})$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
         }  
         else
         {
@@ -515,7 +552,9 @@ class NameGenerator
             # vra_<envShort>_<serviceShort>
             $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($serviceShortName)
             # <serviceName>
-            $groupDesc = "Users and shared for Service: {0}" -f $serviceName
+            # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
+            # réutilisé pour d'autres choses dans la création des éléments dans vRA
+            $groupDesc = $serviceName
 
         }
         # Autre EPFL
@@ -695,7 +734,7 @@ class NameGenerator
     [string] getITSApproveGroupsEmail([string]$serviceShortName)
     {
         $groupName = $this.getITSApproveGroupsGroupName($serviceShortName)
-        return $groupName + $this.GROUPS_EMAIL_SUFFIX
+        return $groupName + [NameGenerator]::GROUPS_EMAIL_SUFFIX
     }    
     
     <#
@@ -726,7 +765,7 @@ class NameGenerator
         BUT : Renvoie la description du groupe utilisé pour approuver les demandes du service
               dont le nom est passé
 
-        IN  : $serviceName      -> Le nom court du service
+        IN  : $serviceName      -> Le nom du service
        
         RET : Description du groupe
     #>
@@ -735,6 +774,51 @@ class NameGenerator
         return "Approval group for Service: {0}" -f $serviceName
     }
 
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom de la policy d'approbation à utiliser
+
+        IN  : $serviceName      -> Le nom court du service
+       
+        RET : Nom de la policy
+    #>
+    [string] getITSApprovePolicyName([string]$serviceShortName)
+    {
+        return "approval_{0}" -f $this.transformForGroupName($serviceShortName)
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le descriptif de la policy d'approbation à utiliser
+
+        IN  : $serviceName      -> Le nom du service
+       
+        RET : Descriptif de la policy
+    #>
+    [string] getITSApprovePolicyDesc([string]$serviceName)
+    {
+        return "Approval policy for Service: {0}" -f $serviceName
+    }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom et la description d'un Entitlement pour le tenant ITS
+
+        IN  : $serviceShortName -> Nom court du service
+        IN  : $serviceLongName  -> Nom long du service
+
+        RET : Tableau avec :
+                - Nom de l'Entitlement
+                - Description de l'entitlement
+    #>
+    [System.Collections.ArrayList] getITSBGEntNameAndDesc([string] $serviceShortName, [string]$serviceLongName)
+    {
+        return @($this.getEntName($serviceShortName)
+                 $this.getEntDescription($serviceLongName))
+        
+    }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# --------------------------------------------------------------------------- AUTRES --------------------------------------------------------------------------------------- #>
@@ -907,7 +991,7 @@ class NameGenerator
         IN  : $facultyName  -> Nom de la faculté 
         IN  : $unitName     -> Nom de l'unité
 
-		RET : Description du BG
+		RET : Description de l'entitlement
     #>
     [string] getEntDescription([string]$facultyName, [string]$unitName)
     {
@@ -918,57 +1002,16 @@ class NameGenerator
         BUT : Renvoie la description d'un Entitlement 
               Au vu des paramètres, cette méthode ne sera appelée que pour le tenant ITServices
 
-        IN  : $serviceShortName -> Nom court du service
+        IN  : $serviceLongName -> Nom long du service
 
-		RET : Description du BG
+		RET : Description de l'entitlement
     #>
-    [string] getEntDescription([string]$serviceShortName)
+    [string] getEntDescription([string]$serviceLongName)
     {
         # Par défaut, pas de description mais on se laisse la porte "ouverte" avec l'existance de cette méthode
-        return ""
+        return "Service: {0}" -f $serviceLongName
     }     
 
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom et la description d'un Entitlement pour le tenant courant
-
-        IN  : $bgName       -> Le nom du BG
-
-        RET : Tableau avec :
-                - Nom de l'Entitlement
-                - Description de l'entitlement
-    #>
-    [System.Collections.ArrayList] getBGEntNameAndDesc([string] $bgName)
-    {
-        if($this.tenant -eq $global:VRA_TENANT_EPFL)
-        {
-            # Extraction des infos pour construire les noms des autres éléments
-            $dummy, $faculty, $unit = $bgName.Split("_")
-    
-            # Création du nom/description de l'entitlement
-            $entName = $this.getEntName($faculty, $unit)
-            $entDesc = $this.getEntDescription($faculty, $unit)
-        }
-        # Si Tenant ITServices
-        elseif($this.tenant -eq $global:VRA_TENANT_ITSERVICES)
-        {
-            # Extraction des infos pour construire les noms des autres éléments
-            $dummy, $serviceShortName = $bgName.Split("_")
-    
-            # Création du nom/description de l'entitlement
-            $entName = $this.getEntName($serviceShortName)
-            $entDesc = $this.getEntDescription($serviceShortName)
-        }
-        else # Autre Tenant (ex: vsphere.local)
-        {
-            Throw ("Unsupported Tenant ({0})" -f $this.tenant)
-        }
-    
-        return @($entName, $entDesc)        
-    }
 
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1157,8 +1200,9 @@ class NameGenerator
         {
             Throw("Unsupported Tenant ({0})" -f $this.tenant)
         }
-
     }
+
+
     <#
     -------------------------------------------------------------------------------------
         BUT : Renvoie le FQDN d'un group AD
@@ -1178,6 +1222,31 @@ class NameGenerator
         {
             return $groupShortName += [NameGenerator]::AD_DOMAIN_SUFFIX   
         }
+    }
+
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du directory qui permet de faire la synchro des groupes AD
+                dans vRA
+
+        RET : Le nom du directory
+    #>
+    [string]getDirectoryName()
+    {
+        return [NameGenerator]::AD_DOMAIN_SUFFIX -replace "@", ""
+    }
+
+
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie le préfix utilisé pour les Templates de Reservation pour le tenant 
+              courant
+
+        RET : Le préfix
+    #>
+    [string] getReservationTemplatePrefix()
+    {
+        return "template_{0}_" -f $this.getTenantShortName()
     }
 
 }

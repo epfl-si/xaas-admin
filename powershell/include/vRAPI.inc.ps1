@@ -142,7 +142,7 @@ class vRAPI
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des BG
 
-		IN  : $queryParams	-> (Optionnel -> $null) Chaine de caractères à ajouter à la fin
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
 
@@ -153,7 +153,7 @@ class vRAPI
 		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/?page=1&limit=9999" -f $this.server, $this.tenant
 
 		# Si on doit ajouter des paramètres
-		if($queryParams -ne $null)
+		if($queryParams -ne "")
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
@@ -221,7 +221,7 @@ class vRAPI
 									  (champ "send capacity alert emails to:")
 		IN  : $machinePrefixId  	-> ID du prefix de machine à utiliser
 									   Si on veut prendre le préfixe par défaut de vRA, on
-									   peut passer $null pour ce paramètre.
+									   peut passer "" pour ce paramètre.
 		IN  : $customProperties		-> Dictionnaire avec les propriétés custom à ajouter
 
 
@@ -238,10 +238,15 @@ class vRAPI
 						 capacityAlertsEmail = $capacityAlertsEmail}
 
 		# Si on a passé un ID de préfixe de machine,
-		if($machinePrefixId -ne $null)						 
+		if($machinePrefixId -ne "")						 
 		{
 			$replace.machinePrefixId = $machinePrefixId
 		}
+		else 
+		{
+			$replace.machinePrefixId = $null
+		}
+
 		
 		$body = $this.loadJSON("business-group.json", $replace)
 
@@ -272,9 +277,9 @@ class vRAPI
 				faudrait pas
 
 		IN  : $bg					-> Objet du BG à mettre à jour
-		IN  : $newName				-> (optionnel -> $null) Nouveau nom
-		IN  : $newDesc				-> (optionnel -> $null) Nouvelle description
-		IN  : $machinePrefixId  	-> (optionnel -> $null) ID du prefix de machine à utiliser
+		IN  : $newName				-> (optionnel -> "") Nouveau nom
+		IN  : $newDesc				-> (optionnel -> "") Nouvelle description
+		IN  : $machinePrefixId  	-> (optionnel -> "") ID du prefix de machine à utiliser
 		IN  : $customProperties		-> (optionnel -> $null) La liste des "custom properties" (et leur valeur) à mettre à
 									   jour
 
@@ -285,18 +290,18 @@ class vRAPI
 		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.server, $this.tenant, $bg.id
 
 		# S'il faut mettre le nom à jour,
-		if($newName -ne $null)
+		if($newName -ne "")
 		{
 			$bg.name = $newName
 		}
 
 		# S'il faut mettre la description à jour,
-		if($newDesc -ne $null)
+		if($newDesc -ne "")
 		{
 			$bg.description = $newDesc
 		}
 
-		if($machinePrefixId -ne $null)
+		if($machinePrefixId -ne "")
 		{
 			$customProperties['iaas-machine-prefix'] = $machinePrefixId
 		}
@@ -492,7 +497,7 @@ class vRAPI
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des entitlements basée sur les potentiels critères passés en paramètre
 
-		IN  : $queryParams	-> (Optionnel -> $null) Chaine de caractères à ajouter à la fin
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
 
@@ -503,7 +508,7 @@ class vRAPI
 		$uri = "https://{0}/catalog-service/api/entitlements/?page=1&limit=9999" -f $this.server
 
 		# Si un filtre a été passé, on l'ajoute
-		if($queryParams -ne $null)
+		if($queryParams -ne "")
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
@@ -633,8 +638,8 @@ class vRAPI
 				faudrait pas
 
 		IN  : $ent			-> Objet de l'entitlement à mettre à jour
-		IN  : $newName		-> (optionnel -> $null) Nouveau nom
-		IN  : $newDesc		-> (optionnel -> $null) Nouvelle description
+		IN  : $newName		-> (optionnel -> "") Nouveau nom
+		IN  : $newDesc		-> (optionnel -> "") Nouvelle description
 		IN  : $activated	-> Pour dire si l'Entitlement doit être activé ou pas.
 
 		RET : Objet contenant l'entitlement mis à jour
@@ -644,13 +649,13 @@ class vRAPI
 		$uri = "https://{0}/catalog-service/api/entitlements/{1}" -f $this.server, $ent.id
 
 		# S'il faut mettre le nom à jour,
-		if($newName -ne $null)
+		if($newName -ne "")
 		{
 			$ent.name = $newName
 		}
 
 		# S'il faut mettre la description à jour,
-		if($newDesc -ne $null)
+		if($newDesc -ne "")
 		{
 			$ent.description = $newDesc
 		}
@@ -723,7 +728,7 @@ class vRAPI
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des Services basé sur les potentiels critères passés en paramètre
 
-		IN  : $queryParams	-> (Optionnel -> $null) Chaine de caractères à ajouter à la fin
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
 
@@ -734,7 +739,7 @@ class vRAPI
 		$uri = "https://{0}/catalog-service/api/services/?page=1&limit=9999" -f $this.server
 
 		# Si un filtre a été passé, on l'ajoute
-		if($queryParams -ne $null)
+		if($queryParams -ne "")
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
@@ -769,15 +774,17 @@ class vRAPI
 
 		IN  : $ent				-> Objet de l'entitlement auquel ajouter le service
 		IN  : $serviceID		-> ID du service à ajouter
-		IN  : $serviceName	-> Nom du service à ajouter
+		IN  : $serviceName		-> Nom du service à ajouter
+		IN  : $approvalPolicy	-> Objet de l'approval policy.
 
 		RET : Objet contenant Entitlement avec le nouveau service
 	#>
-	[PSCustomObject] prepareAddEntService([PSCustomObject] $ent, [string]$serviceID, [string]$serviceName)
+	[PSCustomObject] prepareAddEntService([PSCustomObject] $ent, [string]$serviceID, [string]$serviceName, [PSCustomObject]$approvalPolicy)
 	{
 		# Valeur à mettre pour la configuration du Service
 		$replace = @{id = $serviceID
-						 label = $serviceName}
+					label = $serviceName
+					approvalPolicyId = $approvalPolicy.id}
 
 		# Création du nécessaire pour le service à ajouter
 		$service = $this.loadJSON("entitlement-service.json", $replace)
@@ -857,7 +864,7 @@ class vRAPI
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des Reservations basé sur les potentiels critères passés en paramètre
 
-		IN  : $queryParams	-> (Optionnel -> $null) Chaine de caractères à ajouter à la fin
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
 
@@ -868,7 +875,7 @@ class vRAPI
 		$uri = "https://{0}/reservation-service/api/reservations/?page=1&limit=9999" -f $this.server
 
 		# Si un filtre a été passé, on l'ajoute
-		if($queryParams -ne $null)
+		if($queryParams -ne "")
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
@@ -1008,7 +1015,7 @@ class vRAPI
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des actions (2nd day) basé sur les potentiels critères passés en paramètre
 
-		IN  : $queryParams	-> (Optionnel -> $null) Chaine de caractères à ajouter à la fin
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
 
@@ -1019,7 +1026,7 @@ class vRAPI
 		$uri = "https://{0}/catalog-service/api/resourceOperations/?page=1&limit=9999" -f $this.server
 
 		# Si un filtre a été passé, on l'ajoute
-		if($queryParams -ne $null)
+		if($queryParams -ne "")
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
@@ -1065,7 +1072,7 @@ class vRAPI
 		BUT : Renvoie la liste des principals basé sur les potentiels critères passés en
 				paramètre
 
-		IN  : $queryParams	-> (Optionnel -> $null) Chaine de caractères à ajouter à la fin
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
 
@@ -1076,7 +1083,7 @@ class vRAPI
 		$uri = "https://{0}/identity/api/authorization/tenants/{1}/principals/?page=1&limit=9999" -f $this.server, $this.tenant
 
 		# Si un filtre a été passé, on l'ajoute
-		if($queryParams -ne $null)
+		if($queryParams -ne "")
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
@@ -1122,7 +1129,7 @@ class vRAPI
 		BUT : Renvoie la liste des préfixes de machines basé sur les potentiels critères de
 				recherche passés en paramètre
 
-		IN  : $queryParams	-> (Optionnel -> $null) Chaine de caractères à ajouter à la fin
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
 
@@ -1133,7 +1140,7 @@ class vRAPI
 		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/?page=1&limit=9999" -f $this.server, $this.tenant
 
 		# Si un filtre a été passé, on l'ajoute
-		if($queryParams -ne $null)
+		if($queryParams -ne "")
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
@@ -1218,6 +1225,141 @@ class vRAPI
 	}
 
 
+	<#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+									Approval Policies
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	#>
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Approve Policies
+
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+
+		RET : Tableau d'Approve Policies
+	#>
+	hidden [Array] getApprovePolicyListQuery([string] $queryParams)
+	{
+		$uri = "https://{0}/approval-service/api/policies?page=1&limit=9999" -f $this.server, $this.tenant
+
+		# Si on doit ajouter des paramètres
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+
+		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
+	}
+	hidden [Array] getApprovePolicyListQuery()
+	{
+		return $this.getBGListQuery($null)
+	}
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie une Approve Policy basée sur son nom.
+
+		IN  : $name	-> Le nom de l'approve policy que l'on désire
+
+		RET : Objet contenant l'approve policy
+				$null si n'existe pas
+	#>
+	[PSCustomObject] getApprovalPolicy([string] $name)
+	{
+		$list = $this.getApprovePolicyListQuery("`$filter=name eq '{0}'" -f $name)
+
+		if($list.Count -eq 0){return $null}
+		return $list[0]
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Créé une pré-approval policy avec un groupe comme "approvers"
+
+		IN  : $name						-> Nom de la policy
+		IN  : $desc						-> Description de la policy
+		IN  : $approverGroupAtDomain	-> FQDN du groupe (<group>@<domain>) qui devra approuver.
+
+		RET : L'approval policy créé
+	#>
+	[psobject] addPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain)
+	{
+		$uri = "https://{0}/approval-service/api/policies" -f $this.server
+
+		$approverDisplayName, $domain = $approverGroupAtDomain.split('@')
+
+		# Valeur à mettre pour la configuration du BG
+		$replace = @{preApprovalName = $name
+			preApprovalDesc = $desc
+			approverGroupAtDomain = $approverGroupAtDomain
+			approverDisplayName = $approverDisplayName
+			levelName = "Pre approve level"} 
+
+		$body = $this.loadJSON("pre-approval-policy.json", $replace)
+
+		# Création de la Policy
+		Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
+
+		# Recherche et retour de l'Approval Policy ajoutée
+		return $this.getApprovalPolicy($name)
+	}
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Change l'état d'une approval policy donnée
+
+		IN  : $approvalPolicy		-> Approval Policy dont on veut changer l'état
+		IN  : $activated			-> $true|$false pour dire si la policy est activée ou pas
+
+		RET : L'approval policy modifiée
+	#>
+	[psobject] setActivePolicyState([PSCustomObject]$approvalPolicy, [bool]$activated)
+	{
+		$uri = "https://{0}/approval-service/api/policies/{1}" -f $this.server, $approvalPolicy.id
+
+		if($activated)
+		{
+			$approvalPolicy.state = "PUBLISHED"
+			$approvalPolicy.stateName = "Active"
+		}
+		else 
+		{
+			$approvalPolicy.state = "RETIRED"
+			$approvalPolicy.stateName = "Inactive"
+		}
+
+		# Mise à jour des informations
+		Invoke-RestMethod -Uri $uri -Method Put -Headers $this.headers -Body (ConvertTo-Json -InputObject $approvalPolicy -Depth 20)
+
+		return $approvalPolicy
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Efface une approval policy
+
+		IN  : $approvalPolicy		-> Approval Policy qu'il faut effacer
+		
+		RET : rien
+	#>
+	[void] deleteApprovalPolicy([PSCustomObject]$approvalPolicy)
+	{
+		# On commence par la désactiver sinon on ne pourra pas la supprimer
+		$approvalPolicy = $this.setActivePolicyState($approvalPolicy, $false)
+
+		$uri = "https://{0}/approval-service/api/policies/{1}" -f $this.server, $approvalPolicy.id
+
+		# Mise à jour des informations
+		Invoke-RestMethod -Uri $uri -Method Delete -Headers $this.headers
+		
+	}
 }
 
 
