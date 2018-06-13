@@ -23,7 +23,6 @@ class vRAPI
 	hidden [string]$token
 	hidden [string]$server
 	hidden [string]$tenant
-	hidden [string]$JSONTemplatesFolder = $JSON_TEMPLATE_FOLDER
 	hidden [System.Collections.Hashtable]$headers
 
 	<#
@@ -70,7 +69,7 @@ class vRAPI
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Charge un fichier JSON et renvoie le code.
-				Le fichier doit se trouver dans le dossier spécifié par $JSON_TEMPLATE_FOLDER
+				Le fichier doit se trouver dans le dossier spécifié par $global:JSON_TEMPLATE_FOLDER
 
 		IN  : $file				-> Fichier JSON à charger
 		IN  : $valToReplace	-> (optionnel) Dictionnaaire avec en clef la chaine de caractères
@@ -83,7 +82,7 @@ class vRAPI
 	hidden [Object] loadJSON([string] $file, [System.Collections.IDictionary] $valToReplace)
 	{
 		# Chemin complet jusqu'au fichier à charger
-		$filepath = (Join-Path $this.JSONTemplatesFolder $file)
+		$filepath = (Join-Path $global:JSON_TEMPLATE_FOLDER $file)
 
 		# Si le fichier n'existe pas
 		if(-not( Test-Path $filepath))

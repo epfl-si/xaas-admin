@@ -36,17 +36,12 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 
-try 
-{
-	# Inclusion des credentials vRA
-	$credFile = ([IO.Path]::Combine("$PSScriptRoot", "vra-credentials.inc.ps1"))
-	. $credFile
-}
-catch 
-{
-	Write-Error ("Credential file not found ! ({0})`nPlease create it from 'sample' file" -f $credFile)
-	exit
-}
+# Chargement des fichiers de configuration
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vra.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-mail.inc.ps1"))
+
+
+
 <#
 -------------------------------------------------------------------------------------
 	BUT : Affiche comment utiliser le script
@@ -128,9 +123,9 @@ function createOrUpdateBG
 		if(($bg = getUnitBG -unitID $bgUnitID -fromList $existingBGList) -eq $null)
 		{
 			# Création des customs properties en vue de sa création
-			$customProperties = @{"$VRA_CUSTOM_PROP_VRA_BG_TYPE" = $VRA_BG_TYPE_UNIT
-								  "$VRA_CUSTOM_PROP_VRA_BG_STATUS" = $VRA_BG_STATUS_ALIVE
-								  "$VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $bgUnitID}
+			$customProperties = @{"$global:VRA_CUSTOM_PROP_VRA_BG_TYPE" = $global:VRA_BG_TYPE_UNIT
+								  "$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS_ALIVE
+								  "$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $bgUnitID}
 		}
 
 		# Tentative de recherche du préfix de machine
@@ -168,8 +163,8 @@ function createOrUpdateBG
 		if(($bg = $vra.getBG($bgName)) -eq $null)
 		{
 			# Création des propriété custom
-			$customProperties = @{"$VRA_CUSTOM_PROP_VRA_BG_TYPE" = $VRA_BG_TYPE_SERVICE
-								  "$VRA_CUSTOM_PROP_VRA_BG_STATUS" = $VRA_BG_STATUS_ALIVE}
+			$customProperties = @{"$global:VRA_CUSTOM_PROP_VRA_BG_TYPE" = $global:VRA_BG_TYPE_SERVICE
+								  "$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS_ALIVE}
 		}
 		# Pas d'ID de machine pour ce Tenant
 		$machinePrefixId = $null
@@ -203,7 +198,7 @@ function createOrUpdateBG
 			$logHistory.addLineAndDisplay(("-> Renaming BG '{0}' to '{1}'" -f $bg.name, $bgName))
 
 			# Mise à jour des informations
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$VRA_CUSTOM_PROP_VRA_BG_STATUS" = $VRA_BG_STATUS_ALIVE})
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS_ALIVE})
 
 			$counters.inc('BGUpdated')
 		}
@@ -311,7 +306,7 @@ function createOrUpdateBGEnt
 <#
 -------------------------------------------------------------------------------------
 	BUT : Initialise les actions pour l'Entiltlement passé en paramètre.
-			La liste des actions à ajouter se trouve dans le dossier $DAY2_ACTIONS_FOLDER
+			La liste des actions à ajouter se trouve dans le dossier $global:DAY2_ACTIONS_FOLDER
 			Ce sont des fichiers portant le nom de l'élément (descriptif) tel que défini
 			dans vRA et contenant la liste des actions. Cette liste d'actions est
 			composée des textes décrivant celles-ci dans vRA (ex: Destroy, Create Snapshot,...)
@@ -335,7 +330,7 @@ function prepareSetEntActions
 
 	# Parcours des fichiers se trouvant dans le dossier contenant la liste des actions
 	# par type d'élément
-	Get-ChildItem $DAY2_ACTIONS_FOLDER | ForEach-Object {
+	Get-ChildItem $global:DAY2_ACTIONS_FOLDER | ForEach-Object {
 
 		$appliesTo = $_.Name
 		Get-Content $_.FullName | ForEach-Object {
@@ -378,7 +373,7 @@ function prepareAddMissingBGEntPublicServices
 
 
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
-	$publicServices = $vra.getServiceListMatch($VRA_SERVICE_SUFFIX_PUBLIC)
+	$publicServices = $vra.getServiceListMatch($global:VRA_SERVICE_SUFFIX_PUBLIC)
 
 	# Parcours des services à ajouter à l'entitlement créé
 	ForEach($publicService in $publicServices)
@@ -430,7 +425,7 @@ function sendErrorMailNoResTemplateFound
 	Template à partir de la <a href='{1}'>documentation suivante</a>." -f $targetEnv, $docUrl)	
 
 
-	sendMailTo -mailAddress $ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
+	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
 }
 
 <#
@@ -565,7 +560,7 @@ function deleteBGAndComponentsIfPossible
 			$notifications['bgSetAsGhost'] += $bg.name
 
 			# On marque le BG comme "Ghost"
-			$vra.updateBG($bg, $null, $null, @{"$VRA_CUSTOM_PROP_VRA_BG_STATUS" = $VRA_BG_STATUS_GHOST})
+			$vra.updateBG($bg, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS_GHOST})
 
 			$counters.inc('BGGhost')
 
@@ -647,7 +642,7 @@ function isBGOfType
 	param([PSCustomObject]$bg, [string] $type)
 
 	# Recherche de la custom property enregistrant l'information recherchée
-	$entry = $bg.extensionData.entries | Where-Object { $_.key -eq $VRA_CUSTOM_PROP_VRA_BG_TYPE}
+	$entry = $bg.extensionData.entries | Where-Object { $_.key -eq $global:VRA_CUSTOM_PROP_VRA_BG_TYPE}
 
 	# Si custom property PAS trouvée,
 	if($entry -eq $null)
@@ -676,12 +671,12 @@ function isBGAlive
 {
 	param([PSCustomObject]$bg)
 
-	$customProp = $bg.extensionData.entries | Where-Object { $_.key -eq $VRA_CUSTOM_PROP_VRA_BG_STATUS}
+	$customProp = $bg.extensionData.entries | Where-Object { $_.key -eq $global:VRA_CUSTOM_PROP_VRA_BG_STATUS}
 
 	# Si la "Custom property" a été trouvée,
 	if($customProp -ne $null)
 	{
-		return ($customProp.value.values.entries | Where-Object {$_.key -eq "value"}).value.value -eq $VRA_BG_STATUS_ALIVE
+		return ($customProp.value.values.entries | Where-Object {$_.key -eq "value"}).value.value -eq $global:VRA_BG_STATUS_ALIVE
 	}
 
 	<# Si on arrive ici, c'est qu'on n'a pas défini de clef (pour une raison inconnue) pour enregistrer le statut
@@ -733,20 +728,20 @@ dans vRA pour l'environnement <b>{0}</b>.<br>Veuillez les créer à la main:`
 				# BG sans "custom property" permettant de définir le statut
 				'bgWithoutCustomPropStatus'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$VRA_CUSTOM_PROP_VRA_BG_STATUS' custom property" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$global:VRA_CUSTOM_PROP_VRA_BG_STATUS' custom property" -targetEnv $targetEnv
 					$message = getvRAMailContent -content ("Les Business Groups suivants ne contiennent pas la 'Custom Property' `
 <b>{0}</b>.<br>Veuillez faire le nécessaire:`
-<br><ul><li>{1}</li></ul>"  -f $VRA_CUSTOM_PROP_VRA_BG_STATUS, ($uniqueNotifications -join "</li>`n<li>"))
+<br><ul><li>{1}</li></ul>"  -f $global:VRA_CUSTOM_PROP_VRA_BG_STATUS, ($uniqueNotifications -join "</li>`n<li>"))
 				}
 
 				# ---------------------------------------
 				# BG sans "custom property" permettant de définir le type
 				'bgWithoutCustomPropType'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$VRA_CUSTOM_PROP_VRA_BG_TYPE' custom property" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$global:VRA_CUSTOM_PROP_VRA_BG_TYPE' custom property" -targetEnv $targetEnv
 					$message = getvRAMailContent -content ("Les Business Groups suivants ne contiennent pas la 'Custom Property' `
 <b>{0}</b>.<br>Veuillez faire le nécessaire:`
-<br><ul><li>{1}</li></ul>"  -f $VRA_CUSTOM_PROP_VRA_BG_TYPE, ($uniqueNotifications -join "</li>`n<li>"))
+<br><ul><li>{1}</li></ul>"  -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, ($uniqueNotifications -join "</li>`n<li>"))
 				}
 
 				# ---------------------------------------
@@ -813,7 +808,7 @@ Il s'agit peut-être d'une erreur dans l'exécution du script 'sync-ad-groups-fr
 			}
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
-			sendMailTo -mailAddress $ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
+			sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
 
 		} # FIN S'il y a des notifications pour la catégorie courante
 	}# FIN BOUCLE de parcours des catégories de notifications
@@ -888,7 +883,7 @@ $doneBGList = @()
 
 try {
 	# Création d'une connexion au serveur
-	$vra = [vRAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $VRA_USER_LIST[$targetEnv], $VRA_PASSWORD_LIST[$targetEnv])
+	$vra = [vRAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetEnv], $global:VRA_PASSWORD_LIST[$targetEnv])
 }
 catch {
 	Write-Error "Error connecting to vRA API !"
@@ -975,7 +970,7 @@ try
 		# --------------------------------- Business Group
 
 		# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
-		$capacityAlertMails = @($CAPACITY_ALERT_DEFAULT_MAIL)
+		$capacityAlertMails = @($global:CAPACITY_ALERT_DEFAULT_MAIL)
 
 		# Si Tenant EPFL
 		if($targetTenant -eq $global:VRA_TENANT_EPFL)
@@ -1137,7 +1132,7 @@ try
 	$vra.getBGList() | ForEach-Object {
 
 		# Si c'est un BG d'unité ou de service et s'il faut l'effacer
-		if(((isBGOfType -bg $_ -type $VRA_BG_TYPE_SERVICE) -or (isBGOfType -bg $_ -type $VRA_BG_TYPE_UNIT)) -and `
+		if(((isBGOfType -bg $_ -type $global:VRA_BG_TYPE_SERVICE) -or (isBGOfType -bg $_ -type $global:VRA_BG_TYPE_UNIT)) -and `
 			($doneBGList -notcontains $_.name))
 		{
 			$logHistory.addLineAndDisplay(("-> Deleting Business Group '{0}'..." -f $_.name))
@@ -1171,7 +1166,7 @@ catch # Dans le cas d'une erreur dans le script
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Web.HttpUtility]::HtmlEncode($errorTrace))
 
-	sendMailTo -mailAddress $ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
+	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
 	
 }
 

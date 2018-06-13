@@ -30,17 +30,11 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "DjangoMySQL.inc.ps1"))
 
-try 
-{
-	# Inclusion des credentials vRA
-	$credFile = ([IO.Path]::Combine("$PSScriptRoot", "vra-credentials.inc.ps1"))
-	. $credFile
-}
-catch 
-{
-	Write-Error ("Credential file not found ! ({0})`nPlease create it from 'sample' file" -f $credFile)
-	exit
-}
+
+# Chargement des fichiers de configuration
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vra.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-mail.inc.ps1"))
+
 <#
 -------------------------------------------------------------------------------------
 	BUT : Affiche comment utiliser le script
@@ -162,7 +156,7 @@ function handleNotifications
 			}
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
-			sendMailTo -mailAddress $ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
+			sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
 
 		} # FIN S'il y a des notifications pour la catégorie courante
 	}# FIN BOUCLE de parcours des catégories de notifications
@@ -201,7 +195,7 @@ $logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenan
 
 # Création de l'objet qui permettra de générer les noms des groupes AD et "groups" ainsi que d'autre choses...
 $nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
-
+ 
 Import-Module ActiveDirectory
 
 # Test des paramètres
@@ -527,7 +521,7 @@ try
 		$counters.add('its.serviceProcessed', '# Service processed')
 
 		# Chargement des infos se trouvant dans le fichier "secrets.json" pour pouvoir accéder à la DB
-		$dbInfos = loadMySQLInfos -file $JSON_SECRETS_FILE -targetEnv $targetEnv
+		$dbInfos = loadMySQLInfos -file $global:JSON_SECRETS_FILE -targetEnv $targetEnv
 
 		$django = [DjangoMySQL]::new($dbInfos.DB_HOST, [int]$dbInfos.DB_PORT, $dbInfos.DB_NAME, $dbInfos.DB_USER_NAME, $dbInfos.DB_USER_PWD)
 
@@ -629,7 +623,7 @@ try
 		# On lance donc une synchro
 		try {
 			# Création d'une connexion au serveur
-			$vra = [vRAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $VRA_USER_LIST[$targetEnv], $VRA_PASSWORD_LIST[$targetEnv])
+			$vra = [vRAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetEnv], $global:VRA_PASSWORD_LIST[$targetEnv])
 		}
 		catch {
 			Write-Error "Error connecting to vRA API !"
@@ -669,6 +663,6 @@ catch # Dans le cas d'une erreur dans le script
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Web.HttpUtility]::HtmlEncode($errorTrace))
 
-	sendMailTo -mailAddress $ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
+	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
 	
 }	

@@ -80,7 +80,7 @@ function getUnitBG
 		foreach($entry in $bg.ExtensionData.entries)
 		{
 			# Si on trouve l'entrée avec le nom que l'on cherche,
-			if($entry.key -eq $VRA_CUSTOM_PROP_EPFL_UNIT_ID)
+			if($entry.key -eq $global:VRA_CUSTOM_PROP_EPFL_UNIT_ID)
 			{
 				# Parcours des informations de cette entrée
 				foreach($entryVal in $entry.value.values.entries)
@@ -184,4 +184,25 @@ function getvRAMailContent
 	param([string] $content)
 
 	return "Bonjour,<br><br>{0}<br><br>Salutations,<br>L'équipe vRA.<br> Paix et prospérité \\//" -f $content
+}
+
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Tente de charger un fichier de configuration. Si c'est impossible, une 
+		  erreur est affichée et on quitte.
+
+	IN  : $filename	-> chemin jusqu'au fichier à charger.
+#>
+function loadConfigFile([string]$filename)
+{
+	try 
+	{
+		. $filename
+	}
+	catch 
+	{
+		Write-Error ("Config file not found ! ({0})`nPlease create it from 'sample' file" -f $filename)
+		exit
+	}
 }

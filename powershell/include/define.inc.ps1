@@ -9,14 +9,12 @@
    1.0 - Version de base
 #>
 
-$ADMIN_MAIL_ADDRESS="lucien.chaboudez@epfl.ch"
-
 
 # ---------------------------------------------------------
 # Global
-$JSON_TEMPLATE_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "json-templates"))
-$DAY2_ACTIONS_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "2nd-day-actions"))
-$JSON_SECRETS_FILE = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", "secrets.json"))
+$global:JSON_TEMPLATE_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "json-templates"))
+$global:DAY2_ACTIONS_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "2nd-day-actions"))
+$global:JSON_SECRETS_FILE = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", "secrets.json"))
 
 # Environnements
 $global:TARGET_ENV_DEV  = 'dev'
@@ -36,31 +34,27 @@ $global:VRA_TENANT_ITSERVICES = "ITServices"
 # Nom des tenants que l'on devra traiter
 $global:TARGET_TENANT_LIST = @($global:VRA_TENANT_EPFL, $global:VRA_TENANT_ITSERVICES<#, $global:VRA_TENANT_DEFAULT #>)
 
-# Adresse mail par défaut à laquelle envoyer les mails de "capacity alert"
-$CAPACITY_ALERT_DEFAULT_MAIL = "vsissp-prod-admins@groupes.epfl.ch"
-
-
 # Information sur les services au sens vRA
-$VRA_SERVICE_SUFFIX_PUBLIC=" (Public)"
-$VRA_SERVICE_SUFFIX_PRIVATE=" (Private)"
+$global:VRA_SERVICE_SUFFIX_PUBLIC  =" (Public)"
+$global:VRA_SERVICE_SUFFIX_PRIVATE =" (Private)"
 
 # Nom des custom properties à utiliser.
-$VRA_CUSTOM_PROP_EPFL_UNIT_ID = "ch.epfl.unit.id"
-$VRA_CUSTOM_PROP_VRA_BG_TYPE = "ch.epfl.vra.bg.type"
-$VRA_CUSTOM_PROP_VRA_BG_STATUS = "ch.epfl.vra.bg.status"
+$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID = "ch.epfl.unit.id"
+$global:VRA_CUSTOM_PROP_VRA_BG_TYPE = "ch.epfl.vra.bg.type"
+$global:VRA_CUSTOM_PROP_VRA_BG_STATUS = "ch.epfl.vra.bg.status"
 
 # Pour la génération des chaînes de caractères
 #$VRA_BG_FAC_ORPHAN_DESC_BASE = "Orphans for faculty {0}"
 #$VRA_ENT_DESC_BASE = "Faculty: {0}`nUnit: {1}"
 
 # Types de Business Group possibles
-$VRA_BG_TYPE_ADMIN 	 = "admin"
-$VRA_BG_TYPE_SERVICE = "service"
-$VRA_BG_TYPE_UNIT 	 = "unit"
+$global:VRA_BG_TYPE_ADMIN 	 = "admin"
+$global:VRA_BG_TYPE_SERVICE = "service"
+$global:VRA_BG_TYPE_UNIT 	 = "unit"
 
 # Status de Business Group possibles
-$VRA_BG_STATUS_ALIVE = "alive"
-$VRA_BG_STATUS_GHOST = "ghost"
+$global:VRA_BG_STATUS_ALIVE = "alive"
+$global:VRA_BG_STATUS_GHOST = "ghost"
 
 
 

@@ -9,7 +9,9 @@
    DATE   : Mai 2018
 
    Prérequis:
-   Le fichier "define.inc.ps1" doit avoir été inclus au programme principal avant que le fichier courant puisse être inclus.
+   Les fichiers doivent avoir été inclus au programme principal avant que le fichier courant puisse être inclus.
+   - include/define.inc.ps1
+   - vra-config.inc.ps1
 
    ----------
    HISTORIQUE DES VERSIONS
@@ -865,13 +867,7 @@ class NameGenerator
     #>
     [string] getvRAServerName()
     {
-        switch($this.env)
-        {
-            $global:TARGET_ENV_DEV {return 'vsissp-vra-d-01.epfl.ch'}
-            $global:TARGET_ENV_TEST {return 'vsissp-vra-test.epfl.ch'}
-            $global:TARGET_ENV_PROD {write-warning "TO FILL"; return ""}
-        }
-        return ""
+        return $global:VRA_SERVER_LIST[$this.env]
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
