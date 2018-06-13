@@ -1,11 +1,11 @@
 """(c) All rights reserved. ECOLE POLYTECHNIQUE FEDERALE DE LAUSANNE, Switzerland, VPSI, 2018"""
 from django.contrib import admin
-from global_infos.models import FacultyAdmin
+from global_infos.models import Faculty
 
 
-class FacultyAdminAdmin(admin.ModelAdmin):
-    """ To manage FacultyAdmin in Django-Admin """
+class FacultyAdmin(admin.ModelAdmin):
+    """ To manage Faculty in Django-Admin """
     pass
 
 
-admin.site.register(FacultyAdmin, FacultyAdminAdmin)
+admin.site.register(Faculty, FacultyAdmin)
