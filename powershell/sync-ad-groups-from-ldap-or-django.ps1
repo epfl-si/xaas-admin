@@ -624,6 +624,23 @@ try
 		$logHistory.addLineAndDisplay("** Script running in simulation mode **")
 		$logHistory.addLineAndDisplay("***************************************")
 	}
+	else # Si on n'est pas en mode "Simulation", c'est qu'on a créé des éléments dans AD
+	{
+		# On lance donc une synchro
+		try {
+			# Création d'une connexion au serveur
+			$vra = [vRAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $VRA_USER_LIST[$targetEnv], $VRA_PASSWORD_LIST[$targetEnv])
+		}
+		catch {
+			Write-Error "Error connecting to vRA API !"
+			Write-Error $_.ErrorDetails.Message
+			exit
+		}
+
+		$vra.syncDirectory($nameGenerator.getDirectoryName())
+
+		$vra.disconnect()
+	}
 
 	if($TEST_MODE)
 	{
