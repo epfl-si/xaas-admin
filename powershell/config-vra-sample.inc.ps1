@@ -19,16 +19,33 @@ $global:VRA_SERVER_LIST[$global:TARGET_ENV_DEV]	 = ""
 $global:VRA_SERVER_LIST[$global:TARGET_ENV_TEST] = ""
 $global:VRA_SERVER_LIST[$global:TARGET_ENV_PROD] = ""
 
-# Utilisateurs
+# ------------------------------------------------
+# Utilisateurs par tenant
 # Les noms d'utilisateur doivent être au format <username>@<domain> sinon ça ne passe pas.
 $global:VRA_USER_LIST = @{}
-$global:VRA_USER_LIST[$global:TARGET_ENV_DEV]	= ""
-$global:VRA_USER_LIST[$global:TARGET_ENV_TEST]	= ""
-$global:VRA_USER_LIST[$global:TARGET_ENV_PROD]	= ""
+$global:VRA_USER_LIST[$global:VRA_TENANT_DEFAULT]	 = ""
+$global:VRA_USER_LIST[$global:VRA_TENANT_EPFL]	     = ""
+$global:VRA_USER_LIST[$global:VRA_TENANT_ITSERVICES] = ""
 
-# Mot de passes
+
+# ------------------------------------------------
+# Mot de passe
+# Définis par environnement puis par tenant
 $global:VRA_PASSWORD_LIST = @{}
-$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_DEV]	= ""
-$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_TEST]	= ""
-$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_PROD]	= ""
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_DEV] = @{}
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_DEV][$global:VRA_TENANT_DEFAULT]    = ""
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_DEV][$global:VRA_TENANT_EPFL]       = ""
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_DEV][$global:VRA_TENANT_ITSERVICES] = ""
+
+
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_TEST]	= @{}
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_TEST][$global:VRA_TENANT_DEFAULT]    = ""
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_TEST][$global:VRA_TENANT_EPFL]       = ""
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_TEST][$global:VRA_TENANT_ITSERVICES] = ""
+
+
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_PROD]	= @{}
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_PROD][$global:VRA_TENANT_DEFAULT]    = ""
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_PROD][$global:VRA_TENANT_EPFL]       = ""
+$global:VRA_PASSWORD_LIST[$global:TARGET_ENV_PROD][$global:VRA_TENANT_ITSERVICES] = ""
 

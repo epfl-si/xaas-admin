@@ -623,7 +623,7 @@ try
 		# On lance donc une synchro
 		try {
 			# Création d'une connexion au serveur
-			$vra = [vRAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetEnv], $global:VRA_PASSWORD_LIST[$targetEnv])
+			$vra = [vRAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
 		}
 		catch {
 			Write-Error "Error connecting to vRA API !"
