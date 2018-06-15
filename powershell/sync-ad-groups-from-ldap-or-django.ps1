@@ -29,6 +29,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "DjangoMySQL.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "vRAPI.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
