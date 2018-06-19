@@ -67,10 +67,13 @@ function printUsage
 	IN  : $name					-> Le nom de l'approval policy à créer
 	IN  : $desc					-> Description de l'approval policy
 	IN  : $approverGroupAtDomain-> Nom du groupe AD (FQDN) à mettre en approbateur
+	IN  : $approvalPolicyType   -> Type de la policy :
+                                    $global:APPROVE_POLICY_TYPE__ITEM_REQ
+                                    $global:APPROVE_POLICY_TYPE__ACTION_REQ
 
 	RET : Objet représentant l'approval policy
 #>
-function createApprovalPolicyIfNotExists([vRAPI]$vra, [string]$name, [string]$desc, [string]$approverGroupAtDomain)
+function createApprovalPolicyIfNotExists([vRAPI]$vra, [string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType)
 {
 	$approvePolicy = $vra.getApprovalPolicy($name)
 
@@ -79,7 +82,7 @@ function createApprovalPolicyIfNotExists([vRAPI]$vra, [string]$name, [string]$de
 	{
 		$logHistory.addLineAndDisplay(("-> Creating Approval Policy '{0}'..." -f $name))
 		# On créé celle-ci
-		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approverGroupAtDomain)
+		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyType)
 	}
 	else 
 	{
@@ -316,14 +319,16 @@ function createOrUpdateBGEnt
 			service, ...) lève souvent une exception de "lock" sur l'objet Entitlement du
 			côté de vRA.
 
-	IN  : $vra 	-> Objet de la classe vRAPI permettant d'accéder aux API vRA
-	IN  : $ent	-> Objet Entitlement auquel lier les services
+	IN  : $vra 				-> Objet de la classe vRAPI permettant d'accéder aux API vRA
+	IN  : $ent				-> Objet Entitlement auquel lier les services
+	IN  : $approvalPolicy	-> Object Approval Policy qui devra approuver les demandes 
+								pour les 2nd day actions
 
 	RET : Objet Entitlement mis à jour
 #>
 function prepareSetEntActions
 {
-	param([vRAPI]$vra, [PSCustomObject]$ent)
+	param([vRAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy)
 
 	# Pour contenir la liste des actions
 	$actionList = @()
@@ -338,16 +343,22 @@ function prepareSetEntActions
 			# Si ce n'est pas une ligne vide ou une ligne de commentaire
 			if(($action -ne "") -and ($action[0] -ne "#"))
 			{
+				# On défini si on a besoin d'un approval pour cette action et on supprime le @
+				# devant le nom s'il existe afin d'avoir le "vrai" nom de l'action
+				$needsApproval = ($action[0] -eq "@")
+				$action = $action -replace "^@", ""
+
 				# Enregistrement de l'action courante
 				$actionList += @{action = $action
-								 appliesTo = $appliesTo}
+								 appliesTo = $appliesTo
+								 needsApproval = $needsApproval}
 			}
 		}
 	}
 
 	$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
 	# Ajout des actions
-	$vra.prepareEntActions($ent, $actionList)
+	$vra.prepareEntActions($ent, $actionList, $approvalPolicy)
 
 }
 
@@ -363,8 +374,9 @@ function prepareSetEntActions
 
 	IN  : $vra 				-> Objet de la classe vRAPI permettant d'accéder aux API vRA
 	IN  : $ent				-> Objet Entitlement auquel lier les services
-	IN  : $approvalPolicy	-> Object Approval Policy qui devra approuver les demandes
-
+	IN  : $approvalPolicy	-> Object Approval Policy qui devra approuver les demandes 
+								pour les nouveaux éléments
+	
 	RET : Objet Entitlement mis à jour
 #>
 function prepareAddMissingBGEntPublicServices
@@ -1004,7 +1016,8 @@ try
 			$capacityAlertMails += $nameGenerator.getEPFLApproveGroupsEmail($faculty)
 
 			# Nom et description de la policy d'approbation + nom du groupe AD qui devra approuver
-			$approvePolicyName, $approvePolicyDesc = $nameGenerator.getEPFLApprovePolicyNameAndDesc($faculty)
+			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+			$actionReqApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			$approveGroupName = $nameGenerator.getEPFLApproveADGroupName($faculty, $true)
 		}
 		# Si Tenant ITServices
@@ -1042,8 +1055,12 @@ try
 			$capacityAlertMails += $nameGenerator.getITSApproveGroupsEmail($serviceShortName)
 
 			# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
-			$approvePolicyName = $nameGenerator.getITSApprovePolicyName($serviceShortName)
-			$approvePolicyDesc = $nameGenerator.getITSApprovePolicyDesc($serviceLongName)
+			$itemReqApprovalPolicyName = $nameGenerator.getITSApprovalPolicyName($serviceShortName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+			$itemReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyDesc($serviceLongName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+
+			$actionReqApprovalPolicyName = $nameGenerator.getITSApprovalPolicyName($serviceShortName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+			$actionReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyDesc($serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+
 			$approveGroupName = $nameGenerator.getITSApproveADGroupName($serviceShortName, $true)
 			
 		}
@@ -1073,8 +1090,11 @@ try
 			$notifications['emptyADGroups'] += ("{0} ({1})" -f $_.Name, $bgName)
 		}
 
-		# Création de l'Approval policy si elle n'existe pas encore
-		$approvalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $approvePolicyName -desc $approvePolicyDesc -approverGroupAtDomain $approveGroupName
+		# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
+		$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
+																 -approverGroupAtDomain $approveGroupName -approvalPolicyType $global:APPROVE_POLICY_TYPE__ITEM_REQ
+		$actionReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $actionReqApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
+																  -approverGroupAtDomain $approveGroupName -approvalPolicyType $global:APPROVE_POLICY_TYPE__ACTION_REQ
 
 		# Création ou mise à jour du Business Group
 		$bg = createOrUpdateBG -vra $vra -existingBGList $existingBGList -bgUnitID $unitID -bgName $bgName `
@@ -1100,12 +1120,12 @@ try
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Actions
-		$ent = prepareSetEntActions -vra $vra -ent $ent
+		$ent = prepareSetEntActions -vra $vra -ent $ent -approvalPolicy $actionReqApprovalPolicy
 
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
-		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $approvalPolicy
+		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus
 		$logHistory.addLineAndDisplay("-> Updating Entitlement...")

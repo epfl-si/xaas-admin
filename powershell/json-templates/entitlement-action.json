@@ -1,5 +1,5 @@
 {
-     "approvalPolicyId": null,
+     "approvalPolicyId": "{{approvalPolicyId}}",
      "active": true,
      "resourceOperationRef": {
          "id": "{{resourceOperationRef_id}}",

@@ -34,6 +34,10 @@ $global:VRA_TENANT_ITSERVICES = "ITServices"
 # Nom des tenants que l'on devra traiter
 $global:TARGET_TENANT_LIST = @($global:VRA_TENANT_EPFL, $global:VRA_TENANT_ITSERVICES<#, $global:VRA_TENANT_DEFAULT #>)
 
+# Les types d'approval policies
+$global:APPROVE_POLICY_TYPE__ITEM_REQ = 'new'
+$global:APPROVE_POLICY_TYPE__ACTION_REQ = 'reconfigure'
+
 # Information sur les services au sens vRA
 $global:VRA_SERVICE_SUFFIX_PUBLIC  =" (Public)"
 $global:VRA_SERVICE_SUFFIX_PRIVATE =" (Private)"

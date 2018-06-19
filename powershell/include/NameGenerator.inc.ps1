@@ -460,16 +460,34 @@ class NameGenerator
         -------------------------------------------------------------------------------------
         BUT : Renvoie un tableau vec le nom et la description de la policy d'approbation à utiliser
 
-        IN  : $facultyName      -> Le nom de la faculté
+        IN  : $facultyName          -> Le nom de la faculté
+        IN  : $approvalPolicyType   -> Type de la policy :
+                                        $global:APPROVE_POLICY_TYPE__ITEM_REQ
+                                        $global:APPROVE_POLICY_TYPE__ACTION_REQ
        
         RET : Tableau avec:
             - Nom de la policy
             - Description de la policy
     #>
-    [System.Collections.ArrayList] getEPFLApprovePolicyNameAndDesc([string]$facultyName)
+    [System.Collections.ArrayList] getEPFLApprovalPolicyNameAndDesc([string]$facultyName, [string]$approvalPolicyType)
     {
-        $name = "approval_{0}" -f $this.transformForGroupName($facultyName)
-        $desc = "Approval policy for {0} Faculty" -f $facultyName.ToUpper()
+        if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+        {
+            $name_suffix = "newItems"
+            $type_desc = "new items"
+        }
+        elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+        {
+            $name_suffix = "reconfigure"
+            $type_desc = "reconfigurations"
+        }
+        else 
+        {
+            Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
+        }
+
+        $name = "approval_{0}_{1}" -f $this.transformForGroupName($facultyName), $name_suffix
+        $desc = "Approval policy for {0} for {1} Faculty" -f $type_desc, $facultyName.ToUpper()
         return @($name, $desc)
     }
 
@@ -781,26 +799,58 @@ class NameGenerator
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom de la policy d'approbation à utiliser
 
-        IN  : $serviceName      -> Le nom court du service
+        IN  : $serviceName          -> Le nom court du service
+        IN  : $approvalPolicyType   -> Type de la policy :
+                                        $global:APPROVE_POLICY_TYPE__ITEM_REQ
+                                        $global:APPROVE_POLICY_TYPE__ACTION_REQ
        
         RET : Nom de la policy
     #>
-    [string] getITSApprovePolicyName([string]$serviceShortName)
+    [string] getITSApprovalPolicyName([string]$serviceShortName, [string]$approvalPolicyType)
     {
-        return "approval_{0}" -f $this.transformForGroupName($serviceShortName)
+        if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+        {
+            $suffix = "newItems"
+        }
+        elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+        {
+            $suffix = "reconfigure"
+        }
+        else 
+        {
+            Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
+        }
+
+        return "approval_{0}_{1}" -f $this.transformForGroupName($serviceShortName), $suffix
     }
 
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie le descriptif de la policy d'approbation à utiliser
 
-        IN  : $serviceName      -> Le nom du service
+        IN  : $serviceName          -> Le nom du service
+        IN  : $approvalPolicyType   -> Type de la policy :
+                                        $global:APPROVE_POLICY_TYPE__ITEM_REQ
+                                        $global:APPROVE_POLICY_TYPE__ACTION_REQ
        
         RET : Descriptif de la policy
     #>
-    [string] getITSApprovePolicyDesc([string]$serviceName)
+    [string] getITSApprovalPolicyDesc([string]$serviceName, [string]$approvalPolicyType)
     {
-        return "Approval policy for Service: {0}" -f $serviceName
+        if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+        {
+            $type_desc = "new items"
+        }
+        elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+        {
+            $type_desc = "reconfigurations"
+        }
+        else 
+        {
+            Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
+        }
+
+        return "Approval policy for {0} for Service: {1}" -f $type_desc, $serviceName
     }
 
 

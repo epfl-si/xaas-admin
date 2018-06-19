@@ -806,15 +806,19 @@ class vRAPI
 		IN  : $ent				-> Objet de l'entitlement auquel ajouter les actions
 		IN  : $actionList		-> Tableau contenant la liste des actions à ajouter.
 										Ce tableau contient des hashtable (dictionnaires) avec
-										.action: 	le descriptif de l'élément auquel appliquer l'action
+										.appliesTo: le descriptif de l'élément auquel appliquer l'action
 												   	ex: "Infrastructure.Virtual" pour les VM
-										.appliesTo: le texte de l'action à ajouter, tel que défini
-													  	dans vRA.
-													  	ex: "Destroy", "Create Snapshot"
+										.action: le texte de l'action à ajouter, tel que défini
+													dans vRA.
+													ex: "Destroy", "Create Snapshot"
+										.needsApproval: $true|$false pour dire si l'action doit passer
+													par une policy d'approbation ou pas.
+		IN  : $approvalPolicy	-> Object Approval Policy à utiliser dans le cas où une action doit 
+									être approuvée
 
 		RET : Objet contenant l'Entitlement avec les actions passée.
 	#>
-	[PSCustomObject] prepareEntActions([PSCustomObject] $ent, [Array]$actionList)
+	[PSCustomObject] prepareEntActions([PSCustomObject] $ent, [Array]$actionList, [PSCustomObject]$approvalPolicy)
 	{
 		# Pour stocker la liste des actions à ajouter, avec toutes les infos nécessaires
 		$actionsToAdd = @()
@@ -825,12 +829,23 @@ class vRAPI
 			# Si on a trouvé des infos pour l'action demandée,
 			if(($vRAAction = $this.getAction($actionInfos.action, $actionInfos.appliesTo))-ne $null)
 			{
+				# Définition de l'ID d'approval policy à utiliser dans le cas où on doit approuver l'action
+				if($actionInfos.needsApproval)
+				{
+					$approvalPolicyId = $approvalPolicy.id
+				}
+				else 
+				{
+					$approvalPolicyId = $null	
+				}
+
 				# Valeur à mettre pour la configuration du BG
 				$replace = @{resourceOperationRef_id = $vRAAction.id
 								 resourceOperationRef_label = $vRAAction.name
 								 externalId = $vRAAction.externalId
 								 targetResourceTypeRef_id = $vRAAction.targetResourceTypeRef.id
-								 targetResourceTypeRef_label = $vRAAction.targetResourceTypeRef.label}
+								 targetResourceTypeRef_label = $vRAAction.targetResourceTypeRef.label
+								 approvalPolicyId = $approvalPolicyId}
 
 				# Création du nécessaire pour l'action à ajouter
 				$actionsToAdd += $this.loadJSON("entitlement-action.json", $replace)
@@ -1284,10 +1299,13 @@ class vRAPI
 		IN  : $name						-> Nom de la policy
 		IN  : $desc						-> Description de la policy
 		IN  : $approverGroupAtDomain	-> FQDN du groupe (<group>@<domain>) qui devra approuver.
+		IN  : $approvalPolicyType   	-> Type de la policy :
+                                        	$global:APPROVE_POLICY_TYPE__ITEM_REQ
+                                        	$global:APPROVE_POLICY_TYPE__ACTION_REQ
 
 		RET : L'approval policy créé
 	#>
-	[psobject] addPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain)
+	[psobject] addPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType)
 	{
 		$uri = "https://{0}/approval-service/api/policies" -f $this.server
 
@@ -1300,7 +1318,21 @@ class vRAPI
 			approverDisplayName = $approverDisplayName
 			levelName = "Pre approve level"} 
 
-		$body = $this.loadJSON("pre-approval-policy.json", $replace)
+		# Définition du nom de fichier à utiliser pour créer la policy en fonction du type de celle-ci.
+		if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+		{
+			$json_filename = "pre-approval-policy-new-item.json"
+		}
+		elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+		{
+			$json_filename = "pre-approval-policy-reconfigure.json"
+		}
+		else 
+		{
+			Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
+		}
+
+		$body = $this.loadJSON($json_filename, $replace)
 
 		# Création de la Policy
 		Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
