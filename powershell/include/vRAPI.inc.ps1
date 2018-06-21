@@ -1061,13 +1061,27 @@ class vRAPI
 		IN  : $appliesTo	-> Chaîne de caractères avec l'ID du type de ressource auquel s'applique
 									cette action.
 									Ex: "Infrastructure.Virtual" pour une VM
+								Dans le cas où l'action aurait été développée en interne, ce paramètre
+								doit être mis à "" 
 
 		RET : Objet contenant l'action
 				$null si n'existe pas
 	#>
 	[PSCustomObject] getAction([string] $name, [string]$appliesTo)
 	{
-		$list = $this.getActionListQuery(("`$filter=(startswith(externalId, '{0}') and name eq '{1}')" -f $appliesTo, $name))
+		# Si c'est une action développée en interne
+		if($appliesTo -eq "")
+		{
+			# Pas de filtre
+			$appliesToFilter = ""
+		}
+		else # Action prédéfinie
+		{
+			# Filtre
+			$appliesToFilter = "startswith(externalId, '{0}') and" -f $appliesTo
+		}
+		
+		$list = $this.getActionListQuery(("`$filter=({0} name eq '{1}')" -f $appliesToFilter, $name))
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
