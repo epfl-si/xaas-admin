@@ -337,7 +337,17 @@ function prepareSetEntActions
 	# par type d'élément
 	Get-ChildItem $global:DAY2_ACTIONS_FOLDER | ForEach-Object {
 
-		$appliesTo = $_.Name
+		# Si le fichier commence par un _, c'est qu'il contient des actions customs définies au sein de l'EPFL
+		# Dans ce cas-là, le nom de l'action devrait être UNIQUE
+		if($_.Name[0] -eq "_")
+		{
+			# On met donc une chaine vide pour signifier que cette valeur ne devra pas être prise durant la recherche.
+			$appliesTo = ""
+		}
+		else # Ce n'est pas une action custom EPFL
+		{
+			$appliesTo = $_.Name
+		}
 		Get-Content $_.FullName | ForEach-Object {
 			$action = $_.Trim()
 			# Si ce n'est pas une ligne vide ou une ligne de commentaire
