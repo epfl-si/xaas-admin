@@ -1,0 +1,107 @@
+{
+    "@type": "ApprovalPolicy",
+    "name": "{{preApprovalName}}",
+    "description": "{{preApprovalDesc}}",
+    "policyType": {
+      "id": "com.vmware.cafe.catalog.request.catalogitem",
+      "name": "Service Catalog - Catalog Item Request",
+      "description": "",
+      "serviceTypeId": "com.vmware.csp.core.cafe.catalog",
+      "classId": "catalogItemRequest",
+      "typeFilter": null,
+      "phaseTypes": [
+        {
+          "id": "com.vmware.cafe.catalog.request.pre",
+          "name": "Pre Approval",
+          "description": "Approvals sought before a request is fulfilled.",
+          "forms": null,
+          "phaseOrder": 0,
+          "allowUpdates": true
+        },
+        {
+          "id": "com.vmware.cafe.catalog.request.post",
+          "name": "Post Approval",
+          "description": "Approvals sought after a request has been fulfilled.",
+          "forms": null,
+          "phaseOrder": 1,
+          "allowUpdates": false
+        }
+      ]
+    },
+    "state": "PUBLISHED",
+    "stateName": "Active",
+    "phases": [
+      {
+        "phasetype": {
+          "id": "com.vmware.cafe.catalog.request.pre",
+          "name": "Pre Approval",
+          "description": "Approvals sought before a request is fulfilled.",
+          "forms": null,
+          "phaseOrder": 0,
+          "allowUpdates": true
+        },
+        "levels": [
+            {
+                "name": "{{preApprovalName}}",
+                "description": "",
+                "approvers": [],
+                "approvalMode": "ANY",
+                "criteria": {
+                    "type": "constantClause",
+                    "value": {
+                        "type": "boolean",
+                        "value": true
+                    }
+                },
+                "levelNumber": 1,
+                "external": true,
+                "editSchema": {
+                    "fields": [
+                        {
+                            "type": "embedded",
+                            "definition": {
+                                "id": "provider-{{approverGroupCustomPropName}}",
+                                "label": "{{approverGroupAtDomain}}",
+                                "description": "Approver group",
+                                "dataType": {
+                                    "type": "primitive",
+                                    "typeId": "STRING"
+                                },
+                                "displayAdvice": null,
+                                "orderIndex": null,
+                                "permissibleValues": null,
+                                "state": {
+                                    "dependencies": [],
+                                    "facets": []
+                                },
+                                "isMultiValued": false,
+                                "columns": []
+                            }
+                        }
+                    ]
+                }
+            }
+        ],
+        "name": "Pre Approval",
+        "description": "Approvals sought before a request is fulfilled."
+      },
+      {
+        "phasetype": {
+          "id": "com.vmware.cafe.catalog.request.post",
+          "name": "Post Approval",
+          "description": "Approvals sought after a request has been fulfilled.",
+          "forms": null,
+          "phaseOrder": 1,
+          "allowUpdates": false
+        },
+        "levels": [],
+        "name": "Post Approval",
+        "description": "Approvals sought after a request has been fulfilled."
+      }
+    ],
+    "approvableItemId": null,
+    "typeFilter": null,
+    "approvableItemName": null,
+    "approvableItemServiceTypeId": null,
+    "version": 0
+  }
