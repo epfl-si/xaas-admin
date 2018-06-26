@@ -44,8 +44,10 @@ $global:VRA_SERVICE_SUFFIX_PRIVATE =" (Private)"
 
 # Nom des custom properties à utiliser.
 $global:VRA_CUSTOM_PROP_EPFL_UNIT_ID = "ch.epfl.unit.id"
+$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID = "ch.epfl.snow.svc.id"
 $global:VRA_CUSTOM_PROP_VRA_BG_TYPE = "ch.epfl.vra.bg.type"
 $global:VRA_CUSTOM_PROP_VRA_BG_STATUS = "ch.epfl.vra.bg.status"
+$global:VRA_CUSTOM_PROP_VRA_POL_APP_GROUP = "ch.epfl.request.approvergroup"
 
 # Pour la génération des chaînes de caractères
 #$VRA_BG_FAC_ORPHAN_DESC_BASE = "Orphans for faculty {0}"
