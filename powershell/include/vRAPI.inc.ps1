@@ -1308,7 +1308,8 @@ class vRAPI
 
 	<#
 		-------------------------------------------------------------------------------------
-		BUT : Créé une pré-approval policy avec un groupe comme "approvers"
+		BUT : Créé une pré-approval policy qui spécifie un nom de groupe comme personnes pouvant
+			  approuver.
 
 		IN  : $name						-> Nom de la policy
 		IN  : $desc						-> Description de la policy
@@ -1319,7 +1320,7 @@ class vRAPI
 
 		RET : L'approval policy créé
 	#>
-	[psobject] addPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType)
+	[psobject] addUsrGrpPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType)
 	{
 		$uri = "https://{0}/approval-service/api/policies" -f $this.server
 
@@ -1335,11 +1336,11 @@ class vRAPI
 		# Définition du nom de fichier à utiliser pour créer la policy en fonction du type de celle-ci.
 		if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
 		{
-			$json_filename = "pre-approval-policy-new-item.json"
+			$json_filename = "pre-approval-policy-usrgrp-new-item.json"
 		}
 		elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 		{
-			$json_filename = "pre-approval-policy-reconfigure.json"
+			$json_filename = "pre-approval-policy-usrgrp-reconfigure.json"
 		}
 		else 
 		{
@@ -1354,6 +1355,53 @@ class vRAPI
 		# Recherche et retour de l'Approval Policy ajoutée
 		return $this.getApprovalPolicy($name)
 	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Créé une pré-approval policy qui passe par un "Subscription Event" pour la validation.
+
+		IN  : $name						-> Nom de la policy
+		IN  : $desc						-> Description de la policy
+		IN  : $approverGroupAtDomain	-> FQDN du groupe (<group>@<domain>) qui devra approuver.
+		IN  : $approvalPolicyType   	-> Type de la policy :
+                                        	$global:APPROVE_POLICY_TYPE__ITEM_REQ
+                                        	$global:APPROVE_POLICY_TYPE__ACTION_REQ
+
+		RET : L'approval policy créé
+	#>
+	[psobject] addEvSubPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType)
+	{
+		$uri = "https://{0}/approval-service/api/policies" -f $this.server
+
+		# Valeur à mettre pour la configuration du BG
+		$replace = @{preApprovalName = $name
+			preApprovalDesc = $desc
+			approverGroupAtDomain = $approverGroupAtDomain
+			approverGroupCustomPropName = $global:VRA_CUSTOM_PROP_VRA_POL_APP_GROUP} 
+
+		# Définition du nom de fichier à utiliser pour créer la policy en fonction du type de celle-ci.
+		if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+		{
+			$json_filename = "pre-approval-policy-evsub-new-item.json"
+		}
+		elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+		{
+			$json_filename = "pre-approval-policy-evsub-reconfigure.json"
+		}
+		else 
+		{
+			Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
+		}
+
+		$body = $this.loadJSON($json_filename, $replace)
+
+		# Création de la Policy
+		Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
+
+		# Recherche et retour de l'Approval Policy ajoutée
+		return $this.getApprovalPolicy($name)
+	}	
 
 	<#
 		-------------------------------------------------------------------------------------
@@ -1405,6 +1453,8 @@ class vRAPI
 		Invoke-RestMethod -Uri $uri -Method Delete -Headers $this.headers
 		
 	}
+
+	#https://{{va-fqdn}}/advanced-designer-service/api/tenants/{{tenantId}}/event-broker/subscriptions?page={{page}}&limit={{limit}}
 }
 
 
