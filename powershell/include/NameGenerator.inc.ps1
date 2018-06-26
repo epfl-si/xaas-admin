@@ -552,7 +552,7 @@ class NameGenerator
         
     }
 
-    hidden [System.Collections.ArrayList] getITSRoleGroupNameAndDesc([string]$role, [string]$serviceShortName, [string]$serviceName, [string]$type, [bool]$fqdn)
+    hidden [System.Collections.ArrayList] getITSRoleGroupNameAndDesc([string]$role, [string]$serviceShortName, [string]$serviceName, [string]$snowServiceId, [string]$type, [bool]$fqdn)
     {
         # On initialise à vide car la description n'est pas toujours générée. 
         $groupDesc = ""
@@ -571,10 +571,10 @@ class NameGenerator
         {
             # vra_<envShort>_<serviceShort>
             $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($serviceShortName)
-            # <serviceName>
+            # <snowServiceId>;<serviceName>
             # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
             # réutilisé pour d'autres choses dans la création des éléments dans vRA
-            $groupDesc = $serviceName
+            $groupDesc = "{0};{1}" -f $snowServiceId, $serviceName
 
         }
         # Autre EPFL
@@ -614,7 +614,7 @@ class NameGenerator
     #>
     [string] getITSRoleADGroupName([string]$role, [string] $serviceShortName, [bool]$fqdn)
     {
-        $groupName, $groupDesc = $this.getITSRoleGroupNameAndDesc($role, $serviceShortName, "", $this.GROUP_TYPE_AD, $fqdn)
+        $groupName, $groupDesc = $this.getITSRoleGroupNameAndDesc($role, $serviceShortName, "", "", $this.GROUP_TYPE_AD, $fqdn)
         return $groupName
     }
     [string] getITSRoleADGroupName([string]$role, [string] $serviceShortName)
@@ -634,10 +634,11 @@ class NameGenerator
 							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
                                     "CSP_CONSUMER"
         IN  : $serviceName      -> Le nom du service
+        IN  : $snowServiceId    -> ID du service dans ServiceNow
     #>
-    [string] getITSRoleADGroupDesc([string]$role, [string]$serviceName)
+    [string] getITSRoleADGroupDesc([string]$role, [string]$serviceName, [string]$snowServiceId)
     {
-        $groupName, $groupDesc = $this.getITSRoleGroupNameAndDesc($role, "", $serviceName, $this.GROUP_TYPE_AD, $false)
+        $groupName, $groupDesc = $this.getITSRoleGroupNameAndDesc($role, "", $serviceName, $snowServiceId, $this.GROUP_TYPE_AD, $false)
         return $groupDesc
     }    
 
@@ -656,7 +657,7 @@ class NameGenerator
     #>
     [string] getITSRoleGroupsGroupName([string]$role, [string]$serviceShortName)
     {
-        $groupName, $groupDesc = $this.getITSRoleGroupNameAndDesc($role, $serviceShortName, "", $this.GROUP_TYPE_GROUPS, $false)
+        $groupName, $groupDesc = $this.getITSRoleGroupNameAndDesc($role, $serviceShortName, "", "", $this.GROUP_TYPE_GROUPS, $false)
         return $groupName
     }
 
@@ -1153,14 +1154,14 @@ class NameGenerator
         elseif($this.tenant -eq $global:VRA_TENANT_ITSERVICES)
         {
             # Le nom du groupe devait avoir la forme :
-            # <serviceName>
+            # <snowServiceId>;<serviceName>
             
-            if($partList.Count -lt 1)
+            if($partList.Count -lt 2)
             {
                 Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
             }
 
-            return @($partList[0])
+            return @($partList)
         }
         else # Autre Tenant (ex: vsphere.local)
         {

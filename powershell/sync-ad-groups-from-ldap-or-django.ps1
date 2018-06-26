@@ -565,7 +565,7 @@ try
 			# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
 			# sera le même
 			$admSupGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
-			$admSupGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_SUBTENANT_MANAGER", $service.$global:MYSQL_ITS_SERVICES__LONGNAME)
+			$admSupGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_SUBTENANT_MANAGER", $service.$global:MYSQL_ITS_SERVICES__LONGNAME, $service.$global:MYSQL_ITS_SERVICES__SNOWID)
 			$admSupGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
 
 			# Création des groupes + gestion des groupes prérequis 
@@ -585,7 +585,7 @@ try
 			# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
 			# sera le même
 			$userSharedGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_CONSUMER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
-			$userSharedGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_CONSUMER", $service.$global:MYSQL_ITS_SERVICES__LONGNAME)
+			$userSharedGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_CONSUMER", $service.$global:MYSQL_ITS_SERVICES__LONGNAME, $service.$global:MYSQL_ITS_SERVICES__SNOWID)
 			$userSharedGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_CONSUMER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
 
 			# Création des groupes + gestion des groupes prérequis 
@@ -621,7 +621,11 @@ try
 	}
 	else # Si on n'est pas en mode "Simulation", c'est qu'on a créé des éléments dans AD
 	{
-		# On lance donc une synchro
+		# On lance donc une synchro mais après quelques secondes d'attente histoire que les groupes créés soient répliqués sur les autres DC. Si on va trop vite,
+		# les groupes créés ne seront potentiellement pas synchronisés avec vRA... et ne pourront donc pas être utilisés pour les rôles des BG.
+		$sleepDurationSec = 15
+		$logHistory.addLineAndDisplay( ("Sleeping for {0} seconds to let Active Directory DC synchro working" -f $sleepDurationSec))
+		Start-Sleep -Seconds $sleepDurationSec
 		try {
 			# Création d'une connexion au serveur
 			$vra = [vRAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
@@ -632,6 +636,7 @@ try
 			exit
 		}
 
+		$logHistory.addLineAndDisplay("Syncing directory...")
 		$vra.syncDirectory($nameGenerator.getDirectoryName())
 
 		$vra.disconnect()
