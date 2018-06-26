@@ -82,7 +82,7 @@ function createApprovalPolicyIfNotExists([vRAPI]$vra, [string]$name, [string]$de
 	{
 		$logHistory.addLineAndDisplay(("-> Creating Approval Policy '{0}'..." -f $name))
 		# On créé celle-ci
-		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyType)
+		$approvePolicy = $vra.addEvSubPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyType)
 	}
 	else 
 	{
@@ -105,12 +105,14 @@ function createApprovalPolicyIfNotExists([vRAPI]$vra, [string]$name, [string]$de
 	IN  : $machinePrefixName	-> Nom du préfixe de machine à utiliser.
 								   Peut être "" si le BG doit être créé dans le tenant ITServices.
 	IN  : $capacityAlertsEmail	-> Adresse mail où envoyer les mails de "capacity alert"
+	IN  : $customProperties		-> Tableau associatif avec les custom properties à mettre pour le BG. Celles-ci seront
+								   complétées avec d'autres avant la création.
 
 	RET : Objet représentant la Business Group
 #>
 function createOrUpdateBG
 {
-	param([vRAPI]$vra, [Array]$existingBGList, [string]$bgUnitID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$capacityAlertsEmail)
+	param([vRAPI]$vra, [Array]$existingBGList, [string]$bgUnitID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$capacityAlertsEmail,[System.Collections.Hashtable]$customProperties)
 
 	# On transforme à null si "" pour que ça passe correctement plus loin
 	if($machinePrefixName -eq "")
@@ -125,10 +127,9 @@ function createOrUpdateBG
 		# Si la recherche du BG par son le no de l'unité ne donne rien,
 		if(($bg = getUnitBG -unitID $bgUnitID -fromList $existingBGList) -eq $null)
 		{
-			# Création des customs properties en vue de sa création
-			$customProperties = @{"$global:VRA_CUSTOM_PROP_VRA_BG_TYPE" = $global:VRA_BG_TYPE_UNIT
-								  "$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS_ALIVE
-								  "$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $bgUnitID}
+			# Ajout des customs properties en vue de sa création
+			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE_UNIT
+			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS_ALIVE
 		}
 
 		# Tentative de recherche du préfix de machine
@@ -166,8 +167,8 @@ function createOrUpdateBG
 		if(($bg = $vra.getBG($bgName)) -eq $null)
 		{
 			# Création des propriété custom
-			$customProperties = @{"$global:VRA_CUSTOM_PROP_VRA_BG_TYPE" = $global:VRA_BG_TYPE_SERVICE
-								  "$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS_ALIVE}
+			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE_SERVICE
+			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS_ALIVE
 		}
 		# Pas d'ID de machine pour ce Tenant
 		$machinePrefixId = $null
@@ -234,7 +235,7 @@ function createOrUpdateBGRoles
 	$logHistory.addLineAndDisplay(("-> Updating roles for BG {0}..." -f $bg.name))
 
 	# S'il faut faire des modifs
-	if($manageGrpList.count -gt 0)
+	if($managerGrpList.count -gt 0)
 	{
 		$logHistory.addLineAndDisplay("--> Updating 'Group manager role'...")
 		$vra.deleteBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER")
@@ -643,6 +644,8 @@ function deleteBGAndComponentsIfPossible
 		$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}'..." -f $bg.name))
 		$vra.deleteBG($bg.id)
 
+
+
 		# Incrémentation du compteur
 		$counters.inc('BGDeleted')
 	}
@@ -1014,6 +1017,9 @@ try
 			# Nom du préfix de machine
 			$machinePrefixName = $nameGenerator.getVMMachinePrefix($faculty)
 
+			# Custom properties du Buisness Group
+			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $bgUnitID}
+
 			# Groupes de sécurités AD pour les différents rôles du BG
 			$managerGrpList = @($nameGenerator.getEPFLRoleADGroupName("CSP_SUBTENANT_MANAGER", $faculty, $true))
 			$supportGrpList = @($nameGenerator.getEPFLRoleADGroupName("CSP_SUPPORT", $faculty, $true))
@@ -1039,7 +1045,7 @@ try
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-			$serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)[0]
+			$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
 			# Création du nom/description du business group
 			$bgName = $nameGenerator.getBGName($serviceShortName)
@@ -1052,6 +1058,8 @@ try
 			# NOTE ! Il n'y a pas de préfix de machine pour les Business Group du tenant ITServices.
 			$machinePrefixName = ""
 			
+			# Custom properties du Buisness Group
+			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID" = $snowServiceId}
 
 			# Groupes de sécurités AD pour les différents rôles du BG
 			$managerGrpList = @($nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $serviceShortName, $true))
@@ -1107,8 +1115,8 @@ try
 																  -approverGroupAtDomain $approveGroupName -approvalPolicyType $global:APPROVE_POLICY_TYPE__ACTION_REQ
 
 		# Création ou mise à jour du Business Group
-		$bg = createOrUpdateBG -vra $vra -existingBGList $existingBGList -bgUnitID $unitID -bgName $bgName `
-									-bgDesc $bgDesc -machinePrefixName $machinePrefixName -capacityAlertsEmail ($capacityAlertMails -join ",")
+		$bg = createOrUpdateBG -vra $vra -existingBGList $existingBGList -bgUnitID $unitID -bgName $bgName -bgDesc $bgDesc `
+									-machinePrefixName $machinePrefixName -capacityAlertsEmail ($capacityAlertMails -join ",") -customProperties $bgCustomProperties
 
 		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
 		if($bg -eq $null)
