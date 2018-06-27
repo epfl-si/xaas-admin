@@ -31,7 +31,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "vRAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "vRAAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
@@ -63,7 +63,7 @@ function printUsage
 -------------------------------------------------------------------------------------
 	BUT : Créé (si inexistant) une approval policy
 
-	IN  : $vra 					-> Objet de la classe vRAPI permettant d'accéder aux API vRA
+	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $name					-> Le nom de l'approval policy à créer
 	IN  : $desc					-> Description de l'approval policy
 	IN  : $approverGroupAtDomain-> Nom du groupe AD (FQDN) à mettre en approbateur
@@ -73,7 +73,7 @@ function printUsage
 
 	RET : Objet représentant l'approval policy
 #>
-function createApprovalPolicyIfNotExists([vRAPI]$vra, [string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType)
+function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType)
 {
 	$approvePolicy = $vra.getApprovalPolicy($name)
 
@@ -96,7 +96,7 @@ function createApprovalPolicyIfNotExists([vRAPI]$vra, [string]$name, [string]$de
 -------------------------------------------------------------------------------------
 	BUT : Créé (si inexistant) ou met à jour un Business Group (si existant)
 
-	IN  : $vra 					-> Objet de la classe vRAPI permettant d'accéder aux API vRA
+	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $existingBGList		-> Liste des BG existants
 	IN  : $bgUnitID				-> (optionnel) No d'unité du BG à ajouter/mettre à jour.
 										A passer uniquement si tenant EPFL, sinon ""
@@ -112,7 +112,7 @@ function createApprovalPolicyIfNotExists([vRAPI]$vra, [string]$name, [string]$de
 #>
 function createOrUpdateBG
 {
-	param([vRAPI]$vra, [Array]$existingBGList, [string]$bgUnitID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$capacityAlertsEmail,[System.Collections.Hashtable]$customProperties)
+	param([vRAAPI]$vra, [Array]$existingBGList, [string]$bgUnitID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$capacityAlertsEmail,[System.Collections.Hashtable]$customProperties)
 
 	# On transforme à null si "" pour que ça passe correctement plus loin
 	if($machinePrefixName -eq "")
@@ -216,7 +216,7 @@ function createOrUpdateBG
 -------------------------------------------------------------------------------------
 	BUT : Créé (si inexistants) ou met à jour les roles d'un Business Group (si existants)
 
-	IN  : $vra 					-> Objet de la classe vRAPI permettant d'accéder aux API vRA
+	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $bg					-> Objet contenant le BG à mettre à jour
 	IN  : $manageGrpList		-> (optionnel) Tableau avec la liste des adresses mail à mettre pour les
 								   managers. Si pas passé ou $null, on ne change rien dans la liste spécifiée
@@ -230,7 +230,7 @@ function createOrUpdateBG
 #>
 function createOrUpdateBGRoles
 {
-	param([vRAPI]$vra, [PSCustomObject]$bg, [Array]$managerGrpList, [Array]$supportGrpList, [Array]$sharedGrpList, [Array]$userGrpList)
+	param([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$managerGrpList, [Array]$supportGrpList, [Array]$sharedGrpList, [Array]$userGrpList)
 
 	$logHistory.addLineAndDisplay(("-> Updating roles for BG {0}..." -f $bg.name))
 
@@ -273,7 +273,7 @@ function createOrUpdateBGRoles
 -------------------------------------------------------------------------------------
 	BUT : Créé (si inexistant) ou met à jour un Entitlement de Business Group (si existant)
 
-	IN  : $vra 			-> Objet de la classe vRAPI permettant d'accéder aux API vRA
+	IN  : $vra 			-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $bg			-> Objet BG auquel l'entitlement est attaché
 	IN  : $entName		-> Nom de l'entitlement
 	IN  : $entDesc		-> Description de l'entitlement.
@@ -282,7 +282,7 @@ function createOrUpdateBGRoles
 #>
 function createOrUpdateBGEnt
 {
-	param([vRAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc)
+	param([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc)
 
 	# Si l'entitlement n'existe pas,
 	if(($ent = $vra.getBGEnt($bg.id)) -eq $null)
@@ -315,12 +315,12 @@ function createOrUpdateBGEnt
 			dans vRA et contenant la liste des actions. Cette liste d'actions est
 			composée des textes décrivant celles-ci dans vRA (ex: Destroy, Create Snapshot,...)
 			Pour le moment, on ne fait que préparer l'objet pour ensuite réellement le
-			mettre à jour via vRAPI::updateEnt(). On fait la mise à jour (update) en une
+			mettre à jour via vRAAPI::updateEnt(). On fait la mise à jour (update) en une
 			seule fois car faire en plusieurs fois, une par élément à mettre à jour (action,
 			service, ...) lève souvent une exception de "lock" sur l'objet Entitlement du
 			côté de vRA.
 
-	IN  : $vra 				-> Objet de la classe vRAPI permettant d'accéder aux API vRA
+	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $ent				-> Objet Entitlement auquel lier les services
 	IN  : $approvalPolicy	-> Object Approval Policy qui devra approuver les demandes 
 								pour les 2nd day actions
@@ -329,7 +329,7 @@ function createOrUpdateBGEnt
 #>
 function prepareSetEntActions
 {
-	param([vRAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy)
+	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy)
 
 	# Pour contenir la liste des actions
 	$actionList = @()
@@ -378,12 +378,12 @@ function prepareSetEntActions
 	BUT : Ajoute les Services "Public" à un Entitlement de Business Group s'il n'y
 			sont pas déjà.
 			Pour le moment, on ne fait que préparer l'objet pour ensuite réellement le
-			mettre à jour via vRAPI::updateEnt(). On fait la mise à jour (update) en une
+			mettre à jour via vRAAPI::updateEnt(). On fait la mise à jour (update) en une
 			seule fois car faire en plusieurs fois, une par élément à mettre à jour (action,
 			service, ...) lève souvent une exception de "lock" sur l'objet Entitlement du
 			côté de vRA.
 
-	IN  : $vra 				-> Objet de la classe vRAPI permettant d'accéder aux API vRA
+	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $ent				-> Objet Entitlement auquel lier les services
 	IN  : $approvalPolicy	-> Object Approval Policy qui devra approuver les demandes 
 								pour les nouveaux éléments
@@ -392,7 +392,7 @@ function prepareSetEntActions
 #>
 function prepareAddMissingBGEntPublicServices
 {
-	param([vRAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy)
+	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy)
 
 
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
@@ -457,7 +457,7 @@ function sendErrorMailNoResTemplateFound
 			pas encore. Ces réservations sont ajoutées selont les Templates qui existent.
 			Si les Reservations existent, on les mets à jour si besoin.
 
-	IN  : $vra 				-> Objet de la classe vRAPI permettant d'accéder aux API vRA
+	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $bg				-> Objet BG auquel ajouter les réservations
 	IN  : $resTemplatePrefix-> Préfix des templates de réservation pour rechercher celles-ci.
 
@@ -465,7 +465,7 @@ function sendErrorMailNoResTemplateFound
 #>
 function createOrUpdateBGReservations
 {
-	param([vRAPI]$vra, [PSCustomObject]$bg, [string]$resTemplatePrefix)
+	param([vRAAPI]$vra, [PSCustomObject]$bg, [string]$resTemplatePrefix)
 
 	$logHistory.addLineAndDisplay("-> Getting Reservation template list...")
 	$resTemplateList = $vra.getResListMatch($resTemplatePrefix)
@@ -558,13 +558,13 @@ function createOrUpdateBGReservations
 
 		  Si le BG contient des items, on va simplement le marquer comme "ghost" et changer les droits d'accès
 
-	IN  : $vra 		-> Objet de la classe vRAPI permettant d'accéder aux API vRA
+	IN  : $vra 		-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $bg		-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
-					   par un appel à une méthode de la classe vRAPI
+					   par un appel à une méthode de la classe vRAAPI
 #>
 function deleteBGAndComponentsIfPossible
 {
-	param([vRAPI]$vra, [PSObject]$bg)
+	param([vRAAPI]$vra, [PSObject]$bg)
 
 	# Recherche des items potentiellement présents dans le BG
 	$bgItemList = $vra.getBGItemList($bg)
@@ -908,7 +908,7 @@ $doneBGList = @()
 
 try {
 	# Création d'une connexion au serveur
-	$vra = [vRAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
+	$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
 }
 catch {
 	Write-Error "Error connecting to vRA API !"
