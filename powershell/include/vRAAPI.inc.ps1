@@ -34,7 +34,6 @@ class vRAAPI
 		IN  : $userAtDomain	-> Nom d'utilisateur (user@domain)
 		IN  : $password			-> Mot de passe
 
-		RET : ID du token
 	#>
 	vRAAPI([string] $server, [string] $tenant, [string] $userAtDomain, [string] $password)
 	{
