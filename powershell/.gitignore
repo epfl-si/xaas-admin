@@ -4,4 +4,5 @@ IaaS.code-workspace
 test.ps1
 # Users credentials
 config-vra.inc.ps1
+config-vro.inc.ps1
 config-mail.inc.ps1
