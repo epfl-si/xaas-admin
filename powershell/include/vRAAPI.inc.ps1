@@ -18,7 +18,7 @@
    0.1 - Version de base
 
 #>
-class vRAPI
+class vRAAPI
 {
 	hidden [string]$token
 	hidden [string]$server
@@ -36,7 +36,7 @@ class vRAPI
 
 		RET : ID du token
 	#>
-	vRAPI([string] $server, [string] $tenant, [string] $userAtDomain, [string] $password)
+	vRAAPI([string] $server, [string] $tenant, [string] $userAtDomain, [string] $password)
 	{
 		$this.server = $server
 		$this.tenant = $tenant
