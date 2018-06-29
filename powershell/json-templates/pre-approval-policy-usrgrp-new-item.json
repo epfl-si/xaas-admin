@@ -41,7 +41,7 @@
       },
       "levels": [
         {
-          "name": "{{levelName}}",
+          "name": "{{preApprovalLevelName}}",
           "description": "",
           "approvers": [
             {

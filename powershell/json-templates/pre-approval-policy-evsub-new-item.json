@@ -42,7 +42,7 @@
         },
         "levels": [
             {
-                "name": "{{preApprovalName}}",
+                "name": "{{preApprovalLevelName}}",
                 "description": "",
                 "approvers": [],
                 "approvalMode": "ANY",

@@ -43,7 +43,7 @@
             "levels": [
                 {
                     "id": "80eb872c-a255-4c03-bc80-6379520509a3",
-                    "name": "{{levelName}}",
+                    "name": "{{preApprovalLevelName}}",
                     "description": "",
                     "approvers": [
                         {
