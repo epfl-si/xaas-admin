@@ -478,15 +478,15 @@ class NameGenerator
         }
         elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
         {
-            $name_suffix = "reconfigure"
-            $type_desc = "reconfigurations"
+            $name_suffix = "2ndDay"
+            $type_desc = "2nd day actions"
         }
         else 
         {
             Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
         }
 
-        $name = "approval_{0}_{1}" -f $this.transformForGroupName($facultyName), $name_suffix
+        $name = "{0}_approval_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($facultyName), $name_suffix
         $desc = "Approval policy for {0} for {1} Faculty" -f $type_desc, $facultyName.ToUpper()
         return @($name, $desc)
     }
@@ -510,6 +510,42 @@ class NameGenerator
         return @($name, $desc)
         
     }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie un tableau avec le nom et la description de l'Event Subscription à lier à une Approval Policy
+
+        IN  : $facultyName          -> Le nom de la faculté
+        IN  : $approvalPolicyType   -> Type de la policy à laquelle l'event sera lié :
+                                        $global:APPROVE_POLICY_TYPE__ITEM_REQ
+                                        $global:APPROVE_POLICY_TYPE__ACTION_REQ
+       
+        RET : Tableau avec:
+            - Nom de l'Event Subscription
+            - Description de l'Event Subscription
+    #>
+    [System.Collections.ArrayList] getEPFLEventSubscriptionNameAndDesc([string]$facultyName, [string]$approvalPolicyType)
+    {
+        if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+        {
+            $name_suffix = "newItems"
+            $type_desc = "new items"
+        }
+        elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+        {
+            $name_suffix = "2ndDay"
+            $type_desc = "2nd day actions"
+        }
+        else 
+        {
+            Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
+        }
+
+        $name = "{0}_{1}_2" -f $this.getTenantShortName(), $this.transformForGroupName($facultyName), $name_suffix
+        $desc = "Event Subscription for {0} for {1} Faculty" -f $type_desc, $facultyName.ToUpper()
+        return @($name, $desc)
+    }    
 
     
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -801,57 +837,72 @@ class NameGenerator
         BUT : Renvoie le nom de la policy d'approbation à utiliser
 
         IN  : $serviceName          -> Le nom court du service
+        IN  : $serviceName          -> Le nom du service
         IN  : $approvalPolicyType   -> Type de la policy :
                                         $global:APPROVE_POLICY_TYPE__ITEM_REQ
                                         $global:APPROVE_POLICY_TYPE__ACTION_REQ
        
         RET : Nom de la policy
     #>
-    [string] getITSApprovalPolicyName([string]$serviceShortName, [string]$approvalPolicyType)
+    [System.Collections.ArrayList] getITSApprovalPolicyNameAndDesc([string]$serviceShortName, [string]$serviceName, [string]$approvalPolicyType)
     {
         if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
         {
             $suffix = "newItems"
+            $type_desc = "new items"
         }
         elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
         {
-            $suffix = "reconfigure"
+            $suffix = "2ndDay"
+            $type_desc = "2nd day actions"
         }
         else 
         {
             Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
         }
 
-        return "approval_{0}_{1}" -f $this.transformForGroupName($serviceShortName), $suffix
+        $name = "{0}_approval_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($serviceShortName), $suffix
+        $desc = "Approval policy for {0} for Service: {1}" -f $type_desc, $serviceName
+
+        return @($name, $desc)
     }
+
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie le descriptif de la policy d'approbation à utiliser
+        BUT : Renvoie un tableau avec le nom et la description de l'Event Subscription à lier à une Approval Policy
 
+        IN  : $serviceName          -> Le nom court du service
         IN  : $serviceName          -> Le nom du service
         IN  : $approvalPolicyType   -> Type de la policy :
                                         $global:APPROVE_POLICY_TYPE__ITEM_REQ
                                         $global:APPROVE_POLICY_TYPE__ACTION_REQ
        
-        RET : Descriptif de la policy
+        RET : Tableau avec:
+            - Nom de l'Event Subscription
+            - Description de l'Event Subscription
     #>
-    [string] getITSApprovalPolicyDesc([string]$serviceName, [string]$approvalPolicyType)
+    [System.Collections.ArrayList] getITSEventSubscriptionNameAndDesc([string]$serviceShortName, [string]$serviceName, [string]$approvalPolicyType)
     {
         if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
         {
+            $suffix = "newItems"
             $type_desc = "new items"
         }
         elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
         {
-            $type_desc = "reconfigurations"
+            $suffix = "2ndDay"
+            $type_desc = "2nd day actions"
         }
         else 
         {
             Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
         }
 
-        return "Approval policy for {0} for Service: {1}" -f $type_desc, $serviceName
+        $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($serviceShortName), $suffix
+        $desc = "Event Subscription for {0} for Service: {1}" -f $type_desc, $serviceName
+
+        return @($name, $desc)
     }
 
 
@@ -872,6 +923,9 @@ class NameGenerator
                  $this.getEntDescription($serviceLongName))
         
     }
+
+
+    
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# --------------------------------------------------------------------------- AUTRES --------------------------------------------------------------------------------------- #>
@@ -1295,5 +1349,7 @@ class NameGenerator
     {
         return "template_{0}_" -f $this.getTenantShortName()
     }
+
+
 
 }

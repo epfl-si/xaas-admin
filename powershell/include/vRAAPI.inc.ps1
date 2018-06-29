@@ -1309,6 +1309,7 @@ class vRAAPI
 		-------------------------------------------------------------------------------------
 		BUT : Créé une pré-approval policy qui spécifie un nom de groupe comme personnes pouvant
 			  approuver.
+			  Par défaut, le nom du "level" de type "Pre approval" sera identique au nom de la Policy
 
 		IN  : $name						-> Nom de la policy
 		IN  : $desc						-> Description de la policy
@@ -1327,10 +1328,10 @@ class vRAAPI
 
 		# Valeur à mettre pour la configuration du BG
 		$replace = @{preApprovalName = $name
+			preApprovalLevelName = $name
 			preApprovalDesc = $desc
 			approverGroupAtDomain = $approverGroupAtDomain
-			approverDisplayName = $approverDisplayName
-			levelName = "Pre approve level"} 
+			approverDisplayName = $approverDisplayName} 
 
 		# Définition du nom de fichier à utiliser pour créer la policy en fonction du type de celle-ci.
 		if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
@@ -1359,6 +1360,7 @@ class vRAAPI
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Créé une pré-approval policy qui passe par un "Subscription Event" pour la validation.
+			  Par défaut, le nom du "level" de type "Pre approval" sera identique au nom de la Policy
 
 		IN  : $name						-> Nom de la policy
 		IN  : $desc						-> Description de la policy
@@ -1375,6 +1377,7 @@ class vRAAPI
 
 		# Valeur à mettre pour la configuration du BG
 		$replace = @{preApprovalName = $name
+			preApprovalLevelName = $name
 			preApprovalDesc = $desc
 			approverGroupAtDomain = $approverGroupAtDomain
 			approverGroupCustomPropName = $global:VRA_CUSTOM_PROP_VRA_POL_APP_GROUP} 
@@ -1456,7 +1459,7 @@ class vRAAPI
 	<#
 		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
-									Approval Policies
+									Event Subscriptions
 		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
 	#>
@@ -1470,7 +1473,7 @@ class vRAAPI
 
 		RET : Tableau d'Approve Policies
 	#>
-	hidden [Array] getSubscriptionListQuery([string] $queryParams)
+	hidden [Array] getEventSubscriptionListQuery([string] $queryParams)
 	{
 		$uri = "https://{0}/advanced-designer-service/api/tenants/{1}/event-broker/subscriptions?page=1&limit=9999" -f $this.server, $this.tenant
 
@@ -1482,9 +1485,9 @@ class vRAAPI
 
 		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
 	}
-	hidden [Array] getSubscriptionListQuery()
+	hidden [Array] getEventSubscriptionListQuery()
 	{
-		return $this.getSubscriptionListQuery($null)
+		return $this.getEventSubscriptionListQuery($null)
 	}
 
 	<#
@@ -1496,9 +1499,9 @@ class vRAAPI
 		RET : Objet contenant l'approve policy
 				$null si n'existe pas
 	#>
-	[PSCustomObject] getSubscription([string] $name)
+	[PSCustomObject] getEventSubscription([string] $name)
 	{
-		$list = $this.getSubscriptionListQuery("`$filter=name eq '{0}'" -f $name)
+		$list = $this.getEventSubscriptionListQuery("`$filter=name eq '{0}'" -f $name)
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
@@ -1510,8 +1513,8 @@ class vRAAPI
 		BUT : Créé une Subscription dans l'event broker. Celle-ci sera exécutée sous des 
 			  conditions données et se chargera de lancer un Workflow vRO
 
-		IN  : $name						-> Nom de la policy
-		IN  : $desc						-> Description de la policy
+		IN  : $name						-> Nom de la Subscription
+		IN  : $desc						-> Description de la Subscription
 		IN  : $vROWorkflowID			-> ID du Workflow vRO à lancer 
 		IN  : $approvalLevelName   		-> Nom de l'approval level appartenant à l'approval policy
 										   auquel il faut relier la Subscription.
@@ -1521,7 +1524,7 @@ class vRAAPI
 
 		RET : L'approval policy créé
 	#>
-	[psobject] addSubscription([string]$name, [string]$desc, [string]$vROWorkflowID, [string]$approvalLevelName, [string]$approvalPolicyType)
+	[PSCustomObject] addEventSubscription([string]$name, [string]$desc, [string]$vROWorkflowID, [string]$approvalLevelName, [string]$approvalPolicyType)
 	{
 		$uri = "https://{0}/advanced-designer-service/api/tenants/{1}/event-broker/subscriptions" -f $this.server, $this.tenant
 
@@ -1535,7 +1538,7 @@ class vRAAPI
 		# Définition du nom de fichier à utiliser pour créer la Subscription en fonction du type de l'approval policy liée.
 		if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
 		{
-			$json_filename = "subscription-new-item.json"
+			$json_filename = "event-subscription-new-item.json"
 		}
 		elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 		{
@@ -1553,7 +1556,7 @@ class vRAAPI
 		Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
 
 		# Recherche et retour de la Sbuscription ajoutée
-		return $this.getSubscription($name)
+		return $this.getEventSubscription($name)
 	}	
 
 

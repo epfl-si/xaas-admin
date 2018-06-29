@@ -31,6 +31,11 @@ $global:VRA_TENANT_DEFAULT = "vsphere.local"
 $global:VRA_TENANT_EPFL = "EPFL"
 $global:VRA_TENANT_ITSERVICES = "ITServices"
 
+# Nom du Workflow VRO à appeler dans la Subscription (qui est liée à l'approval policy) lors de la demande d'un nouvel item
+$global:VRO_WORKFLOW_NEW_ITEM = "EB Allocate quota"
+# Nom du Workflow VRO à appeler dans la Subscription (qui est liée à l'approval policy) lors de la demande d'une reconfiguration
+#$global:VRO_WORKFLOW_RECONFIGURE = ""
+
 # Nom des tenants que l'on devra traiter
 $global:TARGET_TENANT_LIST = @($global:VRA_TENANT_EPFL, $global:VRA_TENANT_ITSERVICES<#, $global:VRA_TENANT_DEFAULT #>)
 
@@ -62,5 +67,10 @@ $global:VRA_BG_TYPE_UNIT 	 = "unit"
 $global:VRA_BG_STATUS_ALIVE = "alive"
 $global:VRA_BG_STATUS_GHOST = "ghost"
 
-
-
+# Opérateurs possibles pour les expressions qui sont typiquement utilisées dans les Event Subscriptions
+$global:VRA_EXPRESSION_OPERATOR__EQUALS = "equals"
+$global:VRA_EXPRESSION_OPERATOR__CONTAINS = "contains"
+$global:VRA_EXPRESSION_OPERATOR__ENDS_WITH = "endsWith"
+$global:VRA_EXPRESSION_OPERATOR__NOT_EQUALS = "notEquals"
+$global:VRA_EXPRESSION_OPERATOR__STARTS_WITH = "startsWith"
+$global:VRA_EXPRESSION_OPERATOR__WITHIN = "within"

@@ -32,12 +32,14 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "vROAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 
 # Chargement des fichiers de configuration
 loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vra.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vro.inc.ps1"))
 loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-mail.inc.ps1"))
 
 
@@ -90,6 +92,40 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	}
 
 	return $approvePolicy
+}
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Créé (si inexistant) une Event Subscription liée à une approval policy
+
+	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $name					-> Nom de la Subscription a créer
+	IN  : $desc					-> Description de la Subscription à créer
+	IN  : $approvalPolicy		-> Objet représentant l'approval policy à laquelle lier la subscription.
+	IN  : $vROWorkflow			-> Objet représentant le Workflow vRO à lancer pour l'approval policy
+	IN  : $approvalPolicyType   -> Type de la policy :
+                                    $global:APPROVE_POLICY_TYPE__ITEM_REQ
+                                    $global:APPROVE_POLICY_TYPE__ACTION_REQ
+
+	RET : Objet représentant la Subscription
+#>
+function addEventSubToApprovalPolicyIfExists([vRAAPI]$vra, [string]$name, [string]$desc, [PSCustomObject]$approvalPolicy, [PSCustomObject]$vROWorkflow, [string]$approvalPolicyType)
+{
+
+	$subscription = $vra.getEventSubscription($name)
+
+	if($subscription -eq $null)
+	{
+		$logHistory.addLineAndDisplay(("-> Creating Subscription '{0}'..." -f $name))
+		$subscription = $vra.addEventSubscription($name, $desc, $vROWorkflow.id, $approvalPolicy.phases[0].levels[0].name, $approvalPolicyType)
+	}
+	else 
+	{
+		$logHistory.addLineAndDisplay(("-> Subscription '{0}' already exists!" -f $name))
+	}
+	
+	return $subscription
+	
 }
 
 <#
@@ -907,7 +943,7 @@ $nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 $doneBGList = @()
 
 try {
-	# Création d'une connexion au serveur
+	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
 }
 catch {
@@ -915,6 +951,17 @@ catch {
 	Write-Error $_.ErrorDetails.Message
 	exit
 }
+
+try {
+	# Création d'une connexion au serveur vRA pour accéder aux API REST de vRO
+	$vro = [vROAPI]::new($nameGenerator.getvRAServerName(), $global:VRO_CAFE_CLIENT_ID[$targetEnv], $global:VRA_PASSWORD_LIST[$targetEnv][$global:VRA_TENANT_DEFAULT])
+}
+catch {
+	Write-Error "Error connecting to vRO API !"
+	Write-Error $_.ErrorDetails.Message
+	exit
+}
+
 
 # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 $counters = [Counters]::new()
@@ -997,6 +1044,10 @@ try
 		# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
 		$capacityAlertMails = @($global:CAPACITY_ALERT_DEFAULT_MAIL)
 
+		# Recherche des Workflows vRO à utiliser
+		$workflowNewItem = $vro.getWorkflow($global:VRO_WORKFLOW_NEW_ITEM)
+		
+
 		# Si Tenant EPFL
 		if($targetTenant -eq $global:VRA_TENANT_EPFL)
 		{
@@ -1035,6 +1086,12 @@ try
 			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
 			$actionReqApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			$approveGroupName = $nameGenerator.getEPFLApproveADGroupName($faculty, $true)
+
+			# Nom et description des Event Subscription
+			$itemReqEvSubName, $itemReqEvSubDesc = $nameGenerator.getEPFLEventSubscriptionNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+			$actionReqEvSubName, $actionReqEvSubDesc = $nameGenerator.getEPFLEventSubscriptionNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+
+
 		}
 		# Si Tenant ITServices
 		elseif($targetTenant -eq $global:VRA_TENANT_ITSERVICES)
@@ -1073,13 +1130,13 @@ try
 			$capacityAlertMails += $nameGenerator.getITSApproveGroupsEmail($serviceShortName)
 
 			# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
-			$itemReqApprovalPolicyName = $nameGenerator.getITSApprovalPolicyName($serviceShortName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$itemReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyDesc($serviceLongName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-
-			$actionReqApprovalPolicyName = $nameGenerator.getITSApprovalPolicyName($serviceShortName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-			$actionReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyDesc($serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-
+			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+			$actionReqApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			$approveGroupName = $nameGenerator.getITSApproveADGroupName($serviceShortName, $true)
+			
+			# Nom et description des Event Subscription
+			$itemReqEvSubName, $itemReqEvSubDesc = $nameGenerator.getITSEventSubscriptionNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+			$actionReqEvSubName, $actionReqEvSubDesc = $nameGenerator.getITSEventSubscriptionNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			
 		}
 
@@ -1113,6 +1170,16 @@ try
 																 -approverGroupAtDomain $approveGroupName -approvalPolicyType $global:APPROVE_POLICY_TYPE__ITEM_REQ
 		$actionReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $actionReqApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
 																  -approverGroupAtDomain $approveGroupName -approvalPolicyType $global:APPROVE_POLICY_TYPE__ACTION_REQ
+
+
+
+		# Création des Event Subscriptions pour à lier à une approval policy
+		# $itemReqEventSub = addEventSubToApprovalPolicyIfExists -vra $vra -name $itemReqEvSubName -desc $itemReqEvSubDesc -approvalPolicy $itemReqApprovalPolicy `
+		# 												  -vROWorkflow $workflowNewItem -approvalPolicyType $global:APPROVE_POLICY_TYPE__ITEM_REQ
+		# Write-Warning "Handle Event Subscription for 2nd action !"
+		# $actionReqEventSub = addEventSubToApprovalPolicyIfExists -vra $vra -name $actionReqEvSubName -desc $actionReqEvSubDesc -approvalPolicy $actionReqApprovalPolicy `
+		# 												  -vROWorkflow $workflowNewItem -approvalPolicyType $global:APPROVE_POLICY_TYPE__ACTION_REQ
+
 
 		# Création ou mise à jour du Business Group
 		$bg = createOrUpdateBG -vra $vra -existingBGList $existingBGList -bgUnitID $unitID -bgName $bgName -bgDesc $bgDesc `
