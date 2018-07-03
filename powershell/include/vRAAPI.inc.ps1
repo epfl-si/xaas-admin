@@ -1367,29 +1367,66 @@ class vRAAPI
 		IN  : $approverGroupAtDomain	-> FQDN du groupe (<group>@<domain>) qui devra approuver.
 		IN  : $approvalPolicyType   	-> Type de la policy :
                                         	$global:APPROVE_POLICY_TYPE__ITEM_REQ
-                                        	$global:APPROVE_POLICY_TYPE__ACTION_REQ
+											$global:APPROVE_POLICY_TYPE__ACTION_REQ
+		IN  : $approverType				-> Type d'approbation
+										$global:APPROVE_POLICY_APPROVERS__SPECIFIC_USR_GRP
+										$global:APPROVE_POLICY_APPROVERS__USE_EVENT_SUB	
 
 		RET : L'approval policy créé
 	#>
-	[psobject] addEvSubPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType)
+	[psobject] addEvSubPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType, [string]$approverType)
 	{
 		$uri = "https://{0}/approval-service/api/policies" -f $this.server
+
+		$approverDisplayName, $domain = $approverGroupAtDomain.Split('@')
 
 		# Valeur à mettre pour la configuration du BG
 		$replace = @{preApprovalName = $name
 			preApprovalLevelName = $name
 			preApprovalDesc = $desc
 			approverGroupAtDomain = $approverGroupAtDomain
-			approverGroupCustomPropName = $global:VRA_CUSTOM_PROP_VRA_POL_APP_GROUP} 
+			approverGroupCustomPropName = $global:VRA_CUSTOM_PROP_VRA_POL_APP_GROUP
+			approverDisplayName = $approverDisplayName} 
 
-		# Définition du nom de fichier à utiliser pour créer la policy en fonction du type de celle-ci.
+		# Définition du nom de fichier à utiliser pour créer la policy en fonction du type de celle-ci...
+
+		# Si c'est une demande de nouvel élément
 		if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
 		{
-			$json_filename = "pre-approval-policy-evsub-new-item.json"
+			# Si l'approbation doit simplement être faite par un groupe de sécurité donné
+			if($approverType -eq $global:APPROVE_POLICY_APPROVERS__SPECIFIC_USR_GRP)
+			{
+				$json_filename = "pre-approval-policy-usrgrp-new-item.json"	
+			}
+			# Si l'approbation utilise un Event Subscription
+			elseif($approverType -eq $global:APPROVE_POLICY_APPROVERS__USE_EVENT_SUB)
+			{
+				$json_filename = "pre-approval-policy-evsub-new-item.json"	
+			}
+			else 
+			{
+				Throw "Incorrect Approver Type ({0})" -f $approverType
+			}
+			
 		}
+		# Si c'est une demande d'action sur un élément existant
 		elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 		{
-			$json_filename = "pre-approval-policy-evsub-reconfigure.json"
+			# Si l'approbation doit simplement être faite par un groupe de sécurité donné
+			if($approverType -eq $global:APPROVE_POLICY_APPROVERS__SPECIFIC_USR_GRP)
+			{
+				$json_filename = "pre-approval-policy-usrgrp-reconfigure.json"
+			}
+			# Si l'approbation utilise un Event Subscription
+			elseif($approverType -eq $global:APPROVE_POLICY_APPROVERS__USE_EVENT_SUB)
+			{
+				$json_filename = "pre-approval-policy-evsub-reconfigure.json"
+			}
+			else 
+			{
+				Throw "Incorrect Approver Type ({0})" -f $approverType
+			}
+			
 		}
 		else 
 		{
@@ -1456,108 +1493,6 @@ class vRAAPI
 		
 	}
 
-	<#
-		-------------------------------------------------------------------------------------
-		-------------------------------------------------------------------------------------
-									Event Subscriptions
-		-------------------------------------------------------------------------------------
-		-------------------------------------------------------------------------------------
-	#>
-	<#
-		-------------------------------------------------------------------------------------
-		BUT : Renvoie la liste des Subscriptions de l'event broker.
-
-		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
-										de l'URI afin d'effectuer des opérations supplémentaires.
-										Pas besoin de mettre le ? au début des $queryParams
-
-		RET : Tableau d'Approve Policies
-	#>
-	hidden [Array] getEventSubscriptionListQuery([string] $queryParams)
-	{
-		$uri = "https://{0}/advanced-designer-service/api/tenants/{1}/event-broker/subscriptions?page=1&limit=9999" -f $this.server, $this.tenant
-
-		# Si on doit ajouter des paramètres
-		if($queryParams -ne "")
-		{
-			$uri = "{0}&{1}" -f $uri, $queryParams
-		}
-
-		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
-	}
-	hidden [Array] getEventSubscriptionListQuery()
-	{
-		return $this.getEventSubscriptionListQuery($null)
-	}
-
-	<#
-		-------------------------------------------------------------------------------------
-		BUT : Renvoie une Subscription de l'event broker basée sur son nom.
-
-		IN  : $name	-> Le nom de l'approve policy que l'on désire
-
-		RET : Objet contenant l'approve policy
-				$null si n'existe pas
-	#>
-	[PSCustomObject] getEventSubscription([string] $name)
-	{
-		$list = $this.getEventSubscriptionListQuery("`$filter=name eq '{0}'" -f $name)
-
-		if($list.Count -eq 0){return $null}
-		return $list[0]
-	}
-
-
-		<#
-		-------------------------------------------------------------------------------------
-		BUT : Créé une Subscription dans l'event broker. Celle-ci sera exécutée sous des 
-			  conditions données et se chargera de lancer un Workflow vRO
-
-		IN  : $name						-> Nom de la Subscription
-		IN  : $desc						-> Description de la Subscription
-		IN  : $vROWorkflowID			-> ID du Workflow vRO à lancer 
-		IN  : $approvalLevelName   		-> Nom de l'approval level appartenant à l'approval policy
-										   auquel il faut relier la Subscription.
-		IN  : $approvalPolicyType   	-> Type de la policy à laquelle on lie la Subscription :
-                                        	$global:APPROVE_POLICY_TYPE__ITEM_REQ
-                                        	$global:APPROVE_POLICY_TYPE__ACTION_REQ	
-
-		RET : L'approval policy créé
-	#>
-	[PSCustomObject] addEventSubscription([string]$name, [string]$desc, [string]$vROWorkflowID, [string]$approvalLevelName, [string]$approvalPolicyType)
-	{
-		$uri = "https://{0}/advanced-designer-service/api/tenants/{1}/event-broker/subscriptions" -f $this.server, $this.tenant
-
-		# Valeur à mettre pour la configuration du BG
-		$replace = @{subscriptionName = $name
-			subscriptionDesc = $desc
-			vROWorkflowID = $vROWorkflowID
-			approvalLevelName = $approvalLevelName
-			tenant = $this.tenant} 
-
-		# Définition du nom de fichier à utiliser pour créer la Subscription en fonction du type de l'approval policy liée.
-		if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-		{
-			$json_filename = "event-subscription-new-item.json"
-		}
-		elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-		{
-			Throw "Not handled"
-			#$json_filename = "pre-approval-policy-evsub-reconfigure.json"
-		}
-		else 
-		{
-			Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
-		}
-
-		$body = $this.loadJSON($json_filename, $replace)
-
-		# Création de la Policy
-		Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
-
-		# Recherche et retour de la Sbuscription ajoutée
-		return $this.getEventSubscription($name)
-	}	
 
 
 }

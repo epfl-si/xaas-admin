@@ -62,6 +62,16 @@ class vROAPI
 
 	}
 
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ferme une connexion via l'API REST
+
+	#>
+	[Void] disconnect()
+	{
+		# Aucune implémentation de cette méthode pour le moment car pas trouvé comment faire... 
+	}	
+
 
 	<#
 		-------------------------------------------------------------------------------------
@@ -104,7 +114,6 @@ class vROAPI
 		$workflowHashtable = @{}
 		$workflow.attributes | ForEach-Object { $workflowHashtable.($_.name) = $_.value }
 		return $workflowHashtable
-		
 		
 	}
 

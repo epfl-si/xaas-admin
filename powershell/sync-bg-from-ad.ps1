@@ -72,10 +72,14 @@ function printUsage
 	IN  : $approvalPolicyType   -> Type de la policy :
                                     $global:APPROVE_POLICY_TYPE__ITEM_REQ
                                     $global:APPROVE_POLICY_TYPE__ACTION_REQ
+	IN  : $approverType			-> Type d'approbation
+									$global:APPROVE_POLICY_APPROVERS__SPECIFIC_USR_GRP
+									$global:APPROVE_POLICY_APPROVERS__USE_EVENT_SUB
+
 
 	RET : Objet représentant l'approval policy
 #>
-function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType)
+function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType, [string]$approverType)
 {
 	$approvePolicy = $vra.getApprovalPolicy($name)
 
@@ -84,7 +88,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	{
 		$logHistory.addLineAndDisplay(("-> Creating Approval Policy '{0}'..." -f $name))
 		# On créé celle-ci
-		$approvePolicy = $vra.addEvSubPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyType)
+		$approvePolicy = $vra.addEvSubPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyType, $approverType)
 	}
 	else 
 	{
@@ -94,39 +98,6 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	return $approvePolicy
 }
 
-<#
--------------------------------------------------------------------------------------
-	BUT : Créé (si inexistant) une Event Subscription liée à une approval policy
-
-	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $name					-> Nom de la Subscription a créer
-	IN  : $desc					-> Description de la Subscription à créer
-	IN  : $approvalPolicy		-> Objet représentant l'approval policy à laquelle lier la subscription.
-	IN  : $vROWorkflow			-> Objet représentant le Workflow vRO à lancer pour l'approval policy
-	IN  : $approvalPolicyType   -> Type de la policy :
-                                    $global:APPROVE_POLICY_TYPE__ITEM_REQ
-                                    $global:APPROVE_POLICY_TYPE__ACTION_REQ
-
-	RET : Objet représentant la Subscription
-#>
-function addEventSubToApprovalPolicyIfExists([vRAAPI]$vra, [string]$name, [string]$desc, [PSCustomObject]$approvalPolicy, [PSCustomObject]$vROWorkflow, [string]$approvalPolicyType)
-{
-
-	$subscription = $vra.getEventSubscription($name)
-
-	if($subscription -eq $null)
-	{
-		$logHistory.addLineAndDisplay(("-> Creating Subscription '{0}'..." -f $name))
-		$subscription = $vra.addEventSubscription($name, $desc, $vROWorkflow.id, $approvalPolicy.phases[0].levels[0].name, $approvalPolicyType)
-	}
-	else 
-	{
-		$logHistory.addLineAndDisplay(("-> Subscription '{0}' already exists!" -f $name))
-	}
-	
-	return $subscription
-	
-}
 
 <#
 -------------------------------------------------------------------------------------
@@ -1087,10 +1058,9 @@ try
 			$actionReqApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			$approveGroupName = $nameGenerator.getEPFLApproveADGroupName($faculty, $true)
 
-			# Nom et description des Event Subscription
-			$itemReqEvSubName, $itemReqEvSubDesc = $nameGenerator.getEPFLEventSubscriptionNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqEvSubName, $actionReqEvSubDesc = $nameGenerator.getEPFLEventSubscriptionNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-
+			# Vu qu'il y aura des quotas pour les demandes sur le tenant EPFL, on utilise une policy du type "Event Subscription", ceci afin d'appeler un Workflow défini
+			# qui se chargera de contrôler le quota.
+			$approverType = $global:APPROVE_POLICY_APPROVERS__USE_EVENT_SUB
 
 		}
 		# Si Tenant ITServices
@@ -1134,10 +1104,8 @@ try
 			$actionReqApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			$approveGroupName = $nameGenerator.getITSApproveADGroupName($serviceShortName, $true)
 			
-			# Nom et description des Event Subscription
-			$itemReqEvSubName, $itemReqEvSubDesc = $nameGenerator.getITSEventSubscriptionNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqEvSubName, $actionReqEvSubDesc = $nameGenerator.getITSEventSubscriptionNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-			
+			# Pas de quota pour le tenant ITServices donc on peut se permettre de simplement utiliser une approbation via un groupe de sécurité
+			$approverType = $global:APPROVE_POLICY_APPROVERS__SPECIFIC_USR_GRP
 		}
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
@@ -1167,18 +1135,12 @@ try
 
 		# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
 		$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
-																 -approverGroupAtDomain $approveGroupName -approvalPolicyType $global:APPROVE_POLICY_TYPE__ITEM_REQ
+																 -approverGroupAtDomain $approveGroupName -approvalPolicyType $global:APPROVE_POLICY_TYPE__ITEM_REQ `
+																 -approverType $approverType
 		$actionReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $actionReqApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
-																  -approverGroupAtDomain $approveGroupName -approvalPolicyType $global:APPROVE_POLICY_TYPE__ACTION_REQ
+																  -approverGroupAtDomain $approveGroupName -approvalPolicyType $global:APPROVE_POLICY_TYPE__ACTION_REQ `
+																  -approverType $approverType
 
-
-
-		# Création des Event Subscriptions pour à lier à une approval policy
-		# $itemReqEventSub = addEventSubToApprovalPolicyIfExists -vra $vra -name $itemReqEvSubName -desc $itemReqEvSubDesc -approvalPolicy $itemReqApprovalPolicy `
-		# 												  -vROWorkflow $workflowNewItem -approvalPolicyType $global:APPROVE_POLICY_TYPE__ITEM_REQ
-		# Write-Warning "Handle Event Subscription for 2nd action !"
-		# $actionReqEventSub = addEventSubToApprovalPolicyIfExists -vra $vra -name $actionReqEvSubName -desc $actionReqEvSubDesc -approvalPolicy $actionReqApprovalPolicy `
-		# 												  -vROWorkflow $workflowNewItem -approvalPolicyType $global:APPROVE_POLICY_TYPE__ACTION_REQ
 
 
 		# Création ou mise à jour du Business Group

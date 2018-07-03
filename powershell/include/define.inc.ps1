@@ -43,6 +43,10 @@ $global:TARGET_TENANT_LIST = @($global:VRA_TENANT_EPFL, $global:VRA_TENANT_ITSER
 $global:APPROVE_POLICY_TYPE__ITEM_REQ = 'new'
 $global:APPROVE_POLICY_TYPE__ACTION_REQ = 'reconfigure'
 
+# Les types d'approver pour les approval policies
+$global:APPROVE_POLICY_APPROVERS__SPECIFIC_USR_GRP = 'usrGrp'
+$global:APPROVE_POLICY_APPROVERS__USE_EVENT_SUB = 'eventSub'
+
 # Information sur les services au sens vRA
 $global:VRA_SERVICE_SUFFIX_PUBLIC  =" (Public)"
 $global:VRA_SERVICE_SUFFIX_PRIVATE =" (Private)"
@@ -66,11 +70,3 @@ $global:VRA_BG_TYPE_UNIT 	 = "unit"
 # Status de Business Group possibles
 $global:VRA_BG_STATUS_ALIVE = "alive"
 $global:VRA_BG_STATUS_GHOST = "ghost"
-
-# Opérateurs possibles pour les expressions qui sont typiquement utilisées dans les Event Subscriptions
-$global:VRA_EXPRESSION_OPERATOR__EQUALS = "equals"
-$global:VRA_EXPRESSION_OPERATOR__CONTAINS = "contains"
-$global:VRA_EXPRESSION_OPERATOR__ENDS_WITH = "endsWith"
-$global:VRA_EXPRESSION_OPERATOR__NOT_EQUALS = "notEquals"
-$global:VRA_EXPRESSION_OPERATOR__STARTS_WITH = "startsWith"
-$global:VRA_EXPRESSION_OPERATOR__WITHIN = "within"
