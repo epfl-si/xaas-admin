@@ -486,7 +486,7 @@ class NameGenerator
             Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
         }
 
-        $name = "{0}_approval_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($facultyName), $name_suffix
+        $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($facultyName), $name_suffix
         $desc = "Approval policy for {0} for {1} Faculty" -f $type_desc, $facultyName.ToUpper()
         return @($name, $desc)
     }
@@ -826,7 +826,7 @@ class NameGenerator
             Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
         }
 
-        $name = "{0}_approval_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($serviceShortName), $suffix
+        $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($serviceShortName), $suffix
         $desc = "Approval policy for {0} for Service: {1}" -f $type_desc, $serviceName
 
         return @($name, $desc)
