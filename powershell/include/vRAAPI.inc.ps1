@@ -249,7 +249,7 @@ class vRAAPI
 		$body = $this.loadJSON("business-group.json", $replace)
 
 		# Ajout des éventuelles custom properties
-		$customProperties.Keys | ForEach {
+		$customProperties.Keys | ForEach-Object {
 
 			$body.extensionData.entries += $this.loadJSON("business-group-extension-data-custom.json", `
 															 			 @{"key" = $_
