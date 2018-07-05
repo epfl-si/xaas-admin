@@ -1436,7 +1436,7 @@ class vRAAPI
 		$body = $this.loadJSON($json_filename, $replace)
 
 		# Création de la Policy
-		Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
+		$res = Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
 
 		# Recherche et retour de l'Approval Policy ajoutée
 		return $this.getApprovalPolicy($name)
