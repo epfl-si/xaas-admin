@@ -128,7 +128,7 @@ function handleNotifications
 				{
 					$docUrl = ""
 					Write-Warning "Set doc URL"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Active Directory groups missing" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Error - Active Directory groups missing" -targetEnv $targetEnv -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les groupes Active Directory suivants sont manquants pour l'environnement <b>{0}</b> et le Tenant <b>EPFL</b>. `
 <br>Leur absence empêche la création d'autres groupes AD ainsi que des Business Groups qui les utilisent. `
 <br>Veuillez les créer à la main comme expliqué dans la procédure:`
@@ -140,7 +140,7 @@ function handleNotifications
 				'missingITSADGroups'
 				{
 					$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=72516653"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Active Directory groups missing" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Error - Active Directory groups missing" -targetEnv $targetEnv -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les groupes Active Directory suivants sont manquants pour l'environnement <b>{0}</b> et le Tenant <b>ITServices</b>. `
 <br>Leur absence empêche la création d'autres groupes AD ainsi que des Business Groups qui les utilisent. `
 <br>Veuillez les créer à la main comme expliqué dans la procédure:`
@@ -665,7 +665,7 @@ catch # Dans le cas d'une erreur dans le script
 	$logHistory.addErrorAndDisplay(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
 	
 	# Envoi d'un message d'erreur aux admins
-	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv
+	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant $targetTenant
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Web.HttpUtility]::HtmlEncode($errorTrace))
 

@@ -175,12 +175,13 @@ function ADGroupExists
 
 	IN  : $shortSubject -> sujet court
 	IN  : $targetEnv	-> Environnement courant
+	IN  : $targetTenant -> Tenant courant
 #>
 function getvRAMailSubject
 {
 	param([string] $shortSubject, [string]$targetEnv)
 
-	return "vRA Service [{0}]: {1}" -f $targetEnv, $shortSubject
+	return "vRA Service [{0}->{1}]: {2}" -f $targetEnv, $targetTenant, $shortSubject
 }
 
 

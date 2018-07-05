@@ -450,7 +450,7 @@ function prepareAddMissingBGEntPublicServices
 function sendErrorMailNoResTemplateFound
 {
 	$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=72516585"
-	$mailSubject = getvRAMailSubject -shortSubject "Error - No Reservation Template found for tenant!" -targetEnv $targetEnv
+	$mailSubject = getvRAMailSubject -shortSubject "Error - No Reservation Template found for tenant!" -targetEnv $targetEnv -targetTenant $targetTenant
 	$message = getvRAMailContent -content ("Il n'existe aucun Template de Reservation pour la création des Business Groups sur l'environnement <b>{0}</b>.<br><br>Veuillez créer au moins un `
 	Template à partir de la <a href='{1}'>documentation suivante</a>." -f $targetEnv, $docUrl)	
 
@@ -750,17 +750,18 @@ function handleNotifications
 				'newBGMachinePrefixNotFound'
 				{
 					$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=70976775"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Machine prefixes not found" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Error - Machine prefixes not found" -targetEnv $targetEnv -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les préfixes de machines suivants n'ont pas été trouvés `
-dans vRA pour l'environnement <b>{0}</b>.<br>Veuillez les créer à la main:`
-<br><ul><li>{1}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{2}'>ici</a>."  -f $targetEnv, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
+dans vRA pour l'environnement <b>{0}</b> et le tenant <b>{1}</b>.<br>Veuillez les créer à la main:`
+<br><ul><li>{2}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{3}'>ici</a>."  -f $targetEnv, $targetTenant, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
 				}
 
 				# ---------------------------------------
 				# BG sans "custom property" permettant de définir le statut
 				'bgWithoutCustomPropStatus'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$global:VRA_CUSTOM_PROP_VRA_BG_STATUS' custom property" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$global:VRA_CUSTOM_PROP_VRA_BG_STATUS' custom property" `
+													 -targetEnv $targetEnv -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les Business Groups suivants ne contiennent pas la 'Custom Property' `
 <b>{0}</b>.<br>Veuillez faire le nécessaire:`
 <br><ul><li>{1}</li></ul>"  -f $global:VRA_CUSTOM_PROP_VRA_BG_STATUS, ($uniqueNotifications -join "</li>`n<li>"))
@@ -770,7 +771,8 @@ dans vRA pour l'environnement <b>{0}</b>.<br>Veuillez les créer à la main:`
 				# BG sans "custom property" permettant de définir le type
 				'bgWithoutCustomPropType'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$global:VRA_CUSTOM_PROP_VRA_BG_TYPE' custom property" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$global:VRA_CUSTOM_PROP_VRA_BG_TYPE' custom property" `
+													 -targetEnv $targetEnv -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les Business Groups suivants ne contiennent pas la 'Custom Property' `
 <b>{0}</b>.<br>Veuillez faire le nécessaire:`
 <br><ul><li>{1}</li></ul>"  -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, ($uniqueNotifications -join "</li>`n<li>"))
@@ -780,7 +782,7 @@ dans vRA pour l'environnement <b>{0}</b>.<br>Veuillez les créer à la main:`
 				# BG marqué comme étant des 'ghost'
 				'bgSetAsGhost'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Info - Business Group marked as 'ghost'" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Info - Business Group marked as 'ghost'" -targetEnv $targetEnv  -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les Business Groups suivants ont leur statut qui est passé à 'ghost' `
 car les unités associées ont disparu mais il y a toujours des items contenus dans les Business Groups.<br>Les droits ont été donnés `
 aux administrateurs de la faculté afin qu'ils puissent gérer la chose.
@@ -791,7 +793,7 @@ aux administrateurs de la faculté afin qu'ils puissent gérer la chose.
 				# BG effacés
 				'bgDeleted'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Info - Business Group deleted" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Info - Business Group deleted" -targetEnv $targetEnv  -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les Business Groups suivants ont été effacés car les unités associées `
 ont disparu et il n'y avait plus aucun item contenu dans les Business Groups.`
 <br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
@@ -802,7 +804,7 @@ ont disparu et il n'y avait plus aucun item contenu dans les Business Groups.`
 				'facRenameMachinePrefixNotFound'
 				{
 					$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=70976775"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Machine prefixes not found for new faculty name" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Error - Machine prefixes not found for new faculty name" -targetEnv $targetEnv  -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les préfixes de machines suivants n'ont pas été trouvés `
 dans vRA pour l'environnement <b>{0}</b>.<br>Ceci signifie que les Business Groups de la faculté renommée n'ont pas pu être renommés.`
 <br>Veuillez créer les préfixes de machine à la main:`
@@ -813,7 +815,7 @@ dans vRA pour l'environnement <b>{0}</b>.<br>Ceci signifie que les Business Grou
 				# Groupes AD soudainement devenus vides...
 				'emptyADGroups'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Info - AD groups empty for Business Group" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Info - AD groups empty for Business Group" -targetEnv $targetEnv  -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les groupes Active Directory suivants (avec nom du Business Group) `
 ne contiennent plus aucun utilisateur. Il s'agit peut-être d'une erreur dans la synchro depuis MIIS ou autre, à surveiller:`
 <br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
@@ -823,7 +825,7 @@ ne contiennent plus aucun utilisateur. Il s'agit peut-être d'une erreur dans la
 				# Groupes AD pour les rôles...
 				'adGroupsNotFound'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Error - AD groups not found fo Business Group" -targetEnv $targetEnv
+					$mailSubject = getvRAMailSubject -shortSubject "Error - AD groups not found fo Business Group" -targetEnv $targetEnv  -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les groupes Active Directory suivants n'ont pas été trouvés.`
 Il s'agit peut-être d'une erreur dans l'exécution du script 'sync-ad-groups-from-ldap.ps1' qui créé ceux-ci:`
 <br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
@@ -1228,8 +1230,8 @@ catch # Dans le cas d'une erreur dans le script
 
 	$logHistory.addErrorAndDisplay(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
 	
-	# Envoi d'un message d'erreur aux admins
-	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv
+	# Envoi d'un message d'erreur aux admins 
+	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant $targetTenant
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Web.HttpUtility]::HtmlEncode($errorTrace))
 
