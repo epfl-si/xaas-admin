@@ -592,9 +592,9 @@ try
 			if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroups `
 				 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
 			{
-				# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
+				# Enregistrement du nom du groupe qui pose problème et passage au service suivant
 				$notifications['missingITSADGroups'] += $userSharedGroupNameGroups
-				break
+				continue
 			}
 			# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
 			$doneADGroupList += $userSharedGroupNameAD
