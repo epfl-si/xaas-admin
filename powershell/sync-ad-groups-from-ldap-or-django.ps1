@@ -556,7 +556,7 @@ try
 			{
 				# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 				$notifications['missingITSADGroups'] += $approveGroupNameGroups
-				break
+				continue
 			}
 			
 			# --------------------------------- ROLES
@@ -572,9 +572,9 @@ try
 			if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
 				 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
 			{
-				# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
+				# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 				$notifications['missingITSADGroups'] += $admSupGroupNameGroups
-				break
+				continue
 			}
 			# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
 			$doneADGroupList += $admSupGroupNameAD
@@ -592,7 +592,7 @@ try
 			if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroups `
 				 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
 			{
-				# Enregistrement du nom du groupe qui pose problème et passage au service suivant
+				# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 				$notifications['missingITSADGroups'] += $userSharedGroupNameGroups
 				continue
 			}
