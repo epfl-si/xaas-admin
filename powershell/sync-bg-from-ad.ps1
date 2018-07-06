@@ -552,9 +552,6 @@ function createOrUpdateBGReservations
 }
 
 
-
-
-
 <#
 -------------------------------------------------------------------------------------
 	BUT : Efface un BG et tous ses composants (s'il ne contient aucun item).
