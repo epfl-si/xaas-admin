@@ -27,7 +27,7 @@ class NameGenerator
     hidden $GROUP_TYPE_GROUPS = 'groupsGroup'
 
     static [string] $AD_GROUP_PREFIX = "vra_"
-    static [string] $AD_DOMAIN_SUFFIX = "@intranet.epfl.ch"
+    static [string] $AD_DOMAIN_NAME = "intranet.epfl.ch"
     static [string] $AD_GROUP_GROUPS_SUFFIX = "_AppGrpU"
     static [string] $GROUPS_EMAIL_SUFFIX = "@groupes.epfl.ch"
 
@@ -1242,13 +1242,13 @@ class NameGenerator
     [string] getADGroupFQDN([string]$groupShortName)
     {
         # On check que ça soit bien un nom court qu'on ai donné.
-        if($groupShortName.EndsWith([NameGenerator]::AD_DOMAIN_SUFFIX))
+        if($groupShortName.EndsWith([NameGenerator]::AD_DOMAIN_NAME))
         {
             return $groupShortName
         }
         else 
         {
-            return $groupShortName += [NameGenerator]::AD_DOMAIN_SUFFIX   
+            return $groupShortName += ("@{0}" -f [NameGenerator]::AD_DOMAIN_NAME)
         }
     }
 
@@ -1261,7 +1261,7 @@ class NameGenerator
     #>
     [string]getDirectoryName()
     {
-        return [NameGenerator]::AD_DOMAIN_SUFFIX -replace "@", ""
+        return [NameGenerator]::AD_DOMAIN_NAME
     }
 
 
