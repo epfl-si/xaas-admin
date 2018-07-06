@@ -113,27 +113,6 @@ class vRAAPI
 	}
 
 
-
-	<#
-		-------------------------------------------------------------------------------------
-		BUT : Reformate une liste d'admins pour concaténer le nom et le domaine et mettre le tout
-			  dans un tableau qui est renvoyé.
-
-		IN  : $inputList	-> la liste qui est renvoyée par une interrogation de l'API
-
-		RET : Tableau avec les éléments
-	#>
-	hidden[Array]reformatAdminList([PSCustomObject]$inputList)
-	{
-		$outputList = @()
-		# Récupération du contenu du rôle des admins de faculté pour le BG
-		$inputList | ForEach-Object { $outputList += "{0}@{1}" -f $_.principalId.name, $_.principalId.domain }
-
-		return $outputList
-	}
-
-
-
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Ferme une connexion via l'API REST
@@ -420,10 +399,14 @@ class vRAAPI
 	{
 		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/principals/" -f $this.server, $this.tenant, $BGID, $role
 
-		# Suppression du rôle
+		# Récupération de la liste d'objets
 		$res =  (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers ).content
 
-		return $this.reformatAdminList($res)
+		# On remet le tout dans un tableau en récupérant ce qui nous intéresse
+		$resArray = @()
+		$res | ForEach-Object { $resArray += "{0}@{1}" -f $_.principalId.name, $_.principalId.domain }
+
+		return $resArray
 	}
 
 	<#
@@ -1177,7 +1160,10 @@ class vRAAPI
 		}
 
 		# Mise dans un tableau et on renvoie.
-		return $this.reformatAdminList($adminList)
+		$resArray = @()
+		$adminList | ForEach-Object { $resArray += "{0}@{1}" -f $_.principalRef.name, $_.principalRef.domain }
+
+		return $resArray
 	}
 
 
