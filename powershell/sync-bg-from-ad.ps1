@@ -590,20 +590,24 @@ function deleteBGAndComponentsIfPossible
 			$notifications['bgSetAsGhost'] += $bg.name
 
 			# On marque le BG comme "Ghost"
-			$vra.updateBG($bg, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS_GHOST})
+			$vra.updateBG($bg, $null, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS_GHOST})
 
 			$counters.inc('BGGhost')
 
 			# Si Tenant EPFL
 			if($bg.tenant -eq $global:VRA_TENANT_EPFL)
 			{
-				$logHistory.addWarningAndDisplay("!! TODO !!")
+				# Récupération du contenu du rôle des admins de faculté pour le BG
+				$facAdmins = $vra.getBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER") 
+				
+				# Ajout des admins de la faculté de l'unité du BG afin qu'ils puissent gérer les élments du BG.
+				createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $facAdmins
 			}
 			# Si Tenant ITServices
 			elseif($bg.tenant -eq $global:VRA_TENANT_ITSERVICES)
 			{
-				$tenantAdmins = $vra.getTenantAdminGroupList()
-				# Ajout des admins du tenant comme pouvant gérer les éléments du BG
+				$tenantAdmins = $vra.getTenantAdminGroupList($bg.tenant)
+				# Ajout des admins LOCAUX du tenant comme pouvant gérer les éléments du BG
 				createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $tenantAdmins
 			}
 			else # Tenant non géré
@@ -869,7 +873,7 @@ function checkIfADGroupsExists
 	Foreach($groupName in $groupList)
 	{
 		# Si le groupe ressemble à 'xyz@intranet.epfl.ch'
-		if($groupName.endswith([NameGenerator]::AD_DOMAIN_SUFFIX))
+		if($groupName.endswith([NameGenerator]::AD_DOMAIN_NAME))
 		{
 			# On explose pour avoir :
 			# $groupShort = 'xyz' 
@@ -1195,6 +1199,7 @@ try
 	$logHistory.addLineAndDisplay("Business Groups created from AD!")
 
 	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")
+	# ----------------------------------------------------------------------------------------------------------------------
 	# ----------------------------------------------------------------------------------------------------------------------
 
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
