@@ -113,6 +113,27 @@ class vRAAPI
 	}
 
 
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Reformate une liste d'admins pour concaténer le nom et le domaine et mettre le tout
+			  dans un tableau qui est renvoyé.
+
+		IN  : $inputList	-> la liste qui est renvoyée par une interrogation de l'API
+
+		RET : Tableau avec les éléments
+	#>
+	hidden[Array]reformatAdminList([PSCustomObject]$inputList)
+	{
+		$outputList = @()
+		# Récupération du contenu du rôle des admins de faculté pour le BG
+		$inputList | ForEach-Object { $outputList += "{0}@{1}" -f $_.principalId.name, $_.principalId.domain }
+
+		return $outputList
+	}
+
+
+
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Ferme une connexion via l'API REST
@@ -392,6 +413,8 @@ class vRAAPI
 								Support role 			=> CSP_SUPPORT
 								Shared access role	=> CSP_CONSUMER_WITH_SHARED_ACCESS
 								User role				=> CSP_CONSUMER
+
+		RET : Tableau avec la liste des admins au format "admin@domain"	
 	#>
 	[Array] getBGRoleContent([string] $BGID, [string] $role)
 	{
@@ -400,8 +423,7 @@ class vRAAPI
 		# Suppression du rôle
 		$res =  (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers ).content
 
-		return $res
-
+		return $this.reformatAdminList($res)
 	}
 
 	<#
@@ -1135,11 +1157,27 @@ class vRAAPI
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des admins pour le tenant courant.
 
-		RET : Liste des admins
+		IN  : $domain	-> Le nom de domaine pour lequel on veut la liste des admins.
+						   - "" -> pas de filtre
+						   - nom du tenant -> admins locaux au tenant
+						   - nom du domaine AD -> ([NameGenerator]::AD_DOMAIN_NAME) pour avoir
+						   les admins se trouvant dans le domaine AD
+
+		RET : Liste des admins au format "admin@domain"
 	#>
-	[Array] getTenantAdminGroupList()
+	[Array] getTenantAdminGroupList([string]$domain)
 	{
-		return $this.getPrincipalsListQuery() | Where-Object {($_.tenant -eq $this.tenant) -and ($_.principalRef.domain -eq $this.tenant)}
+		# On récupère tous les admins 
+		$adminList = $this.getPrincipalsListQuery()
+
+		# Application du filtre si besoin 
+		if($domain -ne "")
+		{
+			$adminList = $adminList | Where-Object {$_.principalRef.domain -eq $domain}
+		}
+
+		# Mise dans un tableau et on renvoie.
+		return $this.reformatAdminList($adminList)
 	}
 
 
