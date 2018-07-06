@@ -85,13 +85,19 @@ function createADGroupWithContent
 
 		if(-not $SIMULATION_MODE)
 		{
+			$logHistory.addLineAndDisplay(("--> Creating AD group '{0}'..." -f $groupName))
 			# Création du groupe
 			New-ADGroup -Name $groupName -Description $groupDesc -GroupScope DomainLocal -Path $OU
 
+			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Length))
 			Add-ADGroupMember $groupName -Members $groupMemberGroup
 
 			$counters.inc('ADGroupsCreated')
 		}
+	}
+	else # Le groupe existe déjà
+	{	
+		$logHistory.addLineAndDisplay(("--> AD group '{0}' already exists" -f $groupName))
 	}
 	return $true
 }
@@ -541,7 +547,10 @@ try
 
 			$logHistory.addLineAndDisplay(("-> [{0}/{1}] Service {2}..." -f $serviceNo, $servicesList.Count, $service.$global:MYSQL_ITS_SERVICES__SHORTNAME))
 
-			
+			$counters.inc('its.serviceProcessed')
+
+			$serviceNo += 1
+
 			# --------------------------------- APPROVE
 
 			# Génération du nom du broupe dont on va avoir besoin pour approuver les demandes pour le service. 
@@ -599,9 +608,7 @@ try
 			# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
 			$doneADGroupList += $userSharedGroupNameAD
 
-			$counters.inc('its.serviceProcessed')
-
-			$serviceNo += 1
+			
 
 		}# FIN BOUCLE de parcours des services renvoyés
 
