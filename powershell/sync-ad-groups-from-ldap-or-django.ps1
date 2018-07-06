@@ -89,7 +89,7 @@ function createADGroupWithContent
 			# Création du groupe
 			New-ADGroup -Name $groupName -Description $groupDesc -GroupScope DomainLocal -Path $OU
 
-			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Length))
+			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
 			Add-ADGroupMember $groupName -Members $groupMemberGroup
 
 			$counters.inc('ADGroupsCreated')
