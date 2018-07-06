@@ -871,17 +871,17 @@ class NameGenerator
         $tenantOU = ""
         switch($this.tenant)
         {
-            $global:VRA_TENANT_DEFAULT { $tenantOU = "default"}
-            $global:VRA_TENANT_EPFL { $tenantOU = "EPFL"}
-            $global:VRA_TENANT_ITSERVICES { $tenantOU = "ITServices"}
+            $global:VRA_TENANT__DEFAULT { $tenantOU = "default"}
+            $global:VRA_TENANT__EPFL { $tenantOU = "EPFL"}
+            $global:VRA_TENANT__ITSERVICES { $tenantOU = "ITServices"}
         }
 
         $envOU = ""
         switch($this.env)
         {
-            $global:TARGET_ENV_DEV {$envOU = "Dev"}
-            $global:TARGET_ENV_TEST {$envOU = "Test"}
-            $global:TARGET_ENV_PROD {$envOU = "Prod"}
+            $global:TARGET_ENV__DEV {$envOU = "Dev"}
+            $global:TARGET_ENV__TEST {$envOU = "Test"}
+            $global:TARGET_ENV__PROD {$envOU = "Prod"}
         }
 
         # Retour du résultat 
@@ -916,9 +916,9 @@ class NameGenerator
     {
         switch($this.env)
         {
-            $global:TARGET_ENV_DEV {return 'd'}
-            $global:TARGET_ENV_TEST {return 't'}
-            $global:TARGET_ENV_PROD {return 'p'}
+            $global:TARGET_ENV__DEV {return 'd'}
+            $global:TARGET_ENV__TEST {return 't'}
+            $global:TARGET_ENV__PROD {return 'p'}
         }
         return ""
     }    
@@ -937,9 +937,9 @@ class NameGenerator
     {
         switch($this.tenant)
         {
-            $global:VRA_TENANT_DEFAULT { return 'def'}
-            $global:VRA_TENANT_EPFL { return 'epfl'}
-            $global:VRA_TENANT_ITSERVICES { return 'its'}
+            $global:VRA_TENANT__DEFAULT { return 'def'}
+            $global:VRA_TENANT__EPFL { return 'epfl'}
+            $global:VRA_TENANT__ITSERVICES { return 'its'}
         }
         return ""
     } 
@@ -1065,7 +1065,7 @@ class NameGenerator
         $partList = $ADGroupName.Split("_")
 
         # EPFL
-        if($this.tenant -eq $global:VRA_TENANT_EPFL)
+        if($this.tenant -eq $global:VRA_TENANT__EPFL)
         {
             # Le nom du groupe devait avoir la forme :
             # vra_<envShort>_<facultyID>_<unitID>
@@ -1078,7 +1078,7 @@ class NameGenerator
             return @($partList[2], $partList[3])
         }
         # ITServices
-        elseif($this.tenant -eq $global:VRA_TENANT_ITSERVICES)
+        elseif($this.tenant -eq $global:VRA_TENANT__ITSERVICES)
         {
             # Le nom du groupe devait avoir la forme :
             # vra_<envShort>_<serviceShortName>
@@ -1119,7 +1119,7 @@ class NameGenerator
         $partList = $ADGroupDesc.Split(";")
 
         # EPFL
-        if($this.tenant -eq $global:VRA_TENANT_EPFL)
+        if($this.tenant -eq $global:VRA_TENANT__EPFL)
         {
             # Le nom du groupe devait avoir la forme :
             # <facultyNam>;<unitName>
@@ -1132,7 +1132,7 @@ class NameGenerator
             return $partList
         }
         # ITServices
-        elseif($this.tenant -eq $global:VRA_TENANT_ITSERVICES)
+        elseif($this.tenant -eq $global:VRA_TENANT__ITSERVICES)
         {
             # Le nom du groupe devait avoir la forme :
             # <snowServiceId>;<serviceName>
@@ -1203,7 +1203,7 @@ class NameGenerator
         $partList = $bgName.Split("_")
 
         # Si Tenant EPFL
-        if($this.tenant -eq $global:VRA_TENANT_EPFL)
+        if($this.tenant -eq $global:VRA_TENANT__EPFL)
         {
             # Le nom du BG a la structure suivante :
             # epfl_<faculty>_<unit>
@@ -1214,7 +1214,7 @@ class NameGenerator
             return "{0}_{1}_{2}_{3}" -f $this.getTenantShortName(), $partList[1], $partList[2], $this.transformForGroupName($clusterName)
         }
         # Si Tenant ITServices
-        elseif($this.tenant -eq $global:VRA_TENANT_ITSERVICES)
+        elseif($this.tenant -eq $global:VRA_TENANT__ITSERVICES)
         {
             # Le nom du BG a la structure suivante :
             # epfl_<serviceShortName>

@@ -16,6 +16,6 @@
 # Peut être trouvé avec la commande suivante passée sur la console SSH de l'appliance vRA :
 # grep -i cafe_cli= /etc/vcac/solution-users.properties | sed -e 's/cafe_cli=//'
 $global:VRO_CAFE_CLIENT_ID = @{}
-$global:VRO_CAFE_CLIENT_ID[$global:TARGET_ENV_DEV]	 = ""
-$global:VRO_CAFE_CLIENT_ID[$global:TARGET_ENV_TEST] = ""
-$global:VRO_CAFE_CLIENT_ID[$global:TARGET_ENV_PROD] = ""
+$global:VRO_CAFE_CLIENT_ID[$global:TARGET_ENV__DEV]	 = ""
+$global:VRO_CAFE_CLIENT_ID[$global:TARGET_ENV__TEST] = ""
+$global:VRO_CAFE_CLIENT_ID[$global:TARGET_ENV__PROD] = ""

@@ -18,7 +18,7 @@ class vROAPI
 {
 	hidden [string]$token
 	hidden [string]$server
-	hidden [string]$tenant  = $global:VRA_TENANT_DEFAULT
+	hidden [string]$tenant  = $global:VRA_TENANT__DEFAULT
 	hidden [System.Collections.Hashtable]$headers
 
 	<#

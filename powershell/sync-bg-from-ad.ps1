@@ -135,8 +135,8 @@ function createOrUpdateBG
 		if(($bg = getUnitBG -unitID $bgUnitID -fromList $existingBGList) -eq $null)
 		{
 			# Ajout des customs properties en vue de sa création
-			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE_UNIT
-			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS_ALIVE
+			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__UNIT
+			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS__ALIVE
 		}
 
 		# Tentative de recherche du préfix de machine
@@ -174,8 +174,8 @@ function createOrUpdateBG
 		if(($bg = $vra.getBG($bgName)) -eq $null)
 		{
 			# Création des propriété custom
-			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE_SERVICE
-			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS_ALIVE
+			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__SERVICE
+			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS__ALIVE
 		}
 		# Pas d'ID de machine pour ce Tenant
 		$machinePrefixId = $null
@@ -201,18 +201,21 @@ function createOrUpdateBG
 	else
 	{
 		# Si le nom du BG est incorrect, (par exemple si le nom de l'unité ou celle de la faculté a changé)
-		# Note: Dans le cas du tenant ITServices, vu qu'on fait une recherche avec le nom, on n'arrivera
-		#       jamais à l'intérieur de cette condition IF
-		if($bg.name -ne $bgName)
+		# Note: Dans le cas du tenant ITServices, vu qu'on fait une recherche avec le nom, ce test ne retournera
+		# 		jamais $true
+		# OU
+		# Si le BG est désactivé
+		if(($bg.name -ne $bgName) -or (!(isBGAlive -bg $bg)))
 		{
 			
-			$logHistory.addLineAndDisplay(("-> Renaming BG '{0}' to '{1}'" -f $bg.name, $bgName))
+			$logHistory.addLineAndDisplay(("-> Renaming and/or Reactivating BG '{0}' to '{1}'" -f $bg.name, $bgName))
 
 			# Mise à jour des informations
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS_ALIVE})
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
 
 			$counters.inc('BGUpdated')
 		}
+		
 	}
 
 	return $bg
@@ -403,7 +406,7 @@ function prepareAddMissingBGEntPublicServices
 
 
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
-	$publicServices = $vra.getServiceListMatch($global:VRA_SERVICE_SUFFIX_PUBLIC)
+	$publicServices = $vra.getServiceListMatch($global:VRA_SERVICE_SUFFIX__PUBLIC)
 
 	# Parcours des services à ajouter à l'entitlement créé
 	ForEach($publicService in $publicServices)
@@ -587,12 +590,12 @@ function deleteBGAndComponentsIfPossible
 			$notifications['bgSetAsGhost'] += $bg.name
 
 			# On marque le BG comme "Ghost"
-			$vra.updateBG($bg, $null, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS_GHOST})
+			$vra.updateBG($bg, $null, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__GHOST})
 
 			$counters.inc('BGGhost')
 
 			# Si Tenant EPFL
-			if($bg.tenant -eq $global:VRA_TENANT_EPFL)
+			if($bg.tenant -eq $global:VRA_TENANT__EPFL)
 			{
 				# Récupération du contenu du rôle des admins de faculté pour le BG
 				$facAdmins = $vra.getBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER") 
@@ -601,7 +604,7 @@ function deleteBGAndComponentsIfPossible
 				createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $facAdmins
 			}
 			# Si Tenant ITServices
-			elseif($bg.tenant -eq $global:VRA_TENANT_ITSERVICES)
+			elseif($bg.tenant -eq $global:VRA_TENANT__ITSERVICES)
 			{
 				$tenantAdmins = $vra.getTenantAdminGroupList($bg.tenant)
 				# Ajout des admins LOCAUX du tenant comme pouvant gérer les éléments du BG
@@ -709,7 +712,7 @@ function isBGAlive
 	# Si la "Custom property" a été trouvée,
 	if($customProp -ne $null)
 	{
-		return ($customProp.value.values.entries | Where-Object {$_.key -eq "value"}).value.value -eq $global:VRA_BG_STATUS_ALIVE
+		return ($customProp.value.values.entries | Where-Object {$_.key -eq "value"}).value.value -eq $global:VRA_BG_STATUS__ALIVE
 	}
 
 	<# Si on arrive ici, c'est qu'on n'a pas défini de clef (pour une raison inconnue) pour enregistrer le statut
@@ -928,7 +931,7 @@ catch {
 
 try {
 	# Création d'une connexion au serveur vRA pour accéder aux API REST de vRO
-	$vro = [vROAPI]::new($nameGenerator.getvRAServerName(), $global:VRO_CAFE_CLIENT_ID[$targetEnv], $global:VRA_PASSWORD_LIST[$targetEnv][$global:VRA_TENANT_DEFAULT])
+	$vro = [vROAPI]::new($nameGenerator.getvRAServerName(), $global:VRO_CAFE_CLIENT_ID[$targetEnv], $global:VRA_PASSWORD_LIST[$targetEnv][$global:VRA_TENANT__DEFAULT])
 }
 catch {
 	Write-Error "Error connecting to vRO API !"
@@ -992,7 +995,7 @@ try
 	 groupe pour filtrer mais d'autres groupes avec des noms débutant de la même manière ont été ajoutés donc le filtre par expression régulière
 	 a été nécessaire.
 	#>
-	if($targetTenant -eq $global:VRA_TENANT_EPFL)
+	if($targetTenant -eq $global:VRA_TENANT__EPFL)
 	{
 		$adGroupNameRegex = $nameGenerator.getEPFLADGroupNameRegEx("CSP_CONSUMER")
 	}
@@ -1023,7 +1026,7 @@ try
 		
 
 		# Si Tenant EPFL
-		if($targetTenant -eq $global:VRA_TENANT_EPFL)
+		if($targetTenant -eq $global:VRA_TENANT__EPFL)
 		{
 			# Eclatement de la description et du nom pour récupérer le informations
 			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
@@ -1067,7 +1070,7 @@ try
 
 		}
 		# Si Tenant ITServices
-		elseif($targetTenant -eq $global:VRA_TENANT_ITSERVICES)
+		elseif($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
 		{
 			# Pour signifier à la fonction createOrUpdateBG qu'on n'est pas dans le tenant EPFL.
 			$unitID = ""
@@ -1203,7 +1206,7 @@ try
 	$vra.getBGList() | ForEach-Object {
 
 		# Si c'est un BG d'unité ou de service et s'il faut l'effacer
-		if(((isBGOfType -bg $_ -type $global:VRA_BG_TYPE_SERVICE) -or (isBGOfType -bg $_ -type $global:VRA_BG_TYPE_UNIT)) -and `
+		if(((isBGOfType -bg $_ -type $global:VRA_BG_TYPE__SERVICE) -or (isBGOfType -bg $_ -type $global:VRA_BG_TYPE__UNIT)) -and `
 			($doneBGList -notcontains $_.name))
 		{
 			$logHistory.addLineAndDisplay(("-> Deleting Business Group '{0}'..." -f $_.name))

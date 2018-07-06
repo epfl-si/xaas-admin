@@ -15,9 +15,9 @@
 #>
 
 # Noms de la base de données à utiliser en fonction de l'environnement
-$TARGET_ENV_MYSQL_DB_NAME = @{$global:TARGET_ENV_DEV = "xaas_admin_dev"
-                                     $global:TARGET_ENV_TEST = "xaas_admin_test"
-                                     $global:TARGET_ENV_PROD = "xaas_admin_prod"}
+$TARGET_ENV_MYSQL_DB_NAME = @{$global:TARGET_ENV__DEV = "xaas_admin_dev"
+                                     $global:TARGET_ENV__TEST = "xaas_admin_test"
+                                     $global:TARGET_ENV__PROD = "xaas_admin_prod"}
 
 # Nom de l'utilisateur pour accéder à la base de données MySQL
 $MYSQL_USERNAME = "xaas_admin_user"
