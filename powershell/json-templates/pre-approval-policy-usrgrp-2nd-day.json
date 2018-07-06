@@ -31,7 +31,6 @@
     "stateName": "Active",
     "phases": [
         {
-            "id": "f0ff23ab-2789-4252-90a3-cdb552db667b",
             "phasetype": {
                 "id": "com.vmware.cafe.catalog.request.pre",
                 "name": "Pre Approval",
@@ -42,7 +41,6 @@
             },
             "levels": [
                 {
-                    "id": "80eb872c-a255-4c03-bc80-6379520509a3",
                     "name": "{{preApprovalLevelName}}",
                     "description": "",
                     "approvers": [
@@ -71,7 +69,6 @@
             "name": "Pre Approval"
         },
         {
-            "id": "2cc39f8c-177f-4425-a58f-6ac554d300f8",
             "phasetype": {
                 "id": "com.vmware.cafe.catalog.request.post",
                 "name": "Post Approval",

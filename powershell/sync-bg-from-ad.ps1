@@ -88,7 +88,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	{
 		$logHistory.addLineAndDisplay(("-> Creating Approval Policy '{0}'..." -f $name))
 		# On créé celle-ci
-		$approvePolicy = $vra.addEvSubPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyType, $approverType)
+		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyType, $approverType)
 	}
 	else 
 	{
