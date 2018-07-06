@@ -1042,7 +1042,7 @@ try
 			$machinePrefixName = $nameGenerator.getVMMachinePrefix($faculty)
 
 			# Custom properties du Buisness Group
-			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $bgUnitID}
+			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $unitID}
 
 			# Groupes de sécurités AD pour les différents rôles du BG
 			$managerGrpList = @($nameGenerator.getEPFLRoleADGroupName("CSP_SUBTENANT_MANAGER", $faculty, $true))
