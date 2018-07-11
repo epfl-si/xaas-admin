@@ -60,18 +60,19 @@ function getManagerEmail
 
 <#
 	-------------------------------------------------------------------------------------
-	BUT : Renvoie le Business Group pour une unité donnée ($unitID) à partir d'une liste
-			de Business Group
+	BUT : Renvoie le Business Group qui a une "Custom Property" avec une valeur donnée, 
+		  ceci à partir d'une liste de Business Group
 
-	IN  : $unitID		-> ID de l'unité dont on recherche le BG
-	IN  : $fromList	-> Liste de BG dans laquelle chercher
+	IN  : $fromList			-> Liste de BG dans laquelle chercher
+	IN  : $customPropName	-> Nom de la Custom property à chercher
+	IN  : $customPropValue	-> Valeur que la custom property doit avoir
 
 	RET : PSObject contenant le BG
 			$null si pas trouvé
 #>
-function getUnitBG
+function getBGWithCustomProp
 {
-	param([string] $unitID, [Object] $fromList)
+	param([Object] $fromList, [string] $customPropName, [string] $customPropValue )
 
 	# Parcours des BG existants
 	foreach($bg in $fromList)
@@ -80,12 +81,12 @@ function getUnitBG
 		foreach($entry in $bg.ExtensionData.entries)
 		{
 			# Si on trouve l'entrée avec le nom que l'on cherche,
-			if($entry.key -eq $global:VRA_CUSTOM_PROP_EPFL_UNIT_ID)
+			if($entry.key -eq $customPropName)
 			{
 				# Parcours des informations de cette entrée
 				foreach($entryVal in $entry.value.values.entries)
 				{
-					if($entryVal.key -eq "value" -and $entryVal.value.value -eq $unitID)
+					if($entryVal.key -eq "value" -and $entryVal.value.value -eq $customPropValue)
 					{
 						return $bg
 					}
