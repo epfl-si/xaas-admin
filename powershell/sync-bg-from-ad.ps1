@@ -106,7 +106,9 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $existingBGList		-> Liste des BG existants
 	IN  : $bgUnitID				-> (optionnel) No d'unité du BG à ajouter/mettre à jour.
-										A passer uniquement si tenant EPFL, sinon ""
+									A passer uniquement si tenant EPFL, sinon ""
+	IN  : $bgSnowSvcID			-> (optionnel) No de service dans Snow pour le BG à ajouter/mettre à jour.
+									A passer uniquement si tenant ITServices, sinon ""
 	IN  : $bgName				-> Nom du BG
 	IN  : $bgDesc				-> Description du BG
 	IN  : $machinePrefixName	-> Nom du préfixe de machine à utiliser.
@@ -119,7 +121,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 #>
 function createOrUpdateBG
 {
-	param([vRAAPI]$vra, [Array]$existingBGList, [string]$bgUnitID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$capacityAlertsEmail,[System.Collections.Hashtable]$customProperties)
+	param([vRAAPI]$vra, [Array]$existingBGList, [string]$bgUnitID, [string]$bgSnowSvcID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$capacityAlertsEmail,[System.Collections.Hashtable]$customProperties)
 
 	# On transforme à null si "" pour que ça passe correctement plus loin
 	if($machinePrefixName -eq "")
@@ -128,11 +130,13 @@ function createOrUpdateBG
 	}
 
 	# Si on doit gérer le tenant contenant toutes les Unités,
-	if($bgUnitID -ne "")
+	if(($bgUnitID -ne "") -and ($bgSnowSvcID -eq ""))
 	{
+		# Recherche du BG par son no d'unité.
+		$bg = getBGWithCustomProp -fromList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_UNIT_ID -customPropValue $bgUnitID
 
 		# Si la recherche du BG par son le no de l'unité ne donne rien,
-		if(($bg = getUnitBG -unitID $bgUnitID -fromList $existingBGList) -eq $null)
+		if($bg -eq $null)
 		{
 			# Ajout des customs properties en vue de sa création
 			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__UNIT
@@ -151,7 +155,7 @@ function createOrUpdateBG
 				Write-Warning("No machine prefix found for {0}, skipping" -f $machinePrefixName)
 				# On enregistre le préfixe de machine inexistant
 				$notifications['newBGMachinePrefixNotFound'] += $machinePrefixName
-				
+
 				$counters.inc('BGNotCreated')
 			}
 			else # Le BG existe, il s'agit donc d'un renommage 
@@ -159,7 +163,7 @@ function createOrUpdateBG
 				Write-Warning ("No machine prefix found for new faculty name ({0})" -f $machinePrefixName)
 				# On enregistre le préfixe de machine inexistant
 				$notifications['facRenameMachinePrefixNotFound'] += $machinePrefixName
-				
+
 				$counters.inc('BGNotRenamed')
 			}
 			# on sort
@@ -167,11 +171,14 @@ function createOrUpdateBG
 		}
 		$machinePrefixId = $machinePrefix.id
 	}
-	else # On doit gérer le tenant ITServices
+	# On doit gérer le tenant ITServices
+	elseif(($bgUnitID -eq "") -and ($bgSnowSvcID -ne "")) 
 	{
+		# Recherche du BG par son ID de service dans ServiceNow
+		$bg = getBGWithCustomProp -fromList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID -customPropValue $bgSnowSvcID
 
 		# On tente de rechercher le BG par son nom et s'il n'existe pas,
-		if(($bg = $vra.getBG($bgName)) -eq $null)
+		if($bg -eq $null)
 		{
 			# Création des propriété custom
 			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__SERVICE
@@ -180,7 +187,10 @@ function createOrUpdateBG
 		# Pas d'ID de machine pour ce Tenant
 		$machinePrefixId = $null
 	}
-
+	else 
+	{
+		Throw "Incorrect values given for params 'bgUnitID' ({0}) and 'bgSnowSvcID' ({1})" -f $bgUnitID, $bgSnowSvcID
+	}
 
 	<# Si le BG n'existe pas, ce qui peut arriver dans les cas suivants :
 		Tenant EPFL:
@@ -205,17 +215,17 @@ function createOrUpdateBG
 		# 		jamais $true
 		# OU
 		# Si le BG est désactivé
-		if(($bg.name -ne $bgName) -or (!(isBGAlive -bg $bg)))
+		if(($bg.name -ne $bgName) -or ($bg.description -ne $bgDesc) -or (!(isBGAlive -bg $bg)))
 		{
-			
-			$logHistory.addLineAndDisplay(("-> Renaming and/or Reactivating BG '{0}' to '{1}'" -f $bg.name, $bgName))
+
+			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating BG '{0}' to '{1}'" -f $bg.name, $bgName))
 
 			# Mise à jour des informations
 			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
 
 			$counters.inc('BGUpdated')
 		}
-		
+
 	}
 
 	return $bg
@@ -1028,6 +1038,9 @@ try
 		# Si Tenant EPFL
 		if($targetTenant -eq $global:VRA_TENANT__EPFL)
 		{
+			# Pour signifier à la fonction createOrUpdateBG qu'on n'est pas dans le tenant ITServices.
+			$snowServiceId = ""
+
 			# Eclatement de la description et du nom pour récupérer le informations
 			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
 			$faculty, $unit = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
@@ -1038,6 +1051,7 @@ try
 			# Création du nom/description du business group
 			$bgName = $nameGenerator.getBGName($faculty, $unit)
 			$bgDesc = $nameGenerator.getEPFLBGDescription($faculty, $unit)
+
 
 			# Génération du nom et de la description de l'entitlement
 			$entName, $entDesc = $nameGenerator.getEPFLBGEntNameAndDesc($faculty, $unit)
@@ -1150,7 +1164,7 @@ try
 
 
 		# Création ou mise à jour du Business Group
-		$bg = createOrUpdateBG -vra $vra -existingBGList $existingBGList -bgUnitID $unitID -bgName $bgName -bgDesc $bgDesc `
+		$bg = createOrUpdateBG -vra $vra -existingBGList $existingBGList -bgUnitID $unitID -bgSnowSvcID $snowServiceId -bgName $bgName -bgDesc $bgDesc `
 									-machinePrefixName $machinePrefixName -capacityAlertsEmail ($capacityAlertMails -join ",") -customProperties $bgCustomProperties
 
 		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
