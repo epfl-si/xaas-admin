@@ -12,8 +12,8 @@
 
 # ---------------------------------------------------------
 # Global
-$global:JSON_TEMPLATE_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "json-templates"))
-$global:DAY2_ACTIONS_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "2nd-day-actions"))
+$global:RESOURCES_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources"))
+$global:JSON_TEMPLATE_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "json-templates"))
 $global:JSON_SECRETS_FILE = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", "secrets.json"))
 
 # Environnements

@@ -811,12 +811,14 @@ class vRAAPI
 		IN  : $actionList		-> Tableau contenant la liste des actions à ajouter.
 										Ce tableau contient des hashtable (dictionnaires) avec
 										.appliesTo: le descriptif de l'élément auquel appliquer l'action
-												   	ex: "Infrastructure.Virtual" pour les VM
-										.action: le texte de l'action à ajouter, tel que défini
-													dans vRA.
+													   ex: "Infrastructure.Virtual" pour les VM
+										.actions: Liste des actions à appliquer pour l'élément "appliesTo"
+											.name: le texte de l'action à ajouter, tel que défini dans vRA.
 													ex: "Destroy", "Create Snapshot"
-										.needsApproval: $true|$false pour dire si l'action doit passer
+											.needsApproval: $true|$false pour dire si l'action doit passer
 													par une policy d'approbation ou pas.
+											.customApprovalPolicyJSON: Potentiel nom de fichier JSON contenant 
+													les infos de l'approval policy custom à utiliser.
 		IN  : $approvalPolicy	-> Object Approval Policy à utiliser dans le cas où une action doit 
 									être approuvée
 
@@ -827,38 +829,43 @@ class vRAAPI
 		# Pour stocker la liste des actions à ajouter, avec toutes les infos nécessaires
 		$actionsToAdd = @()
 
-		# Parcours des actions à ajouter
-		ForEach($actionInfos in $actionList)
+		# Parcours des éléments sur lesquels des actions vont s'appliquer. 
+		Foreach($appliesToInfos in $actionList)
 		{
-			# Si on a trouvé des infos pour l'action demandée,
-			if(($vRAAction = $this.getAction($actionInfos.action, $actionInfos.appliesTo))-ne $null)
+			# Parcours des actions à ajouter pour l'élément
+			ForEach($actionInfos in $appliesToInfos.actions)
 			{
-				# Définition de l'ID d'approval policy à utiliser dans le cas où on doit approuver l'action
-				if($actionInfos.needsApproval)
+				# Si on a trouvé des infos pour l'action demandée,
+				if(($vRAAction = $this.getAction($actionInfos.name, $appliesToInfos.appliesTo))-ne $null)
 				{
-					$approvalPolicyId = $approvalPolicy.id
+					# Définition de l'ID d'approval policy à utiliser dans le cas où on doit approuver l'action
+					if($actionInfos.needsApproval)
+					{
+						$approvalPolicyId = $approvalPolicy.id
+					}
+					else 
+					{
+						$approvalPolicyId = $null	
+					}
+
+					# Valeur à mettre pour la configuration du BG
+					$replace = @{resourceOperationRef_id = $vRAAction.id
+									resourceOperationRef_label = $vRAAction.name
+									externalId = $vRAAction.externalId
+									targetResourceTypeRef_id = $vRAAction.targetResourceTypeRef.id
+									targetResourceTypeRef_label = $vRAAction.targetResourceTypeRef.label
+									approvalPolicyId = $approvalPolicyId}
+
+					# Création du nécessaire pour l'action à ajouter
+					$actionsToAdd += $this.loadJSON("entitlement-action.json", $replace)
 				}
-				else 
+				else # Pas d'infos trouvées pour l'action
 				{
-					$approvalPolicyId = $null	
+					Write-Error ("prepareEntActions(): No information found for action '{0}' for element '{1}'" -f $actionInfos.action, $actionInfos.appliesTo)
 				}
-
-				# Valeur à mettre pour la configuration du BG
-				$replace = @{resourceOperationRef_id = $vRAAction.id
-								 resourceOperationRef_label = $vRAAction.name
-								 externalId = $vRAAction.externalId
-								 targetResourceTypeRef_id = $vRAAction.targetResourceTypeRef.id
-								 targetResourceTypeRef_label = $vRAAction.targetResourceTypeRef.label
-								 approvalPolicyId = $approvalPolicyId}
-
-				# Création du nécessaire pour l'action à ajouter
-				$actionsToAdd += $this.loadJSON("entitlement-action.json", $replace)
-			}
-			else # Pas d'infos trouvées pour l'action
-			{
-				Write-Error ("prepareEntActions(): No information found for action '{0}' for element '{1}'" -f $actionInfos.action, $actionInfos.appliesTo)
-			}
-		}
+			} # Fin BOUCLE de parcours des actions pour l'élément courant 
+			
+		} # FIN BOUCLE de parcours des éléments auxquels il faut ajouter des "2nd day actions"
 
 		# Ajout du service à l'objet
 		$ent.entitledResourceOperations = $actionsToAdd

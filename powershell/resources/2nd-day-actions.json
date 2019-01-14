@@ -1,0 +1,129 @@
+[
+    {
+        "appliesTo": "",
+        "_comment": "Custom EPFL action",
+        "actions": [
+            {
+                "name": "Mount/Unmount CD-ROM (ISO)",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            }
+        ]
+    },
+    {
+        "appliesTo": "csp.places.iaas",
+        "_comment": "Actions on VM",
+        "actions": [
+            {
+                "name": "Connect using VMRC",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            }
+        ]
+    },
+    {
+        "appliesTo": "composition.resource",
+        "_comment": "Actions done on deployments",
+        "actions": [
+            {
+                "name": "Expire",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            },
+            {
+                "name": "Destroy",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            }
+        ]
+    },
+    {
+        "appliesTo": "Infrastructure.Virtual",
+        "_comment": "Actions for snapshots and VM",
+        "actions": [
+            {
+                "name": "Create Snapshot",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            },
+            {
+                "name": "Revert to Snapshot",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            },
+            {
+                "name": "Delete Snapshot",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            },
+            {
+                "name": "Destroy",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            }
+        ]
+    }
+    ,
+    {
+        "appliesTo": "Infrastructure.Machine",
+        "_comment": "Actions on VM",
+        "actions": [
+            {
+                "name": "Change Lease",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            },
+            {
+                "name": "Install Tools",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            },
+            {
+                "name": "Power Cycle",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            },
+            {
+                "name": "Power On",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            },
+            {
+                "name": "Power Off",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            },
+            {
+                "name": "Reboot",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            },
+            {
+                "name": "Shutdown",
+                "needsApproval": false,
+                "customApprovalPolicyJSON": ""
+
+            },
+            {
+                "name": "Reconfigure",
+                "needsApproval": true,
+                "customApprovalPolicyJSON": ""
+
+            }
+        ]
+    }
+]

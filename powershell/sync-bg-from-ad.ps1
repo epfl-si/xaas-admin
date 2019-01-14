@@ -351,42 +351,26 @@ function prepareSetEntActions
 {
 	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy)
 
-	# Pour contenir la liste des actions
-	$actionList = @()
+	$filepath = (Join-Path $global:RESOURCES_FOLDER "2nd-day-actions.json")
 
-	# Parcours des fichiers se trouvant dans le dossier contenant la liste des actions
-	# par type d'élément
-	Get-ChildItem $global:DAY2_ACTIONS_FOLDER | ForEach-Object {
-
-		# Si le fichier commence par un _, c'est qu'il contient des actions customs définies au sein de l'EPFL
-		# Dans ce cas-là, le nom de l'action devrait être UNIQUE
-		if($_.Name[0] -eq "_")
-		{
-			# On met donc une chaine vide pour signifier que cette valeur ne devra pas être prise durant la recherche.
-			$appliesTo = ""
-		}
-		else # Ce n'est pas une action custom EPFL
-		{
-			$appliesTo = $_.Name
-		}
-		Get-Content $_.FullName | ForEach-Object {
-			$action = $_.Trim()
-			# Si ce n'est pas une ligne vide ou une ligne de commentaire
-			if(($action -ne "") -and ($action[0] -ne "#"))
-			{
-				# On défini si on a besoin d'un approval pour cette action et on supprime le @
-				# devant le nom s'il existe afin d'avoir le "vrai" nom de l'action
-				$needsApproval = ($action[0] -eq "@")
-				$action = $action -replace "^@", ""
-
-				# Enregistrement de l'action courante
-				$actionList += @{action = $action
-								 appliesTo = $appliesTo
-								 needsApproval = $needsApproval}
-			}
-		}
+	if(-not(Test-Path $filepath))
+	{
+		$logHistory.addErrorAndDisplay("2nd day action file not found! ({0}" -f $filepath)
+		
+		exit
 	}
-
+	
+	try 
+	{
+		# Chargement de la liste des actions depuis le fichier JSON
+		$actionList = (Get-Content -Path $filepath) -join "`n" | ConvertFrom-Json
+	}
+	catch
+	{
+		$logHistory.addErrorAndDisplay("2nd day action file error : {0}" -f $_.ErrorDetails.Message)
+		sendErrorMail2ndDayActionFile -errorMsg $_.ErrorDetails.Message
+		exit
+	}
 	$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
 	# Ajout des actions
 	$vra.prepareEntActions($ent, $actionList, $approvalPolicy)
@@ -448,6 +432,30 @@ function prepareAddMissingBGEntPublicServices
 	}# FIN BOUCLE de parcours des services à ajouter à l'entitlement
 
 	return $ent
+}
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Envoie un mail aux admins pour leur dire qu'il y a eu un problème avec le
+		fichier JSON contenant les "2nd day actions" 
+	
+	REMARQUE:
+	La variable $targetEnv est utilisée de manière globale.
+
+	IN  : $errorMsg		-> Message d'erreur
+
+	RET : Rien
+#>
+function sendErrorMail2ndDayActionFile
+{
+	(param [string] $errorMsg)
+
+	$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=74055755"
+	$mailSubject = getvRAMailSubject -shortSubject "Error - 2nd day action JSON file error!" -targetEnv $targetEnv -targetTenant $targetTenant
+	$message = getvRAMailContent -content ("Une erreur est survenue durant le chargement du fichier contenant la liste des '2nd day actions':<br>`
+	{0}<br><br>Veuillez faire le nécessaire à partir de la <a href='{1}'>documentation suivante</a>." -f $errorMsg, $docUrl)	
+
+	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
 }
 
 <#
