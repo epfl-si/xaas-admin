@@ -260,7 +260,9 @@ class vRAAPI
 		Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
 
 		# Recherche et retour du BG
-		return $this.getBG($name)
+		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
+		# le fichier JSON template
+		return $this.getBG($body.name)
 	}
 
 
@@ -625,7 +627,10 @@ class vRAAPI
 
 		$empty = Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 10 )
 
-		return $this.getEnt($name)
+		# Retour de l'entitlement
+		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
+		# le fichier JSON template
+		return $this.getEnt($body.name)
 
 	}
 
@@ -1394,8 +1399,9 @@ class vRAAPI
 		# Création de la Policy
 		$res = Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
 
-		# Recherche et retour de l'Approval Policy ajoutée
-		return $this.getApprovalPolicy($name)
+		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
+		# le fichier JSON template
+		return $this.getApprovalPolicy($body.name)
 	}	
 
 	<#
