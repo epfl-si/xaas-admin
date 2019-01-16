@@ -815,16 +815,20 @@ class vRAAPI
 										.actions: Liste des actions à appliquer pour l'élément "appliesTo"
 											.name: le texte de l'action à ajouter, tel que défini dans vRA.
 													ex: "Destroy", "Create Snapshot"
-											.needsApproval: $true|$false pour dire si l'action doit passer
-													par une policy d'approbation ou pas.
-											.customApprovalPolicyJSON: Potentiel nom de fichier JSON contenant 
+											.approvalPolicyJSON: 
+												.EPFL: Nom de fichier JSON contenant 
 													les infos de l'approval policy custom à utiliser.
-		IN  : $approvalPolicy	-> Object Approval Policy à utiliser dans le cas où une action doit 
-									être approuvée
+												.ITServices: Nom de fichier JSON contenant 
+													les infos de l'approval policy custom à utiliser.
+		IN  : $approvalPolicies	-> Tableau qui a été créé par la fonction create2ndDayActionApprovalPolicies
+								et qui contient les approval policies existantes pour les 2nd actions
+								ainsi que les fichiers JSON utilisés pour les créer.
+								.JSONFile: Nom court du fichier JSON utilisé pour créer l'approval policy
+								.policy: Objet vRA contenant la policy créée à partir du fichier
 
 		RET : Objet contenant l'Entitlement avec les actions passée.
 	#>
-	[PSCustomObject] prepareEntActions([PSCustomObject] $ent, [Array]$actionList, [PSCustomObject]$approvalPolicy)
+	[PSCustomObject] prepareEntActions([PSCustomObject] $ent, [Array]$actionList, [Array]$approvalPolicies)
 	{
 		# Pour stocker la liste des actions à ajouter, avec toutes les infos nécessaires
 		$actionsToAdd = @()
@@ -838,12 +842,34 @@ class vRAAPI
 				# Si on a trouvé des infos pour l'action demandée,
 				if(($vRAAction = $this.getAction($actionInfos.name, $appliesToInfos.appliesTo))-ne $null)
 				{
-					# Définition de l'ID d'approval policy à utiliser dans le cas où on doit approuver l'action
-					if($actionInfos.needsApproval)
+					# Récupération du potentiel fichier JSON à utiliser pour définir une approval policy
+					$approvePolicyJSONFile = ($actionInfos.approvalPolicyJSON | Select -ExpandProperty $this.tenant).toString()
+					
+					# Si l'action courante a besoin d'une approbation pour le tenant
+					if(-not [string]::IsNullOrEmpty($approvePolicyJSONFile))
 					{
-						$approvalPolicyId = $approvalPolicy.id
+						$approvalPolicyId = $null
+
+						# On doit rechercher la policy qui est liée au fichier JSON
+						ForEach($JSONToApprovalPolicy in $approvalPolicies)
+						{
+							# Si on tombe sur le bon fichier JSON,
+							if($JSONToApprovalPolicy.JSONFile -eq $approvePolicyJSONFile)
+							{
+								$approvalPolicyId = $JSONToApprovalPolicy.policy.id
+								break
+							}
+						}
+						
+						# Si on arrive ici et qu'on n'a pas trouvé d'info pour l'approval Policy, on sort
+						if($approvalPolicyId -eq $null)
+						{
+							Write-Error ("prepareEntActions(): No Approval Policy found for action '{0}' and JSON file '{1}'" -f $actionInfos.action, $approvePolicyJSONFile)
+							return $ent
+						}
+						
 					}
-					else 
+					else # Pas besoin d'approbation pour l'action courante
 					{
 						$approvalPolicyId = $null	
 					}
@@ -1344,16 +1370,12 @@ class vRAAPI
 		IN  : $name						-> Nom de la policy
 		IN  : $desc						-> Description de la policy
 		IN  : $approverGroupAtDomain	-> FQDN du groupe (<group>@<domain>) qui devra approuver.
-		IN  : $approvalPolicyType   	-> Type de la policy :
-                                        	$global:APPROVE_POLICY_TYPE__ITEM_REQ
-											$global:APPROVE_POLICY_TYPE__ACTION_REQ
-		IN  : $approverType				-> Type d'approbation
-										$global:APPROVE_POLICY_APPROVERS__SPECIFIC_USR_GRP
-										$global:APPROVE_POLICY_APPROVERS__USE_EVENT_SUB	
+		IN  : $approvalPolicyJSON		-> Le nom court du fichier JSON (template) à utiliser pour 
+											créer l'approval policy dans vRA
 
 		RET : L'approval policy créé
 	#>
-	[psobject] addPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType, [string]$approverType)
+	[psobject] addPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyJSON)
 	{
 		$uri = "https://{0}/approval-service/api/policies" -f $this.server
 
@@ -1367,52 +1389,7 @@ class vRAAPI
 			approverGroupCustomPropName = $global:VRA_CUSTOM_PROP_VRA_POL_APP_GROUP
 			approverDisplayName = $approverDisplayName} 
 
-		# Définition du nom de fichier à utiliser pour créer la policy en fonction du type de celle-ci...
-
-		# Si c'est une demande de nouvel élément
-		if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-		{
-			# Si l'approbation doit simplement être faite par un groupe de sécurité donné
-			if($approverType -eq $global:APPROVE_POLICY_APPROVERS__SPECIFIC_USR_GRP)
-			{
-				$json_filename = "pre-approval-policy-usrgrp-new-item.json"	
-			}
-			# Si l'approbation utilise un Event Subscription
-			elseif($approverType -eq $global:APPROVE_POLICY_APPROVERS__USE_EVENT_SUB)
-			{
-				$json_filename = "pre-approval-policy-evsub-new-item.json"	
-			}
-			else 
-			{
-				Throw "Incorrect Approver Type ({0})" -f $approverType
-			}
-			
-		}
-		# Si c'est une demande d'action sur un élément existant
-		elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-		{
-			# Si l'approbation doit simplement être faite par un groupe de sécurité donné
-			if($approverType -eq $global:APPROVE_POLICY_APPROVERS__SPECIFIC_USR_GRP)
-			{
-				$json_filename = "pre-approval-policy-usrgrp-2nd-day.json"
-			}
-			# Si l'approbation utilise un Event Subscription
-			elseif($approverType -eq $global:APPROVE_POLICY_APPROVERS__USE_EVENT_SUB)
-			{
-				$json_filename = "pre-approval-policy-evsub-2nd-day.json"
-			}
-			else 
-			{
-				Throw "Incorrect Approver Type ({0})" -f $approverType
-			}
-			
-		}
-		else 
-		{
-			Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
-		}
-
-		$body = $this.loadJSON($json_filename, $replace)
+		$body = $this.loadJSON($approvalPolicyJSON, $replace)
 
 		# Création de la Policy
 		$res = Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)

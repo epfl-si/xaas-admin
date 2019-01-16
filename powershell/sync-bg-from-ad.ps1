@@ -61,6 +61,48 @@ function printUsage
    	Write-Host ""
 }
 
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Renvoie le nom complet d'un élément en fonction du template JSON de création
+			de celui-ci. Ceci est utilisé quand on met un préfixe ou suffixe dans le champ "name"
+			d'un élément à créer dans vRA à partir d'un fichier template JSON. La classe 
+			NameGenerator nous donne le nom de base (utilisé pour remplacer une chaine {{nomElement}}
+			dans le fichier JSON) mais il faut que l'on récupère le "vrai" nom complet pour ensuite
+			pouvoir faire une recherche dans vRA basée sur le nom afin de savoir si l'élément existe
+			déjà ou pas.
+	
+	IN  : $baseName			-> Nom de base de l'élément, qui va être utilisé pour remplacer la chaine {{nomElement}}
+								définie par le paramètre $replaceString
+	IN  : $JSONFile			-> Nom du fichier JSON contenant le template
+	IN  : $replaceString	-> Chaine de caractère à rechercher et remplacer par $baseName dans le fichier JSON
+	IN  : $fieldName		-> Nom de l'élément pour lequel il faut renvoyer la valeur, une fois le JSON transformé
+								en objet.
+								
+	RET : Le nom "final" de l'élément.	
+#>
+function getFullElementNameFromJSON([string]$baseName, [string]$JSONFile, [string]$replaceString, [string]$fieldName)
+{
+	# Chemin complet jusqu'au fichier à charger
+	$filepath = (Join-Path $global:JSON_TEMPLATE_FOLDER $JSONFile)
+
+	# Si le fichier n'existe pas
+	if(-not( Test-Path $filepath))
+	{
+		Throw ("JSON file not found ({0})" -f $filepath)
+	}
+
+	# Chargement du code JSON
+	$json = (Get-Content -Path $filepath) -join "`n"
+	# Remplacement de la chaîne de caractères 
+	$json = $json -replace "{{$($replaceString)}}", $baseName
+	# Transformation en objet
+	$jsonObject = $json | ConvertFrom-Json
+	# Retour du champ demandé
+	return $jsonObject.$fieldName
+}
+
+
 <#
 -------------------------------------------------------------------------------------
 	BUT : Créé (si inexistant) une approval policy
@@ -69,35 +111,104 @@ function printUsage
 	IN  : $name					-> Le nom de l'approval policy à créer
 	IN  : $desc					-> Description de l'approval policy
 	IN  : $approverGroupAtDomain-> Nom du groupe AD (FQDN) à mettre en approbateur
-	IN  : $approvalPolicyType   -> Type de la policy :
-                                    $global:APPROVE_POLICY_TYPE__ITEM_REQ
-                                    $global:APPROVE_POLICY_TYPE__ACTION_REQ
-	IN  : $approverType			-> Type d'approbation
-									$global:APPROVE_POLICY_APPROVERS__SPECIFIC_USR_GRP
-									$global:APPROVE_POLICY_APPROVERS__USE_EVENT_SUB
-
+	IN  : $approvalPolicyJSON	-> Le nom court du fichier JSON (template) à utiliser pour 
+									créer l'approval policy dans vRA
 
 	RET : Objet représentant l'approval policy
 #>
-function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyType, [string]$approverType)
+function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyJSON)
 {
-	$approvePolicy = $vra.getApprovalPolicy($name)
+	# Recherche du nom complet de la policy depuis le fichier JSON
+	$fullName = getFullElementNameFromJSON -baseName $name -JSONFile $approvalPolicyJSON -replaceString "preApprovalName" -fieldName "name"
+
+	# Rechercher de l'approval policy avec le nom "final"
+	$approvePolicy = $vra.getApprovalPolicy($fullName)
 
 	# Si la policy n'existe pas, 
 	if($approvePolicy -eq $null)
 	{
-		$logHistory.addLineAndDisplay(("-> Creating Approval Policy '{0}'..." -f $name))
-		# On créé celle-ci
-		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyType, $approverType)
+		$logHistory.addLineAndDisplay(("-> Creating Approval Policy '{0}'..." -f $fullName))
+		# On créé celle-ci (on reprend le nom de base $name)
+		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyJSON)
 	}
 	else 
 	{
-		$logHistory.addLineAndDisplay(("-> Approval Policy '{0}' already exists!" -f $name))
+		$logHistory.addLineAndDisplay(("-> Approval Policy '{0}' already exists!" -f $fullName))
 	}
 
 	return $approvePolicy
 }
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Créé (si inexistantes) toutes les Approval Policies qui sont listées dans le fichier décrivant
+			les 2nd day actions
+
+	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $baseName				-> Le nom de base de l'approval policy à créer (vu qu'il peut y 
+									avoir un suffixe dans le fichier template JSON)
+	IN  : $desc					-> Description de l'approval policy
+	IN  : $approverGroupAtDomain-> Nom du groupe AD (FQDN) à mettre en approbateur
+	
+	RET : Tableau d'objets :
+		(
+			{
+				"JSONFile": <fichierJSON>
+				"policy": <objetApprovalPolicyvRA>
+			},
+			...
+		)
+#>
+function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [string]$baseName, [string]$desc, [string]$approverGroupAtDomain)
+{
+	$policyList = @()
+	$JSONFiles = @()
+
+	# Génération du chemin d'accès au fichier contenant toutes les 2nd day actions à créer.
+	$filepath = (Join-Path $global:RESOURCES_FOLDER "2nd-day-actions.json")
+	
+	try 
+	{
+		# Chargement de la liste des actions depuis le fichier JSON
+		$actionTargetList = (Get-Content -Path $filepath) -join "`n" | ConvertFrom-Json
+	}
+	catch
+	{
+		$logHistory.addErrorAndDisplay("2nd day action file error : {0}" -f $_.ErrorDetails.Message)
+		sendErrorMail2ndDayActionFile -errorMsg $_.ErrorDetails.Message
+		exit
+	}
+
+	# Parcours des cibles des 2nd day actions 
+	Foreach($actionTarget in $actionTargetList) 
+	{
+		# Parcours des actions sur l'élément courant
+		Foreach($actionInfos in $actionTarget.actions)
+		{
+			# On regarde s'il y a un fichier JSON défini (pour dire qu'il y a une approve policy à créer) et si 
+			# le fichier JSON à utiliser pour créer l'approval policy courante pour le Tenant sur lequel on doit le faire
+			# est déjà dans la liste de ceux à traiter.
+			if(($actionInfos.approvalPolicyJSON.$targetTenant -ne "") -and ($JSONFiles -notcontains $actionInfos.approvalPolicyJSON.$targetTenant))
+			{
+				$JSONFiles += $actionInfos.approvalPolicyJSON.$targetTenant
+			}
+		}
+	}
+
+	# Parcours des fichiers JSON identifiés et création des approval policies si elles n'existent pas encore
+	Foreach($JSON in $JSONFiles)
+	{
+
+		$actionReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $baseName -desc $desc -approverGroupAtDomain $approveGroupName -approvalPolicyJSON $JSON
+
+		# Ajout de la policy (et du nom du fichier JSON à la liste)
+		$policyList += @{JSONFile = $JSON
+				  		 policy = $actionReqApprovalPolicy}
+		
+	}
+
+	return $policyList
+}
 
 <#
 -------------------------------------------------------------------------------------
@@ -342,23 +453,17 @@ function createOrUpdateBGEnt
 
 	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $ent				-> Objet Entitlement auquel lier les services
-	IN  : $approvalPolicy	-> Object Approval Policy qui devra approuver les demandes 
-								pour les 2nd day actions
+	IN  : $approvalPolicies	-> Tableau qui a été créé par la fonction create2ndDayActionApprovalPolicies
+								et qui contient les approval policies existantes pour les 2nd actions
+								ainsi que les fichiers JSON utilisés pour les créer.
 
 	RET : Objet Entitlement mis à jour
 #>
 function prepareSetEntActions
 {
-	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy)
+	param([vRAAPI]$vra, [PSCustomObject]$ent, [Array]$approvalPolicies)
 
 	$filepath = (Join-Path $global:RESOURCES_FOLDER "2nd-day-actions.json")
-
-	if(-not(Test-Path $filepath))
-	{
-		$logHistory.addErrorAndDisplay("2nd day action file not found! ({0}" -f $filepath)
-		
-		exit
-	}
 	
 	try 
 	{
@@ -373,7 +478,7 @@ function prepareSetEntActions
 	}
 	$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
 	# Ajout des actions
-	$vra.prepareEntActions($ent, $actionList, $approvalPolicy)
+	$vra.prepareEntActions($ent, $actionList, $approvalPolicies)
 
 }
 
@@ -1083,12 +1188,12 @@ try
 
 			# Nom et description de la policy d'approbation + nom du groupe AD qui devra approuver
 			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			$approveGroupName = $nameGenerator.getEPFLApproveADGroupName($faculty, $true)
 
 			# Vu qu'il y aura des quotas pour les demandes sur le tenant EPFL, on utilise une policy du type "Event Subscription", ceci afin d'appeler un Workflow défini
 			# qui se chargera de contrôler le quota.
-			$approverType = $global:APPROVE_POLICY_APPROVERS__USE_EVENT_SUB
+			$itemReqApprovalPolicyJSON = "pre-approval-policy-evsub-new-item.json"
 
 		}
 		# Si Tenant ITServices
@@ -1129,11 +1234,11 @@ try
 
 			# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
 			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			$approveGroupName = $nameGenerator.getITSApproveADGroupName($serviceShortName, $true)
 			
 			# Pas de quota pour le tenant ITServices donc on peut se permettre de simplement utiliser une approbation via un groupe de sécurité
-			$approverType = $global:APPROVE_POLICY_APPROVERS__SPECIFIC_USR_GRP
+			$itemReqApprovalPolicyJSON = "pre-approval-policy-usrgrp-new-item.json"
 		}
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
@@ -1163,14 +1268,13 @@ try
 
 		# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
 		$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
-																 -approverGroupAtDomain $approveGroupName -approvalPolicyType $global:APPROVE_POLICY_TYPE__ITEM_REQ `
-																 -approverType $approverType
-		$actionReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $actionReqApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
-																  -approverGroupAtDomain $approveGroupName -approvalPolicyType $global:APPROVE_POLICY_TYPE__ACTION_REQ `
-																  -approverType $approverType
+																 -approverGroupAtDomain $approveGroupName -approvalPolicyJSON $itemReqApprovalPolicyJSON
 
+		# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
+		$actionReqApprovalPolicies = create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
+																-approverGroupAtDomain $approveGroupName
 
-
+		
 		# Création ou mise à jour du Business Group
 		$bg = createOrUpdateBG -vra $vra -existingBGList $existingBGList -bgUnitID $unitID -bgSnowSvcID $snowServiceId -bgName $bgName -bgDesc $bgDesc `
 									-machinePrefixName $machinePrefixName -capacityAlertsEmail ($capacityAlertMails -join ",") -customProperties $bgCustomProperties
@@ -1195,8 +1299,8 @@ try
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Actions
-		$ent = prepareSetEntActions -vra $vra -ent $ent -approvalPolicy $actionReqApprovalPolicy
-
+		$ent = prepareSetEntActions -vra $vra -ent $ent -approvalPolicies $actionReqApprovalPolicies
+		
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
