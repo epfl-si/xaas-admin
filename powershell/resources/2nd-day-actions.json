@@ -5,8 +5,11 @@
         "actions": [
             {
                 "name": "Mount/Unmount CD-ROM (ISO)",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON": 
+                {
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             }
         ]
@@ -17,8 +20,11 @@
         "actions": [
             {
                 "name": "Connect using VMRC",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             }
         ]
@@ -29,14 +35,20 @@
         "actions": [
             {
                 "name": "Expire",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             },
             {
                 "name": "Destroy",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": "" 
+                }
 
             }
         ]
@@ -47,26 +59,38 @@
         "actions": [
             {
                 "name": "Create Snapshot",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             },
             {
                 "name": "Revert to Snapshot",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             },
             {
                 "name": "Delete Snapshot",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             },
             {
                 "name": "Destroy",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             }
         ]
@@ -78,50 +102,74 @@
         "actions": [
             {
                 "name": "Change Lease",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "pre-approval-policy-evsub-2nd-day.json",                     
+                    "ITServices": "pre-approval-policy-usrgrp-2nd-day.json"                 
+                }
 
             },
             {
                 "name": "Install Tools",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             },
             {
                 "name": "Power Cycle",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             },
             {
                 "name": "Power On",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                    
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             },
             {
                 "name": "Power Off",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": "" 
+                }
 
             },
             {
                 "name": "Reboot",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             },
             {
                 "name": "Shutdown",
-                "needsApproval": false,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
+                }
 
             },
             {
                 "name": "Reconfigure",
-                "needsApproval": true,
-                "customApprovalPolicyJSON": ""
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "pre-approval-policy-customprop-reconfigure-2nd-day.json",                     
+                    "ITServices": "pre-approval-policy-usrgrp-2nd-day.json"                 
+                }
 
             }
         ]
