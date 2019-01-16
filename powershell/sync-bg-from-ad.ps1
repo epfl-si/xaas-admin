@@ -478,7 +478,7 @@ function prepareSetEntActions
 	}
 	$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
 	# Ajout des actions
-	$vra.prepareEntActions($ent, $actionList, $approvalPolicies)
+	return $vra.prepareEntActions($ent, $actionList, $approvalPolicies)
 
 }
 
@@ -1295,16 +1295,15 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement
 		$ent = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entName -entDesc $entDesc
-
-
+		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Actions
 		$ent = prepareSetEntActions -vra $vra -ent $ent -approvalPolicies $actionReqApprovalPolicies
 		
-
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
 		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy
+
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus
 		$logHistory.addLineAndDisplay("-> Updating Entitlement...")
@@ -1312,9 +1311,9 @@ try
 
 
 
+
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Reservations
-
 		createOrUpdateBGReservations -vra $vra -bg $bg -resTemplatePrefix $nameGenerator.getReservationTemplatePrefix()
 
 		$doneBGList += $bg.name
