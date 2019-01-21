@@ -134,6 +134,8 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	else 
 	{
 		$logHistory.addLineAndDisplay(("-> Approval Policy '{0}' already exists!" -f $fullName))
+		# On active la policy pour être sûr que tout se passera bien
+		$vra.setApprovalPolicyState($approvePolicy, $true)
 	}
 
 	return $approvePolicy
@@ -1085,6 +1087,8 @@ $counters.add('ResDeleted', '# Reservations deleted')
 # Machine prefixes
 $counters.add('MachinePrefNotFound', '# machines prefixes not found')
 
+<# Pour enregistrer la liste des IDs des approval policies qui ont été traitées. Ceci permettra de désactiver les autres à la fin #>
+$processedApprovalPoliciesIDs = @()
 
 <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 aux administrateurs du service
@@ -1274,7 +1278,14 @@ try
 		$actionReqApprovalPolicies = create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
 																-approverGroupAtDomain $approveGroupName
 
-		
+		# Ajout des d'approval policies dans la liste
+		$processedApprovalPoliciesIDs += $itemReqApprovalPolicy.id
+		ForEach($approvalPolicy in $actionReqApprovalPolicies)
+		{
+			$processedApprovalPoliciesIDs += $approvalPolicy.policy.id
+		}
+																
+
 		# Création ou mise à jour du Business Group
 		$bg = createOrUpdateBG -vra $vra -existingBGList $existingBGList -bgUnitID $unitID -bgSnowSvcID $snowServiceId -bgName $bgName -bgDesc $bgDesc `
 									-machinePrefixName $machinePrefixName -capacityAlertsEmail ($capacityAlertMails -join ",") -customProperties $bgCustomProperties
@@ -1323,10 +1334,11 @@ try
 
 	$logHistory.addLineAndDisplay("Business Groups created from AD!")
 
-	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")
 	# ----------------------------------------------------------------------------------------------------------------------
 	# ----------------------------------------------------------------------------------------------------------------------
 
+	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")
+	
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
 	$vra.getBGList() | ForEach-Object {
 
@@ -1338,6 +1350,20 @@ try
 			deleteBGAndComponentsIfPossible -vra $vra -bg $_
 		}
 	}
+
+	# ----------------------------------------------------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------------------------------------------------
+
+	# Désactivation des approval policies qui ne sont pas utilisées
+	$logHistory.addLineAndDisplay("Deactivating unused Approval Policies")
+	$vra.getApprovalPolicyList() | ForEach-Object {
+		if($processedApprovalPoliciesIDs -notcontains $_.id)
+		{
+			$logHistory.addLineAndDisplay(("-> Deactivating Approval Policy '{0}'... " -f $_.name))
+			$res = $vra.setApprovalPolicyState($_, $false)
+		}
+	}
+
 
 	$vra.disconnect()
 
