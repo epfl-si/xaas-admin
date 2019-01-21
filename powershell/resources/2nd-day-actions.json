@@ -11,6 +11,15 @@
                     "ITServices": ""
                 }
 
+            },
+            {
+                "name": "DNS alias request",
+                "approvalPolicyJSON": 
+                {
+                    "EPFL": "",
+                    "ITServices": ""
+                }
+
             }
         ]
     },
@@ -19,13 +28,12 @@
         "_comment": "Actions on VM",
         "actions": [
             {
-                "name": "Connect using VMRC",
+                "name": "Connect to Remote Console",
                 "approvalPolicyJSON":                  
                 {                     
                     "EPFL": "",
                     "ITServices": ""
                 }
-
             }
         ]
     },
@@ -40,16 +48,22 @@
                     "EPFL": "",
                     "ITServices": ""
                 }
-
             },
             {
-                "name": "Destroy",
+                "name": "Change Lease",
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "pre-approval-policy-evsub-2nd-day.json",                     
+                    "ITServices": "pre-approval-policy-usrgrp-2nd-day.json"   
+                }
+            },
+            {
+                "name": "Change Owner",
                 "approvalPolicyJSON":                  
                 {                     
                     "EPFL": "",
-                    "ITServices": "" 
+                    "ITServices": ""
                 }
-
             }
         ]
     },
@@ -83,15 +97,6 @@
                     "ITServices": ""
                 }
 
-            },
-            {
-                "name": "Destroy",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
             }
         ]
     }
@@ -100,15 +105,6 @@
         "appliesTo": "Infrastructure.Machine",
         "_comment": "Actions on VM",
         "actions": [
-            {
-                "name": "Change Lease",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "pre-approval-policy-evsub-2nd-day.json",                     
-                    "ITServices": "pre-approval-policy-usrgrp-2nd-day.json"                 
-                }
-
-            },
             {
                 "name": "Install Tools",
                 "approvalPolicyJSON":                  
@@ -169,6 +165,24 @@
                 {                     
                     "EPFL": "pre-approval-policy-customprop-reconfigure-2nd-day.json",                     
                     "ITServices": "pre-approval-policy-usrgrp-2nd-day.json"                 
+                }
+
+            },
+            {
+                "name": "Cancel Reconfigure",
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
+                }
+
+            },
+            {
+                "name": "Execute Reconfigure",
+                "approvalPolicyJSON":                  
+                {                     
+                    "EPFL": "",
+                    "ITServices": ""
                 }
 
             }
