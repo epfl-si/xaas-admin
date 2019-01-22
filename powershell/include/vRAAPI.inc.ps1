@@ -670,49 +670,31 @@ class vRAAPI
 	{
 		$uri = "https://{0}/catalog-service/api/entitlements/{1}" -f $this.server, $ent.id
 
-		$updateNeeded = $false
 
 		# S'il faut mettre le nom à jour,
-		if(($newName -ne "") -and ($ent.name -ne $newName) )
+		if($newName -ne "")
 		{
-			$ent.name = $newName
-			$updateNeeded = $true
+			$ent.name = $newName		
 		}
 
 		# S'il faut mettre la description à jour,
-		if(($newDesc -ne "") -and ($ent.description -ne $newDesc))
+		if($newDesc -ne "")
 		{
 			$ent.description = $newDesc
-			$updateNeeded = $true
 		}
 
 		# En fonction de s'il faut activer ou pas
 		if($activated)
 		{
-			if($ent.status -ne "ACTIVE")
-			{
-				$ent.status = "ACTIVE"
-				$ent.statusName = "Active"
-
-				$updateNeeded = $true
-			}
+			$ent.status = "ACTIVE"
+			$ent.statusName = "Active"
+			
 		}
 		else
 		{
-			if($ent.status -ne "INACTIVE")
-			{
-				$ent.status = "INACTIVE"
-				$ent.statusName = "Inactive"
+			$ent.status = "INACTIVE"
+			$ent.statusName = "Inactive"
 
-				$updateNeeded = $true
-			}
-		}
-
-		# Si on n'a pas besoin d'update quoi que ce soit, on ne le fait pas, sinon on risque de générer une erreur "(400) Bad Request" dans le cas où rien 
-		# n'a été changé (ouais, c'est con mais c'est comme ça que vRA réagit... )
-		if($updateNeeded -eq $false)
-		{
-			return $ent
 		}
 
 		# Mise à jour des informations
@@ -1469,6 +1451,12 @@ class vRAAPI
 	[psobject] setApprovalPolicyState([PSCustomObject]$approvalPolicy, [bool]$activated)
 	{
 		$uri = "https://{0}/approval-service/api/policies/{1}" -f $this.server, $approvalPolicy.id
+
+		# Si la policy est par hasard en "DRAFT", on ne fait rien
+		if($approvalPolicy.state -eq "DRAFT")
+		{
+			return $approvalPolicy
+		}
 
 		if($activated)
 		{
