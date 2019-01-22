@@ -135,7 +135,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	{
 		$logHistory.addLineAndDisplay(("-> Approval Policy '{0}' already exists!" -f $fullName))
 		# On active la policy pour être sûr que tout se passera bien
-		$vra.setApprovalPolicyState($approvePolicy, $true)
+		$approvePolicy = $vra.setApprovalPolicyState($approvePolicy, $true)
 	}
 
 	return $approvePolicy
