@@ -164,7 +164,7 @@
                 "approvalPolicyJSON":                  
                 {                     
                     "EPFL": "pre-approval-policy-customprop-reconfigure-2nd-day.json",                     
-                    "ITServices": "pre-approval-policy-usrgrp-2nd-day.json"                 
+                    "ITServices": "pre-approval-policy-customprop-reconfigure-2nd-day.json"
                 }
 
             },
