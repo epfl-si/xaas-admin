@@ -1,5 +1,5 @@
 {
-    "name": "{{preApprovalName}}_reconfigure_v11",
+    "name": "{{preApprovalName}}_reconfigure",
     "description": "{{preApprovalDesc}} (Reconfigure)",
     "policyType": {
         "id": "com.vmware.cafe.catalog.request.resourceaction",
