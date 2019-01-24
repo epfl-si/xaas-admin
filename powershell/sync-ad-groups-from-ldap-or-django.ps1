@@ -421,7 +421,7 @@ try
 				if($adGroupExists)
 				{
 					# S'il n'y a aucun membre dans le groupe AD,
-					if($adMemberList -eq $null)
+					if($null -eq $adMemberList)
 					{
 						$toAdd = $ldapMemberList
 						$toRemove = @()

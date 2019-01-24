@@ -873,7 +873,7 @@ class vRAAPI
 						}
 						
 						# Si on arrive ici et qu'on n'a pas trouvé d'info pour l'approval Policy, on sort
-						if($approvalPolicyId -eq $null)
+						if($null -eq $approvalPolicyId)
 						{
 							Write-Error ("prepareEntActions(): No Approval Policy found for action '{0}' and JSON file '{1}'" -f $actionName, $approvePolicyJSONFile)
 							return $ent

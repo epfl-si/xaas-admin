@@ -108,7 +108,7 @@ class vROAPI
 		# Récupération de tous les Workflows et filtre avec le nom
 		$workflow = $this.getWorkflowList() | Where-Object {$_.attributes | Where-Object {$_.value -eq $name}}
 
-		if($workflow -eq $null){ return $null }
+		if($null -eq $workflow){ return $null }
 
 		# On transforme la structure en une hashtable afin de pouvoir plus facilement récupérer les informations
 		$workflowHashtable = @{}
