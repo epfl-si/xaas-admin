@@ -127,7 +127,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	$approvePolicy = $vra.getApprovalPolicy($fullName)
 
 	# Si la policy n'existe pas, 
-	if($approvePolicy -eq $null)
+	if($null -eq $approvePolicy)
 	{
 		$logHistory.addLineAndDisplay(("-> Creating Approval Policy '{0}'..." -f $fullName))
 		# On créé celle-ci (on reprend le nom de base $name)
@@ -224,7 +224,7 @@ function createOrUpdateBG
 		$bg = getBGWithCustomProp -fromList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_UNIT_ID -customPropValue $bgUnitID
 
 		# Si la recherche du BG par son le no de l'unité ne donne rien,
-		if($bg -eq $null)
+		if($null -eq $bg)
 		{
 			# Ajout des customs properties en vue de sa création
 			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__UNIT
@@ -235,10 +235,10 @@ function createOrUpdateBG
 		$machinePrefix = $vra.getMachinePrefix($machinePrefixName)
 
 		# Si on ne trouve pas de préfixe de machine pour le nouveau BG,
-		if($machinePrefix -eq $null)
+		if($null -eq $machinePrefix)
 		{
 			# Si le BG n'existe pas, 
-			if($bg -eq $null)
+			if($null -eq $bg)
 			{
 				Write-Warning("No machine prefix found for {0}, skipping" -f $machinePrefixName)
 				# On enregistre le préfixe de machine inexistant
@@ -266,7 +266,7 @@ function createOrUpdateBG
 		$bg = getBGWithCustomProp -fromList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID -customPropValue $bgSnowSvcID
 
 		# On tente de rechercher le BG par son nom et s'il n'existe pas,
-		if($bg -eq $null)
+		if($null -eq $bg)
 		{
 			# Création des propriété custom
 			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__SERVICE
@@ -286,7 +286,7 @@ function createOrUpdateBG
 		Tenant ITServices
 		- nouveau service
 	#>
-	if($bg -eq $null)
+	if($null -eq $bg)
 	{
 
 		$logHistory.addLineAndDisplay("-> BG doesn't exists, creating...")
@@ -393,7 +393,7 @@ function createOrUpdateBGEnt
 	param([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc)
 
 	# Si l'entitlement n'existe pas,
-	if(($ent = $vra.getBGEnt($bg.id)) -eq $null)
+	if($null -eq ($ent = $vra.getBGEnt($bg.id)))
 	{
 		$logHistory.addLineAndDisplay(("-> Creating Entitlement {0}..." -f $entName))
 		$ent = $vra.addEnt($entName, $entDesc, $bg.id, $bg.name)
@@ -576,7 +576,7 @@ function createOrUpdateBGReservations
 		}
 
 		# Si la Reservation pour le cluster n'existe pas,
-		if($matchingRes -eq $null)
+		if($null -eq $matchingRes)
 		{
 			$logHistory.addLineAndDisplay(("--> Adding Reservation '{0}' from template '{1}'..." -f $resName, $resTemplate.name))
 			$newRes = $vra.addResFromTemplate($resTemplate, $resName, $bg.tenant, $bg.id)
@@ -738,7 +738,7 @@ function isBGOfType
 	$entry = $bg.extensionData.entries | Where-Object { $_.key -eq $global:VRA_CUSTOM_PROP_VRA_BG_TYPE}
 
 	# Si custom property PAS trouvée,
-	if($entry -eq $null)
+	if($null -eq $entry)
 	{
 		$notifications['bgWithoutCustomPropType'] += $bg.name
 		return $false
@@ -1226,7 +1226,7 @@ try
 									-machinePrefixName $machinePrefixName -capacityAlertsEmail ($capacityAlertMails -join ",") -customProperties $bgCustomProperties
 
 		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
-		if($bg -eq $null)
+		if($null -eq $bg)
 		{
 			# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
 			return
