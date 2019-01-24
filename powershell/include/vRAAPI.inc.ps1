@@ -845,7 +845,7 @@ class vRAAPI
 		$actionsToAdd = @()
 
 		# Parcours des éléments sur lesquels des actions vont s'appliquer. 
-		Foreach($targetElementName in $secondDayActions.getTargetElementList($this.tenant))
+		Foreach($targetElementName in $secondDayActions.getTargetElementList())
 		{
 			# Parcours des actions à ajouter pour l'élément
 			ForEach($actionName in $secondDayActions.getElementActionList($targetElementName))

@@ -5,21 +5,11 @@
         "actions": [
             {
                 "name": "Mount/Unmount CD-ROM (ISO)",
-                "approvalPolicyJSON": 
-                {
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
+                "approvals": []
             },
             {
                 "name": "DNS alias request",
-                "approvalPolicyJSON": 
-                {
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
+                "approvals": [] 
             }
         ]
     },
@@ -29,11 +19,7 @@
         "actions": [
             {
                 "name": "Connect to Remote Console",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
+                "approvals": []
             }
         ]
     },
@@ -43,27 +29,24 @@
         "actions": [
             {
                 "name": "Expire",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
+                "approvals": []
             },
             {
                 "name": "Change Lease",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "pre-approval-policy-evsub-2nd-day.json",                     
-                    "ITServices": "pre-approval-policy-usrgrp-2nd-day.json"   
-                }
+                "approvals": [
+                    {
+                        "tenant": "EPFL",
+                        "json": "pre-approval-policy-evsub-2nd-day.json"
+                    },
+                    {
+                        "tenant": "ITServices",
+                        "json": "pre-approval-policy-usrgrp-2nd-day.json"
+                    }
+                ]
             },
             {
                 "name": "Change Owner",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
+                "approvals": []
             }
         ]
     },
@@ -73,30 +56,16 @@
         "actions": [
             {
                 "name": "Create Snapshot",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
+                "approvals": []
             },
             {
                 "name": "Revert to Snapshot",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
+                "approvals": []
 
             },
             {
                 "name": "Delete Snapshot",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
+                "approvals": []
             }
         ]
     }
@@ -107,84 +76,48 @@
         "actions": [
             {
                 "name": "Install Tools",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
+                "approvals": []
             },
             {
                 "name": "Power Cycle",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
+                "approvals": []
             },
             {
                 "name": "Power On",
-                "approvalPolicyJSON":                  
-                {                    
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
+                "approvals":[]
             },
             {
                 "name": "Power Off",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": "" 
-                }
-
+                "approvals": []
             },
             {
                 "name": "Reboot",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
+                "approvals": []
             },
             {
                 "name": "Shutdown",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
+                "approvals": []
             },
             {
                 "name": "Reconfigure",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "pre-approval-policy-customprop-reconfigure-2nd-day.json",                     
-                    "ITServices": "pre-approval-policy-customprop-reconfigure-2nd-day.json"
-                }
-
+                "approvals": [
+                    {
+                        "tenant": "EPFL",
+                        "json": "pre-approval-policy-customprop-reconfigure-2nd-day.json"
+                    },
+                    {
+                        "tenant": "ITServices",
+                        "json": "pre-approval-policy-customprop-reconfigure-2nd-day.json"
+                    }
+                ]
             },
             {
                 "name": "Cancel Reconfigure",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
+                "approvals": []
             },
             {
                 "name": "Execute Reconfigure",
-                "approvalPolicyJSON":                  
-                {                     
-                    "EPFL": "",
-                    "ITServices": ""
-                }
-
+                "approvals": []
             }
         ]
     }

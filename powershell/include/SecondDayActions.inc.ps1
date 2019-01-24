@@ -37,7 +37,7 @@ class SecondDayActions
         }
         catch
         {
-            Throw ("2nd day action file error : {0}" -f $_.ErrorDetails.Message)
+            Throw (("2nd day action file error : {0}" -f $_.Exception.Message))
             exit
         }
 
@@ -113,12 +113,15 @@ class SecondDayActions
             # Parcours des actions sur l'élément courant
             Foreach($actionInfos in $targetElement.actions)
             {
-                # On regarde s'il y a un fichier JSON défini (pour dire qu'il y a une approve policy à créer) et si 
-                # le fichier JSON à utiliser pour créer l'approval policy courante pour le Tenant sur lequel on doit le faire
-                # est déjà dans la liste de ceux à traiter.
-                if(($actionInfos.approvalPolicyJSON.$targetTenant -ne "") -and ($JSONFiles -notcontains $actionInfos.approvalPolicyJSON.$targetTenant))
+                # Parcours des approvals définis (par tenant)
+                ForEach($tenantApproval in $actionInfos.approvals)
                 {
-                    $JSONFiles += $actionInfos.approvalPolicyJSON.$targetTenant
+                    # Si le tenant recherché correspond et si le fichier JSON à utiliser pour créer l'approval 
+                    # policy courante pour le Tenant sur lequel on doit le faire est déjà dans la liste de ceux à traiter.
+                    if(($tenantApproval.tenant -eq $targetTenant) -and ($JSONFiles -notcontains $tenantApproval.json))
+                    {
+                        $JSONFiles += $tenantApproval.json
+                    }
                 }
             }
         }
@@ -130,11 +133,8 @@ class SecondDayActions
     <#
         -------------------------------------------------------------------------------------
         BUT : Retourne la liste des éléments cibles auxquels les 2nd day actions s'appliquent
-
-        IN  : $targetTenant     -> le tenant pour lequel on veut la list des éléments auxquels les 
-                                    actions s'appliquent.
     #>
-    [Array]getTargetElementList([string]$targetTenant)
+    [Array]getTargetElementList()
     {
         $elementList = @()
         ForEach($appliesToInfos in $this.JSONData)
@@ -184,7 +184,15 @@ class SecondDayActions
     {
         $actionInfos = $this.getActionInfos($elementName, $actionName)
 
-        return ($actionInfos.approvalPolicyJSON | Select-Object -ExpandProperty $tenantName).toString()
+        ForEach($tenantApproval in $actionInfos.approvals)
+        {
+            if($tenantApproval.tenant -eq $tenantName)
+            {
+                return $tenantApproval.json
+            }
+        }
+
+        return $null
     }
 
 
