@@ -830,18 +830,7 @@ class vRAAPI
 				appeler la méthode updateEnt() en passant l'objet en paramètre.
 
 		IN  : $ent				-> Objet de l'entitlement auquel ajouter les actions
-		IN  : $actionList		-> Tableau contenant la liste des actions à ajouter.
-										Ce tableau contient des hashtable (dictionnaires) avec
-										.appliesTo: le descriptif de l'élément auquel appliquer l'action
-													   ex: "Infrastructure.Virtual" pour les VM
-										.actions: Liste des actions à appliquer pour l'élément "appliesTo"
-											.name: le texte de l'action à ajouter, tel que défini dans vRA.
-													ex: "Destroy", "Create Snapshot"
-											.approvalPolicyJSON: 
-												.EPFL: Nom de fichier JSON contenant 
-													les infos de l'approval policy custom à utiliser.
-												.ITServices: Nom de fichier JSON contenant 
-													les infos de l'approval policy custom à utiliser.
+		IN  : $secondDayActions	-> Objet de la classe SecondDayActions contenant la liste des actions à ajouter.
 		IN  : $approvalPolicies	-> Tableau qui a été créé par la fonction create2ndDayActionApprovalPolicies
 								et qui contient les approval policies existantes pour les 2nd actions
 								ainsi que les fichiers JSON utilisés pour les créer.
@@ -850,22 +839,22 @@ class vRAAPI
 
 		RET : Objet contenant l'Entitlement avec les actions passée.
 	#>
-	[PSCustomObject] prepareEntActions([PSCustomObject] $ent, [Array]$actionList, [Array]$approvalPolicies)
+	[PSCustomObject] prepareEntActions([PSCustomObject] $ent, [SecondDayActions]$secondDayActions, [Array]$approvalPolicies)
 	{
 		# Pour stocker la liste des actions à ajouter, avec toutes les infos nécessaires
 		$actionsToAdd = @()
 
 		# Parcours des éléments sur lesquels des actions vont s'appliquer. 
-		Foreach($appliesToInfos in $actionList)
+		Foreach($targetElementName in $secondDayActions.getTargetElementList($this.tenant))
 		{
 			# Parcours des actions à ajouter pour l'élément
-			ForEach($actionInfos in $appliesToInfos.actions)
+			ForEach($actionName in $secondDayActions.getElementActionList($targetElementName))
 			{
 				# Si on a trouvé des infos pour l'action demandée,
-				if(($vRAAction = $this.getAction($actionInfos.name, $appliesToInfos.appliesTo))-ne $null)
+				if(($vRAAction = $this.getAction($actionName, $targetElementName))-ne $null)
 				{
 					# Récupération du potentiel fichier JSON à utiliser pour définir une approval policy
-					$approvePolicyJSONFile = ($actionInfos.approvalPolicyJSON | Select -ExpandProperty $this.tenant).toString()
+					$approvePolicyJSONFile = $secondDayActions.getApprovePolicyJSONFilename($targetElementName, $actionName, $this.tenant)
 					
 					# Si l'action courante a besoin d'une approbation pour le tenant
 					if(-not [string]::IsNullOrEmpty($approvePolicyJSONFile))
@@ -886,7 +875,7 @@ class vRAAPI
 						# Si on arrive ici et qu'on n'a pas trouvé d'info pour l'approval Policy, on sort
 						if($approvalPolicyId -eq $null)
 						{
-							Write-Error ("prepareEntActions(): No Approval Policy found for action '{0}' and JSON file '{1}'" -f $actionInfos.action, $approvePolicyJSONFile)
+							Write-Error ("prepareEntActions(): No Approval Policy found for action '{0}' and JSON file '{1}'" -f $actionName, $approvePolicyJSONFile)
 							return $ent
 						}
 						
@@ -909,7 +898,7 @@ class vRAAPI
 				}
 				else # Pas d'infos trouvées pour l'action
 				{
-					Write-Error ("prepareEntActions(): No information found for action '{0}' for element '{1}'" -f $actionInfos.action, $actionInfos.appliesTo)
+					Write-Error ("prepareEntActions(): No information found for action '{0}' for element '{1}'" -f $actionName, $targetElementName)
 				}
 			} # Fin BOUCLE de parcours des actions pour l'élément courant 
 			

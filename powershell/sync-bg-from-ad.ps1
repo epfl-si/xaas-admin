@@ -31,11 +31,13 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "vRAAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "vROAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
+
 
 # Chargement des fichiers de configuration
 loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vra.inc.ps1"))
@@ -147,6 +149,8 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 			les 2nd day actions
 
 	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $secondDayActions		-> Objet de la classe SecondDayActions contenant la liste des actions
+									2nd day à ajouter.
 	IN  : $baseName				-> Le nom de base de l'approval policy à créer (vu qu'il peut y 
 									avoir un suffixe dans le fichier template JSON)
 	IN  : $desc					-> Description de l'approval policy
@@ -161,41 +165,12 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 			...
 		)
 #>
-function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [string]$baseName, [string]$desc, [string]$approverGroupAtDomain)
+function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$secondDayActions, [string]$baseName, [string]$desc, [string]$approverGroupAtDomain)
 {
 	$policyList = @()
-	$JSONFiles = @()
-
-	# Génération du chemin d'accès au fichier contenant toutes les 2nd day actions à créer.
-	$filepath = (Join-Path $global:RESOURCES_FOLDER "2nd-day-actions.json")
 	
-	try 
-	{
-		# Chargement de la liste des actions depuis le fichier JSON
-		$actionTargetList = (Get-Content -Path $filepath) -join "`n" | ConvertFrom-Json
-	}
-	catch
-	{
-		$logHistory.addErrorAndDisplay("2nd day action file error : {0}" -f $_.ErrorDetails.Message)
-		sendErrorMail2ndDayActionFile -errorMsg $_.ErrorDetails.Message
-		exit
-	}
-
-	# Parcours des cibles des 2nd day actions 
-	Foreach($actionTarget in $actionTargetList) 
-	{
-		# Parcours des actions sur l'élément courant
-		Foreach($actionInfos in $actionTarget.actions)
-		{
-			# On regarde s'il y a un fichier JSON défini (pour dire qu'il y a une approve policy à créer) et si 
-			# le fichier JSON à utiliser pour créer l'approval policy courante pour le Tenant sur lequel on doit le faire
-			# est déjà dans la liste de ceux à traiter.
-			if(($actionInfos.approvalPolicyJSON.$targetTenant -ne "") -and ($JSONFiles -notcontains $actionInfos.approvalPolicyJSON.$targetTenant))
-			{
-				$JSONFiles += $actionInfos.approvalPolicyJSON.$targetTenant
-			}
-		}
-	}
+	# Récupération de la liste des fichiers JSON à utiliser pour créer les approval policies utilisées dans les 2nd day actions.
+	$JSONFiles = $secondDayActions.getJSONApprovalPoliciesFiles($targetTenant)
 
 	# Parcours des fichiers JSON identifiés et création des approval policies si elles n'existent pas encore
 	Foreach($JSON in $JSONFiles)
@@ -440,49 +415,6 @@ function createOrUpdateBGEnt
 	return $ent
 }
 
-<#
--------------------------------------------------------------------------------------
-	BUT : Initialise les actions pour l'Entiltlement passé en paramètre.
-			La liste des actions à ajouter se trouve dans le dossier $global:DAY2_ACTIONS_FOLDER
-			Ce sont des fichiers portant le nom de l'élément (descriptif) tel que défini
-			dans vRA et contenant la liste des actions. Cette liste d'actions est
-			composée des textes décrivant celles-ci dans vRA (ex: Destroy, Create Snapshot,...)
-			Pour le moment, on ne fait que préparer l'objet pour ensuite réellement le
-			mettre à jour via vRAAPI::updateEnt(). On fait la mise à jour (update) en une
-			seule fois car faire en plusieurs fois, une par élément à mettre à jour (action,
-			service, ...) lève souvent une exception de "lock" sur l'objet Entitlement du
-			côté de vRA.
-
-	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $ent				-> Objet Entitlement auquel lier les services
-	IN  : $approvalPolicies	-> Tableau qui a été créé par la fonction create2ndDayActionApprovalPolicies
-								et qui contient les approval policies existantes pour les 2nd actions
-								ainsi que les fichiers JSON utilisés pour les créer.
-
-	RET : Objet Entitlement mis à jour
-#>
-function prepareSetEntActions
-{
-	param([vRAAPI]$vra, [PSCustomObject]$ent, [Array]$approvalPolicies)
-
-	$filepath = (Join-Path $global:RESOURCES_FOLDER "2nd-day-actions.json")
-	
-	try 
-	{
-		# Chargement de la liste des actions depuis le fichier JSON
-		$actionList = (Get-Content -Path $filepath) -join "`n" | ConvertFrom-Json
-	}
-	catch
-	{
-		$logHistory.addErrorAndDisplay("2nd day action file error : {0}" -f $_.ErrorDetails.Message)
-		sendErrorMail2ndDayActionFile -errorMsg $_.ErrorDetails.Message
-		exit
-	}
-	$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
-	# Ajout des actions
-	return $vra.prepareEntActions($ent, $actionList, $approvalPolicies)
-
-}
 
 <#
 -------------------------------------------------------------------------------------
@@ -1133,6 +1065,9 @@ try
 	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN() -Properties Description | 
 	Where-Object {$_.Name -match $adGroupNameRegex} 
 
+	# Création de l'objet pour gérer les 2nd day actions
+	$secondDayActions = [SecondDayActions]::new("2nd-day-actions.json")
+
 	# Parcours des groupes AD pour l'environnement/tenant donné
 	$adGroupList | ForEach-Object {
 
@@ -1276,7 +1211,7 @@ try
 
 		# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
 		$actionReqApprovalPolicies = create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
-																-approverGroupAtDomain $approveGroupName
+																-approverGroupAtDomain $approveGroupName -secondDayActions $secondDayActions
 
 		# Ajout des d'approval policies dans la liste
 		$processedApprovalPoliciesIDs += $itemReqApprovalPolicy.id
@@ -1309,7 +1244,8 @@ try
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Actions
-		$ent = prepareSetEntActions -vra $vra -ent $ent -approvalPolicies $actionReqApprovalPolicies
+		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
+		$ent = $vra.prepareEntActions($ent, $secondDayActions, $actionReqApprovalPolicies)
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
