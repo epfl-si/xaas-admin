@@ -257,32 +257,4 @@ class SecondDayActions
         return $actionList
     }
 
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Retourne la liste des noms d'actions pour un élément donné.
-
-        IN  : $elementName      -> Nom de l'élément concerné
-        IN  : $actionName       -> Nom de l'action concernée
-        IN  : $tenantName       -> Nom du tenant pour lequel on veut le fichier JSON car 
-                                    ils sont définis par tenant
-
-        RET : Le nom du fichier JSON
-    #>
-    [String]getApprovePolicyJSONFilename([string]$elementName, [string]$actionName, [string]$tenantName)
-    {
-        $actionInfos = $this.getActionInfos($elementName, $actionName)
-
-        ForEach($tenantApproval in $actionInfos.approvals)
-        {
-            if($tenantApproval.tenant -eq $tenantName)
-            {
-                return $tenantApproval.json
-            }
-        }
-
-        return $null
-    }
-
-
 }
