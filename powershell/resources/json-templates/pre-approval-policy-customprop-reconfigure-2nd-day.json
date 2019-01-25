@@ -64,7 +64,7 @@
                             "type": "constant",
                             "value": {
                                 "type": "string",
-                                "value": "ch.epfl.request.approval.needed\",\"PropertyValue\":\"yes\""
+                                "value": "{{customPropName}}\",\"PropertyValue\":\"{{customPropValue}}\""
                             }
                         }
                     },

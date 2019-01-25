@@ -219,3 +219,26 @@ function loadConfigFile([string]$filename)
 		exit
 	}
 }
+
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Retourne le hash de la chaîne de caractères passée 
+
+	IN  : $string	-> Chaine de caractères depuis laquelle créer le hash
+	IN  : $hashName	-> Nom de la fonction de hash à utiliser:
+						- MD5
+						- RIPEMD160
+						- SHA1
+						- SHA256
+						- SHA384
+						- SHA512
+#>
+function getStringHash([String] $string, $hashName = "MD5") 
+{ 
+	$stringBuilder = New-Object System.Text.StringBuilder 
+	[System.Security.Cryptography.HashAlgorithm]::Create($hashName).ComputeHash([System.Text.Encoding]::UTF8.GetBytes($string))|%{ 
+		[Void]$stringBuilder.Append($_.ToString("x2")) 
+	} 
+	return $stringBuilder.ToString() 
+}

@@ -831,15 +831,10 @@ class vRAAPI
 
 		IN  : $ent				-> Objet de l'entitlement auquel ajouter les actions
 		IN  : $secondDayActions	-> Objet de la classe SecondDayActions contenant la liste des actions à ajouter.
-		IN  : $approvalPolicies	-> Tableau qui a été créé par la fonction create2ndDayActionApprovalPolicies
-								et qui contient les approval policies existantes pour les 2nd actions
-								ainsi que les fichiers JSON utilisés pour les créer.
-								.JSONFile: Nom court du fichier JSON utilisé pour créer l'approval policy
-								.policy: Objet vRA contenant la policy créée à partir du fichier
 
 		RET : Objet contenant l'Entitlement avec les actions passée.
 	#>
-	[PSCustomObject] prepareEntActions([PSCustomObject] $ent, [SecondDayActions]$secondDayActions, [Array]$approvalPolicies)
+	[PSCustomObject] prepareEntActions([PSCustomObject] $ent, [SecondDayActions]$secondDayActions)
 	{
 		# Pour stocker la liste des actions à ajouter, avec toutes les infos nécessaires
 		$actionsToAdd = @()
@@ -853,37 +848,8 @@ class vRAAPI
 				# Si on a trouvé des infos pour l'action demandée,
 				if(($vRAAction = $this.getAction($actionName, $targetElementName))-ne $null)
 				{
-					# Récupération du potentiel fichier JSON à utiliser pour définir une approval policy
-					$approvePolicyJSONFile = $secondDayActions.getApprovePolicyJSONFilename($targetElementName, $actionName, $this.tenant)
-					
-					# Si l'action courante a besoin d'une approbation pour le tenant
-					if(-not [string]::IsNullOrEmpty($approvePolicyJSONFile))
-					{
-						$approvalPolicyId = $null
-
-						# On doit rechercher la policy qui est liée au fichier JSON
-						ForEach($JSONToApprovalPolicy in $approvalPolicies)
-						{
-							# Si on tombe sur le bon fichier JSON,
-							if($JSONToApprovalPolicy.JSONFile -eq $approvePolicyJSONFile)
-							{
-								$approvalPolicyId = $JSONToApprovalPolicy.policy.id
-								break
-							}
-						}
-						
-						# Si on arrive ici et qu'on n'a pas trouvé d'info pour l'approval Policy, on sort
-						if($null -eq $approvalPolicyId)
-						{
-							Write-Error ("prepareEntActions(): No Approval Policy found for action '{0}' and JSON file '{1}'" -f $actionName, $approvePolicyJSONFile)
-							return $ent
-						}
-						
-					}
-					else # Pas besoin d'approbation pour l'action courante
-					{
-						$approvalPolicyId = $null	
-					}
+					# Recherche de l'id de l'approval policy pour l'élément et l'action.
+					$approvalPolicyId = $secondDayActions.getActionApprovalPolicyId($targetElementName, $actionName)
 
 					# Valeur à mettre pour la configuration du BG
 					$replace = @{resourceOperationRef_id = $vRAAction.id
@@ -1401,10 +1367,15 @@ class vRAAPI
 		IN  : $approverGroupAtDomain	-> FQDN du groupe (<group>@<domain>) qui devra approuver.
 		IN  : $approvalPolicyJSON		-> Le nom court du fichier JSON (template) à utiliser pour 
 											créer l'approval policy dans vRA
+		IN  : $additionnalReplace		-> Tableau associatif permettant d'étendre la liste des éléments
+											à remplacer (chaînes de caractères) au sein du fichier JSON
+											chargé. Le paramètre doit avoir en clef la valeur à chercher
+											et en valeur celle avec laquelle remplacer.
+											Peut être $null
 
-		RET : L'approval policy créé
+		RET : L'approval policy créée
 	#>
-	[psobject] addPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyJSON)
+	[psobject] addPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyJSON, [psobject]$additionnalReplace)
 	{
 		$uri = "https://{0}/approval-service/api/policies" -f $this.server
 
@@ -1417,6 +1388,16 @@ class vRAAPI
 			approverGroupAtDomain = $approverGroupAtDomain
 			approverGroupCustomPropName = $global:VRA_CUSTOM_PROP_VRA_POL_APP_GROUP
 			approverDisplayName = $approverDisplayName} 
+
+		# Si on a des remplacement additionnels à faire,
+		if($null -ne $additionnalReplace)
+		{
+			# On les ajoute à la liste
+			ForEach($search in $additionnalReplace)
+			{
+				$replace.Add($search, $additionnalReplace[$search])
+			}
+		}
 
 		$body = $this.loadJSON($approvalPolicyJSON, $replace)
 

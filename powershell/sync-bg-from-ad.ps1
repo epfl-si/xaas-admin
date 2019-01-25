@@ -115,10 +115,16 @@ function getFullElementNameFromJSON([string]$baseName, [string]$JSONFile, [strin
 	IN  : $approverGroupAtDomain-> Nom du groupe AD (FQDN) à mettre en approbateur
 	IN  : $approvalPolicyJSON	-> Le nom court du fichier JSON (template) à utiliser pour 
 									créer l'approval policy dans vRA
+	IN  : $additionnalReplace	-> Tableau associatif permettant d'étendre la liste des éléments
+									à remplacer (chaînes de caractères) au sein du fichier JSON
+									chargé. Le paramètre doit avoir en clef la valeur à chercher
+									et en valeur celle avec laquelle remplacer.	Ceci est 
+									typiquement utilisé pour les approval policies définies pour
+									les 2nd day actions.
 
 	RET : Objet représentant l'approval policy
 #>
-function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyJSON)
+function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyJSON, [psobject]$additionnalReplace)
 {
 	# Recherche du nom complet de la policy depuis le fichier JSON
 	$fullName = getFullElementNameFromJSON -baseName $name -JSONFile $approvalPolicyJSON -replaceString "preApprovalName" -fieldName "name"
@@ -131,7 +137,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	{
 		$logHistory.addLineAndDisplay(("-> Creating Approval Policy '{0}'..." -f $fullName))
 		# On créé celle-ci (on reprend le nom de base $name)
-		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyJSON)
+		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyJSON, $additionnalReplace)
 	}
 	else 
 	{
@@ -170,16 +176,21 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 	$policyList = @()
 	
 	# Récupération de la liste des fichiers JSON à utiliser pour créer les approval policies utilisées dans les 2nd day actions.
-	$JSONFiles = $secondDayActions.getJSONApprovalPoliciesFiles($targetTenant)
+	$approvalPolicyList = $secondDayActions.getJSONApprovalPoliciesFilesInfos($targetTenant)
 
 	# Parcours des fichiers JSON identifiés et création des approval policies si elles n'existent pas encore
-	Foreach($JSON in $JSONFiles)
+	Foreach($approvalPolicyInfos in $approvalPolicyList)
 	{
 
-		$actionReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $baseName -desc $desc -approverGroupAtDomain $approveGroupName -approvalPolicyJSON $JSON
+		$actionReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $baseName -desc $desc -approverGroupAtDomain $approveGroupName `
+								-approvalPolicyJSON $approvalPolicyInfos.json -additionnalReplace $approvalPolicyInfos.replacements
+
+		# On utilise le hash renvoyé par getJSONApprovalPoliciesFilesInfos() afin de dire quel est l'ID de l'approval policy associée
+		# cette information sera utilisée plus tard pour affecter l'approval policy à l'action au sein de vRA, dans l'entitlement.
+		$secondDayActions.setActionApprovalPolicyId($approvalPolicyInfos.actionHash, $actionReqApprovalPolicy.id)
 
 		# Ajout de la policy (et du nom du fichier JSON à la liste)
-		$policyList += @{JSONFile = $JSON
+		$policyList += @{JSONFile = $JSONFile
 				  		 policy = $actionReqApprovalPolicy}
 		
 	}
@@ -1073,6 +1084,8 @@ try
 
 		$counters.inc('ADGroups')
 
+		$secondDayActions.clearApprovalPolicyMapping()
+
 		# Génération du nom du groupe avec le domaine
 		$ADFullGroupName = $nameGenerator.getADGroupFQDN($_.Name)
 		$logHistory.addLineAndDisplay(("-> Current AD group         : $($_.Name)"))
@@ -1207,7 +1220,8 @@ try
 
 		# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
 		$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
-																 -approverGroupAtDomain $approveGroupName -approvalPolicyJSON $itemReqApprovalPolicyJSON
+																 -approverGroupAtDomain $approveGroupName -approvalPolicyJSON $itemReqApprovalPolicyJSON `
+																 -additionnalReplace @{}
 
 		# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
 		$actionReqApprovalPolicies = create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
@@ -1245,7 +1259,7 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Actions
 		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
-		$ent = $vra.prepareEntActions($ent, $secondDayActions, $actionReqApprovalPolicies)
+		$ent = $vra.prepareEntActions($ent, $secondDayActions)
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
