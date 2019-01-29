@@ -183,12 +183,16 @@ function handleNotifications
 $EPFL_FAC_UNIT_NB_LEVEL = 3
 
 # Pour dire si on est en mode Simulation ou pas. Si c'est le cas, uniquement les lectures dans AD sont effectuée mais
-# aucune écriture.
-$SIMULATION_MODE = $false
+# aucune écriture. 
+# Pour passer en mode simulation, il suffit de créer un fichier "SIMULATION_MODE" au même niveau que
+# le script courant
+$SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", "SIMULATION_MODE")))
 
 # Pour dire si on est en mode test. Si c'est le cas, on ne traitera qu'un nombre limité d'unités, nombre qui est
 # spécifié par $EPFL_TEST_NB_UNITS_MAX ci-dessous (si Tenant EPFL).
-$TEST_MODE = $true
+# Pour passer en mode simulation, il suffit de créer un fichier "TEST_MODE" au même niveau que
+# le script courant
+$TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", "TEST_MODE")))
 $EPFL_TEST_NB_UNITS_MAX = 10
 
 # CONFIGURATION
