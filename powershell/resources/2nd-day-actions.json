@@ -20,6 +20,10 @@
             {
                 "name": "Connect to Remote Console",
                 "approvals": []
+            },
+            {
+                "name": "Connect using VMRC",
+                "approvals": []
             }
         ]
     },
