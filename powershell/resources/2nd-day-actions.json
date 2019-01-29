@@ -105,20 +105,16 @@
                 "approvals": [
                     {
                         "tenant": "EPFL",
-                        "json": "pre-approval-policy-customprop-reconfigure-2nd-day.json",
+                        "json": "pre-approval-policy-evsub-2nd-day.json",
                         "jsonConfig": 
                         {
-                            "customPropName": "ch.epfl.request.approval.needed",
-                            "customPropValue": "yes"
                         }
                     },
                     {
                         "tenant": "ITServices",
-                        "json": "pre-approval-policy-customprop-reconfigure-2nd-day.json",
+                        "json": "pre-approval-policy-usrgrp-2nd-day.json",
                         "jsonConfig": 
                         {
-                            "customPropName": "ch.epfl.request.approval.needed",
-                            "customPropValue": "yes"
                         }
                     }
                 ]
