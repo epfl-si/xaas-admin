@@ -1097,7 +1097,7 @@ try
 		$capacityAlertMails = @($global:CAPACITY_ALERT_DEFAULT_MAIL)
 
 		# Recherche des Workflows vRO à utiliser
-		$workflowNewItem = $vro.getWorkflow($global:VRO_WORKFLOW_NEW_ITEM)
+		#$workflowNewItem = $vro.getWorkflow($global:VRO_WORKFLOW_NEW_ITEM)
 		
 
 		# Si Tenant EPFL
@@ -1217,7 +1217,24 @@ try
 			# On enregistre l'info pour notification
 			$notifications['emptyADGroups'] += ("{0} ({1})" -f $_.Name, $bgName)
 		}
+		
+		# ----------------------------------------------------------------------------------
+		# --------------------------------- Business Group 
 
+		# Création ou mise à jour du Business Group
+		$bg = createOrUpdateBG -vra $vra -existingBGList $existingBGList -bgUnitID $unitID -bgSnowSvcID $snowServiceId -bgName $bgName -bgDesc $bgDesc `
+									-machinePrefixName $machinePrefixName -capacityAlertsEmail ($capacityAlertMails -join ",") -customProperties $bgCustomProperties
+
+		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
+		if($null -eq $bg)
+		{
+			# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
+			return
+		}
+
+
+		# ----------------------------------------------------------------------------------
+		# --------------------------------- Approval policies
 		# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
 		$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
 																 -approverGroupAtDomain $approveGroupName -approvalPolicyJSON $itemReqApprovalPolicyJSON `
@@ -1233,18 +1250,7 @@ try
 		{
 			$processedApprovalPoliciesIDs += $approvalPolicy.policy.id
 		}
-																
 
-		# Création ou mise à jour du Business Group
-		$bg = createOrUpdateBG -vra $vra -existingBGList $existingBGList -bgUnitID $unitID -bgSnowSvcID $snowServiceId -bgName $bgName -bgDesc $bgDesc `
-									-machinePrefixName $machinePrefixName -capacityAlertsEmail ($capacityAlertMails -join ",") -customProperties $bgCustomProperties
-
-		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
-		if($null -eq $bg)
-		{
-			# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
-			return
-		}
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Roles
@@ -1305,14 +1311,14 @@ try
 	# ----------------------------------------------------------------------------------------------------------------------
 
 	# Désactivation des approval policies qui ne sont pas utilisées
-	$logHistory.addLineAndDisplay("Deactivating unused Approval Policies")
-	$vra.getApprovalPolicyList() | ForEach-Object {
-		if($processedApprovalPoliciesIDs -notcontains $_.id)
-		{
-			$logHistory.addLineAndDisplay(("-> Deactivating Approval Policy '{0}'... " -f $_.name))
-			$res = $vra.setApprovalPolicyState($_, $false)
-		}
-	}
+	# $logHistory.addLineAndDisplay("Deactivating unused Approval Policies")
+	# $vra.getApprovalPolicyList() | ForEach-Object {
+	# 	if($processedApprovalPoliciesIDs -notcontains $_.id)
+	# 	{
+	# 		$logHistory.addLineAndDisplay(("-> Deactivating Approval Policy '{0}'... " -f $_.name))
+	# 		$res = $vra.setApprovalPolicyState($_, $false)
+	# 	}
+	# }
 
 
 	$vra.disconnect()
