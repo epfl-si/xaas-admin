@@ -317,6 +317,22 @@ function createOrUpdateBG
 		if(($bg.name -ne $bgName) -or ($bg.description -ne $bgDesc) -or (!(isBGAlive -bg $bg)))
 		{
 
+			# S'il y a eu changement de nom,
+			if($bg.name -ne $bgName)
+			{
+				# Recherche du nom actuel du dossier où se trouvent les ISO du BG
+				$bgISOFolderCurrent = $nameGenerator.getNASPrivateISOPath($bg.name)
+				# Recherche du nouveau nom du dossier où devront se trouver les ISO
+				$bgISOFolderNew = $nameGenerator.getNASPrivateISOPath($bgName)
+
+				$logHistory.addLineAndDisplay(("-> Renaming ISO folder for BG: '{0}' to '{1}'" -f $bgISOFolderCurrent, $bgISOFolderNew))
+				
+				# Renommage du dossier en mode "force". Aucune idée de savoir quel est le comportement dans le cas où une ISO est montée...
+				# Mais la probabilité qu'une unité soit renommée est déjà très faible, et je pense que c'est encore plus improbable qu'en 
+				# même temps une ISO soit montée dans une VM.
+				Rename-Item -Path $bgISOFolderCurrent -NewName $bgISOFolderNew -Force
+			}
+
 			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating BG '{0}' to '{1}'" -f $bg.name, $bgName))
 
 			# Mise à jour des informations
@@ -636,6 +652,9 @@ function createOrUpdateBGReservations
 	IN  : $vra 		-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $bg		-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
 					   par un appel à une méthode de la classe vRAAPI
+
+	RET : $true si effacé
+		  $false si pas effacé (mis en ghost)
 #>
 function deleteBGAndComponentsIfPossible
 {
@@ -686,6 +705,8 @@ function deleteBGAndComponentsIfPossible
 
 		} # FIN si le BG est toujours actif
 
+		$deleted = $false
+
 	}
 	else # Il n'y a aucun item dans le BG
 	{
@@ -727,8 +748,11 @@ function deleteBGAndComponentsIfPossible
 
 		# Incrémentation du compteur
 		$counters.inc('BGDeleted')
+
+		$deleted = $true
 	}
 
+	return $deleted
 }
 
 
@@ -1099,7 +1123,6 @@ try
 		# Recherche des Workflows vRO à utiliser
 		#$workflowNewItem = $vro.getWorkflow($global:VRO_WORKFLOW_NEW_ITEM)
 		
-
 		# Si Tenant EPFL
 		if($targetTenant -eq $global:VRA_TENANT__EPFL)
 		{
@@ -1217,6 +1240,8 @@ try
 			# On enregistre l'info pour notification
 			$notifications['emptyADGroups'] += ("{0} ({1})" -f $_.Name, $bgName)
 		}
+
+		
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group 
@@ -1278,13 +1303,39 @@ try
 
 
 
-
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Reservations
 		createOrUpdateBGReservations -vra $vra -bg $bg -resTemplatePrefix $nameGenerator.getReservationTemplatePrefix()
 
-		$doneBGList += $bg.name
+		
 
+
+		# ----------------------------------------------------------------------------------
+		# --------------------------------- Dossier pour les ISO privées
+		
+		# Recherche de l'UNC jusqu'au dossier où mettre les ISO pour le BG
+		$bgISOFolder = $nameGenerator.getNASPrivateISOPath($bgName)
+
+		# Si on a effectivement un dossier où mettre les ISO et qu'il n'existe pas encore,
+		if(($bgISOFolder -ne "") -and (-not (Test-Path $bgISOFolder)))
+		{
+			$logHistory.addLineAndDisplay(("--> Creating ISO folder '{0}'..." -f $bgISOFolder))
+			# On le créé
+			$dummy = New-Item -Path $bgISOFolder -ItemType:Directory
+
+			# Récupération et modification des ACL pour ajouter les groupes AD qui sont pour le Role "Shared" dans le BG
+			$acl = Get-Acl $bgISOFolder
+			ForEach($sharedGrp in $sharedGrpList)
+			{
+				$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($sharedGrp,"Modify","Allow")
+				$acl.SetAccessRule($ar)
+			}
+			Set-Acl $bgISOFolder $acl
+
+		} # FIN SI on n'est pas sur l'environnement de DEV 
+		
+
+		$doneBGList += $bg.name
 
 	}# Fin boucle de parcours des groupes AD pour l'environnement/tenant donnés
 
@@ -1303,8 +1354,22 @@ try
 			($doneBGList -notcontains $_.name))
 		{
 			$logHistory.addLineAndDisplay(("-> Deleting Business Group '{0}'..." -f $_.name))
-			deleteBGAndComponentsIfPossible -vra $vra -bg $_
+			$deleted = deleteBGAndComponentsIfPossible -vra $vra -bg $_
+
+
+			# Si le BG a pu être complètement effacé, c'est qu'il n'y avait plus d'items dedans et que donc forcément aucune
+			# ISO ne pouvait être montée nulle part.
+			if($deleted)
+			{	
+				$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}' ISO folder '{1}'... " -f $_.name, $bgISOFolder))
+				# Recherche de l'UNC jusqu'au dossier où se trouvent les ISO pour le BG
+				$bgISOFolder = $nameGenerator.getNASPrivateISOPath($_.name)
+				
+				# Suppression du dossier
+				Remove-Item -Path $bgISOFolder -Recurse -Force
+			}
 		}
+
 	}
 
 	# ----------------------------------------------------------------------------------------------------------------------

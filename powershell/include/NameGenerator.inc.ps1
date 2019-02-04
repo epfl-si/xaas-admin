@@ -1278,5 +1278,31 @@ class NameGenerator
     }
 
 
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie le chemin d'accès (UNC) pour aller dans le dossier des ISO privées
+              d'un BG dont le nom est donné en paramètre.
+
+        RET : Le chemin jusqu'au dossier NAS des ISO privée. Si pas dispo, on retourne une chaîne vide.
+    #>
+    [string] getNASPrivateISOPath([string]$bgName)
+    {
+        # Si on est sur la prod 
+        if($this.env -eq $global:TARGET_ENV__PROD)
+        {
+            return ([IO.Path]::Combine($global:NAS_PRIVATE_ISO_PROD, $this.tenant, $bgName))
+        }
+        # On est sur le test
+        elseif($this.env -eq $global:TARGET_ENV__TEST)
+        {
+            return ([IO.Path]::Combine($global:NAS_PRIVATE_ISO_TEST, $this.tenant, $bgName))
+        }
+        else # On est sur le dev
+        {
+            # Pas dispo pour cet environnement
+            return ""
+        }
+
+    }
 
 }

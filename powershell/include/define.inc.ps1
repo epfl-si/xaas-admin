@@ -66,3 +66,7 @@ $global:VRA_BG_TYPE__UNIT 	 = "unit"
 # Status de Business Group possibles
 $global:VRA_BG_STATUS__ALIVE = "alive"
 $global:VRA_BG_STATUS__GHOST = "ghost"
+
+# Nom chemin jusqu'aux volumes NAS où se trouvent les ISO privées
+$global:NAS_PRIVATE_ISO_TEST = "\\nassvmmix01\si_vsissp_iso_priv_repo_t02_app"
+$global:NAS_PRIVATE_ISO_PROD = "\\nassvmmix01\si_vsissp_iso_priv_repo_p01_app"
