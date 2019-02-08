@@ -371,7 +371,8 @@ class vRAAPI
 		# Mise à jour des informations
 		Invoke-RestMethod -Uri $uri -Method Put -Headers $this.headers -Body (ConvertTo-Json -InputObject $bg -Depth 20)
 
-		return $bg
+		# On recherche l'objet mis à jour
+		return $this.getBG($bg.name)
 	}
 
 
@@ -700,7 +701,10 @@ class vRAAPI
 		# Mise à jour des informations
 		$empty = Invoke-RestMethod -Uri $uri -Method Put -Headers $this.headers -Body (ConvertTo-Json -InputObject $ent -Depth 20)
 
-		return $ent
+		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
+		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
+		# réutilise un élément pas mis à jour depuis vRA
+		return $this.getEnt($ent.name)
 	}
 
 
@@ -1019,7 +1023,10 @@ class vRAAPI
 
 		$empty = Invoke-RestMethod -Uri $uri -Method Put -Headers $this.headers -Body (ConvertTo-Json -InputObject $res -Depth 20 )
 
-		return $res
+		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
+		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
+		# réutilise un élément pas mis à jour depuis vRA
+		return $this.getRes($newName)
 	}
 
 
@@ -1454,7 +1461,10 @@ class vRAAPI
 		# Mise à jour des informations
 		Invoke-RestMethod -Uri $uri -Method Put -Headers $this.headers -Body (ConvertTo-Json -InputObject $approvalPolicy -Depth 20)
 
-		return $approvalPolicy
+		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
+		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
+		# réutilise un élément pas mis à jour depuis vRA
+		return $this.getApprovalPolicy($approvalPolicy.name)
 	}
 
 
