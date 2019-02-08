@@ -327,10 +327,29 @@ function createOrUpdateBG
 
 				$logHistory.addLineAndDisplay(("-> Renaming ISO folder for BG: '{0}' to '{1}'" -f $bgISOFolderCurrent, $bgISOFolderNew))
 				
-				# Renommage du dossier en mode "force". Aucune idée de savoir quel est le comportement dans le cas où une ISO est montée...
-				# Mais la probabilité qu'une unité soit renommée est déjà très faible, et je pense que c'est encore plus improbable qu'en 
-				# même temps une ISO soit montée dans une VM.
-				Rename-Item -Path $bgISOFolderCurrent -NewName $bgISOFolderNew -Force
+				try 
+				{
+					<# Renommage du dossier en mode "force". Aucune idée de savoir quel est le comportement dans le cas où une ISO est montée...
+					Mais la probabilité qu'une unité soit renommée est déjà très faible, et je pense que c'est encore plus improbable qu'en 
+					même temps une ISO soit montée dans une VM. 
+					On met "-ErrorAction 'Stop'" pour s'assurer qu'en cas d'erreur on passe bien dans le "catch". Si on ne le fait pas, 
+					ça va passer tout droit et simplement afficher l'erreur à la console. On n'aura pas de possibilité d'effectuer des 
+					actions suite à l'erreur. #>
+					Rename-Item -Path $bgISOFolderCurrent -NewName $bgISOFolderNew -Force -ErrorAction 'Stop'
+				}
+				catch 
+				{
+					<# Erreur de renommage, probablement car ISO montée. Dans ce cas-là, on fait en sorte de notifier les admins.
+					Le dossier portant l'ancien nom va donc rester et un nouveau dossier sera créé automatiquement avec le nouveau nom à
+					la fin du script du fait qu'il n'existe pas. #> 
+					$logHistory.addErrorAndDisplay(("-> Error renaming folder. Error is : {0}" -f $_.Error.Message))
+				
+					# Ajout d'information dans les notifications pour faire en sorte que les admins soient informés par mail.
+					$notifications['ISOFolderNotRenamed'] += ("{0} -> {1}" -f $bgISOFolderCurrent, $bgISOFolderNew)
+
+					# On continue ensuite l'exécution normalement 
+				}
+				
 			}
 
 			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating BG '{0}' to '{1}'" -f $bg.name, $bgName))
@@ -926,6 +945,16 @@ ne contiennent plus aucun utilisateur. Il s'agit peut-être d'une erreur dans la
 Il s'agit peut-être d'une erreur dans l'exécution du script 'sync-ad-groups-from-ldap.ps1' qui créé ceux-ci:`
 <br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
 				}
+
+				# ---------------------------------------
+				# Renommage de dossier d'ISO privées échoué
+				'ISOFolderNotRenamed'
+				{
+					$mailSubject = getvRAMailSubject -shortSubject "Error - Private ISO folder renaming failed" -targetEnv $targetEnv  -targetTenant $targetTenant
+					$message = getvRAMailContent -content ("Les dossiers suivants n'ont pas pu être renommés suite au changement du nom du Business Group auxquels ils sont associés.`
+Du coup, un nouveau dossier vide a été créé avec le bon nom et il faudra manuellement faire du ménage pour l'ancien dossier.`
+<br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
+				}
 				
 
 				default
@@ -1072,7 +1101,8 @@ $notifications=@{newBGMachinePrefixNotFound = @()
 				bgSetAsGhost = @()
 				bgDeleted = @()
 				emptyADGroups = @()
-				adGroupsNotFound = @()}
+				adGroupsNotFound = @()
+				ISOFolderNotRenamed = @()}
 
 # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 $logHistory =[LogHistory]::new('2.sync-BG-from-AD', (Join-Path $PSScriptRoot "logs"), 30)
@@ -1299,6 +1329,7 @@ try
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus
 		$logHistory.addLineAndDisplay("-> Updating Entitlement...")
+		
 		$ent = $vra.updateEnt($ent, $true)
 
 
