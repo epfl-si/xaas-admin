@@ -72,4 +72,4 @@ $global:NAS_PRIVATE_ISO_TEST = "\\nassvmmix01\si_vsissp_iso_priv_repo_t02_app"
 $global:NAS_PRIVATE_ISO_PROD = "\\nassvmmix01\si_vsissp_iso_priv_repo_p01_app"
 
 # Le nombre de jours pendant lesquels on garde les fichiers ISO privés avant de les supprimer
-$global:PRIVATE_ISO_LIFETIME_DAYS = 0
+$global:PRIVATE_ISO_LIFETIME_DAYS = 30
