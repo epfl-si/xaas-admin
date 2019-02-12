@@ -1040,26 +1040,6 @@ $nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 
 $doneBGList = @()
 
-try {
-	# Création d'une connexion au serveur vRA pour accéder à ses API REST
-	$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
-}
-catch {
-	Write-Error "Error connecting to vRA API !"
-	Write-Error $_.ErrorDetails.Message
-	exit
-}
-
-try {
-	# Création d'une connexion au serveur vRA pour accéder aux API REST de vRO
-	$vro = [vROAPI]::new($nameGenerator.getvRAServerName(), $global:VRO_CAFE_CLIENT_ID[$targetEnv], $global:VRA_PASSWORD_LIST[$targetEnv][$global:VRA_TENANT__DEFAULT])
-}
-catch {
-	Write-Error "Error connecting to vRO API !"
-	Write-Error $_.ErrorDetails.Message
-	exit
-}
-
 
 # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 $counters = [Counters]::new()
@@ -1111,6 +1091,12 @@ $logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenan
 
 try
 {
+	# Création d'une connexion au serveur vRA pour accéder à ses API REST
+	$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
+
+	# Création d'une connexion au serveur vRA pour accéder aux API REST de vRO
+	$vro = [vROAPI]::new($nameGenerator.getvRAServerName(), $global:VRO_CAFE_CLIENT_ID[$targetEnv], $global:VRA_PASSWORD_LIST[$targetEnv][$global:VRA_TENANT__DEFAULT])
+
 	# Recherche de BG existants
 	$existingBGList = $vra.getBGList()
 	
