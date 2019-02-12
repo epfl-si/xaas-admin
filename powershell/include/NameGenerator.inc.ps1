@@ -1282,6 +1282,10 @@ class NameGenerator
     -------------------------------------------------------------------------------------
         BUT : Renvoie le chemin d'accès (UNC) pour aller dans le dossier des ISO privées
               d'un BG dont le nom est donné en paramètre.
+              On reprend simplement le nom du serveur et le share CIFS qui sont définis dans
+              define.inc.ps1 et on y ajoute le nom du tenant et le nom du BG.
+
+        IN  : le nom du BG pour lequel on veut le dossier de stockage des ISO
 
         RET : Le chemin jusqu'au dossier NAS des ISO privée. Si pas dispo, on retourne une chaîne vide.
     #>
@@ -1303,6 +1307,53 @@ class NameGenerator
             return ""
         }
 
+    }
+
+
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie le chemin d'accès (UNC) pour aller dans le dossier racine des ISO privées
+              de l'environnement courant
+
+        RET : Le chemin jusqu'au dossier racine NAS des ISO privée. Si pas dispo, on retourne une chaîne vide.
+    #>
+    [string] getNASPrivateISORootPath()
+    {
+        return $this.getNASPrivateISOPath("")
+    }
+
+
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du BG qui est lié au chemin UNC passé en paramètre. A savoir que l'utilisateur
+              peut créer des sous-dossiers dans le dossier du BG.
+
+        IN  : Le chemin UNC depuis lequel il faut récupérer le nom du BG. ça peut être le chemin jusqu'à un dossier
+              ou simplement jusqu'à un fichier ISO
+
+        RET : Le nom du BG
+    #>
+    [string] getNASPrivateISOPathBGName([string]$path)
+    {
+        # Le chemin a le look suivant \\<server>\<share>\<tenant>\<bg>[\<subfolder>[\<subfolder>]...][\<isoFilename>]
+
+        # On commence par virer le début du chemin d'accès
+        $cleanPath = $path -replace [regex]::Escape($this.getNASPrivateISORootPath()), ""
+
+        # Split du chemin
+        $pathParts = $cleanPath.Split("\")
+
+        # Retour du premier élément de la liste qui n'est pas vide, ça sera d'office le nom du BG
+        ForEach($part in $pathParts)
+        {
+            if($part -ne "")
+            {
+                return $part
+            }
+        }
+
+        # Si on arrive ici, c'est qu'on n'a pas trouvé donc erreur 
+        Throw ("Error extracting BG name from given path '{0}'" -f $path)
     }
 
 }
