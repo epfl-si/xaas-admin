@@ -6,3 +6,4 @@ test.ps1
 config-vra.inc.ps1
 config-vro.inc.ps1
 config-mail.inc.ps1
+config-vsphere.inc.ps1
