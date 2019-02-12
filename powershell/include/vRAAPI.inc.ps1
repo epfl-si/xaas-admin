@@ -1256,24 +1256,55 @@ class vRAAPI
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Items selon les paramètres passés dans $queryParams
+
+
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+
+		RET : Tableau contenant les items
+	#>
+	hidden [Array] getBGItemListQuery([string] $queryParams)
+	{
+		$uri = "https://{0}/catalog-service/api/consumer/resources/?page=1&limit=9999" -f $this.server
+
+		# Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+
+		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
+
+	}
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des Items d'un BG.
-			  On utilise la puissance de PowerShell pour filtrer sur les objets renvoyés car
-			  impossible de faire fonctionner le filtre... le paramètre est pris en compte (pas d'erreur)
-			  mais n'est pas appliqué... c'est pour cette raison qu'on fait un "Where-Object" sur le résultat
-			  avant de le renvoyer.
-
-
+			  
 		IN  : $bg				-> Objet représentant le BG pour lequel on veut la liste des Items
 
 		RET : Tableau contenant les items
 	#>
 	[Array] getBGItemList([PSObject] $bg)
 	{
-		$uri = "https://{0}/catalog-service/api/consumer/resources/?page=1&limit=9999" -f $this.server
+		return $this.getBGItemListQuery("`$filter=organization/subTenant/id eq '{0}'" -f $bg.id)
+	}
 
 
-		return ((Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content | Where-Object {
-			($_.organization.subtenantRef -eq $bg.id)})
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Items d'un type donné pour un BG.
+			  
+		IN  : $bg				-> Objet représentant le BG pour lequel on veut la liste des Items
+		IN  : $itemType			-> Type d'item que l'on désire ('Virtual Machine' par exemple)
+
+		RET : Tableau contenant les items
+	#>
+	[Array] getBGItemList([PSObject] $bg, [string]$itemType)
+	{
+		return $this.getBGItemListQuery("`$filter=organization/subTenant/id eq '{0}' and resourceType/name eq '{1}'" -f $bg.id, $itemType)
 
 	}
 
