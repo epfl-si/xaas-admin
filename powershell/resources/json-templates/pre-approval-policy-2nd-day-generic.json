@@ -1,13 +1,13 @@
 {
-    "name": "{{preApprovalName}}_reconfigure",
-    "description": "{{preApprovalDesc}} (Reconfigure)",
+    "name": "{{preApprovalName}}",
+    "description": "{{preApprovalDesc}}",
     "policyType": {
         "id": "com.vmware.cafe.catalog.request.resourceaction",
-        "name": "Service Catalog - Resource Action Request - Reconfigure - Machine",
+        "name": "Service Catalog - Resource Action Request",
         "description": "",
         "serviceTypeId": "com.vmware.csp.core.cafe.catalog",
         "classId": "resourceActionRequest",
-        "typeFilter": "Infrastructure.Machine.Action.Reconfigure",
+        "typeFilter": null,
         "phaseTypes": [
             {
                 "id": "com.vmware.cafe.catalog.request.pre",
@@ -39,42 +39,7 @@
                 "phaseOrder": 0,
                 "allowUpdates": true
             },
-            "levels": [
-                {
-                    "name": "{{preApprovalLevelName}}",
-                    "description": "",
-                    "approvers": [
-                        {
-                            "value": "{{approverGroupAtDomain}}",
-                            "type": "GROUP",
-                            "displayName": "{{approverDisplayName}}"
-                        }
-                    ],
-                    "approvalMode": "ANY",
-                    "criteria": {
-                        "type": "expression",
-                        "operator": {
-                            "type": "contains"
-                        },
-                        "leftOperand": {
-                            "type": "path",
-                            "path": "provider-Cafe.Shim.VirtualMachine.Reconfigure.PropertyBag"
-                        },
-                        "rightOperand": {
-                            "type": "constant",
-                            "value": {
-                                "type": "string",
-                                "value": "{{customPropName}}\",\"PropertyValue\":\"{{customPropValue}}\""
-                            }
-                        }
-                    },
-                    "levelNumber": 1,
-                    "external": false,
-                    "editSchema": {
-                        "fields": []
-                    }
-                }
-            ],
+            "levels": "{{preApprovalLevels}}",
             "description": "Approvals sought before a request is fulfilled.",
             "name": "Pre Approval"
         },

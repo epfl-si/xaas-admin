@@ -1,13 +1,13 @@
 {
-    "name": "{{preApprovalName}}",
-    "description": "{{preApprovalDesc}}",
+    "name": "{{preApprovalName}}_reconfigure",
+    "description": "{{preApprovalDesc}} (Reconfigure)",
     "policyType": {
         "id": "com.vmware.cafe.catalog.request.resourceaction",
-        "name": "Service Catalog - Resource Action Request",
+        "name": "Service Catalog - Resource Action Request - Reconfigure - Machine",
         "description": "",
         "serviceTypeId": "com.vmware.csp.core.cafe.catalog",
         "classId": "resourceActionRequest",
-        "typeFilter": null,
+        "typeFilter": "Infrastructure.Machine.Action.Reconfigure",
         "phaseTypes": [
             {
                 "id": "com.vmware.cafe.catalog.request.pre",
@@ -39,32 +39,7 @@
                 "phaseOrder": 0,
                 "allowUpdates": true
             },
-            "levels": [
-                {
-                    "name": "{{preApprovalLevelName}}",
-                    "description": "",
-                    "approvers": [
-                        {
-                            "value": "{{approverGroupAtDomain}}",
-                            "type": "GROUP",
-                            "displayName": "{{approverDisplayName}}"
-                        }
-                    ],
-                    "approvalMode": "ANY",
-                    "criteria": {
-                        "type": "constantClause",
-                        "value": {
-                            "type": "boolean",
-                            "value": true
-                        }
-                    },
-                    "levelNumber": 1,
-                    "external": false,
-                    "editSchema": {
-                        "fields": []
-                    }
-                }
-            ],
+            "levels": "{{preApprovalLevels}}",
             "description": "Approvals sought before a request is fulfilled.",
             "name": "Pre Approval"
         },

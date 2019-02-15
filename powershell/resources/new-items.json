@@ -1,0 +1,12 @@
+[
+    {
+        "tenant": "EPFL",
+        "approvalPolicyJSON": "pre-approval-policy-new-item.json",
+        "approvalLevelJSON": "approval-level-usrgrp.json"
+    },
+    {
+        "tenant": "ITServices",
+        "approvalPolicyJSON": "pre-approval-policy-new-item.json",
+        "approvalLevelJSON": "approval-level-usrgrp.json"
+    }
+]
