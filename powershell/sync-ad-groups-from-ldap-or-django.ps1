@@ -27,6 +27,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "DjangoMySQL.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "vRAAPI.inc.ps1"))
@@ -83,7 +84,7 @@ function createADGroupWithContent
 
 		# Si on arrive ici, c'est que le groupe à mettre dans le nouveau groupe AD existe
 
-		if(-not $SIMULATION_MODE)
+		if(-not $simulation)
 		{
 			$logHistory.addLineAndDisplay(("--> Creating AD group '{0}'..." -f $groupName))
 			# Création du groupe
@@ -275,6 +276,7 @@ try
 
 		# Ajout des compteurs propres au tenant
 		$counters.add('epfl.facProcessed', '# Faculty processed')
+		$counters.add('epfl.facSkipped', '# Faculty skipped')
 		$counters.add('epfl.LDAPUnitsProcessed', '# LDAP Units processed')
 		$counters.add('epfl.LDAPUnitsEmpty', '# LDAP Units empty')
 
@@ -302,19 +304,41 @@ try
 			
 			# --------------------------------- APPROVE
 
-			# Génération du nom du broupe dont on va avoir besoin pour approuver les demandes pour le service. 
-
-			$approveGroupNameAD = $nameGenerator.getEPFLApproveADGroupName($faculty['name'])
-			$approveGroupDescAD = $nameGenerator.getEPFLApproveADGroupDesc($faculty['name'])
-			$approveGroupNameGroups = $nameGenerator.getEPFLApproveGroupsADGroupName($faculty['name'])
-
-			# Création des groupes + gestion des groupes prérequis 
-			if((createADGroupWithContent -groupName $approveGroupNameAD -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-				 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+			$allGroupsOK = $true
+			# Génération des noms des X groupes dont on va avoir besoin pour approuver les NOUVELLES demandes pour la faculté 
+			$level = 0
+			while($true)
 			{
-				# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
-				$notifications['missingEPFLADGroups'] += $approveGroupNameGroups
-				break
+				$level += 1
+				$approveGroupNameAD = $nameGenerator.getEPFLApproveADGroupName($faculty['name'], $level)
+
+				# S'il n'y a plus de groupe pour le level courant, on sort
+				if($approveGroupNameAD -eq "")
+				{
+					break
+				}
+				$approveGroupDescAD = $nameGenerator.getEPFLApproveADGroupDesc($faculty['name'], $level)
+				$approveGroupNameGroups = $nameGenerator.getEPFLApproveGroupsADGroupName($faculty['name'], $level)
+
+				# Création des groupes + gestion des groupes prérequis 
+				if((createADGroupWithContent -groupName $approveGroupNameAD -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+					-OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+				{
+					if($notifications['missingEPFLADGroups'] -notcontains $approveGroupNameGroups)
+					{
+						# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
+						$notifications['missingEPFLADGroups'] += $approveGroupNameGroups
+					}
+					$allGroupsOK = $false
+				}
+			}# FIn boucle de création des groupes pour les différents Levels 
+
+			# Si on n'a pas pu créer tous les groupes pour la faculté courante, 
+			if($allGroupsOK -eq $false)
+			{
+				$counters.inc('epfl.facSkipped')
+				# On passe à la faculté suivante
+				continue
 			}
 
 			
@@ -530,6 +554,7 @@ try
 
 		# Ajout des compteurs propres au tenant
 		$counters.add('its.serviceProcessed', '# Service processed')
+		$counters.add('its.serviceSkipped', '# Service skipped')
 
 		# Chargement des infos se trouvant dans le fichier "secrets.json" pour pouvoir accéder à la DB
 		$dbInfos = loadMySQLInfos -file $global:JSON_SECRETS_FILE -targetEnv $targetEnv
@@ -556,22 +581,46 @@ try
 			$serviceNo += 1
 
 			# --------------------------------- APPROVE
-
-			# Génération du nom du broupe dont on va avoir besoin pour approuver les demandes pour le service. 
-
-			$approveGroupNameAD = $nameGenerator.getITSApproveADGroupName($service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
-			$approveGroupDescAD = $nameGenerator.getITSApproveADGroupDesc($service.$global:MYSQL_ITS_SERVICES__LONGNAME)
-			$approveGroupNameGroups = $nameGenerator.getITSApproveGroupsADGroupName($service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
-
-			# Création des groupes + gestion des groupes prérequis 
-			if((createADGroupWithContent -groupName $approveGroupNameAD -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-				 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+			$allGroupsOK = $true
+			# Génération des noms des X groupes dont on va avoir besoin pour approuver les NOUVELLES demandes pour le service. 
+			$level = 0
+			while($true)
 			{
-				# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-				$notifications['missingITSADGroups'] += $approveGroupNameGroups
+				$level += 1
+				# Recherche des informations pour le level courant.
+				$approveGroupNameAD = $nameGenerator.getITSApproveADGroupName($service.$global:MYSQL_ITS_SERVICES__SHORTNAME, $level)
+
+				# Si vide, c'est qu'on a atteint le niveau max pour les level
+				if($approveGroupNameAD -eq "")
+				{
+					break
+				}
+
+				$approveGroupDescAD = $nameGenerator.getITSApproveADGroupDesc($service.$global:MYSQL_ITS_SERVICES__LONGNAME, $level)
+				$approveGroupNameGroups = $nameGenerator.getITSApproveGroupsADGroupName($service.$global:MYSQL_ITS_SERVICES__SHORTNAME, $level)
+
+				# Création des groupes + gestion des groupes prérequis 
+				if((createADGroupWithContent -groupName $approveGroupNameAD -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+					-OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+				{
+					# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
+					if($notifications['missingITSADGroups'] -notcontains $approveGroupNameGroups)
+					{
+						$notifications['missingITSADGroups'] += $approveGroupNameGroups
+					}
+						
+					$allGroupsOK = $false
+				}
+
+			} # FIN BOUCLE de création des groupes pour les différents level d'approbation 
+			
+			# Si on n'a pas pu créer tous les groupes, on passe au service suivant 
+			if($allGroupsOK -eq $false)
+			{
+				$counters.inc('its.serviceSkipped')
 				continue
 			}
-			
+
 			# --------------------------------- ROLES
 
 			# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 

@@ -40,13 +40,17 @@
                 "approvals": [
                     {
                         "tenant": "EPFL",
-                        "json": "pre-approval-policy-evsub-2nd-day.json",
-                        "jsonConfig": {}
+                        "approvalPolicyJSON": "pre-approval-policy-evsub-2nd-day.json",
+                        "approvalLevelJSON": "approval-level-evsub.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 2
                     },
                     {
                         "tenant": "ITServices",
-                        "json": "pre-approval-policy-usrgrp-2nd-day.json",
-                        "jsonConfig": {}
+                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "approval-level-usrgrp.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 1
                     }
                 ]
             },
@@ -109,17 +113,25 @@
                 "approvals": [
                     {
                         "tenant": "EPFL",
-                        "json": "pre-approval-policy-evsub-2nd-day.json",
-                        "jsonConfig": 
+                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-reconfigure-vm.json",
+                        "approvalLevelJSON": "approval-level-usrgrp-custom-prop.json",
+                        "JSONReplacements": 
                         {
-                        }
+                            "customPropName": "ch.epfl.iaas.request.approval.needed",
+                            "customPropValue": "yes"
+                        },
+                        "approvalLevels": 2
                     },
                     {
                         "tenant": "ITServices",
-                        "json": "pre-approval-policy-usrgrp-2nd-day.json",
-                        "jsonConfig": 
+                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-reconfigure-vm.json",
+                        "approvalLevelJSON": "approval-level-usrgrp-custom-prop.json",
+                        "JSONReplacements": 
                         {
-                        }
+                            "customPropName": "ch.epfl.iaas.request.approval.needed",
+                            "customPropValue": "yes"
+                        },
+                        "approvalLevels": 1
                     }
                 ]
             },

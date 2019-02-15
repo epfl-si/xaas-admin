@@ -149,12 +149,11 @@ class SecondDayActions
                         $uniqHash = $this.getElementActionUniqHash($targetElement.appliesTo, $actionInfos.name) 
                         $this.actionToApprovalPolicyId.Add($uniqHash, $null)
 
-                        # On ajoute un objet au tableau, avec une structure donnée pour pouvoir être récupérée facilement en aval.
-                        $JSONList += @{
-                            json = $tenantApproval.json
-                            replacements = $tenantApproval.jsonConfig
-                            actionHash = $uniqHash}
-
+                        # Récupération de la structure telle quel
+                        $el = $tenantApproval
+                        # Ajout de l'information du hash unique 
+                        $el | Add-Member -NotePropertyName actionHash -NotePropertyValue $uniqHash
+                        $JSONList += $el
                     }
                 }
             }

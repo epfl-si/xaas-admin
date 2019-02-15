@@ -352,21 +352,48 @@ class NameGenerator
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom du groupe d'approbation pour les paramètres passés 
               Cette méthode est cachée et est le point d'appel central pour d'autres méthodes publiques.
+              S'il n'y a pas d'information pour le niveau demandé ($level), on renvoie une chaine vide, 
+              ce qui permettra à l'appelant de savoir qu'il n'y a plus de groupe à partir du niveau demandé.
 
-        IN  : $facultyName -> Le nom court de la faculté
+        IN  : $facultyName      -> Le nom court de la faculté
+        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
         IN  : $type             -> Le type du groupe:
                                     $this.GROUP_TYPE_AD
                                     $this.GROUP_TYPE_GROUPS
         IN  : $fqdn             -> Pour dire si on veut le nom FQDN du groupe.
-                                    $true|$false    
+                                    $true|$false  
+                                    
+        RET : le nom du groupe ou "" si rien pour le $level demandé.    
 
     #>
-    hidden [string] getEPFLApproveGroupName([string]$facultyName, [string]$type, [bool]$fqdn)
+    hidden [string] getEPFLApproveGroupName([string]$facultyName, [int]$level, [string]$type, [bool]$fqdn)
     {
-        # NOTE: Pour le moment, on n'utilise pas le paramètre $type car c'est le même nom de groupe qui est utilisé pour AD et GROUPS.
+        <# NOTE 06.2018: Pour le moment, on n'utilise pas le paramètre $type car c'est le même nom de groupe qui est utilisé pour AD et GROUPS.
+           NOTE 02.2019: Le paramètre $facultyName ne sera utilisé que quand àlevel == 2 car le premier niveau, c'est le service manager de IaaS
+                         qui va s'occuper de le valider.
+        #>
 
+        # Ancienne nomenclature plus utilisée depuis 14.02.2019
         # vra_<envShort>_approval_<faculty>
-        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($facultyName)
+        #$groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($facultyName)
+
+        # Level 1 -> vra_<envshort>_approval_iaas
+        # Level 2 -> vra_<envShort>_approval_<faculty>
+
+        if($level -eq 1)
+        {
+            $last = "service_manager"
+        }
+        elseif($level -eq 2)
+        {
+            $last = $this.transformForGroupName($facultyName)
+        }
+        else 
+        {
+            return ""    
+        }
+
+        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $last
 
         if($fqdn)
         {
@@ -382,27 +409,38 @@ class NameGenerator
               pour un Business Group du tenant ITServices
 
         IN  : $facultyName      -> Le nom court de la faculté
+        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
         IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
                                     $true|$false  
                                     Si pas passé => $false 
 
         RET : Le nom du groupe à utiliser pour l'approbation
     #>
-    [string] getEPFLApproveADGroupName([string]$facultyName, [bool]$fqdn)
+    [string] getEPFLApproveADGroupName([string]$facultyName, [int]$level, [bool]$fqdn)
     {
-        return $this.getEPFLApproveGroupName($facultyName, $this.GROUP_TYPE_AD, $fqdn)
+        return $this.getEPFLApproveGroupName($facultyName, $level, $this.GROUP_TYPE_AD, $fqdn)
+    }
+    [string] getEPFLApproveADGroupName([string]$facultyName, [int]$level)
+    {
+        return $this.getEPFLApproveADGroupName($facultyName, $level, $false)
     }
     [string] getEPFLApproveADGroupName([string]$facultyName)
     {
-        return $this.getEPFLApproveADGroupName($facultyName, $false)
+        return $this.getEPFLApproveADGroupName($facultyName, 1, $false)
     }
-    [string] getEPFLApproveGroupsGroupName([string]$facultyName, [bool]$fqdn)
+
+
+    [string] getEPFLApproveGroupsGroupName([string]$facultyName, [int]$level, [bool]$fqdn)
     {
-        return $this.getEPFLApproveGroupName($facultyName, $this.GROUP_TYPE_GROUPS, $fqdn)
+        return $this.getEPFLApproveGroupName($facultyName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
+    }
+    [string] getEPFLApproveGroupsGroupName([string]$facultyName, [int]$level)
+    {
+        return $this.getEPFLApproveGroupsGroupName($facultyName, $level, $false)
     }
     [string] getEPFLApproveGroupsGroupName([string]$facultyName)
     {
-        return $this.getEPFLApproveGroupsGroupName($facultyName, $false)
+        return $this.getEPFLApproveGroupsGroupName($facultyName, 1, $false)
     }
 
     <#
@@ -411,12 +449,13 @@ class NameGenerator
               de la faculté $facultyName
 
         IN  : $facultyName      -> Le nom court de la faculté
+        IN  : $level            -> Niveau d'approbation (1, 2, ...)
        
         RET : Adresse mail du groupe
     #>
-    [string] getEPFLApproveGroupsEmail([string]$facultyName)
+    [string] getEPFLApproveGroupsEmail([string]$facultyName, [int]$level)
     {
-        $groupName = $this.getEPFLApproveGroupsGroupName($facultyName)
+        $groupName = $this.getEPFLApproveGroupsGroupName($facultyName, $level)
         return "{0}{1}" -f $groupName, [NameGenerator]::GROUPS_EMAIL_SUFFIX
     }
     
@@ -426,12 +465,13 @@ class NameGenerator
               pour le tenant.
 
         IN  : $facultyName      -> Le nom court de la faculté
+        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
        
         RET : Description du groupe
     #>
-    [string] getEPFLApproveADGroupDesc([string]$facultyName)
+    [string] getEPFLApproveADGroupDesc([string]$facultyName, [int]$level)
     {
-        return "Approval group for Faculty: {0}" -f $facultyName
+        return "Approval group (level {0}) for Faculty: {1}" -f $level, $facultyName
     }
 
     <#
@@ -440,20 +480,25 @@ class NameGenerator
               d'approbation des demandes pour un Business Group du tenant ITServices
 
         IN  : $facultyName      -> Le nom court de la faculté
+        IN  : $level            -> Niveau de l'approbation (1, 2, ...)
         IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
                                     $true|$false  
                                     Si pas passé => $false 
 
         RET : Le nom du groupe à utiliser pour l'approbation
     #>
-    [string] getEPFLApproveGroupsADGroupName([string]$facultyName, [bool]$fqdn)
+    [string] getEPFLApproveGroupsADGroupName([string]$facultyName, [int]$level, [bool]$fqdn)
     {
-        $groupName = $this.getEPFLApproveGroupName($facultyName, $this.GROUP_TYPE_GROUPS, $fqdn)
+        $groupName = $this.getEPFLApproveGroupName($facultyName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
         return $groupName + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
+    }
+    [string] getEPFLApproveGroupsADGroupName([string]$facultyName, [int]$level)
+    {
+        return $this.getEPFLApproveGroupsADGroupName($facultyName, $level, $false)
     }
     [string] getEPFLApproveGroupsADGroupName([string]$facultyName)
     {
-        return $this.getEPFLApproveGroupsADGroupName($facultyName, $false)
+        return $this.getEPFLApproveGroupsADGroupName($facultyName, 1, $false)
     }
 
     <#
@@ -688,8 +733,12 @@ class NameGenerator
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom du groupe d'approbation et sa description pour les paramètres passés 
               Cette méthode est cachée et est le point d'appel central pour d'autres méthodes publiques.
+              Le niveau d'approbation doit aussi être passé et s'il s'avère que celui-ci n'existe pas,
+              on renvoie un "". Ce qui permet de boucler en incrémentant le niveau d'approbation pour 
+              appeler cette fonction et dès que "" est retourné, c'est qu'il n'y a plus de niveau d'approbation.
 
         IN  : $serviceShortName -> Le nom court du service
+        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
         IN  : $type             -> Le type du groupe:
                                     $this.GROUP_TYPE_AD
                                     $this.GROUP_TYPE_GROUPS
@@ -698,12 +747,34 @@ class NameGenerator
 
         RET : Nom du groupe
     #>
-    hidden [string] getITSApproveGroupName([string]$serviceShortName, [string]$type, [bool]$fqdn)
+    hidden [string] getITSApproveGroupName([string]$serviceShortName, [int]$level, [string]$type, [bool]$fqdn)
     {
-        # NOTE: Pour le moment, on n'utilise pas le paramètre $type car c'est le même nom de groupe qui est utilisé pour AD et GROUPS.
+        <# NOTE 06.2018 : Pour le moment, on n'utilise pas le paramètre $type car c'est le même nom de groupe qui est utilisé pour AD et GROUPS.
+           NOTE 02.2019 : On n'utilise maintenant plus le paramètre $serviceShortName car ce sont maintenant le service manager IaaS (level 1)
+                            et les chefs de service VPSI (level 2) qui approuvent les demandes.
+        #>
 
-        # vra_<envShort>_approval_<serviceShort>
-        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($serviceShortName)
+        # Mis en commentaire le 14.02.2019 (c'est la St-Valentin!) car plus utilisé pour le moment. Mais on garde au cas où.
+        #$groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($serviceShortName)
+
+
+        # Level 1 -> vra_<envShort>_approval_iaas
+        # Level 2 -> vra_<envShort>_approval_vpsi
+        if($level -eq 1)
+        {
+            $last = "service_manager"
+        }
+        elseif($level -eq 2)
+        {
+            $last = "service_chiefs"
+        }
+        else 
+        {
+            return ""
+        }
+
+        # Génération du nom du groupe
+        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $last
 
         if($fqdn)
         {
@@ -721,27 +792,38 @@ class NameGenerator
               pour un Business Group du tenant ITServices
 
         IN  : $serviceShortName -> Le nom court du service
+        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
         IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
                                     $true|$false  
                                     Si pas passé => $false 
 
         RET : Le nom du groupe à utiliser pour l'approbation
     #>
-    [string] getITSApproveADGroupName([string]$serviceShortName, [bool]$fqdn)
+    [string] getITSApproveADGroupName([string]$serviceShortName, [int]$level, [bool]$fqdn)
     {
-        return $this.getITSApproveGroupName($serviceShortName, $this.GROUP_TYPE_AD, $fqdn)
+        return $this.getITSApproveGroupName($serviceShortName, $level, $this.GROUP_TYPE_AD, $fqdn)
+    }
+    [string] getITSApproveADGroupName([string]$serviceShortName, [int]$level)
+    {
+        return $this.getITSApproveADGroupName($serviceShortName, $level, $false)
     }
     [string] getITSApproveADGroupName([string]$serviceShortName)
     {
-        return $this.getITSApproveADGroupName($serviceShortName, $false)
+        return $this.getITSApproveADGroupName($serviceShortName, 1, $false)
     }
-    [string] getITSApproveGroupsGroupName([string]$serviceShortName, [bool]$fqdn)
+
+
+    [string] getITSApproveGroupsGroupName([string]$serviceShortName, [int]$level, [bool]$fqdn)
     {
-        return $this.getITSApproveGroupName($serviceShortName, $this.GROUP_TYPE_GROUPS, $fqdn)
+        return $this.getITSApproveGroupName($serviceShortName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
+    }
+    [string] getITSApproveGroupsGroupName([string]$serviceShortName, [int]$level)
+    {
+        return $this.getITSApproveGroupsGroupName($serviceShortName, $level, $false)
     }
     [string] getITSApproveGroupsGroupName([string]$serviceShortName)
     {
-        return $this.getITSApproveGroupsGroupName($serviceShortName, $false)
+        return $this.getITSApproveGroupsGroupName($serviceShortName, 1, $false)
     }
 
     <#
@@ -750,12 +832,13 @@ class NameGenerator
               du service $serviceShortName
 
         IN  : $serviceShortName      -> Le nom court du service
+        IN  : $level                 -> Le niveau d'approbation (1, 2, ...)
        
         RET : Adresse mail du groupe
     #>
-    [string] getITSApproveGroupsEmail([string]$serviceShortName)
+    [string] getITSApproveGroupsEmail([string]$serviceShortName, [int]$level)
     {
-        $groupName = $this.getITSApproveGroupsGroupName($serviceShortName)
+        $groupName = $this.getITSApproveGroupsGroupName($serviceShortName, $level)
         return $groupName + [NameGenerator]::GROUPS_EMAIL_SUFFIX
     }    
     
@@ -765,20 +848,25 @@ class NameGenerator
               d'approbation des demandes pour un Business Group du tenant ITServices
 
         IN  : $serviceShortName -> Le nom court du service
+        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
         IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
                                     $true|$false  
                                     Si pas passé => $false 
 
         RET : Le nom du groupe à utiliser pour l'approbation
     #>
-    [string] getITSApproveGroupsADGroupName([string]$serviceShortName, [bool]$fqdn)
+    [string] getITSApproveGroupsADGroupName([string]$serviceShortName, [int]$level, [bool]$fqdn)
     {
-        $groupName = $this.getITSApproveGroupName($serviceShortName, $this.GROUP_TYPE_GROUPS, $fqdn)
+        $groupName = $this.getITSApproveGroupName($serviceShortName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
         return $groupName + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
+    }
+    [string] getITSApproveGroupsADGroupName([string]$serviceShortName, [int]$level)
+    {
+        return $this.getITSApproveGroupsADGroupName($serviceShortName, $level, $false)
     }
     [string] getITSApproveGroupsADGroupName([string]$serviceShortName)
     {
-        return $this.getITSApproveGroupsADGroupName($serviceShortName, $false)
+        return $this.getITSApproveGroupsADGroupName($serviceShortName, 1, $false)
     }
 
 
@@ -788,12 +876,17 @@ class NameGenerator
               dont le nom est passé
 
         IN  : $serviceName      -> Le nom du service
+        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
        
         RET : Description du groupe
     #>
-    [string] getITSApproveADGroupDesc([string]$serviceName)
+    [string] getITSApproveADGroupDesc([string]$serviceName, [int]$level)
     {
-        return "Approval group for Service: {0}" -f $serviceName
+        # NOTE: 15.02.2019 - On n'utilise plue le nom du service dans la description du groupe car c'est maintenant un seul groupe d'approbation
+        # pour tous les services 
+        # return "Approval group (level {0}) for Service: {1}" -f $level, $serviceName
+
+        return "Approval group (level {0})" -f $level
     }
 
 

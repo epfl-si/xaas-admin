@@ -73,8 +73,15 @@ class vRAAPI
 		IN  : $file				-> Fichier JSON à charger
 		IN  : $valToReplace	-> (optionnel) Dictionnaaire avec en clef la chaine de caractères
 										à remplacer dans le code JSON (qui sera mise entre {{ et }} dans
-										le fichier JSON). En valeur se trouve chaîne de caractères à
-										mettre à la place de la clef
+										le fichier JSON). 
+										En valeur, on peut trouver :
+										- Chaîne de caractères à mettre à la place de la clef
+										- Tableau avec:
+											[0] -> Chaîne de caractères à mettre à la place de la clef
+											[1] -> $true|$false pour dire s'il faut remplacer aussi ou pas
+													les "" qui entourent la clef qui est entre {{ }}.
+													On est en effet obligés de mettre "" autour sinon on
+													pète l'intégrité du JSON.
 
 		RET : Objet créé depuis le code JSON
 	#>
@@ -98,8 +105,29 @@ class vRAAPI
 			# Parcours des remplacements à faire
 			foreach($search in $valToReplace.Keys)
 			{
+				# Si on a des infos pour savoir si on doit supprimer ou pas les doubles quotes 
+				if($valToReplace.Item($search) -is [Array])
+				{
+					# Extraction des informations 
+					$replaceWith, $removeDoubleQuotes = $valToReplace.Item($search)	
+				}
+				else # On a juste la chaîne de caractères 
+				{
+					$replaceWith = $valToReplace.Item($search)
+					$removeDoubleQuotes = $false
+				}
+
+				$search = "{{$($search)}}"
+				
+				# Si on doit supprimer les doubles quotes autour de {{ }}
+				if($removeDoubleQuotes)
+				{
+					# Ajout des doubles quotes pour la recherche
+					$search = "`"$($search)`""
+				}
+
 				# Recherche et remplacement de l'élément
-				$json = $json -replace "{{$($search)}}", $valToReplace.Item($search)
+				$json = $json -replace $search, $replaceWith
 			}
 		}
 		try
@@ -1402,7 +1430,10 @@ class vRAAPI
 
 		IN  : $name						-> Nom de la policy
 		IN  : $desc						-> Description de la policy
-		IN  : $approverGroupAtDomain	-> FQDN du groupe (<group>@<domain>) qui devra approuver.
+		IN  : $approvalLevelJSON		-> Le nom court du fichier JSON (template) à utiliser pour créer les
+											les Approval Level de l'approval policy
+		IN  : $approverGroupAtDomainList-> Tableau avec la liste ordrée des FQDN du groupe (<group>@<domain>) qui devront approuver.
+											Chaque entrée du tableau correspond à un "level" d'approbation
 		IN  : $approvalPolicyJSON		-> Le nom court du fichier JSON (template) à utiliser pour 
 											créer l'approval policy dans vRA
 		IN  : $additionnalReplace		-> Tableau associatif permettant d'étendre la liste des éléments
@@ -1413,22 +1444,36 @@ class vRAAPI
 
 		RET : L'approval policy créée
 	#>
-	[psobject] addPreApprovalPolicy([string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyJSON, [psobject]$additionnalReplace)
+	[psobject] addPreApprovalPolicy([string]$name, [string]$desc, [string]$approvalLevelJSON, [Array]$approverGroupAtDomainList, [string]$approvalPolicyJSON, [psobject]$additionnalReplace)
 	{
 		$uri = "https://{0}/approval-service/api/policies" -f $this.server
 
-		$approverDisplayName, $domain = $approverGroupAtDomain.Split('@')
+		# Création des approval levels
+		$approvalLevels = @()
+		ForEach($approverGroupAtDomain in $approverGroupAtDomainList)
+		{
+			$approverDisplayName, $domain = $approverGroupAtDomain.Split('@')
+
+			$levelNo = $approvalLevels.Count + 1
+
+			$replace = @{preApprovalLevelName = ("{0}-{1}" -f $name, $levelNo)
+						 approverGroupAtDomain = $approverGroupAtDomain
+						 approverDisplayName = $approverDisplayName
+						 preApprovalLeveNumber = @($levelNo, $true)}
+
+			# Création du level d'approbation et ajout à la liste 
+			$approvalLevels += $this.loadJSON($approvalLevelJSON, $replace)
+		}
 
 		# Valeur à mettre pour la configuration du BG
 		$replace = @{preApprovalName = $name
-			preApprovalLevelName = $name
 			preApprovalDesc = $desc
-			approverGroupAtDomain = $approverGroupAtDomain
-			approverGroupCustomPropName = $global:VRA_CUSTOM_PROP_VRA_POL_APP_GROUP
-			approverDisplayName = $approverDisplayName} 
+			preApprovalLevels = @((ConvertTo-Json -InputObject $approvalLevels -Depth 10), $true) # On transforme en JSON pour remplacer dans le fichier JSON
+			approverGroupCustomPropName = $global:VRA_CUSTOM_PROP_VRA_POL_APP_GROUP  # TODO: Pourquoi on utilise ça déjà ?
+			} 
 
 		# Si on a des remplacement additionnels à faire,
-		if($null -ne $additionnalReplace)
+		if(($null -ne $additionnalReplace) -and ($additionnalReplace.Count -gt 0))
 		{
 			# On les ajoute à la liste
 			ForEach($search in $additionnalReplace)

@@ -31,6 +31,8 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "JSONUtils.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NewItems.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "vRAAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "vROAPI.inc.ps1"))
@@ -109,22 +111,25 @@ function getFullElementNameFromJSON([string]$baseName, [string]$JSONFile, [strin
 -------------------------------------------------------------------------------------
 	BUT : Créé (si inexistant) une approval policy
 
-	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $name					-> Le nom de l'approval policy à créer
-	IN  : $desc					-> Description de l'approval policy
-	IN  : $approverGroupAtDomain-> Nom du groupe AD (FQDN) à mettre en approbateur
-	IN  : $approvalPolicyJSON	-> Le nom court du fichier JSON (template) à utiliser pour 
-									créer l'approval policy dans vRA
-	IN  : $additionnalReplace	-> Tableau associatif permettant d'étendre la liste des éléments
-									à remplacer (chaînes de caractères) au sein du fichier JSON
-									chargé. Le paramètre doit avoir en clef la valeur à chercher
-									et en valeur celle avec laquelle remplacer.	Ceci est 
-									typiquement utilisé pour les approval policies définies pour
-									les 2nd day actions.
+	IN  : $vra 						-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $name						-> Le nom de l'approval policy à créer
+	IN  : $desc						-> Description de l'approval policy
+	IN  : $approvalLevelJSON		-> Le nom court du fichier JSON (template) à utiliser pour créer les
+										les Approval Level de l'approval policy
+	IN  : $approverGroupAtDomainList-> Tableau avec la liste ordrée des FQDN du groupe (<group>@<domain>) qui devront approuver.
+										Chaque entrée du tableau correspond à un "level" d'approbation
+	IN  : $approvalPolicyJSON		-> Le nom court du fichier JSON (template) à utiliser pour 
+										créer l'approval policy dans vRA
+	IN  : $additionnalReplace		-> Tableau associatif permettant d'étendre la liste des éléments
+										à remplacer (chaînes de caractères) au sein du fichier JSON
+										chargé. Le paramètre doit avoir en clef la valeur à chercher
+										et en valeur celle avec laquelle remplacer.	Ceci est 
+										typiquement utilisé pour les approval policies définies pour
+										les 2nd day actions.
 
 	RET : Objet représentant l'approval policy
 #>
-function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approverGroupAtDomain, [string]$approvalPolicyJSON, [psobject]$additionnalReplace)
+function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approvalLevelJSON, [Array]$approverGroupAtDomainList, [string]$approvalPolicyJSON, [psobject]$additionnalReplace)
 {
 	# Recherche du nom complet de la policy depuis le fichier JSON
 	$fullName = getFullElementNameFromJSON -baseName $name -JSONFile $approvalPolicyJSON -replaceString "preApprovalName" -fieldName "name"
@@ -137,7 +142,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	{
 		$logHistory.addLineAndDisplay(("-> Creating Approval Policy '{0}'..." -f $fullName))
 		# On créé celle-ci (on reprend le nom de base $name)
-		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approverGroupAtDomain, $approvalPolicyJSON, $additionnalReplace)
+		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approvalLevelJSON, $approverGroupAtDomainList, $approvalPolicyJSON, $additionnalReplace)
 	}
 	else 
 	{
@@ -154,13 +159,14 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	BUT : Créé (si inexistantes) toutes les Approval Policies qui sont listées dans le fichier décrivant
 			les 2nd day actions
 
-	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $secondDayActions		-> Objet de la classe SecondDayActions contenant la liste des actions
-									2nd day à ajouter.
-	IN  : $baseName				-> Le nom de base de l'approval policy à créer (vu qu'il peut y 
-									avoir un suffixe dans le fichier template JSON)
-	IN  : $desc					-> Description de l'approval policy
-	IN  : $approverGroupAtDomain-> Nom du groupe AD (FQDN) à mettre en approbateur
+	IN  : $vra 						-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $secondDayActions			-> Objet de la classe SecondDayActions contenant la liste des actions
+										2nd day à ajouter.
+	IN  : $baseName					-> Le nom de base de l'approval policy à créer (vu qu'il peut y 
+										avoir un suffixe dans le fichier template JSON)
+	IN  : $desc						-> Description de l'approval policy
+	IN  : $approverGroupAtDomainList-> Tableau avec la liste ordrée des FQDN du groupe (<group>@<domain>) qui devront approuver.
+										Chaque entrée du tableau correspond à un "level" d'approbation
 	
 	RET : Tableau d'objets :
 		(
@@ -171,7 +177,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 			...
 		)
 #>
-function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$secondDayActions, [string]$baseName, [string]$desc, [string]$approverGroupAtDomain)
+function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$secondDayActions, [string]$baseName, [string]$desc, [Array]$approverGroupAtDomainList)
 {
 	$policyList = @()
 	
@@ -181,9 +187,13 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 	# Parcours des fichiers JSON identifiés et création des approval policies si elles n'existent pas encore
 	Foreach($approvalPolicyInfos in $approvalPolicyList)
 	{
-
-		$actionReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $baseName -desc $desc -approverGroupAtDomain $approveGroupName `
-								-approvalPolicyJSON $approvalPolicyInfos.json -additionnalReplace $approvalPolicyInfos.replacements
+		# Création de l'approval policy 
+		# On regarde combien il y a de level d'approbation à mettre en on ne prend potentiellement qu'une partie des adresses mails
+		# d'approbation. Si on laisse le tout, on va créer un approval level par élément se trouvant dans $approverGroupAtDomainList
+		$actionReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $baseName -desc $desc `
+								-approverGroupAtDomainList $approverGroupAtDomainList[0..($approvalPolicyInfos.approvalLevels-1)] `
+								-approvalLevelJSON $approvalPolicyInfos.approvalLevelJSON -approvalPolicyJSON $approvalPolicyInfos.approvalPolicyJSON `
+								-additionnalReplace $approvalPolicyInfos.JSONReplacements 
 
 		# On utilise le hash renvoyé par getJSONApprovalPoliciesFilesInfos() afin de dire quel est l'ID de l'approval policy associée
 		# cette information sera utilisée plus tard pour affecter l'approval policy à l'action au sein de vRA, dans l'entitlement.
@@ -1116,6 +1126,9 @@ try
 	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN() -Properties Description | 
 	Where-Object {$_.Name -match $adGroupNameRegex} 
 
+	# Création de l'objet pour récupérer les informations sur les approval policies à créer pour les demandes de nouveaux éléments
+	$newItems = [NewItems]::new("new-items.json")
+
 	# Création de l'objet pour gérer les 2nd day actions
 	$secondDayActions = [SecondDayActions]::new("2nd-day-actions.json")
 
@@ -1174,17 +1187,35 @@ try
 			$sharedGrpList  = @($ADFullGroupName)
 			$userGrpList    = @($ADFullGroupName)
 			
-			# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG
-			$capacityAlertMails += $nameGenerator.getEPFLApproveGroupsEmail($faculty)
+			# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG. On prend le niveau 1 car c'est celui de EXHEB
+			# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
+			#$capacityAlertMails += $nameGenerator.getEPFLApproveGroupsEmail($faculty, 1)
 
 			# Nom et description de la policy d'approbation + nom du groupe AD qui devra approuver
 			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
 			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-			$approveGroupName = $nameGenerator.getEPFLApproveADGroupName($faculty, $true)
+			
+			# Tableau pour les approbateurs des différents niveaux
+			$approverGroupAtDomainList = @()
+			$level = 0
+			# on fait une 
+			While($true)
+			{
+				$level += 1
+				$levelGroupName = $nameGenerator.getEPFLApproveADGroupName($faculty, $level, $true)
+				# Si on n'a plus de groupe pour le level courant, on sort
+				if($levelGroupName -eq "")
+				{
+					break
+				}
+				$approverGroupAtDomainList += $levelGroupName
+			}
 
 			# Vu qu'il y aura des quotas pour les demandes sur le tenant EPFL, on utilise une policy du type "Event Subscription", ceci afin d'appeler un Workflow défini
 			# qui se chargera de contrôler le quota.
-			$itemReqApprovalPolicyJSON = "pre-approval-policy-evsub-new-item.json"
+			$itemReqApprovalPolicyJSON = $newItems.getApprovalPolicyJSON($targetTenant)
+			# -> Pour créer les différents niveaux (si besoin) pour l'approbation 
+			$itemReqApprovalLevelJSON = $newItems.getApprovalLevelJSON($targetTenant)
 
 		}
 		# Si Tenant ITServices
@@ -1221,15 +1252,35 @@ try
 			$userGrpList    = @($ADFullGroupName)
 
 			# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG
-			$capacityAlertMails += $nameGenerator.getITSApproveGroupsEmail($serviceShortName)
+			# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
+			#$capacityAlertMails += $nameGenerator.getITSApproveGroupsEmail($serviceShortName, 1)
 
 			# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
 			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
 			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-			$approveGroupName = $nameGenerator.getITSApproveADGroupName($serviceShortName, $true)
 			
-			# Pas de quota pour le tenant ITServices donc on peut se permettre de simplement utiliser une approbation via un groupe de sécurité
-			$itemReqApprovalPolicyJSON = "pre-approval-policy-usrgrp-new-item.json"
+			# Tableau pour les approbateurs des différents niveaux
+			$approverGroupAtDomainList = @()
+			$level = 0
+			# on fait une 
+			While($true)
+			{
+				$level += 1
+				$levelGroupName = $nameGenerator.getITSApproveADGroupName($serviceShortName, $level, $true)
+
+				# Si on a un nom de groupe vide, c'est qu'il n'y a aucun groupe pour le level courant donc on peut sortir de la boucle
+				if($levelGroupName -eq "")
+				{
+					break
+				}
+				$approverGroupAtDomainList += $levelGroupName
+			}
+			
+			# Définition des noms des fichiers JSON contenant le nécessaire pour créer l'approval policy pour les demandes de NOUVEAUX éléments pour le tenant ITServices
+			# -> Fichier de base
+			$itemReqApprovalPolicyJSON = $newItems.getApprovalPolicyJSON($targetTenant)
+			# -> Pour créer les différents niveaux (si besoin) pour l'approbation (appelée dans tous les cas, avec un groupe devant approuver)
+			$itemReqApprovalLevelJSON = $newItems.getApprovalLevelJSON($targetTenant)
 		}
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
@@ -1237,7 +1288,7 @@ try
 			((checkIfADGroupsExists -groupList $supportGrpList) -eq $false) -or `
 			((checkIfADGroupsExists -groupList $sharedGrpList) -eq $false) -or `
 			((checkIfADGroupsExists -groupList $userGrpList) -eq $false) -or `
-			((checkIfADGroupsExists -groupList @($approveGroupName)) -eq $false))
+			((checkIfADGroupsExists -groupList $approverGroupAtDomainList) -eq $false))
 		{
 			$logHistory.addWarningAndDisplay(("Security groups for Business Group ({0}) roles not found in Active Directory, skipping it !" -f $bgName))
 
@@ -1278,12 +1329,13 @@ try
 		# --------------------------------- Approval policies
 		# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
 		$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
-																 -approverGroupAtDomain $approveGroupName -approvalPolicyJSON $itemReqApprovalPolicyJSON `
+																 -approvalLevelJSON $itemReqApprovalLevelJSON -approverGroupAtDomainList $approverGroupAtDomainList  `
+																 -approvalPolicyJSON $itemReqApprovalPolicyJSON `
 																 -additionnalReplace @{}
 
 		# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
 		$actionReqApprovalPolicies = create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
-																-approverGroupAtDomain $approveGroupName -secondDayActions $secondDayActions
+																-approverGroupAtDomainList $approverGroupAtDomainList -secondDayActions $secondDayActions 
 
 		# Ajout des d'approval policies dans la liste
 		$processedApprovalPoliciesIDs += $itemReqApprovalPolicy.id
