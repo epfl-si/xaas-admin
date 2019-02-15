@@ -73,6 +73,7 @@ python src/manage.py runserver
 Go to this URL
 ---------------
 http://127.0.0.1:8000/
+This will be transformed into "https:" and an error will be displayed. Just transform "https" to "http" and it's working
 
 
 Django commands
