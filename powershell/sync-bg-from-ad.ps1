@@ -143,12 +143,16 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 		$logHistory.addLineAndDisplay(("-> Creating Approval Policy '{0}'..." -f $fullName))
 		# On créé celle-ci (on reprend le nom de base $name)
 		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approvalLevelJSON, $approverGroupAtDomainList, $approvalPolicyJSON, $additionnalReplace)
+
+		$counters.inc('AppPolCreated')
 	}
 	else 
 	{
 		$logHistory.addLineAndDisplay(("-> Approval Policy '{0}' already exists!" -f $fullName))
 		# On active la policy pour être sûr que tout se passera bien
 		$approvePolicy = $vra.setApprovalPolicyState($approvePolicy, $true)
+
+		$counters.inc('AppPolExisting')
 	}
 
 	return $approvePolicy
@@ -635,7 +639,7 @@ function createOrUpdateBGReservations
 		if($null -eq $matchingRes)
 		{
 			$logHistory.addLineAndDisplay(("--> Adding Reservation '{0}' from template '{1}'..." -f $resName, $resTemplate.name))
-			$newRes = $vra.addResFromTemplate($resTemplate, $resName, $bg.tenant, $bg.id)
+			$dummy = $vra.addResFromTemplate($resTemplate, $resName, $bg.tenant, $bg.id)
 
 			$counters.inc('ResCreated')
 		}
@@ -755,7 +759,7 @@ function deleteBGAndComponentsIfPossible
 		# --------------
 		# Entitlement
 		# Si le BG a un entitlement,
-		if(($bgEnt = $vra.getBGEnt($bg.id)) -ne $null)
+		if($null -eq ($bgEnt = $vra.getBGEnt($bg.id)))
 		{
 
 			# Suppression de l'entitlement (on le désactive au préalable)
@@ -831,7 +835,7 @@ function isBGAlive
 	$customProp = $bg.extensionData.entries | Where-Object { $_.key -eq $global:VRA_CUSTOM_PROP_VRA_BG_STATUS}
 
 	# Si la "Custom property" a été trouvée,
-	if($customProp -ne $null)
+	if($null -eq $customProp)
 	{
 		return ($customProp.value.values.entries | Where-Object {$_.key -eq "value"}).value.value -eq $global:VRA_BG_STATUS__ALIVE
 	}
@@ -1072,6 +1076,9 @@ $counters.add('ResUpdated', '# Reservations updated')
 $counters.add('ResDeleted', '# Reservations deleted')
 # Machine prefixes
 $counters.add('MachinePrefNotFound', '# machines prefixes not found')
+# Approval policies 
+$counters.add('AppPolCreated', '# Approval Policies created')
+$counters.add('AppPolExisting', '# Approval Policies already existing')
 
 <# Pour enregistrer la liste des IDs des approval policies qui ont été traitées. Ceci permettra de désactiver les autres à la fin #>
 $processedApprovalPoliciesIDs = @()
@@ -1105,7 +1112,7 @@ try
 	$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
 
 	# Création d'une connexion au serveur vRA pour accéder aux API REST de vRO
-	$vro = [vROAPI]::new($nameGenerator.getvRAServerName(), $global:VRO_CAFE_CLIENT_ID[$targetEnv], $global:VRA_PASSWORD_LIST[$targetEnv][$global:VRA_TENANT__DEFAULT])
+	#$vro = [vROAPI]::new($nameGenerator.getvRAServerName(), $global:VRO_CAFE_CLIENT_ID[$targetEnv], $global:VRA_PASSWORD_LIST[$targetEnv][$global:VRA_TENANT__DEFAULT])
 
 	# Recherche de BG existants
 	$existingBGList = $vra.getBGList()
