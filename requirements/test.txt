@@ -1,4 +1,0 @@
-# Import Base Requirements
--r _base.txt
-
-# Local Specific Requirements
