@@ -1,6 +1,7 @@
 version: '2'
 services:
   xaas-mariadb:
+    container_name: xaas-mariadb
     image: mariadb
     environment:
       - MYSQL_ROOT_PASSWORD=root
@@ -8,26 +9,30 @@ services:
       - MYSQL_PASSWORD=django
       - MYSQL_DATABASE=django
     volumes:
-      - mariadb:/var/lib/mysql
+      - xaas-mariadb:/var/lib/mysql
 
   xaas-django:
+    container_name: xaas-django
     image: xaas-django
     build:
       context: djangoapp
     expose:
       - "8000"
     depends_on:
-      - "xaas-mariadb"
+      - xaas-mariadb
+    links:
+      - xaas-mariadb:xaas-mariadb
 
 
   xaas-nginx:
+    container_name: xaas-nginx
     image: nginx:1.11
     ports:
       - "127.0.0.1:8888:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
-      - "xaas-django"
+      - xaas-django
 
 volumes:
   xaas-mariadb:

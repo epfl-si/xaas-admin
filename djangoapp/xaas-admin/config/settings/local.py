@@ -16,7 +16,7 @@ DATABASES = {
         'NAME': 'django',
         'USER': 'django',
         'PASSWORD': 'django',  # noqa
-        'HOST': 'mariadb',  # Nom du conteneur devient le nom du host
+        'HOST': 'xaas-mariadb',  # Nom du conteneur devient le nom du host
         'PORT': '3306',
     }
 }
