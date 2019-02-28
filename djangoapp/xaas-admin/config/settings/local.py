@@ -13,11 +13,11 @@ ALLOWED_HOSTS = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'django',
-        'USER': 'django',
-        'PASSWORD': 'django',  # noqa
-        'HOST': 'xaas-mariadb',  # Nom du conteneur devient le nom du host
-        'PORT': '3306',
+        'HOST': get_mandatory_env('MYSQL_HOST'),  # noqa
+        'NAME': get_mandatory_env('MYSQL_DATABASE'),
+        'USER': get_mandatory_env('MYSQL_USER'),
+        'PASSWORD': get_mandatory_env('MYSQL_PASSWORD'),  # noqa
+        'PORT': get_mandatory_env('MYSQL_PORT'),  # noqa
     }
 }
 

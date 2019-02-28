@@ -104,4 +104,4 @@ ENV/
 
 # mypy
 .mypy_cache/
-djangoapp/secrets.json
+.env

@@ -25,25 +25,25 @@ BASE_DIR = Path(__file__).ancestor(4)
 SRC_DIR = Path(__file__).ancestor(3)
 
 
-# JSON-based secrets module
-with open(BASE_DIR + "/secrets.json", 'r') as f:
-    secrets = json.loads(f.read())
+def get_mandatory_env(key):
+    """
+    Return the value of a mandatory environment variable. If the variable doesn't exists, exception is raised.
 
-
-def get_secret(setting, secrets=secrets):
-    """Get the secret variable or return explicit exception."""
-    try:
-        return secrets[setting]
-    except KeyError:
-        error_msg = 'Set the {0} environment variable'.format(setting)
+    Arguments keywords:
+    key -- Name of mandatory variable we want to get the value
+    """
+    if not os.environ.get(key):
+        error_msg = "The mandatory environment variable {} is not set".format(key)
         raise ImproperlyConfigured(error_msg)
+
+    return os.environ.get(key)
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = get_secret('SECRET_KEY')
+SECRET_KEY = get_mandatory_env('SECRET_KEY')
 
 # Application definition
 

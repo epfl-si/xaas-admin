@@ -6,10 +6,8 @@ EXPOSE 8000
 
 WORKDIR /usr/src/xaas-admin
 
-COPY prepare_db.sh ./
-COPY secrets.json ./../
-
-COPY xaas-admin/ ./
+# Last argument is target for copy (located in WORKDIR). Other ones are files/dirs to copy
+COPY prepare_db.sh xaas-admin/ ./
 
 COPY ./requirements /tmp
 

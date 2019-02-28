@@ -4,16 +4,25 @@ services:
     container_name: xaas-mariadb
     image: mariadb
     environment:
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_USER=django
-      - MYSQL_PASSWORD=django
-      - MYSQL_DATABASE=django
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_PORT=${MYSQL_PORT}
     volumes:
       - xaas-mariadb:/var/lib/mysql
 
   xaas-django:
     container_name: xaas-django
     image: xaas-django
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_HOST=${MYSQL_HOST}
+      - SECRET_KEY=${DJANGO_SECRET_KEY}
     build:
       context: djangoapp
     expose:
