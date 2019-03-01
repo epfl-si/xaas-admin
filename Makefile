@@ -43,6 +43,16 @@ up: check-env
 	@echo "Waiting for containers to start..."
 	@sleep 10
 
+up-debug: check-env
+	@MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD} \
+	    MYSQL_HOST=${MYSQL_HOST} \
+	    MYSQL_PORT=${MYSQL_PORT} \
+	    MYSQL_DATABASE=${MYSQL_DATABASE} \
+		MYSQL_USER=${MYSQL_USER} \
+		MYSQL_PASSWORD=${MYSQL_PASSWORD} \
+		DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY} \
+		docker-compose up
+
 install: up
 	@echo "Waiting for containers to start..."
 	@sleep 5
