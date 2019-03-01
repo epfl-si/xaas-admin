@@ -74,3 +74,6 @@ After this, you'll have to go through "Local install" procedure again.
     
     **MariaDB**
     > make exec-mariadb
+
+* It is possible to import information in DB from a SQL file, just use:
+    > make import-sql SQL_FILE=&lt;pathToFile&gt;
