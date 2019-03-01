@@ -4,7 +4,7 @@
 
 check-env:
 ifeq ($(wildcard .env),)
-	@echo "Please create your .env file first, from .env.sample"
+	@echo "Please run 'make config' first"
 	@exit 1
 else
 include .env
@@ -62,6 +62,19 @@ install: up
 	$(MAKE) restart
 
 restart: down up
+
+import-sql: check-env
+ifndef SQL_FILE
+	$(error Please provide a SQL file as input: SQL_FILE=<file>)
+endif
+ifeq ($(wildcard ${SQL_FILE}),)
+	$(error Given SQL file '${SQL_FILE}' doesn't exists)
+	@exit 1
+endif
+	@echo "Copying file in container..."
+	@docker cp ${SQL_FILE} xaas-django:/tmp/dump.sql
+	@docker exec -it xaas-django bash -l /usr/src/xaas-admin/import_sql.sh /tmp/dump.sql
+
 
 exec-django: check-env
 	@docker exec -it xaas-django bash -l
