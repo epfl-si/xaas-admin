@@ -54,9 +54,7 @@ up-debug: check-env
 		docker-compose up
 
 install: up
-	@echo "Waiting for containers to start..."
-	@sleep 5
-	@docker exec -it xaas-django bash -l /usr/src/xaas-admin/prepare_db.sh
+	@docker exec -it xaas-django bash -l /usr/src/xaas-admin/_utils/prepare_db.sh
 	@echo ''
 	@echo "Restarting to reload config..."
 	$(MAKE) restart
@@ -73,7 +71,7 @@ ifeq ($(wildcard ${SQL_FILE}),)
 endif
 	@echo "Copying file in container..."
 	@docker cp ${SQL_FILE} xaas-django:/tmp/dump.sql
-	@docker exec -it xaas-django bash -l /usr/src/xaas-admin/import_sql.sh /tmp/dump.sql
+	@docker exec -it xaas-django bash -l /usr/src/xaas-admin/_utils/import_sql.sh /tmp/dump.sql
 
 
 exec-django: check-env
