@@ -25,12 +25,17 @@ services:
       - SECRET_KEY=${DJANGO_SECRET_KEY}
     build:
       context: djangoapp
+      args:
+        USE_EXTERNAL_APP_SOURCE: 1
+
     expose:
       - "80"
     depends_on:
       - xaas-mariadb
     links:
       - xaas-mariadb:xaas-mariadb
+    volumes:
+      - ./djangoapp/xaas-admin:/usr/src/xaas-admin
 
 
   xaas-nginx:
