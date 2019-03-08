@@ -1,6 +1,8 @@
 # XAAS-ADMIN
 
-## Local install
+## Local 
+
+### Install
 
 This procedure assumes that "docker" is already installed.
 
@@ -21,12 +23,12 @@ For local execution, values are "free" but the following needs to be set with sp
     > make build
     
 1. Start install procedure. This will :
-    * create all Django tables in DB
-    * create a super user with the information you'll be asked for.
+    * Start all containers and because it's the first execution, `docker-entrypoint.sh` 
+    will be executed all Django tables created/updated in DB
+    * Launch a script to allow you to create a super user with the information 
+    you'll be asked for.
     > make install
     
-1. Once install is over, all containers will restart to load new configuration.
-
 1. Check that all 3 containers are running.
     > docker ps
     
@@ -38,7 +40,7 @@ For local execution, values are "free" but the following needs to be set with sp
 See below for rest of procedure...
 
 
-## Local execution
+### Execution
 
 1. Start by performing "install" procedure explained above. If you just did it, go to point 3.
 
@@ -55,12 +57,28 @@ See below for rest of procedure...
     HTTPS so it will leads to an error. Just change "https" to "http" and this will work.
  
     
-## Fresh install
+### Fresh install
 
 If you want to do a fresh install of you environment (without touching `.env` file), just execute
 > make clean-all
 
 After this, you'll have to go through "Local install" procedure again.
+
+
+### Development
+
+When code is running locally, be default, a mapping from container folder to local folder will
+be done for Django application source files, so it will allow you to directly see your changes
+without having to recreate container.
+
+
+## OpenShift
+
+### Install
+
+### Execution
+
+
 
 
 ## Tips
