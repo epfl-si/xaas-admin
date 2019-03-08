@@ -23,6 +23,7 @@ services:
       - MYSQL_PORT=${MYSQL_PORT}
       - MYSQL_HOST=${MYSQL_HOST}
       - SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DJANGO_SETTINGS_MODULE=config.settings.local
     build:
       context: djangoapp
       args:
