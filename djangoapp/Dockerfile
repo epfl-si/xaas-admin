@@ -7,6 +7,7 @@ EXPOSE 80
 
 WORKDIR /usr/src/xaas-admin
 
+
 # Handling source location depending on $USE_EXTERNAL_APP_SOURCE argument. Source can be inside container (for production)
 # or outside (for development)
 COPY ./source-manage.sh /tmp/
@@ -18,6 +19,10 @@ RUN /tmp/source-manage.sh ${USE_EXTERNAL_APP_SOURCE} ${TMP_APP_SOURCE_FILES}
 COPY ./requirements /tmp
 RUN pip install --no-cache-dir -r /tmp/local.txt
 
+
+# Installing MySQL client to be able to import information in DB from a SQL file
 RUN apt-get update && apt-get install -y mysql-client && rm -rf /var/lib/apt
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:80"]
+
+COPY ./docker-entrypoint.sh /tmp/docker-entrypoint.sh
+ENTRYPOINT ["/tmp/docker-entrypoint.sh"]
