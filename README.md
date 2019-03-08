@@ -76,8 +76,29 @@ without having to recreate container.
 
 ### Install
 
-### Execution
+#### Environment variables
 
+The following environment variables must be added in OpenShift.
+
+`MYSQL_HOST` > MySQL Hostname
+
+`MYSQL_PORT` > MySQL port on which to connect
+
+`MYSQL_DATABASE` > Django app database name
+
+`MYSQL_USER` > MySQL user to use in Django app.
+
+`MYSQL_PASSWORD` > MySQL password for `MYSQL_USER`
+
+`SECRET_KEY` > Secret key for Django app
+
+Then, add an environment variable named `DJANGO_SETTINGS_MODULE` and set it with one of the following:
+- `config.settings.prod` for production environment
+- `config.settings.test` for test environment
+
+
+### Execution
+All containers will be started automatically in OpenShift
 
 
 
