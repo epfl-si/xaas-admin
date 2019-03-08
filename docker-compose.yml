@@ -26,8 +26,6 @@ services:
       - DJANGO_SETTINGS_MODULE=config.settings.local
     build:
       context: djangoapp
-      args:
-        USE_EXTERNAL_APP_SOURCE: 1
 
     expose:
       - "80"
@@ -41,11 +39,11 @@ services:
 
   xaas-nginx:
     container_name: xaas-nginx
-    image: nginx:1.11
+    image: xaas-nginx
+    build:
+      context: nginx
     ports:
       - "127.0.0.1:80:8080"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - xaas-django
 
