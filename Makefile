@@ -41,7 +41,7 @@ up: check-env
 		DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY} \
 		docker-compose up -d
 	@echo "Waiting for containers to start..."
-	@sleep 10
+	@sleep 5
 
 up-debug: check-env
 	@MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD} \
@@ -54,10 +54,9 @@ up-debug: check-env
 		docker-compose up
 
 install: up
-	@docker exec -it xaas-django bash -l /usr/src/xaas-admin/_utils/prepare_db.sh
-	@echo ''
-	@echo "Restarting to reload config..."
-	$(MAKE) restart
+	@echo "Waiting for entrypoint script..."
+	@sleep 8
+	@docker exec -it xaas-django bash -l /usr/src/xaas-admin/_utils/create-admin.sh
 
 restart: down up
 
@@ -71,7 +70,7 @@ ifeq ($(wildcard ${SQL_FILE}),)
 endif
 	@echo "Copying file in container..."
 	@docker cp ${SQL_FILE} xaas-django:/tmp/dump.sql
-	@docker exec -it xaas-django bash -l /usr/src/xaas-admin/_utils/import_sql.sh /tmp/dump.sql
+	@docker exec -it xaas-django bash -l /usr/src/xaas-admin/_utils/import-sql.sh /tmp/dump.sql
 
 
 exec-django: check-env
