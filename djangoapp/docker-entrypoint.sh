@@ -1,9 +1,10 @@
 #!/bin/bash
 
-TMP_APP_SOURCE_FILES=/tmp/app-src/xaas-admin
+TMP_APP_SOURCE_FILES=/tmp/xaas-admin
+WITNESS_FILE="${TMP_APP_SOURCE_FILES}/DONE"
 
 # If this is first execution of container,
-if [ -e ${TMP_APP_SOURCE_FILES} ]
+if [ -e ${WITNESS_FILE} ]
 then
     # We set correct location for app source files
     echo "Setting correct source for Django app..."
@@ -19,8 +20,9 @@ then
         ls -alh ${TMP_APP_SOURCE_FILES}
         ls -alh /usr/src/
 
-        echo "-> Using internal source for app, moving to correct place..."
-        mv -f ${TMP_APP_SOURCE_FILES} /usr/src/
+        echo "-> Using internal source for app, copying to correct place..."
+        cp ${TMP_APP_SOURCE_FILES} /usr/src/
+        touch ${WITNESS_FILE}
     fi
 
 fi
