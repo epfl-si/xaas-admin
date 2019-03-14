@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TMP_APP_SOURCE_FILES=/tmp/xaas-admin
+TMP_APP_SOURCE_FILES=/tmp/app-src/xaas-admin
 
 # If this is first execution of container,
 if [ -e ${TMP_APP_SOURCE_FILES} ]
@@ -16,9 +16,8 @@ then
 
     else # We have to use internal source (Test or production, typically on OpenShift)
 
-        echo "-> Using internal source for app, copying to correct place..."
-        cp -r ${TMP_APP_SOURCE_FILES} /usr/src/
-        mv ${TMP_APP_SOURCE_FILES} "${TMP_APP_SOURCE_FILES}-done"
+        echo "-> Using internal source for app, moving to correct place..."
+        mv -f ${TMP_APP_SOURCE_FILES} /usr/src/
     fi
 
 fi
