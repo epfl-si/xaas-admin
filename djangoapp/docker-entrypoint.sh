@@ -1,10 +1,5 @@
 #!/bin/bash
 
-whoami
-ls -alh /usr/src/xaas-admin
-
-ls -alh /tmp
-
 TMP_APP_SOURCE_FILES=/tmp/xaas-admin
 
 # If this is first execution of container,
@@ -21,10 +16,8 @@ then
 
     else # We have to use internal source (Test or production, typically on OpenShift)
 
-        echo "-> Using internal source for app, moving to correct place..."
+        echo "-> Using internal source for app, copying to correct place..."
         cp -r ${TMP_APP_SOURCE_FILES} /usr/src/
-
-        ls -alh /usr/src/
     fi
 
 fi
@@ -34,7 +27,7 @@ fi
 echo "Waiting for MariaDB..."
 
 # We try to connect to database and if unsuccessful, we try again a few seconds later...
-while ! mysql --protocol TCP -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" -e "show databases;" > /dev/null 2>&1; do
+while ! mysql --protocol TCP -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" -P"${MYSQL_PORT}" -e "show databases;" > /dev/null 2>&1; do
     sleep 3
     echo "Waiting for MariaDB..."
 done
