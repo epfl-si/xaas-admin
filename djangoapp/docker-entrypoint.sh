@@ -4,7 +4,7 @@ TMP_APP_SOURCE_FILES=/tmp/xaas-admin
 WITNESS_FILE="${TMP_APP_SOURCE_FILES}/DONE"
 
 # If this is first execution of container,
-if [ -e ${WITNESS_FILE} ]
+if [ ! -e ${WITNESS_FILE} ]
 then
     # We set correct location for app source files
     echo "Setting correct source for Django app..."
