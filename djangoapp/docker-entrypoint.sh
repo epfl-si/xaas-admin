@@ -16,6 +16,9 @@ then
 
     else # We have to use internal source (Test or production, typically on OpenShift)
 
+        ls -alh ${TMP_APP_SOURCE_FILES}
+        ls -alh /usr/src/
+
         echo "-> Using internal source for app, moving to correct place..."
         mv -f ${TMP_APP_SOURCE_FILES} /usr/src/
     fi
