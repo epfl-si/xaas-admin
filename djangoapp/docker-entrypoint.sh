@@ -18,7 +18,7 @@ then
 
         echo "-> Using internal source for app, copying to correct place..."
         cp -r ${TMP_APP_SOURCE_FILES} /usr/src/
-        rm -rf ${TMP_APP_SOURCE_FILES}
+        mv ${TMP_APP_SOURCE_FILES} "${TMP_APP_SOURCE_FILES}-done"
     fi
 
 fi
