@@ -15,8 +15,6 @@ COPY ./xaas-admin /tmp/xaas-admin
 RUN chmod -R a+w /usr/src/xaas-admin
 RUN chmod -R 777 /tmp
 
-RUN ls -alh /tmp/app-src
-
 # Python requirements
 COPY ./requirements /tmp
 RUN pip install --no-cache-dir -r /tmp/local.txt
