@@ -3,7 +3,7 @@
 whoami
 ls -alh /usr/src/xaas-admin
 
-ls -alh /tmp/xaas-admin
+ls -alh /tmp
 
 TMP_APP_SOURCE_FILES=/tmp/xaas-admin
 
