@@ -1,5 +1,10 @@
 #!/bin/bash
 
+whoami
+ls -alh /usr/src/xaas-admin
+
+ls -alh /tmp/xaas-admin
+
 TMP_APP_SOURCE_FILES=/tmp/xaas-admin
 
 # If this is first execution of container,
