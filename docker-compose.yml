@@ -27,8 +27,8 @@ services:
     build:
       context: djangoapp
 
-    expose:
-      - "80"
+    ports:
+      - "127.0.0.1:80:80"
     depends_on:
       - xaas-mariadb
     links:
@@ -36,16 +36,6 @@ services:
     volumes:
       - ./djangoapp/xaas-admin:/usr/src/xaas-admin
 
-
-  xaas-nginx:
-    container_name: xaas-nginx
-    image: xaas-nginx
-    build:
-      context: nginx
-    ports:
-      - "127.0.0.1:80:8080"
-    depends_on:
-      - xaas-django
 
 volumes:
   xaas-mariadb:
