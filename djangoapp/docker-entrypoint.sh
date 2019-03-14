@@ -17,13 +17,11 @@ then
 
     else # We have to use internal source (Test or production, typically on OpenShift)
 
-        ls -alh ${TMP_APP_SOURCE_FILES}
-        ls -alh /usr/src/
-
         echo "-> Using internal source for app, copying to correct place..."
         cp -r ${TMP_APP_SOURCE_FILES} /usr/src/
-        # We add the witness file right after. In fact there's an error (permission denied) if we try to just
-        # move source files from one location to another... so we use witness file.
+
+        # We add the witness file right after. In fact there's an error on OpenShift (permission denied) if
+        # we try to just move source files from one location to another... so we use witness file.
         touch ${WITNESS_FILE}
     fi
 
