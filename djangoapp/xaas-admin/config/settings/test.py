@@ -2,7 +2,7 @@
 
 from .base import *  # noqa
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = [
     'xaas-admin-test.epfl.ch',
