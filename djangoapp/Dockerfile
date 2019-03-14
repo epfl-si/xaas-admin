@@ -13,7 +13,9 @@ COPY ./xaas-admin /tmp/app-src/xaas-admin
 # We have to add write rights to files because in OpenShift, it won't be "root" user that will be used to execute
 # docker-entrypoint.sh script, it will be another user so we have to ensure that he will have enough rights.
 RUN chmod -R a+w /usr/src/xaas-admin
-RUN chmod -R a+w /tmp/app-src
+RUN chmod -R 777 /tmp/app-src
+
+RUN ls -alh /tmp/app-src
 
 # Python requirements
 COPY ./requirements /tmp
