@@ -25,4 +25,4 @@ DATABASES = {
 
 SERVER_NAME = "test"
 
-STATIC_ROOT = '/var/www/vhosts/xaas-admin.epfl.ch/htdocs/'
+#STATIC_ROOT = '/var/www/vhosts/xaas-admin.epfl.ch/htdocs/'
