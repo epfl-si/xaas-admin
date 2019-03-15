@@ -2,6 +2,7 @@ FROM python:3.6
 
 ARG DJANGO_SETTINGS_MODULE
 
+ENV TMP_APP_SOURCE_FILES=/tmp/xaas-admin
 
 EXPOSE 80
 
@@ -11,7 +12,7 @@ WORKDIR /usr/src/xaas-admin
 # Handling source location depending on DJANGO_SETTINGS_MODULE env var which tells Django in which environment it will
 # be executed. If it will run "locally" (config.settings.local), source will be outside container (for easier development)
 # Otherwise, it will be inside container.
-COPY ./xaas-admin /tmp/xaas-admin
+COPY ./xaas-admin ${TMP_APP_SOURCE_FILES}
 
 # Python requirements for pip install
 COPY ./requirements /tmp
