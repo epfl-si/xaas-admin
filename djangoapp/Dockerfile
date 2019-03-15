@@ -1,5 +1,6 @@
 FROM python:3.6
 
+
 EXPOSE 80
 
 WORKDIR /usr/src/xaas-admin
@@ -17,6 +18,8 @@ RUN chmod -R 777 /tmp
 
 # Python requirements
 COPY ./requirements /tmp
+RUN pip install --no-cache-dir -r /tmp/test.txt
+
 
 # Installing MySQL client to be able to import information in DB from a SQL file
 RUN apt-get update && apt-get install -y mysql-client && rm -rf /var/lib/apt

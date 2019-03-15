@@ -1,22 +1,22 @@
 #!/bin/bash
 
 # PIP Install
-WITNESS_PIP_INSTALL_FILE=/tmp/pip-install-done
-
-if [ ! -e ${WITNESS_PIP_INSTALL_FILE} ]
-then
-
-    reqFile=`echo ${DJANGO_SETTINGS_MODULE} | awk -F. '{print $3".txt"}'`
-
-    echo "Updating modules using pip (${reqFile})... "
-
-    pip install --no-cache-dir -r /tmp/${reqFile}
-
-
-    touch ${WITNESS_PIP_INSTALL_FILE}
-fi
-
-
+#WITNESS_PIP_INSTALL_FILE=/tmp/pip-install-done
+#
+#if [ ! -e ${WITNESS_PIP_INSTALL_FILE} ]
+#then
+#
+#    reqFile=`echo ${DJANGO_SETTINGS_MODULE} | awk -F. '{print $3".txt"}'`
+#
+#    echo "Updating modules using pip (${reqFile})... "
+#
+#    pip install --no-cache-dir -r /tmp/${reqFile}
+#
+#
+#    touch ${WITNESS_PIP_INSTALL_FILE}
+#fi
+#
+#
 # Application source
 TMP_APP_SOURCE_FILES=/tmp/xaas-admin
 WITNESS_FILE=/tmp/source-done
