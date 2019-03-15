@@ -25,6 +25,8 @@ services:
       - DJANGO_SETTINGS_MODULE=config.settings.local
     build:
       context: djangoapp
+      args:
+        DJANGO_SETTINGS_MODULE: config.settings.local
 
     ports:
       - "127.0.0.1:80:80"

@@ -1,5 +1,7 @@
 FROM python:3.6
 
+ARG DJANGO_SETTINGS_MODULE
+
 
 EXPOSE 80
 
@@ -18,8 +20,9 @@ RUN chmod -R 777 /tmp
 
 # Python requirements
 COPY ./requirements /tmp
-RUN pip install --no-cache-dir -r /tmp/test.txt
 
+# Running installation script. We use an exteral script to be able to use DJANGO_SETTINGS_MODULE parameter
+RUN /tmp/xaas-admin/_utils/install.sh
 
 # Installing MySQL client to be able to import information in DB from a SQL file
 RUN apt-get update && apt-get install -y mysql-client && rm -rf /var/lib/apt
