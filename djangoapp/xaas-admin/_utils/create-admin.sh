@@ -14,13 +14,11 @@ echo -n "Please enter a gaspar username: "
 read username
 echo -n "Please enter an email address: "
 read emailAddress
-echo -n "Please enter a dummy password: "
-read -s dummyPassword
 
 echo ""
 echo "Creating superuser..."
 
-echo "from django.contrib.auth.models import User; User.objects.create_superuser('${username}', '${emailAddress}', '${dummyPassword}')" | python manage.py shell
+echo "from django.contrib.auth.models import User; User.objects.create_superuser('${username}', '${emailAddress}', 'winterIsComing')" | python manage.py shell
 
 
 
