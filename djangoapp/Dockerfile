@@ -17,12 +17,11 @@ RUN chmod -R 777 /tmp
 
 # Python requirements
 COPY ./requirements /tmp
-RUN pip install --no-cache-dir -r /tmp/local.txt
-
 
 # Installing MySQL client to be able to import information in DB from a SQL file
 RUN apt-get update && apt-get install -y mysql-client && rm -rf /var/lib/apt
 
 
+# Entrypoint
 COPY ./docker-entrypoint.sh /docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]

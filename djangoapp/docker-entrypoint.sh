@@ -1,7 +1,25 @@
 #!/bin/bash
 
+# PIP Install
+WITNESS_PIP_INSTALL_FILE=/tmp/pip-install-done
+
+if [ ! -e ${WITNESS_PIP_INSTALL_FILE} ]
+then
+
+    reqFile=`echo ${DJANGO_SETTINGS_MODULE} | awk -F. '{print $3".txt"}'`
+
+    echo "Updating modules using pip (${reqFile})... "
+
+    pip install --no-cache-dir -r /tmp/${reqFile}
+
+
+    touch ${WITNESS_PIP_INSTALL_FILE}
+fi
+
+
+# Application source
 TMP_APP_SOURCE_FILES=/tmp/xaas-admin
-WITNESS_FILE="${TMP_APP_SOURCE_FILES}/DONE"
+WITNESS_FILE=/tmp/source-done
 
 # If this is first execution of container,
 if [ ! -e ${WITNESS_FILE} ]
@@ -20,10 +38,11 @@ then
         echo "-> Using internal source for app, copying to correct place..."
         cp -r ${TMP_APP_SOURCE_FILES} /usr/src/
 
-        # We add the witness file right after. In fact there's an error on OpenShift (permission denied) if
-        # we try to just move source files from one location to another... so we use witness file.
-        touch ${WITNESS_FILE}
     fi
+
+    # We add the witness file right after. In fact there's an error on OpenShift (permission denied) if
+    # we try to just move source files from one location to another... so we use witness file.
+    touch ${WITNESS_FILE}
 
 fi
 
@@ -44,6 +63,6 @@ python manage.py makemigrations
 python manage.py migrate
 
 # Starting Django
-echo "Django up and running!"
+echo "Starting Django..."
 python manage.py runserver "0.0.0.0:80"
 
