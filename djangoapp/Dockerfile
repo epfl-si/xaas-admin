@@ -13,17 +13,12 @@ WORKDIR /usr/src/xaas-admin
 # Otherwise, it will be inside container.
 COPY ./xaas-admin /tmp/xaas-admin
 
-# We have to add write rights to files because in OpenShift, it won't be "root" user that will be used to execute
-# docker-entrypoint.sh script, it will be another user so we have to ensure that he will have enough rights.
-RUN chmod -R a+w /usr/src/xaas-admin
-RUN chmod -R 777 /tmp
-
-# Python requirements
+# Python requirements for pip install
 COPY ./requirements /tmp
 
 # Running installation script. We use an exteral script to be able to use DJANGO_SETTINGS_MODULE parameter
-COPY ./install.sh /tmp
-RUN /tmp/install.sh
+COPY ./build.sh /tmp
+RUN /tmp/build.sh
 
 # Installing MySQL client to be able to import information in DB from a SQL file
 RUN apt-get update && apt-get install -y mysql-client && rm -rf /var/lib/apt
