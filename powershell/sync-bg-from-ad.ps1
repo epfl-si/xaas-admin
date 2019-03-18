@@ -1209,13 +1209,13 @@ try
 			While($true)
 			{
 				$level += 1
-				$levelGroupName = $nameGenerator.getEPFLApproveADGroupName($faculty, $level, $true)
+				$levelGroupInfos = $nameGenerator.getEPFLApproveADGroupName($faculty, $level, $true)
 				# Si on n'a plus de groupe pour le level courant, on sort
-				if($levelGroupName -eq "")
+				if($null -eq $levelGroupInfos)
 				{
 					break
 				}
-				$approverGroupAtDomainList += $levelGroupName
+				$approverGroupAtDomainList += $levelGroupInfos.name
 			}
 
 			# Vu qu'il y aura des quotas pour les demandes sur le tenant EPFL, on utilise une policy du type "Event Subscription", ceci afin d'appeler un Workflow défini
@@ -1273,14 +1273,14 @@ try
 			While($true)
 			{
 				$level += 1
-				$levelGroupName = $nameGenerator.getITSApproveADGroupName($serviceShortName, $level, $true)
+				$levelGroupInfos = $nameGenerator.getITSApproveADGroupName($serviceShortName, $level, $true)
 
 				# Si on a un nom de groupe vide, c'est qu'il n'y a aucun groupe pour le level courant donc on peut sortir de la boucle
-				if($levelGroupName -eq "")
+				if($null -eq $levelGroupInfos)
 				{
 					break
 				}
-				$approverGroupAtDomainList += $levelGroupName
+				$approverGroupAtDomainList += $levelGroupInfos.name
 			}
 			
 			# Définition des noms des fichiers JSON contenant le nécessaire pour créer l'approval policy pour les demandes de NOUVEAUX éléments pour le tenant ITServices

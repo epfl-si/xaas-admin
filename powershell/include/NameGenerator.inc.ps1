@@ -363,10 +363,12 @@ class NameGenerator
         IN  : $fqdn             -> Pour dire si on veut le nom FQDN du groupe.
                                     $true|$false  
                                     
-        RET : le nom du groupe ou "" si rien pour le $level demandé.    
+        RET : Objet avec les données membres suivantes :
+                .name           -> le nom du groupe ou "" si rien pour le $level demandé.    
+                .onlyForTenant  -> $true|$false pour dire si c'est uniquement pour le tenant courant ($true) ou pas ($false =  tous les tenants)
 
     #>
-    hidden [string] getEPFLApproveGroupName([string]$facultyName, [int]$level, [string]$type, [bool]$fqdn)
+    hidden [PSCustomObject] getEPFLApproveGroupName([string]$facultyName, [int]$level, [string]$type, [bool]$fqdn)
     {
         <# NOTE 06.2018: Pour le moment, on n'utilise pas le paramètre $type car c'est le même nom de groupe qui est utilisé pour AD et GROUPS.
            NOTE 02.2019: Le paramètre $facultyName ne sera utilisé que quand àlevel == 2 car le premier niveau, c'est le service manager de IaaS
@@ -380,9 +382,12 @@ class NameGenerator
         # Level 1 -> vra_<envshort>_approval_iaas
         # Level 2 -> vra_<envShort>_approval_<faculty>
 
+        $onlyForTenant = $true
+
         if($level -eq 1)
         {
             $last = "service_manager"
+            $onlyForTenant = $false
         }
         elseif($level -eq 2)
         {
@@ -390,7 +395,7 @@ class NameGenerator
         }
         else 
         {
-            return ""    
+            return $null   
         }
 
         $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $last
@@ -399,7 +404,8 @@ class NameGenerator
         {
             $groupName = $this.getADGroupFQDN($groupName)
         }
-        return $groupName
+        return @{ name = $groupName
+                  onlyForTenant = $onlyForTenant }
     }
 
     
@@ -414,31 +420,33 @@ class NameGenerator
                                     $true|$false  
                                     Si pas passé => $false 
 
-        RET : Le nom du groupe à utiliser pour l'approbation
+        RET : Objet avec les données membres suivantes :
+                .name           -> le nom du groupe ou "" si rien pour le $level demandé.    
+                .onlyForTenant  -> $true|$false pour dire si c'est uniquement pour le tenant courant ($true) ou pas ($false =  tous les tenants)
     #>
-    [string] getEPFLApproveADGroupName([string]$facultyName, [int]$level, [bool]$fqdn)
+    [PSCustomObject] getEPFLApproveADGroupName([string]$facultyName, [int]$level, [bool]$fqdn)
     {
         return $this.getEPFLApproveGroupName($facultyName, $level, $this.GROUP_TYPE_AD, $fqdn)
     }
-    [string] getEPFLApproveADGroupName([string]$facultyName, [int]$level)
+    [PSCustomObject] getEPFLApproveADGroupName([string]$facultyName, [int]$level)
     {
         return $this.getEPFLApproveADGroupName($facultyName, $level, $false)
     }
-    [string] getEPFLApproveADGroupName([string]$facultyName)
+    [PSCustomObject] getEPFLApproveADGroupName([string]$facultyName)
     {
         return $this.getEPFLApproveADGroupName($facultyName, 1, $false)
     }
 
 
-    [string] getEPFLApproveGroupsGroupName([string]$facultyName, [int]$level, [bool]$fqdn)
+    [PSCustomObject] getEPFLApproveGroupsGroupName([string]$facultyName, [int]$level, [bool]$fqdn)
     {
         return $this.getEPFLApproveGroupName($facultyName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
     }
-    [string] getEPFLApproveGroupsGroupName([string]$facultyName, [int]$level)
+    [PSCustomObject] getEPFLApproveGroupsGroupName([string]$facultyName, [int]$level)
     {
         return $this.getEPFLApproveGroupsGroupName($facultyName, $level, $false)
     }
-    [string] getEPFLApproveGroupsGroupName([string]$facultyName)
+    [PSCustomObject] getEPFLApproveGroupsGroupName([string]$facultyName)
     {
         return $this.getEPFLApproveGroupsGroupName($facultyName, 1, $false)
     }
@@ -455,8 +463,8 @@ class NameGenerator
     #>
     [string] getEPFLApproveGroupsEmail([string]$facultyName, [int]$level)
     {
-        $groupName = $this.getEPFLApproveGroupsGroupName($facultyName, $level)
-        return "{0}{1}" -f $groupName, [NameGenerator]::GROUPS_EMAIL_SUFFIX
+        $groupInfos = $this.getEPFLApproveGroupsGroupName($facultyName, $level)
+        return "{0}{1}" -f $groupInfos.name, [NameGenerator]::GROUPS_EMAIL_SUFFIX
     }
     
     <#
@@ -471,7 +479,15 @@ class NameGenerator
     #>
     [string] getEPFLApproveADGroupDesc([string]$facultyName, [int]$level)
     {
-        return "Approval group (level {0}) for Faculty: {1}" -f $level, $facultyName
+        $desc = "Approval group (level {0})" -f $level
+
+        # Le premier niveau d'approbation est générique à toutes les facultés donc pas de description "précise" pour celui-ci
+        if($level -gt 1)
+        {
+            $desc = "{0} for Faculty: {1}" -f $desc, $facultyName
+        }
+
+        return $desc
     }
 
     <#
@@ -489,8 +505,8 @@ class NameGenerator
     #>
     [string] getEPFLApproveGroupsADGroupName([string]$facultyName, [int]$level, [bool]$fqdn)
     {
-        $groupName = $this.getEPFLApproveGroupName($facultyName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
-        return $groupName + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
+        $groupInfos = $this.getEPFLApproveGroupName($facultyName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
+        return $groupInfos.name + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
     }
     [string] getEPFLApproveGroupsADGroupName([string]$facultyName, [int]$level)
     {
@@ -745,9 +761,11 @@ class NameGenerator
         IN  : $fqdn             -> Pour dire si on veut le nom FQDN du groupe.
                                     $true|$false    
 
-        RET : Nom du groupe
+        RET : Objet avec les données membres suivantes :
+                .name           -> le nom du groupe ou "" si rien pour le $level demandé.    
+                .onlyForTenant  -> $true|$false pour dire si c'est uniquement pour le tenant courant ($true) ou pas ($false =  tous les tenants)
     #>
-    hidden [string] getITSApproveGroupName([string]$serviceShortName, [int]$level, [string]$type, [bool]$fqdn)
+    hidden [PSCustomObject] getITSApproveGroupName([string]$serviceShortName, [int]$level, [string]$type, [bool]$fqdn)
     {
         <# NOTE 06.2018 : Pour le moment, on n'utilise pas le paramètre $type car c'est le même nom de groupe qui est utilisé pour AD et GROUPS.
            NOTE 02.2019 : On n'utilise maintenant plus le paramètre $serviceShortName car ce sont maintenant le service manager IaaS (level 1)
@@ -760,9 +778,13 @@ class NameGenerator
 
         # Level 1 -> vra_<envShort>_approval_iaas
         # Level 2 -> vra_<envShort>_approval_vpsi
+
+        $onlyForTenant = $true
+
         if($level -eq 1)
         {
             $last = "service_manager"
+            $onlyForTenant = $false
         }
         elseif($level -eq 2)
         {
@@ -770,7 +792,7 @@ class NameGenerator
         }
         else 
         {
-            return ""
+            return $null
         }
 
         # Génération du nom du groupe
@@ -781,7 +803,8 @@ class NameGenerator
             $groupName = $this.getADGroupFQDN($groupName)
         }
 
-        return $groupName
+        return @{ name = $groupName
+                 onlyForTenant = $onlyForTenant }
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -799,29 +822,29 @@ class NameGenerator
 
         RET : Le nom du groupe à utiliser pour l'approbation
     #>
-    [string] getITSApproveADGroupName([string]$serviceShortName, [int]$level, [bool]$fqdn)
+    [PSCustomObject] getITSApproveADGroupName([string]$serviceShortName, [int]$level, [bool]$fqdn)
     {
         return $this.getITSApproveGroupName($serviceShortName, $level, $this.GROUP_TYPE_AD, $fqdn)
     }
-    [string] getITSApproveADGroupName([string]$serviceShortName, [int]$level)
+    [PSCustomObject] getITSApproveADGroupName([string]$serviceShortName, [int]$level)
     {
         return $this.getITSApproveADGroupName($serviceShortName, $level, $false)
     }
-    [string] getITSApproveADGroupName([string]$serviceShortName)
+    [PSCustomObject] getITSApproveADGroupName([string]$serviceShortName)
     {
         return $this.getITSApproveADGroupName($serviceShortName, 1, $false)
     }
 
 
-    [string] getITSApproveGroupsGroupName([string]$serviceShortName, [int]$level, [bool]$fqdn)
+    [PSCustomObject] getITSApproveGroupsGroupName([string]$serviceShortName, [int]$level, [bool]$fqdn)
     {
         return $this.getITSApproveGroupName($serviceShortName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
     }
-    [string] getITSApproveGroupsGroupName([string]$serviceShortName, [int]$level)
+    [PSCustomObject] getITSApproveGroupsGroupName([string]$serviceShortName, [int]$level)
     {
         return $this.getITSApproveGroupsGroupName($serviceShortName, $level, $false)
     }
-    [string] getITSApproveGroupsGroupName([string]$serviceShortName)
+    [PSCustomObject] getITSApproveGroupsGroupName([string]$serviceShortName)
     {
         return $this.getITSApproveGroupsGroupName($serviceShortName, 1, $false)
     }
@@ -838,8 +861,8 @@ class NameGenerator
     #>
     [string] getITSApproveGroupsEmail([string]$serviceShortName, [int]$level)
     {
-        $groupName = $this.getITSApproveGroupsGroupName($serviceShortName, $level)
-        return $groupName + [NameGenerator]::GROUPS_EMAIL_SUFFIX
+        $groupInfos = $this.getITSApproveGroupsGroupName($serviceShortName, $level)
+        return $groupInfos.name + [NameGenerator]::GROUPS_EMAIL_SUFFIX
     }    
     
     <#
@@ -857,8 +880,8 @@ class NameGenerator
     #>
     [string] getITSApproveGroupsADGroupName([string]$serviceShortName, [int]$level, [bool]$fqdn)
     {
-        $groupName = $this.getITSApproveGroupName($serviceShortName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
-        return $groupName + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
+        $groupInfos = $this.getITSApproveGroupName($serviceShortName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
+        return $groupInfos.name + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
     }
     [string] getITSApproveGroupsADGroupName([string]$serviceShortName, [int]$level)
     {
@@ -957,16 +980,27 @@ class NameGenerator
         BUT : Renvoie le DN de l'OU Active Directory à utiliser pour mettre les groupes 
               de l'environnement et du tenant courant.
 
+        IN  : $onlyForTenant -> $true|$false pour dire si on veut l'OU pour un groupe
+                                    qui sera utilisé par tous les tenants et pas qu'un seul.  
+
 		RET : DN de l'OU
     #>
-    [string] getADGroupsOUDN()
+    [string] getADGroupsOUDN([bool]$onlyForTenant)
     {
+        
         $tenantOU = ""
-        switch($this.tenant)
+        # Si le groupe que l'on veut créer dans l'OU doit être dispo pour le tenant courant uniquement, 
+        if($onlyForTenant)
         {
-            $global:VRA_TENANT__DEFAULT { $tenantOU = "default"}
-            $global:VRA_TENANT__EPFL { $tenantOU = "EPFL"}
-            $global:VRA_TENANT__ITSERVICES { $tenantOU = "ITServices"}
+            $tenantOU = "OU="
+            switch($this.tenant)
+            {
+                $global:VRA_TENANT__DEFAULT { $tenantOU += "default"}
+                $global:VRA_TENANT__EPFL { $tenantOU += "EPFL"}
+                $global:VRA_TENANT__ITSERVICES { $tenantOU += "ITServices"}
+            }
+            # On a donc : OU=<tenant>, 
+            $tenantOU += ","
         }
 
         $envOU = ""
@@ -978,7 +1012,7 @@ class NameGenerator
         }
 
         # Retour du résultat 
-        return 'OU={0},OU={1},OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch' -f $tenantOU, $envOU
+        return '{0}OU={1},OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch' -f $tenantOU, $envOU
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>

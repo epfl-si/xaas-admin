@@ -357,19 +357,20 @@ try
 			while($true)
 			{
 				$level += 1
-				$approveGroupNameAD = $nameGenerator.getEPFLApproveADGroupName($faculty['name'], $level)
+				$approveGroupInfos = $nameGenerator.getEPFLApproveADGroupName($faculty['name'], $level)
 
 				# S'il n'y a plus de groupe pour le level courant, on sort
-				if($approveGroupNameAD -eq "")
+				if($null -eq $approveGroupInfos)
 				{
 					break
 				}
+				
 				$approveGroupDescAD = $nameGenerator.getEPFLApproveADGroupDesc($faculty['name'], $level)
 				$approveGroupNameGroups = $nameGenerator.getEPFLApproveGroupsADGroupName($faculty['name'], $level)
 
 				# Création des groupes + gestion des groupes prérequis 
-				if((createADGroupWithContent -groupName $approveGroupNameAD -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-					-OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+				if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+					-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
 				{
 					if($notifications['missingEPFLADGroups'] -notcontains $approveGroupNameGroups)
 					{
@@ -404,7 +405,7 @@ try
 
 			# Création des groupes + gestion des groupes prérequis 
 			if((createADGroupWithContent -groupName $adminGroupNameAD -groupDesc $adminGroupDescAD -groupMemberGroup $adminGroupNameGroups `
-				 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+				 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
 			{
 				# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 				$notifications['missingEPFLADGroups'] += $adminGroupNameGroups
@@ -415,7 +416,7 @@ try
 
 
 			if((createADGroupWithContent -groupName $supportGroupNameAD -groupDesc $supportGroupDescAD -groupMemberGroup $supportGroupNameGroups `
-				 -OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+				 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
 			{
 				# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 				$notifications['missingEPFLADGroups'] += $supportGroupNameGroups
@@ -475,7 +476,7 @@ try
 						if(-not $SIMULATION_MODE)
 						{
 							# Création du groupe
-							New-ADGroup -Name $adGroupName -Description $adGroupDesc -GroupScope DomainLocal -Path $nameGenerator.getADGroupsOUDN()
+							New-ADGroup -Name $adGroupName -Description $adGroupDesc -GroupScope DomainLocal -Path $nameGenerator.getADGroupsOUDN($true)
 						}
 
 						$counters.inc('ADGroupsCreated')
@@ -567,7 +568,7 @@ try
 
 		# Parcours des groupes AD qui sont dans l'OU de l'environnement donné. On ne prend que les groupes qui sont utilisés pour 
 		# donner des droits d'accès aux unités. Afin de faire ceci, on fait un filtre avec une expression régulière
-		Get-ADGroup  -Filter ("Name -like '*'") -SearchBase $nameGenerator.getADGroupsOUDN() -Properties Description | 
+		Get-ADGroup  -Filter ("Name -like '*'") -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
 		Where-Object {$_.Name -match $nameGenerator.getEPFLADGroupNameRegEx("CSP_CONSUMER")} | 
 		ForEach-Object {
 
@@ -636,10 +637,10 @@ try
 			{
 				$level += 1
 				# Recherche des informations pour le level courant.
-				$approveGroupNameAD = $nameGenerator.getITSApproveADGroupName($service.$global:MYSQL_ITS_SERVICES__SHORTNAME, $level)
+				$approveGroupInfos = $nameGenerator.getITSApproveADGroupName($service.$global:MYSQL_ITS_SERVICES__SHORTNAME, $level)
 
 				# Si vide, c'est qu'on a atteint le niveau max pour les level
-				if($approveGroupNameAD -eq "")
+				if($null -eq $approveGroupInfos)
 				{
 					break
 				}
@@ -648,8 +649,8 @@ try
 				$approveGroupNameGroups = $nameGenerator.getITSApproveGroupsADGroupName($service.$global:MYSQL_ITS_SERVICES__SHORTNAME, $level)
 
 				# Création des groupes + gestion des groupes prérequis 
-				if((createADGroupWithContent -groupName $approveGroupNameAD -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-					-OU $nameGenerator.getADGroupsOUDN() -simulation $SIMULATION_MODE) -eq $false)
+				if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+					-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
 					if($notifications['missingITSADGroups'] -notcontains $approveGroupNameGroups)
