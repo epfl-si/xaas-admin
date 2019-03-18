@@ -92,9 +92,6 @@ function createADGroupWithContent
 
 			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
 			
-			# On commence par filtrer les comptes AD à ajouter pour savoir s'ils existent tous
-			$groupMemberGroup = removeInexistingADAccounts -accounts $groupMemberGroup
-
 			Add-ADGroupMember $groupName -Members $groupMemberGroup
 
 			$counters.inc('ADGroupsCreated')
@@ -200,6 +197,7 @@ function removeInexistingADAccounts
 		}
 		catch 
 		{
+			Write-Warning ("User {0} doesn't have an account in Active directory" -f $acc )
 			$counters.inc('ADMembersNotFound')
 		}
 	}
@@ -510,15 +508,15 @@ try
 						$toRemove = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '=>' }  | ForEach-Object {$_.InputObject}
 					}
 
+					# On commence par filtrer les comptes AD à ajouter pour savoir s'ils existent tous
+					$toAdd = removeInexistingADAccounts -accounts $toAdd
+
 					# Ajout des nouveaux membres s'il y en a
 					if($toAdd.Count -gt 0)
 					{
 						$logHistory.addLineAndDisplay(("--> Adding {0} members in group {1} " -f $toAdd.Count, $adGroupName))
 						if(-not $SIMULATION_MODE)
 						{
-							# On commence par filtrer les comptes AD à ajouter pour savoir s'ils existent tous
-							$toAdd = removeInexistingADAccounts -accounts $toAdd
-
 							Add-ADGroupMember $adGroupName -Members $toAdd
 						}
 
