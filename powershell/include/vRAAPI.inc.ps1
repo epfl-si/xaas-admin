@@ -143,6 +143,43 @@ class vRAAPI
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Effectue un appel à l'API REST
+
+		IN  : $uri		-> URL à appeler
+		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
+		IN  : $json 	-> Code JSON
+
+		RET : Retour de l'appel
+	#>
+	hidden [Object] callAPI([string]$uri, [string]$method, [string]$json)
+	{
+		try
+		{
+			if($json -ne "")
+			{
+				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers -Body $json
+			}
+			else 
+			{
+				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers
+			}
+		}
+		catch 
+		{
+			# Si une erreur survient, on la "repropage" mais avec un message d'erreur plus parlant qu'un "Bad Request" ou autre... 
+			# On va récupérer le message qui a été renvoyé par vRA et on va le rebalance en exception !
+			$errorDetails = ConvertFrom-Json $_.ErrorDetails.Message
+
+			# On récupère aussi le nom de la fonction qui a appelé celle-ci, histoire d'avoir un peu d'infos dans le message d'erreur
+			$callStack = Get-PSCallStack
+			$parentFunc = $callStack[1].FunctionName
+
+			Throw ("VRAAPI::{0}(): {1}" -f $parentFunc, $errorDetails.errors.message)
+		}
+	}
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Ferme une connexion via l'API REST
 
 	#>
@@ -184,7 +221,7 @@ class vRAAPI
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
 
-		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
+		return ($this.callAPI($uri, "Get", "")).content
 	}
 	hidden [Array] getBGListQuery()
 	{
@@ -285,8 +322,8 @@ class vRAAPI
 		}
 
 		# Création du BG
-		Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
-
+		$res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))
+		
 		# Recherche et retour du BG
 		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
 		# le fichier JSON template
@@ -397,8 +434,8 @@ class vRAAPI
 		}
 
 		# Mise à jour des informations
-		Invoke-RestMethod -Uri $uri -Method Put -Headers $this.headers -Body (ConvertTo-Json -InputObject $bg -Depth 20)
-
+		$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $bg -Depth 20))
+		
 		# On recherche l'objet mis à jour
 		return $this.getBG($bg.name)
 	}
@@ -415,7 +452,7 @@ class vRAAPI
 		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.server, $this.tenant, $bgId
 
 		# Mise à jour des informations
-		Invoke-RestMethod -Uri $uri -Method Delete -Headers $this.headers
+		$res = $this.callAPI($uri, "Delete", "")
 	}
 
 
@@ -445,8 +482,8 @@ class vRAAPI
 		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/principals/" -f $this.server, $this.tenant, $BGID, $role
 
 		# Récupération de la liste d'objets
-		$res =  (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers ).content
-
+		$res = ($this.callAPI($uri, "Get", "")).content
+		
 		# On remet le tout dans un tableau en récupérant ce qui nous intéresse
 		$resArray = @()
 		$res | ForEach-Object { $resArray += "{0}@{1}" -f $_.principalId.name, $_.principalId.domain }
@@ -473,7 +510,7 @@ class vRAAPI
 			$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/" -f $this.server, $this.tenant, $BGID, $role
 
 			# Suppression du contenu du rôle
-			$empty = Invoke-RestMethod -Uri $uri -Method Delete -Headers $this.headers
+			$res = $this.callAPI($uri, "Delete", "")
 		}
 
 	}
@@ -527,7 +564,8 @@ class vRAAPI
 		)
 
 		# Ajout du rôle
-		$empty = Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 2 )
+		$res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 2))
+		
 	}
 
 
@@ -560,7 +598,7 @@ class vRAAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
+		return ($this.callAPI($uri, "Get", "")).content
 
 	}
 	hidden [Array] getEntListQuery()
@@ -668,8 +706,8 @@ class vRAAPI
 
 		$body = $this.loadJSON("entitlement.json", $replace)
 
-		$empty = Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 10 )
-
+		$res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))
+		
 		# Retour de l'entitlement
 		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
 		# le fichier JSON template
@@ -727,8 +765,8 @@ class vRAAPI
 		}
 
 		# Mise à jour des informations
-		$empty = Invoke-RestMethod -Uri $uri -Method Put -Headers $this.headers -Body (ConvertTo-Json -InputObject $ent -Depth 20)
-
+		$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $ent -Depth 20))
+		
 		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
 		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
 		# réutilise un élément pas mis à jour depuis vRA
@@ -770,7 +808,7 @@ class vRAAPI
 	{
 		$uri = "https://{0}/catalog-service/api/entitlements/{1}" -f $this.server, $entId
 
-		$empty = Invoke-RestMethod -Uri $uri -Method Delete -Headers $this.headers
+		$res = $this.callAPI($uri, "Delete", "")
 	}
 
 	<#
@@ -800,7 +838,7 @@ class vRAAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
+		return ($this.callAPI($uri, "Get", "")).content
 	}
 	hidden [Array] getServiceListQuery()
 	{
@@ -939,8 +977,8 @@ class vRAAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
-
+		return ($this.callAPI($uri, "Get", "")).content
+		
 	}
 	hidden [Array] getResListQuery()
 	{
@@ -1020,8 +1058,8 @@ class vRAAPI
 		# On l'active (dans le cas où le Template était désactivé)
 		$resTemplate.enabled = $true
 
-		$empty = Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $resTemplate -Depth 20 )
-
+		$res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $resTemplate -Depth 20))
+		
 		return $this.getRes($name)
 
 	}
@@ -1049,8 +1087,8 @@ class vRAAPI
 
 		$res.name = $newName
 
-		$empty = Invoke-RestMethod -Uri $uri -Method Put -Headers $this.headers -Body (ConvertTo-Json -InputObject $res -Depth 20 )
-
+		$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $res -Depth 20))
+		
 		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
 		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
 		# réutilise un élément pas mis à jour depuis vRA
@@ -1069,8 +1107,8 @@ class vRAAPI
 	{
 		$uri = "https://{0}/reservation-service/api/reservations/{1}" -f $this.server, $resID
 
-		$empty = Invoke-RestMethod -Uri $uri -Method Delete -Headers $this.headers
-
+		$res = $this.callAPI($uri, "Delete", "")
+		
 	}
 
 	<#
@@ -1100,8 +1138,8 @@ class vRAAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
-
+		return ($this.callAPI($uri, "Get", "")).content
+		
 	}
 	hidden [Array] getActionListQuery()
 	{
@@ -1171,7 +1209,7 @@ class vRAAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
+		return ($this.callAPI($uri, "Get", "")).content
 
 	}
 	hidden [Array] getPrincipalsListQuery()
@@ -1247,7 +1285,7 @@ class vRAAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
+		return ($this.callAPI($uri, "Get", "")).content
 
 	}
 	hidden [Array] getMachinePrefixListQuery()
@@ -1303,8 +1341,7 @@ class vRAAPI
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
 
-		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
-
+		return ($this.callAPI($uri, "Get", "")).content
 	}
 
 	<#
@@ -1355,7 +1392,7 @@ class vRAAPI
 	{
 		$uri = "https://{0}/identity/api/tenants/{1}/directories/{2}/sync" -f $this.server, $this.tenant, $name
 
-		Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers
+		$res = $this.callAPI($uri, "Post", "")
 	}
 
 
@@ -1387,7 +1424,7 @@ class vRAAPI
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
 
-		return (Invoke-RestMethod -Uri $uri -Method Get -Headers $this.headers).content
+		return ($this.callAPI($uri, "Get", "")).content
 	}
 	hidden [Array] getApprovePolicyListQuery()
 	{
@@ -1485,7 +1522,7 @@ class vRAAPI
 		$body = $this.loadJSON($approvalPolicyJSON, $replace)
 
 		# Création de la Policy
-		$res = Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
+		$res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))
 
 		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
 		# le fichier JSON template
@@ -1535,7 +1572,7 @@ class vRAAPI
 		}
 
 		# Mise à jour des informations
-		Invoke-RestMethod -Uri $uri -Method Put -Headers $this.headers -Body (ConvertTo-Json -InputObject $approvalPolicy -Depth 20)
+		$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $approvalPolicy -Depth 20))
 
 		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
 		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
@@ -1560,7 +1597,7 @@ class vRAAPI
 		$uri = "https://{0}/approval-service/api/policies/{1}" -f $this.server, $approvalPolicy.id
 
 		# Mise à jour des informations
-		Invoke-RestMethod -Uri $uri -Method Delete -Headers $this.headers
+		$res = $this.callAPI($uri, "Delete", "")
 		
 	}
 
