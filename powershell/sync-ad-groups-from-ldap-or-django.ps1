@@ -91,6 +91,10 @@ function createADGroupWithContent
 			New-ADGroup -Name $groupName -Description $groupDesc -GroupScope DomainLocal -Path $OU
 
 			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
+			
+			# On commence par filtrer les comptes AD à ajouter pour savoir s'ils existent tous
+			$groupMemberGroup = removeInexistingADAccounts -accounts $groupMemberGroup
+
 			Add-ADGroupMember $groupName -Members $groupMemberGroup
 
 			$counters.inc('ADGroupsCreated')
@@ -170,6 +174,39 @@ function handleNotifications
 	}# FIN BOUCLE de parcours des catégories de notifications
 }
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Contrôle que les noms des comptes donnés existent bien dans AD. Si ce n'est pas le
+			cas, ils sont supprimés de la liste.
+
+	IN  : $accounts	-> tableau avec la liste des comptes à contrôler
+
+	RET : Tableau avec la liste des comptes sans ceux qui n'existent pas dans AD
+#>
+function removeInexistingADAccounts
+{
+	param([Array] $accounts)
+
+	$validAccounts = @()
+
+	ForEach($acc in $accounts)
+	{
+		try 
+		{
+			$m = Get-ADUser $acc
+
+			# Si on arrive ici, c'est que pas d'erreur donc compte trouvé.
+			$validAccounts += $acc
+		}
+		catch 
+		{
+			$counters.inc('ADMembersNotFound')
+		}
+	}
+
+	return $validAccounts
+}
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -195,6 +232,8 @@ $SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", "SIMULA
 # le script courant
 $TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", "TEST_MODE")))
 $EPFL_TEST_NB_UNITS_MAX = 10
+$EPFL_LIMIT_TO_FAC = @("SV")
+
 
 # CONFIGURATION
 # ******************************************
@@ -240,9 +279,9 @@ try
 		$logHistory.addLineAndDisplay("*********************************")
 	}
 
-
+	# Liste des groupes AD traités par le script
 	$doneADGroupList = @()
-
+	
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
 
@@ -252,6 +291,7 @@ try
 	$counters.add('ADGroupsContentModified', '# AD Groups modified')
 	$counters.add('ADGroupsMembersAdded', '# AD Group members added')
 	$counters.add('ADGroupsMembersRemoved', '# AD Group members removed')
+	$counters.add('ADMembersNotFound', '# AD members not found')
 
 	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -277,6 +317,7 @@ try
 		# Ajout des compteurs propres au tenant
 		$counters.add('epfl.facProcessed', '# Faculty processed')
 		$counters.add('epfl.facSkipped', '# Faculty skipped')
+		$counters.add('epfl.facIgnored', '# Faculty ignored (because of filter)')
 		$counters.add('epfl.LDAPUnitsProcessed', '# LDAP Units processed')
 		$counters.add('epfl.LDAPUnitsEmpty', '# LDAP Units empty')
 
@@ -297,6 +338,14 @@ try
 			$counters.inc('epfl.facProcessed')
 			$logHistory.addLineAndDisplay(("[{0}/{1}] Faculty {2}..." -f $counters.get('epfl.facProcessed'), $facultyList.Count, $faculty['name']))
 
+			# Si on doit limiter à certaines facultés et que la faculté courante est de celles-ci
+			if(($EPFL_LIMIT_TO_FAC.Count -gt 0 ) -and ($EPFL_LIMIT_TO_FAC -notcontains $faculty['name']))
+			{
+				$counters.inc('epfl.facIgnored')
+				$logHistory.addLineAndDisplay(("Ignoring faculty {0} because not in defined list..." -f $faculty['name']))
+				continue
+			}
+			
 			# ----------------------------------------------------------------------------------
 			# --------------------------------- FACULTE
 			# ----------------------------------------------------------------------------------
@@ -461,14 +510,15 @@ try
 						$toRemove = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '=>' }  | ForEach-Object {$_.InputObject}
 					}
 
-
-
 					# Ajout des nouveaux membres s'il y en a
 					if($toAdd.Count -gt 0)
 					{
 						$logHistory.addLineAndDisplay(("--> Adding {0} members in group {1} " -f $toAdd.Count, $adGroupName))
 						if(-not $SIMULATION_MODE)
 						{
+							# On commence par filtrer les comptes AD à ajouter pour savoir s'ils existent tous
+							$toAdd = removeInexistingADAccounts -accounts $toAdd
+
 							Add-ADGroupMember $adGroupName -Members $toAdd
 						}
 
