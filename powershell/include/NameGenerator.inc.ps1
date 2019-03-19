@@ -1084,7 +1084,12 @@ class NameGenerator
     #>
     [string] getVMMachinePrefix([string]$facultyNameOrServiceShortName)
     {
-        return "{0}-" -f $this.transformForGroupName($facultyNameOrServiceShortName)
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL { return "{0}vm" -f $this.transformForGroupName($facultyNameOrServiceShortName)}
+            $global:VRA_TENANT__ITSERVICES { return "{0}-" -f $this.transformForGroupName($facultyNameOrServiceShortName)}
+        }
+        return ""
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1333,23 +1338,23 @@ class NameGenerator
         if($this.tenant -eq $global:VRA_TENANT__EPFL)
         {
             # Le nom du BG a la structure suivante :
-            # epfl_<faculty>_<unit>
+            # epfl_<faculty>_<unit>[_<info1>[_<info2>...]]
 
             # Le nom de la Reservation est généré comme suit
-            # <tenantShort>_<faculty>_<unit>_<cluster>
+            # <tenantShort>_<faculty>_<unit>[_<info1>[_<info2>...]]_<cluster>
 
-            return "{0}_{1}_{2}_{3}" -f $this.getTenantShortName(), $partList[1], $partList[2], $this.transformForGroupName($clusterName)
+            return "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
         }
         # Si Tenant ITServices
         elseif($this.tenant -eq $global:VRA_TENANT__ITSERVICES)
         {
             # Le nom du BG a la structure suivante :
-            # epfl_<serviceShortName>
+            # its_<serviceShortName>
 
             # Le nom de la Reservation est généré comme suit
             # <tenantShort>_<serviceShortName>_<cluster>
             
-            return "{0}_{1}_{2}" -f $this.getTenantShortName(), $partList[1], $this.transformForGroupName($clusterName)
+            return "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
         }
         else
         {
