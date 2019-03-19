@@ -44,27 +44,7 @@
                         "type": "constant",
                         "value": {
                             "type": "string",
-                            "value": "ditex-manage"
-                        }
-                    }
-                }
-            },
-            {
-                "type": "not",
-                "subClause": {
-                    "type": "expression",
-                    "operator": {
-                        "type": "startsWith"
-                    },
-                    "leftOperand": {
-                        "type": "path",
-                        "path": "requestedBy~principalIdAsString"
-                    },
-                    "rightOperand": {
-                        "type": "constant",
-                        "value": {
-                            "type": "string",
-                            "value": "ThisIsSparta!"
+                            "value": "itadmin-"
                         }
                     }
                 }

@@ -10,49 +10,24 @@
     ],
     "approvalMode": "ANY",
     "criteria": {
-        "type": "and",
-        "subClauses": [
-            {
-                "type": "not",
-                "subClause": {
-                    "type": "expression",
-                    "operator": {
-                        "type": "startsWith"
-                    },
-                    "leftOperand": {
-                        "type": "path",
-                        "path": "requestedBy~principalIdAsString"
-                    },
-                    "rightOperand": {
-                        "type": "constant",
-                        "value": {
-                            "type": "string",
-                            "value": "ditex-manage"
-                        }
-                    }
-                }
+        "type": "not",
+        "subClause": {
+            "type": "expression",
+            "operator": {
+                "type": "startsWith"
             },
-            {
-                "type": "not",
-                "subClause": {
-                    "type": "expression",
-                    "operator": {
-                        "type": "startsWith"
-                    },
-                    "leftOperand": {
-                        "type": "path",
-                        "path": "requestedBy~principalIdAsString"
-                    },
-                    "rightOperand": {
-                        "type": "constant",
-                        "value": {
-                            "type": "string",
-                            "value": "ThisIsSparta!"
-                        }
-                    }
+            "leftOperand": {
+                "type": "path",
+                "path": "requestedBy~principalIdAsString"
+            },
+            "rightOperand": {
+                "type": "constant",
+                "value": {
+                    "type": "string",
+                    "value": "itsadmin-"
                 }
             }
-        ]
+        }
     },
     "levelNumber": "{{preApprovalLeveNumber}}",
     "external": false,
