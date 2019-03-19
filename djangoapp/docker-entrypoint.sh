@@ -18,5 +18,5 @@ python manage.py migrate
 
 # Starting Django
 echo "Starting Django..."
-python manage.py runserver "0.0.0.0:80"
+python manage.py runserver "0.0.0.0:8080"
 

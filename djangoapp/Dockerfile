@@ -4,7 +4,7 @@ ARG DJANGO_SETTINGS_MODULE
 
 ENV TMP_APP_SOURCE_FILES=/tmp/xaas-admin
 
-EXPOSE 80
+EXPOSE 8080
 
 WORKDIR /usr/src/xaas-admin
 
