@@ -759,7 +759,8 @@ function deleteBGAndComponentsIfPossible
 		# --------------
 		# Entitlement
 		# Si le BG a un entitlement,
-		if($null -eq ($bgEnt = $vra.getBGEnt($bg.id)))
+		$bgEnt = $vra.getBGEnt($bg.id)
+		if($null -ne $bgEnt)
 		{
 
 			# Suppression de l'entitlement (on le désactive au préalable)
@@ -1130,7 +1131,7 @@ try
 	{
 		$adGroupNameRegex = $nameGenerator.getITSADGroupNameRegEx("CSP_CONSUMER")
 	}
-	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN() -Properties Description | 
+	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
 	Where-Object {$_.Name -match $adGroupNameRegex} 
 
 	# Création de l'objet pour récupérer les informations sur les approval policies à créer pour les demandes de nouveaux éléments
