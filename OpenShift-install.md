@@ -29,7 +29,9 @@ page <https://github.com/openshift/origin/releases/latest>
 
 1. Using a Terminal, go in folder where your `docker-compose.yml` file is located
 1. Create files for OpenShift. It will create some files in the same directory:
-    > kompose --provider=openshift --build build-config --build-repo=https://github.com/epfl-idevelop/xaas-admin.git convert
+    ```
+    kompose --provider=openshift --build build-config --build-repo=https://github.com/epfl-idevelop/xaas-admin.git convert
+    ```
 
 1. This will create some files starting with "xaas-*". 
 
@@ -155,6 +157,9 @@ in the build configuration.
   
 
 ### Add superuser
+
+**NOTE:** If you plan to import a full DB backup, you can skip this step because users
+will also be imported in database. See below for procedure to import data in database.
 
 If there is still no superuser defined, we have to create one.
 **!!!BE CAREFUL TO DO THIS BEFORE TRYING FIRST CONNECTION ON DJANGO!!!**
