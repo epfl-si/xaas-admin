@@ -7,7 +7,7 @@
 This procedure assumes that "docker" is already installed.
 
 1. You have to start by cloning current repository.
-    > git@github.com:epfl-idevelop/xaas-admin.git
+    > git clone git@github.com:epfl-idevelop/xaas-admin.git
 
 1. Then, start the configuration process
     > make config
@@ -29,11 +29,10 @@ For local execution, values are "free" but the following needs to be set with sp
     you'll be asked for.
     > make install
     
-1. Check that all 3 containers are running.
+1. Check that all 2 containers are running.
     > docker ps
     
     You have to see:
-    * xaas-nginx
     * xaas-django
     * xaas-mariadb 
 
@@ -76,30 +75,7 @@ without having to recreate container.
 
 ### Install
 
-#### Environment variables
-
-The following environment variables must be added in OpenShift.
-
-`MYSQL_HOST` > MySQL Hostname
-
-`MYSQL_PORT` > MySQL port on which to connect
-
-`MYSQL_DATABASE` > Django app database name
-
-`MYSQL_USER` > MySQL user to use in Django app.
-
-`MYSQL_PASSWORD` > MySQL password for `MYSQL_USER`
-
-`SECRET_KEY` > Secret key for Django app
-
-Then, add an environment variable named `DJANGO_SETTINGS_MODULE` and set it with one of the following:
-- `config.settings.prod` for production environment
-- `config.settings.test` for test environment
-
-
-### Execution
-All containers will be started automatically in OpenShift
-
+Have a look at <OpenShift-install.md> file
 
 
 ## Tips
