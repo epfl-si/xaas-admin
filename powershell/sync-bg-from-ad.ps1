@@ -248,7 +248,7 @@ function createOrUpdateBG
 		# Recherche du BG par son no d'unité.
 		$bg = getBGWithCustomProp -fromList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_UNIT_ID -customPropValue $bgUnitID
 
-		# Si la recherche du BG par son le no de l'unité ne donne rien,
+		# Si la recherche du BG par son no de l'unité ne donne rien,
 		if($null -eq $bg)
 		{
 			# Ajout des customs properties en vue de sa création
@@ -453,7 +453,8 @@ function createOrUpdateBGEnt
 	param([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc)
 
 	# Si l'entitlement n'existe pas,
-	if($null -eq ($ent = $vra.getBGEnt($bg.id)))
+	$ent = $vra.getBGEnt($bg.id)
+	if($null -eq $ent)
 	{
 		$logHistory.addLineAndDisplay(("-> Creating Entitlement {0}..." -f $entName))
 		$ent = $vra.addEnt($entName, $entDesc, $bg.id, $bg.name)
@@ -836,7 +837,7 @@ function isBGAlive
 	$customProp = $bg.extensionData.entries | Where-Object { $_.key -eq $global:VRA_CUSTOM_PROP_VRA_BG_STATUS}
 
 	# Si la "Custom property" a été trouvée,
-	if($null -eq $customProp)
+	if($null -ne $customProp)
 	{
 		return ($customProp.value.values.entries | Where-Object {$_.key -eq "value"}).value.value -eq $global:VRA_BG_STATUS__ALIVE
 	}
