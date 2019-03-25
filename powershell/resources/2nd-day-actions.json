@@ -40,7 +40,7 @@
                 "approvals": [
                     {
                         "tenant": "EPFL",
-                        "approvalPolicyJSON": "pre-approval-policy-evsub-2nd-day.json",
+                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-generic.json",
                         "approvalLevelJSON": "approval-level-usrgrp-admin-passthrough.json",
                         "JSONReplacements": {},
                         "approvalLevels": 2
@@ -113,24 +113,16 @@
                 "approvals": [
                     {
                         "tenant": "EPFL",
-                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-reconfigure-vm.json",
-                        "approvalLevelJSON": "approval-level-usrgrp-custom-prop-admin-passthrough.json",
-                        "JSONReplacements": 
-                        {
-                            "customPropName": "ch.epfl.iaas.request.approval.needed",
-                            "customPropValue": "yes"
-                        },
+                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
                         "approvalLevels": 2
                     },
                     {
                         "tenant": "ITServices",
-                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-reconfigure-vm.json",
-                        "approvalLevelJSON": "approval-level-usrgrp-custom-prop-admin-passthrough.json",
-                        "JSONReplacements": 
-                        {
-                            "customPropName": "ch.epfl.iaas.request.approval.needed",
-                            "customPropValue": "yes"
-                        },
+                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
                         "approvalLevels": 1
                     }
                 ]
