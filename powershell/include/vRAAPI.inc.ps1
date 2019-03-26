@@ -1076,11 +1076,15 @@ class vRAAPI
 		IN  : $resTemplate	-> Objet contenant le Template à utiliser pour mettre à jour la Reservation
 		IN  : $name			-> Le nouveau nom de la Reservation (parce qu'il peut changer)
 
-		RET : Objet contenant la Reservation mise à jour
+		RET : Tableau avec :
+				0 -> Objet contenant la Reservation mise à jour
+				1 -> $true|$false pour dire si ça a été mis à jour
 	#>
-	[PSCustomObject] updateRes([PSCustomObject]$res, [PSCustomObject]$resTemplate, [string]$name)
+	[Array] updateRes([PSCustomObject]$res, [PSCustomObject]$resTemplate, [string]$name)
 	{
 		$uri = "https://{0}/reservation-service/api/reservations/{1}" -f $this.server, $res.id
+
+		$updated = $false
 
 		# Si un des éléments a changé, 
 		if(((ConvertTo-Json -InputObject $res.extensionData -Depth 20) -ne (ConvertTo-Json -InputObject $resTemplate.extensionData -Depth 20)) -or
@@ -1092,12 +1096,14 @@ class vRAAPI
 			$res.alertPolicy =  $resTemplate.alertPolicy
 			
 			$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $res -Depth 20))
+
+			$updated = $true
 		}
 		
 		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
 		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
 		# réutilise un élément pas mis à jour depuis vRA
-		return $this.getRes($name)
+		return @($this.getRes($name), $updated)
 	}
 
 
