@@ -646,20 +646,24 @@ function createOrUpdateBGReservations
 		}
 		else # La Reservation existe
 		{
-			# Si le nom de la Reservation ne correspond pas (dans le cas où le nom du BG aurait changé)
-			if($matchingRes.name -ne $resName)
-			{
-				$logHistory.addLineAndDisplay(("--> Renaming Reservation '{0}' to '{1}'..." -f $matchingRes.name, $resName))
-				$matchingRes = $vra.updateRes($matchingRes, $resName)
+			# On appelle la fonction de mise à jour mais c'est cette dernière qui va déterminer si une mise à jour est
+			# effectivement nécessaire (car il y a eu des changements) ou pas...
+			$logHistory.addLineAndDisplay(("--> Updating Reservation '{0}' to '{1}'..." -f $matchingRes.name, $resName))
+			$updateResult = $vra.updateRes($matchingRes, $resTemplate, $resName)
 
+			# Si la Reservation a effectivement été mise à jour 
+			if($updateResult[1])
+			{
 				$counters.inc('ResUpdated')
 			}
 		}
-	}
+	}# FIN BOUCLE parcours de templates trouvés 
+
 
 	# Parcours des Reservations existantes pour le BG
 	Foreach($bgRes in $bgResList)
 	{
+		# Si la réservation courante est "de trop", on l'efface 
 		if($doneResList -notcontains $bgRes.Name)
 		{
 			$logHistory.addLineAndDisplay(("--> Deleting Reservation '{0}'..." -f $bgRes.Name))
