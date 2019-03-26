@@ -100,7 +100,7 @@ class vRAAPI
 		$json = (Get-Content -Path $filepath) -join "`n"
 
 		# S'il y a des valeurs à remplacer
-		if($valToReplace -ne $null)
+		if($null -ne $valToReplace)
 		{
 			# Parcours des remplacements à faire
 			foreach($search in $valToReplace.Keys)
@@ -377,7 +377,7 @@ class vRAAPI
 		}
 
 		# S'il faut mettre à jour une ou plusieurs "custom properties"
-		if($customProperties -ne $null)
+		if($null -ne $customProperties)
 		{
 
 			# Parcour des custom properties à mettre à jour,
@@ -389,7 +389,7 @@ class vRAAPI
 				$entry = $bg.extensionData.entries | Where-Object { $_.key -eq $customPropertyKey}
 
 				# Si une entrée a été trouvée
-				if($entry -ne $null)
+				if($null -ne $entry)
 				{
 					# Mise à jour de sa valeur en fonction du type de la custom propertie
 					switch($entry.value.type)
@@ -916,7 +916,7 @@ class vRAAPI
 			ForEach($actionName in $secondDayActions.getElementActionList($targetElementName))
 			{
 				# Si on a trouvé des infos pour l'action demandée,
-				if(($vRAAction = $this.getAction($actionName, $targetElementName))-ne $null)
+				if($null -ne ($vRAAction = $this.getAction($actionName, $targetElementName)))
 				{
 					# Recherche de l'id de l'approval policy pour l'élément et l'action.
 					$approvalPolicyId = $secondDayActions.getActionApprovalPolicyId($targetElementName, $actionName)
@@ -1037,9 +1037,9 @@ class vRAAPI
 		BUT : Ajoute une Reservation à partir d'un template
 
 		IN  : $resTemplate	-> Objet contenant le Template à utiliser pour ajouter la Reservation
-		IN  : $name				-> Nom
-		IN  : $tenant			-> Nom du Tenant
-		IN  : $BGID				-> ID du Business Group auquel lier la Reservation
+		IN  : $name			-> Nom
+		IN  : $tenant		-> Nom du Tenant
+		IN  : $BGID			-> ID du Business Group auquel lier la Reservation
 
 		RET : L'entitlement ajouté
 	#>
@@ -1067,32 +1067,37 @@ class vRAAPI
 
 	<#
 		-------------------------------------------------------------------------------------
-		BUT : Met le nom d'une Reservation à jour
+		BUT : Met une Reservation à jour mais seulement s'il y a eu des changements dans celle-ci.
+				On se base sur .extensionData et .alertPolicy. Si un de ces éléments a changé, on
+				met à jour. Sinon, on ne fait rien car on risque juste de se prendre une erreur
+				dans la tête car rien n'a été changé...
 
-		IN  : $res		-> Objet contenant la Reservation à mettre à jour.
-		IN  : $newName	-> Le nouveau nom de la Reservation
+		IN  : $res			-> Objet contenant la Reservation à mettre à jour.
+		IN  : $resTemplate	-> Objet contenant le Template à utiliser pour mettre à jour la Reservation
+		IN  : $name			-> Le nouveau nom de la Reservation (parce qu'il peut changer)
 
 		RET : Objet contenant la Reservation mise à jour
 	#>
-	[PSCustomObject] updateRes([PSCustomObject]$res, [string]$newName)
+	[PSCustomObject] updateRes([PSCustomObject]$res, [PSCustomObject]$resTemplate, [string]$name)
 	{
 		$uri = "https://{0}/reservation-service/api/reservations/{1}" -f $this.server, $res.id
 
-		# Si on n'a pas besoin d'update quoi que ce soit, on ne le fait pas, sinon on risque de générer une erreur "(400) Bad Request" dans le cas où rien 
-		# n'a été changé (ouais, c'est con mais c'est comme ça que vRA réagit... )
-		if($res.name -eq $newName)
+		# Si un des éléments a changé, 
+		if(((ConvertTo-Json -InputObject $res.extensionData -Depth 20) -ne (ConvertTo-Json -InputObject $resTemplate.extensionData -Depth 20)) -or
+		   ((ConvertTo-Json -InputObject $res.alertPolicy -Depth 20) -ne (ConvertTo-Json -InputObject $resTemplate.alertPolicy -Depth 20)))
 		{
-			return $res
+			# Initialisation des champs pour pouvoir mettre à jour la Reservation
+			$res.name = $name
+			$res.extensionData =  $resTemplate.extensionData
+			$res.alertPolicy =  $resTemplate.alertPolicy
+			
+			$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $res -Depth 20))
 		}
-
-		$res.name = $newName
-
-		$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $res -Depth 20))
 		
 		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
 		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
 		# réutilise un élément pas mis à jour depuis vRA
-		return $this.getRes($newName)
+		return $this.getRes($name)
 	}
 
 
