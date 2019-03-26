@@ -28,7 +28,8 @@ class Counters
     [void] add([string] $id, [string]$description)
     {
         $this.counters.Add($id, @{description = $description
-                               value = 0})
+                               value = 0
+                               list = @()})
     }
 
 
@@ -42,7 +43,27 @@ class Counters
     {
         if($this.counters.Keys -contains $id)
         {
-            $this.counters[$id]['value'] += 1
+            $this.counters[$id].value += 1
+        }
+    }
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Incrémente un compteur avec une valeur donnée (pour pouvoir gérer les doublons et
+                éviter d'incrémenter le compteur trop de fois)
+
+        IN  : $id           -> Identifiant unique pour le compteur
+        IN  : $value        -> La valeur à ajouter
+    #>
+    [void] inc([string]$id, [string]$value)
+    {
+        if($this.counters.Keys -contains $id)
+        {
+            if($this.counters[$id].list -notcontains $value)
+            {
+                $this.counters[$id].list += $value
+                $this.counters[$id].value += 1
+            }
         }
     }
 
@@ -57,7 +78,7 @@ class Counters
     {
         if($this.counters.Keys -contains $id)
         {
-            $this.counters[$id]['value'] = $val
+            $this.counters[$id].value = $val
         }
     }
 
@@ -71,7 +92,7 @@ class Counters
     {
         if($this.counters.Keys -contains $id)
         {
-            return $this.counters.Item($id)['value']
+            return $this.counters.Item($id).value
         }
         return 0
     }
@@ -89,9 +110,9 @@ class Counters
         # Parcours des compteurs pour trouver la description la plus longue
         foreach($id in $this.counters.Keys)
         {
-            if($this.counters.Item($id)['description'].length -gt $maxLength)
+            if($this.counters.Item($id).description.length -gt $maxLength)
             {
-                $maxLength = $this.counters.Item($id)['description'].length
+                $maxLength = $this.counters.Item($id).description.length
             }
         }
         $dash = "-"
@@ -100,8 +121,8 @@ class Counters
 
         foreach($id in $this.counters.Keys)
         {
-            $code += ("{0}: {1}`n" -f $this.counters.Item($id)['description'].PadRight($maxLength+1," "), `
-                    $this.counters.Item($id)['value'])
+            $code += ("{0}: {1}`n" -f $this.counters.Item($id).description.PadRight($maxLength+1," "), `
+                    $this.counters.Item($id).value)
 
         }
         $code += "{0}`n`n" -f ($dash.PadRight($maxLength+5,$dash))

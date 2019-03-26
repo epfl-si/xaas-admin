@@ -152,7 +152,8 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 		# On active la policy pour être sûr que tout se passera bien
 		$approvePolicy = $vra.setApprovalPolicyState($approvePolicy, $true)
 
-		$counters.inc('AppPolExisting')
+		# Incrément du compteur mais avec gestion des doublons en passant le nom de l'Approval Policy en 2e paramètre
+		$counters.inc('AppPolExisting', $fullName)
 	}
 
 	return $approvePolicy
