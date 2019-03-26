@@ -158,7 +158,7 @@ function handleNotifications
 				default
 				{
 					# Passage à l'itération suivante de la boucle
-					Write-Warning ("Notification '{0}' not handled in code !" -f $notif)
+					$logHistory.addWarningAndDisplay(("Notification '{0}' not handled in code !" -f $notif))
 					continue
 				}
 
@@ -197,7 +197,7 @@ function removeInexistingADAccounts
 		}
 		catch 
 		{
-			Write-Warning ("User {0} doesn't have an account in Active directory" -f $acc )
+			$logHistory.addWarningAndDisplay(("User {0} doesn't have an account in Active directory" -f $acc ))
 			$counters.inc('ADMembersNotFound')
 		}
 	}

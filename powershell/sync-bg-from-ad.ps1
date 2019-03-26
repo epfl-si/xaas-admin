@@ -266,7 +266,7 @@ function createOrUpdateBG
 			# Si le BG n'existe pas, 
 			if($null -eq $bg)
 			{
-				Write-Warning("No machine prefix found for {0}, skipping" -f $machinePrefixName)
+				$logHistory.addWarningAndDisplay(("No machine prefix found for {0}, skipping" -f $machinePrefixName))
 				# On enregistre le préfixe de machine inexistant
 				$notifications['newBGMachinePrefixNotFound'] += $machinePrefixName
 
@@ -274,7 +274,7 @@ function createOrUpdateBG
 			}
 			else # Le BG existe, il s'agit donc d'un renommage 
 			{
-				Write-Warning ("No machine prefix found for new faculty name ({0})" -f $machinePrefixName)
+				$logHistory.addWarningAndDisplay(("No machine prefix found for new faculty name ({0})" -f $machinePrefixName))
 				# On enregistre le préfixe de machine inexistant
 				$notifications['facRenameMachinePrefixNotFound'] += $machinePrefixName
 
@@ -981,7 +981,7 @@ Du coup, un nouveau dossier vide a été créé avec le bon nom et il faudra man
 				default
 				{
 					# Passage à l'itération suivante de la boucle
-					Write-Warning ("Notification '{0}' not handled in code !" -f $notif)
+					$logHistory.addWarningAndDisplay(("Notification '{0}' not handled in code !" -f $notif))
 					continue
 				}
 
