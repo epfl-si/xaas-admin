@@ -23,5 +23,3 @@ DATABASES = {
 }
 
 SERVER_NAME = "prod"
-
-STATIC_ROOT = '/var/www/vhosts/xaas-admin.epfl.ch/htdocs/'
