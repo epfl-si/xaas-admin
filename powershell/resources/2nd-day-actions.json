@@ -10,6 +10,10 @@
             {
                 "name": "DNS alias request",
                 "approvals": [] 
+            },
+            {
+                "name": "Reconfigure DMZ",
+                "approvals": [] 
             }
         ]
     },
