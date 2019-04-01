@@ -29,6 +29,9 @@ page <https://github.com/openshift/origin/releases/latest>
 
 1. Using a Terminal, go in folder where your `docker-compose.yml` file is located
 1. Create files for OpenShift. It will create some files in the same directory:
+    **Note:** notice that following operation will take git branch on which to are and
+    put it in generated Yaml files. So be careful to be on the correct GIT branch before
+    executing command.
     ```
     kompose --provider=openshift --build build-config --build-repo=https://github.com/epfl-idevelop/xaas-admin.git convert
     ```
