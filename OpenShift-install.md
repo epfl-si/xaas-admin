@@ -95,7 +95,7 @@ C2C put limits on resource that can be used, so we have to fix some limits in `*
 
 1. Connect on OpenShift web console (<https://pub-os-exopge.epfl.ch>) 
 
-1. Select projet **iaas-test**
+1. Select projet (**iaas-test** or **iaas-prod**) 
 
 1. Go in **Applications > Services** 
 
@@ -154,7 +154,20 @@ database connection information.
 
     **Note:** value `DJANGO_SETTINGS_MODULE` needs to be identical as the one defined above 
 in the build configuration.
-  
+
+### Create a route to access Django application
+
+1. Go in **Applications > Routes** and click on **Create Route**
+
+1. Enter the following:
+    **Name** xaas-django
+    **Hostname** xaas-admin.epfl.ch or xaas-admin-test.epfl.ch
+    **Secure Route** Check the box
+    **Insecure Traffic** Redirect
+    
+1. Click on **Create**
+
+1. You now have to wait a bit until route is exposed on public router (router-pub)
 
 ### Add superuser
 
@@ -233,6 +246,8 @@ First, we will have to copy *.sql file into container. For this, we will use `oc
     ```
 
 1. At the end, don't forget to remove *.sql file
+
+
 
 ## Tips
 
