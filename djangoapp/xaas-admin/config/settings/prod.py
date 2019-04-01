@@ -5,8 +5,7 @@ from .base import *  # noqa
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    'xaas-admin-test.epfl.ch',
-    'exopgesrv34.epfl.ch',
+    'xaas.epfl.ch',
 ]
 
 # Database
@@ -17,7 +16,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'HOST': get_mandatory_env('MYSQL_HOST'),  # noqa
         'NAME': get_mandatory_env('MYSQL_DATABASE'),
-        'USER': get_mandatory_env('MYSQL_USER')
+        'USER': get_mandatory_env('MYSQL_USER'),
         'PASSWORD': get_mandatory_env('MYSQL_PASSWORD'),  # noqa
         'PORT': get_mandatory_env('MYSQL_PORT'),  # noqa
     }
