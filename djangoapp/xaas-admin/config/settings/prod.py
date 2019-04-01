@@ -5,7 +5,7 @@ from .base import *  # noqa
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    'xaas.epfl.ch',
+    'xaas-admin.epfl.ch',
 ]
 
 # Database
