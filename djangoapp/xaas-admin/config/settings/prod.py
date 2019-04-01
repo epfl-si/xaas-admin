@@ -6,6 +6,7 @@ DEBUG = False
 
 ALLOWED_HOSTS = [
     'xaas-admin.epfl.ch',
+    'xaas-admin-test.epfl.ch',
 ]
 
 # Database
@@ -23,3 +24,5 @@ DATABASES = {
 }
 
 SERVER_NAME = "prod"
+
+STATIC_ROOT = '/usr/local/lib/python3.6/site-packages/django/contrib/admin/static/'
