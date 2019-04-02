@@ -27,3 +27,6 @@ DEBUG_TOOLBAR_CONFIG = {
 }
 
 SERVER_NAME = "local"
+
+STATIC_ROOT = '/usr/src/xaas-admin/static/'
+#STATIC_URL = 'https://raw.githubusercontent.com/django/django/master/django/contrib/admin/static/'

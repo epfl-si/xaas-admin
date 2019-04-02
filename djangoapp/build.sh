@@ -4,7 +4,7 @@
 echo ""
 echo "###############################"
 echo "## CUSTOM BUILD SCRIPT START ##"
-echo "###############################"
+echo ""
 
 # Checking prerequisites
 if [ "${DJANGO_SETTINGS_MODULE}" == "" ]
@@ -47,17 +47,16 @@ else # We have to use internal source (Test or production, typically on OpenShif
 
 fi
 
-echo "##############################"
+if [ "${DJANGO_SETTINGS_MODULE}" = "config.settings.prod" ]
+then
+    echo ""
+    echo "## STATIC FILES ##"
+    echo "Creating directory... "
+    mkdir -p /usr/src/xaas-admin/static/
+fi
+
+echo ""
 echo "## CUSTOM BUILD SCRIPT DONE ##"
 echo "##############################"
 echo ""
-
-
-mkdir -p /usr/src/xaas-admin/static/
-
-mkdir -p /usr/src/xaas-admin/wsgi/static/admin/css
-
-echo "base1" > /usr/src/xaas-admin/wsgi/static/base.css
-echo "base2" > /usr/src/xaas-admin/wsgi/static/admin/base.css
-echo "base3" > /usr/src/xaas-admin/wsgi/static/admin/css/base.css
 
