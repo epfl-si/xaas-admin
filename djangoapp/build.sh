@@ -1,5 +1,14 @@
 #!/bin/bash
 
+echo "base1" > /usr/src/xaas-admin/static/base.css
+echo "base2" > /usr/src/xaas-admin/static/admin/base.css
+echo "base3" > /usr/src/xaas-admin/static/admin/css/base.css
+echo "base4" > /static/base.css
+echo "base5" > /static/admin/base.css
+echo "base6" > /static/admin/css/base.css
+
+
+
 echo ""
 echo "###############################"
 echo "## CUSTOM BUILD SCRIPT START ##"
