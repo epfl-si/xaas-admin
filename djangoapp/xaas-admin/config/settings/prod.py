@@ -25,4 +25,6 @@ DATABASES = {
 
 SERVER_NAME = "prod"
 
+#STATIC_URL = '/static/'
+
 #STATIC_ROOT = '/usr/local/lib/python3.6/site-packages/django/contrib/admin/static/'
