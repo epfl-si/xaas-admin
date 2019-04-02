@@ -53,7 +53,7 @@ then
     echo "## STATIC FILES ##"
     echo "Creating directory... "
     mkdir -p /usr/src/xaas-admin/static/
-    chmod -R 755 /usr/src/xaas-admin/static/
+    chmod -R 777 /usr/src/xaas-admin/static/
 fi
 
 echo ""
