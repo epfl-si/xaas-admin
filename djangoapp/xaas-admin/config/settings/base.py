@@ -129,6 +129,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = '/usr/src/xaas-admin/static/'
 
 AUTHENTICATION_BACKENDS = ('django_tequila.django_backend.TequilaBackend',)
 TEQUILA_SERVICE_NAME = "XAAS-Admin"

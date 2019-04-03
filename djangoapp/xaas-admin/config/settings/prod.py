@@ -25,7 +25,3 @@ DATABASES = {
 
 SERVER_NAME = "prod"
 
-STATIC_ROOT = '/usr/src/xaas-admin/static/'
-#STATIC_URL = 'https://github.com/django/django/blob/master/django/contrib/admin/static/'
-
-#STATIC_ROOT = '/usr/local/lib/python3.6/site-packages/django/contrib/admin/static/'
