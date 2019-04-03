@@ -23,5 +23,13 @@ DATABASES = {
     }
 }
 
-SERVER_NAME = "prod"
+# Because we're on production, we add 'whitenoise' middleware in the list. And we have to add it right after
+# 'SecurityMiddleware', as requested in documentation -> http://whitenoise.evans.io/en/stable/django.html
+for index, mid in enumerate(MIDDLEWARE):
 
+    if mid == 'django.middleware.security.SecurityMiddleware':
+        MIDDLEWARE.index(index+1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+        break
+
+
+SERVER_NAME = "prod"

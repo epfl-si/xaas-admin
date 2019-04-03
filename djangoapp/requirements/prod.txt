@@ -2,3 +2,7 @@
 -r _base.txt
 
 # Local Specific Requirements
+
+# To serve static files when Debug is disabled
+# http://whitenoise.evans.io/en/stable/django.html
+whitenoise==3.3.1
