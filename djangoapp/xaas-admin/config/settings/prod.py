@@ -28,7 +28,7 @@ DATABASES = {
 for index, mid in enumerate(MIDDLEWARE):
 
     if mid == 'django.middleware.security.SecurityMiddleware':
-        MIDDLEWARE.index(index+1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+        MIDDLEWARE.insert(index+1, 'whitenoise.middleware.WhiteNoiseMiddleware')
         break
 
 
