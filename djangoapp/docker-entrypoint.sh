@@ -1,6 +1,11 @@
 #!/bin/bash
 
-
+# If we're on production, we have to copy static files
+if [ "${DJANGO_SETTINGS_MODULE}" = "config.settings.prod" ]
+then
+    echo "Copying static files..."
+    python manage.py collectstatic --noinput
+fi
 
 echo "Waiting for MariaDB..."
 
@@ -11,13 +16,6 @@ while ! mysql --protocol TCP -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" -P"${MYSQL_
     echo "Waiting for MariaDB..."
 done
 echo "Oh! hello MariaDB! It's nice to see you!"
-
-# If we're on production, we have to copy static files
-if [ "${DJANGO_SETTINGS_MODULE}" = "config.settings.prod" ]
-then
-    echo "Copying static files..."
-    python manage.py collectstatic --noinput
-fi
 
 echo "Updating database..."
 # Django "updates" in Database
