@@ -84,7 +84,7 @@ $nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 $counters = [Counters]::new()
 $counters.add('ISOFound', '# "old" ISO files found')
 $counters.add('ISODeleted', '# ISO files deleted')
-$counters.add('ISONotDeleted', '# ISO files not deleted (because mounted)')
+$counters.add('ISOUnmounted', '# ISO files unmounted to be deleted')
 
 # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 $logHistory =[LogHistory]::new('0.Clean-ISO-Folders', (Join-Path $PSScriptRoot "logs"), 30)
@@ -133,9 +133,6 @@ try
 			$vCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_USERNAME -Password $global:VSPHERE_PASSWORD
 		}
 		
-		# par défaut, on va dire que l'ISO peut être effacée on va regarder s'il n'y a pas un truc qui ferait que non.
-		$ISOcanBeDeleted = $true
-
 		# Recherche des infos du BG
 		$bg = $vra.getBG($bgName)
 
@@ -170,11 +167,11 @@ try
 					# Si c'est le cas, c'est que l'ISO est utilisée donc on ne peut pas l'effacer 
 					if($mountedISO -ne "" -and $isoFile.FullName.endsWith($mountedISO))
 					{
-						$logHistory.addLineAndDisplay("ISO file is mounted in VM!")
-						$counters.inc('ISONotDeleted')
-						$ISOcanBeDeleted = $false
-						# On sort de la boucle de contrôle parce que c'est inutile qu'on contrôle les autres VM
-						Break
+						# on démonte l'image en mettant "no-media" 
+						Get-VM -Name $vm.name | Get-CDDrive | Set-CDDrive -NoMedia -Confirm:$false
+
+						$logHistory.addLineAndDisplay("ISO file is mounted in VM. Unmounting...")
+						$counters.inc('ISOUnmounted')
 					}
 					
 				}
@@ -187,13 +184,13 @@ try
 			$logHistory.addLineAndDisplay(("Business Group not found in vRA '${0}'" -f $bgName))
 		}
 		
-		# Si on peut effacer l'ISO, bah feu !
-		if($ISOcanBeDeleted)
-		{
-			Remove-Item $isoFile.FullName -Force
-			$logHistory.addLineAndDisplay(("ISO file deleted: ${0}" -f $isoFile.FullName))
-			$counters.inc('ISODeleted')
-		}
+		# Quand on arrive ici, on assure que l'ISO n'est plus utilisée par aucune VM si c'était le cas auparavant avant.
+		# On peut donc la faire disparaître
+
+		Remove-Item $isoFile.FullName -Force
+		$logHistory.addLineAndDisplay(("ISO file deleted: ${0}" -f $isoFile.FullName))
+		$counters.inc('ISODeleted')
+		
 
 	} # FIN boucle de recherche des fichier ISO
 
