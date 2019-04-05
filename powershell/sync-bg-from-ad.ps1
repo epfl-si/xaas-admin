@@ -953,7 +953,8 @@ dans vRA pour l'environnement <b>{0}</b>.<br>Ceci signifie que les Business Grou
 				{
 					$mailSubject = getvRAMailSubject -shortSubject "Info - AD groups empty for Business Group" -targetEnv $targetEnv  -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les groupes Active Directory suivants (avec nom du Business Group) `
-ne contiennent plus aucun utilisateur. Il s'agit peut-être d'une erreur dans la synchro depuis MIIS ou autre, à surveiller:`
+ne contiennent plus aucun utilisateur. Cela signifie donc que les Business Groups associés existent toujours mais ne sont plus utilisables par qui que ce soit....<br> `
+Il s'agit peut-être d'une erreur dans la synchro depuis MIIS ou autre, à surveiller:`
 <br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
 				}
 
