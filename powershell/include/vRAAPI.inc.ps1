@@ -370,7 +370,7 @@ class vRAAPI
 			$updateNeeded = $true
 		}
 
-		if(($machinePrefixId -ne "") -and ($customProperties['iaas-machine-prefix'] -ne $machinePrefixId))
+		if(($machinePrefixId -ne "") -and ($null -ne $customProperties) -and ($customProperties['iaas-machine-prefix'] -ne $machinePrefixId))
 		{
 			$customProperties['iaas-machine-prefix'] = $machinePrefixId
 			$updateNeeded = $true
@@ -416,7 +416,7 @@ class vRAAPI
 				else # Aucune entrée n'a été trouvée
 				{
 					# Ajout des infos avec le template présent dans le fichier JSON
-					$bg.ExtensionData.entries += $this.loadJSON("business-group-extension-data.json", `
+					$bg.ExtensionData.entries += $this.loadJSON("business-group-extension-data-custom.json", `
 																			@{"key" = $customPropertyKey
 																			"value" = $customProperties.Item($customPropertyKey)})
 				}
@@ -438,6 +438,36 @@ class vRAAPI
 		
 		# On recherche l'objet mis à jour
 		return $this.getBG($bg.name)
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Supprime une Custom Property dans un Business Group
+
+		IN  : $bg		-> Business Group dans lequel supprimer la custom property 
+	#>
+	[PSCustomObject] deleteBGCustomProperty([PSCustomObject]$bg, [string]$customPropertyName)
+	{
+		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.server, $this.tenant, $bg.id
+
+		# Filtrage de la custom property à supprimer
+		$entries = $bg.extensionData.entries | Where-Object {$_.key -ne $customPropertyName}
+
+		# Si rien n'a été supprimé car la custom property n'existait pas,
+		if($entries.Count() -eq $bg.extensionData.entries.Count())
+		{
+			# on retourn le BG tel quel 
+			return $bg
+		}
+		
+		$bg.extensionData.entries = $entries
+		# Mise à jour des informations
+		$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $bg -Depth 20))
+
+		# On recherche l'objet mis à jour
+		return $this.getBG($bg.name)
+		
 	}
 
 
@@ -1517,7 +1547,6 @@ class vRAAPI
 		$replace = @{preApprovalName = $name
 			preApprovalDesc = $desc
 			preApprovalLevels = @((ConvertTo-Json -InputObject $approvalLevels -Depth 10), $true) # On transforme en JSON pour remplacer dans le fichier JSON
-			approverGroupCustomPropName = $global:VRA_CUSTOM_PROP_VRA_POL_APP_GROUP  # TODO: Pourquoi on utilise ça déjà ?
 			} 
 
 		# Si on a des remplacement additionnels à faire,
