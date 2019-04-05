@@ -60,6 +60,25 @@ function getManagerEmail
 
 <#
 	-------------------------------------------------------------------------------------
+	BUT : Renvoie la valeur d'une "Custom Property" donnée pour le Business Group passé
+
+	IN  : $bg				-> Objet représentant le Business Group
+	IN  : $customPropName	-> Nom de la Custom property à chercher
+	
+	RET : Valeur de la custom property
+			$null si pas trouvé
+#>
+function getBGCustomPropValue
+{
+	param([object]$bg, [string]$customPropName)
+
+	# Recherche de la valeur de la "Custom Property" en PowerShell "optmisé"
+	return (($bg.ExtensionData.entries | Where-Object {$_.key -eq $customPropName}).value.values.entries | Where-Object {$_.key -eq "value"}).value.value
+
+}
+
+<#
+	-------------------------------------------------------------------------------------
 	BUT : Renvoie le Business Group qui a une "Custom Property" avec une valeur donnée, 
 		  ceci à partir d'une liste de Business Group
 
@@ -74,27 +93,9 @@ function getBGWithCustomProp
 {
 	param([Object] $fromList, [string] $customPropName, [string] $customPropValue )
 
-	# Parcours des BG existants
-	foreach($bg in $fromList)
-	{
-		# Parcours des entrées des ExtensionData
-		foreach($entry in $bg.ExtensionData.entries)
-		{
-			# Si on trouve l'entrée avec le nom que l'on cherche,
-			if($entry.key -eq $customPropName)
-			{
-				# Parcours des informations de cette entrée
-				foreach($entryVal in $entry.value.values.entries)
-				{
-					if($entryVal.key -eq "value" -and $entryVal.value.value -eq $customPropValue)
-					{
-						return $bg
-					}
-				}
-			}
-		}
-	}
-	return $null
+	# Recherche dans la liste en utilisant la puissance de PowerShell
+	return $fromList | Where-Object {(getBGCustomPropValue -bg $_ -customPropName $customPropName) -eq $customPropValue }
+
 }
 
 

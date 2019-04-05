@@ -56,16 +56,20 @@ $global:VRA_CUSTOM_PROP_EPFL_UNIT_ID = "ch.epfl.unit.id"
 $global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID = "ch.epfl.snow.svc.id"
 $global:VRA_CUSTOM_PROP_VRA_BG_TYPE = "ch.epfl.vra.bg.type"
 $global:VRA_CUSTOM_PROP_VRA_BG_STATUS = "ch.epfl.vra.bg.status"
-$global:VRA_CUSTOM_PROP_VRA_POL_APP_GROUP = "ch.epfl.request.approvergroup"
+$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE = "ch.epfl.vra.bg.res.manage"
 
 # Types de Business Group possibles
 $global:VRA_BG_TYPE__ADMIN 	 = "admin"
 $global:VRA_BG_TYPE__SERVICE = "service"
 $global:VRA_BG_TYPE__UNIT 	 = "unit"
 
-# Status de Business Group possibles
+# Statuts de Business Group possibles
 $global:VRA_BG_STATUS__ALIVE = "alive"
 $global:VRA_BG_STATUS__GHOST = "ghost"
+
+# Valeurs possibles pour la gestion des Réservations du Business Group
+$global:VRA_BG_RES_MANAGE__AUTO = "auto"
+$global:VRA_BG_RES_MANAGE__MAN = "man"
 
 # Nom chemin jusqu'aux volumes NAS où se trouvent les ISO privées
 $global:NAS_PRIVATE_ISO_TEST = "\\nassvmmix01\si_vsissp_iso_priv_repo_t02_app"

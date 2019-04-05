@@ -324,6 +324,16 @@ function createOrUpdateBG
 	# Si le BG existe,
 	else
 	{
+
+		# Si le BG n'a pas la custom property $global:getBGCustomPropValue, on l'ajoute
+		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
+		# les BG existants avec la nouvelle "Custom Property"
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE))
+		{
+			# Ajout de la custom Property avec la valeur par défaut 
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE" = $global:VRA_BG_RES_MANAGE__AUTO})
+		}
+
 		# Si le nom du BG est incorrect, (par exemple si le nom de l'unité ou celle de la faculté a changé)
 		# Note: Dans le cas du tenant ITServices, vu qu'on fait une recherche avec le nom, ce test ne retournera
 		# 		jamais $true
@@ -595,6 +605,14 @@ function sendErrorMailNoResTemplateFound
 function createOrUpdateBGReservations
 {
 	param([vRAAPI]$vra, [PSCustomObject]$bg, [string]$resTemplatePrefix)
+
+	# Si les réservations sont gérées de manière manuelle pour le BG
+	if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
+	{
+		$logHistory.addLineAndDisplay("-> Reservation are manually managed for BG, skipping this part...")	
+		return
+	}
+	
 
 	$logHistory.addLineAndDisplay("-> Getting Reservation template list...")
 	$resTemplateList = $vra.getResListMatch($resTemplatePrefix)
