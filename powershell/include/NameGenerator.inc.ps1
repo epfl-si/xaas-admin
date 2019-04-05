@@ -1084,10 +1084,31 @@ class NameGenerator
     #>
     [string] getVMMachinePrefix([string]$facultyNameOrServiceShortName)
     {
+
+        # Pour l'ID court de l'environnement 
+        $envId = ""
+        
         switch($this.tenant)
         {
-            $global:VRA_TENANT__EPFL { return "{0}vm" -f $this.transformForGroupName($facultyNameOrServiceShortName)}
-            $global:VRA_TENANT__ITSERVICES { return "{0}-" -f $this.transformForGroupName($facultyNameOrServiceShortName)}
+            $global:VRA_TENANT__EPFL 
+            { 
+                # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
+                if($this.env -ne $global:TARGET_ENV__PROD)
+                {
+                    $envId = $this.getEnvShortName();
+                }
+                return "{0}{1}vm" -f $this.transformForGroupName($facultyNameOrServiceShortName), $envId
+            }
+            
+            $global:VRA_TENANT__ITSERVICES 
+            { 
+                # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
+                if($this.env -ne $global:TARGET_ENV__PROD)
+                {
+                    $envId = "-{0}" -f $this.getEnvShortName();
+                }
+                return "{0}{1}-" -f $this.transformForGroupName($facultyNameOrServiceShortName) , $envId
+            }
         }
         return ""
     }
