@@ -1095,7 +1095,7 @@ class NameGenerator
                 # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
                 if($this.env -ne $global:TARGET_ENV__PROD)
                 {
-                    $envId = $this.getEnvShortName();
+                    $envId = $this.getEnvShortName()
                 }
                 return "{0}{1}vm" -f $this.transformForGroupName($facultyNameOrServiceShortName), $envId
             }
@@ -1105,7 +1105,7 @@ class NameGenerator
                 # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
                 if($this.env -ne $global:TARGET_ENV__PROD)
                 {
-                    $envId = "-{0}" -f $this.getEnvShortName();
+                    $envId = "-{0}" -f $this.getEnvShortName()
                 }
                 return "{0}{1}-" -f $this.transformForGroupName($facultyNameOrServiceShortName) , $envId
             }
