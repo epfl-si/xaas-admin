@@ -922,9 +922,10 @@ class vRAAPI
 	}
 
 
+
 	<#
 		-------------------------------------------------------------------------------------
-		BUT : Prépare un Objet contenant un Entitlement en initialisant la liste des actions
+		BUT : Prépare un Objet représentant un Entitlement en initialisant la liste des actions
 				2nd day.
 				Afin de réellement ajouter les actions pour l'Entitlement dans vRA, il faudra
 				appeler la méthode updateEnt() en passant l'objet en paramètre.
