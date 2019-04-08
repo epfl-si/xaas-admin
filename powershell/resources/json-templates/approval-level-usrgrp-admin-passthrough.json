@@ -24,7 +24,7 @@
                 "type": "constant",
                 "value": {
                     "type": "string",
-                    "value": "itsadmin-"
+                    "value": "itadmin-"
                 }
             }
         }
