@@ -4,6 +4,23 @@
 	DATE 		: Février 2018
 	AUTEUR 	: Lucien Chaboudez
 
+	PARAMETRES : 
+		$targetEnv	-> nom de l'environnement cible. Ceci est défini par les valeurs $global:TARGET_ENV__* 
+						dans le fichier "define.inc.ps1"
+		$targetTenant -> nom du tenant cible. Défini par les valeurs $global:VRA_TENANT__* dans le fichier
+						"define.inc.ps1"
+
+
+	ALTERATION DU FONCTIONNEMENT:
+	Les fichiers ci-dessous peuvent être créés (vides) au même niveau que le présent script afin de modifier
+	le comportement de celui-ci
+	- RECREATE_APPROVAL_POLICIES -> forcer la recréation des approval policies qui existent déjà. Ceci est à 
+									utiliser uniquement s'il faut faire une mise à jour dans celles-ci car
+									on perd quelques références avec les objets déjà créés...
+									Le fichier est automatiquement effacé à la fin du script s'il existe, ceci
+									afin d'éviter de recréer inutilement les approval policies
+
+
 	Prérequis:
 	1. Module ActiveDirectory pour PowerShell.
 		- Windows 10 - Dispo dans RSAT - https://www.microsoft.com/en-us/download/details.aspx?id=45520
@@ -47,6 +64,14 @@ loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vro.inc.ps1"))
 loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-mail.inc.ps1"))
 
 
+
+<#
+	-------------------------------------------------------------------------------------
+	-------------------------------------------------------------------------------------
+										Fonctions
+	-------------------------------------------------------------------------------------
+	-------------------------------------------------------------------------------------
+#>
 
 <#
 -------------------------------------------------------------------------------------
@@ -111,25 +136,28 @@ function getFullElementNameFromJSON([string]$baseName, [string]$JSONFile, [strin
 -------------------------------------------------------------------------------------
 	BUT : Créé (si inexistant) une approval policy
 
-	IN  : $vra 						-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $name						-> Le nom de l'approval policy à créer
-	IN  : $desc						-> Description de l'approval policy
-	IN  : $approvalLevelJSON		-> Le nom court du fichier JSON (template) à utiliser pour créer les
-										les Approval Level de l'approval policy
-	IN  : $approverGroupAtDomainList-> Tableau avec la liste ordrée des FQDN du groupe (<group>@<domain>) qui devront approuver.
-										Chaque entrée du tableau correspond à un "level" d'approbation
-	IN  : $approvalPolicyJSON		-> Le nom court du fichier JSON (template) à utiliser pour 
-										créer l'approval policy dans vRA
-	IN  : $additionnalReplace		-> Tableau associatif permettant d'étendre la liste des éléments
-										à remplacer (chaînes de caractères) au sein du fichier JSON
-										chargé. Le paramètre doit avoir en clef la valeur à chercher
-										et en valeur celle avec laquelle remplacer.	Ceci est 
-										typiquement utilisé pour les approval policies définies pour
-										les 2nd day actions.
+	IN  : $vra 							-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $name							-> Le nom de l'approval policy à créer
+	IN  : $desc							-> Description de l'approval policy
+	IN  : $approvalLevelJSON			-> Le nom court du fichier JSON (template) à utiliser pour créer les
+											les Approval Level de l'approval policy
+	IN  : $approverGroupAtDomainList	-> Tableau avec la liste ordrée des FQDN du groupe (<group>@<domain>) qui devront approuver.
+											Chaque entrée du tableau correspond à un "level" d'approbation
+	IN  : $approvalPolicyJSON			-> Le nom court du fichier JSON (template) à utiliser pour 
+											créer l'approval policy dans vRA
+	IN  : $additionnalReplace			-> Tableau associatif permettant d'étendre la liste des éléments
+											à remplacer (chaînes de caractères) au sein du fichier JSON
+											chargé. Le paramètre doit avoir en clef la valeur à chercher
+											et en valeur celle avec laquelle remplacer.	Ceci est 
+											typiquement utilisé pour les approval policies définies pour
+											les 2nd day actions.
+	IN  : $processedApprovalPoliciesIDs	-> REF sur la liste des ID de policies déjà traités. On passe par référence pour que le
+											paramètre puisse être modifié. Il devra donc être accédé via $processedApprovalPoliciesIDs.value 
+											au sein de la fonction										
 
 	RET : Objet représentant l'approval policy
 #>
-function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approvalLevelJSON, [Array]$approverGroupAtDomainList, [string]$approvalPolicyJSON, [psobject]$additionnalReplace)
+function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approvalLevelJSON, [Array]$approverGroupAtDomainList, [string]$approvalPolicyJSON, [psobject]$additionnalReplace, [ref]$processedApprovalPoliciesIDs)
 {
 	# Recherche du nom complet de la policy depuis le fichier JSON
 	$fullName = getFullElementNameFromJSON -baseName $name -JSONFile $approvalPolicyJSON -replaceString "preApprovalName" -fieldName "name"
@@ -137,23 +165,47 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	# Rechercher de l'approval policy avec le nom "final"
 	$approvePolicy = $vra.getApprovalPolicy($fullName)
 
+	# Si l'approval policy existe, qu'elle n'a pas encore été traitée et qu'il est demandé de les recréer 
+	if(($null -ne $approvalPolicy) -and `
+		($processedApprovalPoliciesIDs.value -notcontains $approvalPolicy.id) -and `
+		(Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", "RECREATE_APPROVAL_POLICIES"))))
+	{
+		$logHistory.addLineAndDisplay(("-> Approval Policy '{0}' already exists but recreation asked. Deleting it..." -f $fullName))
+
+		# On commence par désactiver l'approval policy 
+		$approvePolicy = $vra.setApprovalPolicyState($approvePolicy, $false)
+		# Et on l'efface ... 
+		$vra.deleteApprovalPolicy($approvePolicy)
+
+		# Pour que la policy soit recréée juste après
+		$approvePolicy = $null
+	}
+
 	# Si la policy n'existe pas, 
 	if($null -eq $approvePolicy)
 	{
 		$logHistory.addLineAndDisplay(("-> Creating Approval Policy '{0}'..." -f $fullName))
+		
 		# On créé celle-ci (on reprend le nom de base $name)
 		$approvePolicy = $vra.addPreApprovalPolicy($name, $desc, $approvalLevelJSON, $approverGroupAtDomainList, $approvalPolicyJSON, $additionnalReplace)
 
 		$counters.inc('AppPolCreated')
 	}
-	else 
+	else # Si la policy existe, 
 	{
 		$logHistory.addLineAndDisplay(("-> Approval Policy '{0}' already exists!" -f $fullName))
+
 		# On active la policy pour être sûr que tout se passera bien
 		$approvePolicy = $vra.setApprovalPolicyState($approvePolicy, $true)
 
 		# Incrément du compteur mais avec gestion des doublons en passant le nom de l'Approval Policy en 2e paramètre
 		$counters.inc('AppPolExisting', $fullName)
+	}
+
+	# Mise à jour de la liste si besoin 
+	if($processedApprovalPoliciesIDs.value -notcontains $approvePolicy.id)
+	{
+		$processedApprovalPoliciesIDs.value += $approvePolicy.id 
 	}
 
 	return $approvePolicy
@@ -164,53 +216,42 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	BUT : Créé (si inexistantes) toutes les Approval Policies qui sont listées dans le fichier décrivant
 			les 2nd day actions
 
-	IN  : $vra 						-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $secondDayActions			-> Objet de la classe SecondDayActions contenant la liste des actions
-										2nd day à ajouter.
-	IN  : $baseName					-> Le nom de base de l'approval policy à créer (vu qu'il peut y 
-										avoir un suffixe dans le fichier template JSON)
-	IN  : $desc						-> Description de l'approval policy
-	IN  : $approverGroupAtDomainList-> Tableau avec la liste ordrée des FQDN du groupe (<group>@<domain>) qui devront approuver.
-										Chaque entrée du tableau correspond à un "level" d'approbation
+	IN  : $vra 							-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $secondDayActions				-> Objet de la classe SecondDayActions contenant la liste des actions
+											2nd day à ajouter.
+	IN  : $baseName						-> Le nom de base de l'approval policy à créer (vu qu'il peut y 
+											avoir un suffixe dans le fichier template JSON)
+	IN  : $desc							-> Description de l'approval policy
+	IN  : $approverGroupAtDomainList	-> Tableau avec la liste ordrée des FQDN du groupe (<group>@<domain>) qui devront approuver.
+											Chaque entrée du tableau correspond à un "level" d'approbation
+	IN  : $processedApprovalPoliciesIDs	-> REF sur la liste des ID de policies déjà traités. On passe par référence pour que le
+											paramètre puisse être modifié. Il devra donc être accédé via $processedApprovalPoliciesIDs.value 
+											au sein de la fonction
 	
-	RET : Tableau d'objets :
-		(
-			{
-				"JSONFile": <fichierJSON>
-				"policy": <objetApprovalPolicyvRA>
-			},
-			...
-		)
 #>
-function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$secondDayActions, [string]$baseName, [string]$desc, [Array]$approverGroupAtDomainList)
+function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$secondDayActions, [string]$baseName, [string]$desc, [Array]$approverGroupAtDomainList, [ref] $processedApprovalPoliciesIDs)
 {
-	$policyList = @()
-	
 	# Récupération de la liste des fichiers JSON à utiliser pour créer les approval policies utilisées dans les 2nd day actions.
 	$approvalPolicyList = $secondDayActions.getJSONApprovalPoliciesFilesInfos($targetTenant)
 
 	# Parcours des fichiers JSON identifiés et création des approval policies si elles n'existent pas encore
 	Foreach($approvalPolicyInfos in $approvalPolicyList)
 	{
+		
 		# Création de l'approval policy 
 		# On regarde combien il y a de level d'approbation à mettre en on ne prend potentiellement qu'une partie des adresses mails
 		# d'approbation. Si on laisse le tout, on va créer un approval level par élément se trouvant dans $approverGroupAtDomainList
 		$actionReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $baseName -desc $desc `
 								-approverGroupAtDomainList $approverGroupAtDomainList[0..($approvalPolicyInfos.approvalLevels-1)] `
 								-approvalLevelJSON $approvalPolicyInfos.approvalLevelJSON -approvalPolicyJSON $approvalPolicyInfos.approvalPolicyJSON `
-								-additionnalReplace $approvalPolicyInfos.JSONReplacements 
+								-additionnalReplace $approvalPolicyInfos.JSONReplacements -processedApprovalPoliciesIDs $processedApprovalPoliciesIDs
 
 		# On utilise le hash renvoyé par getJSONApprovalPoliciesFilesInfos() afin de dire quel est l'ID de l'approval policy associée
 		# cette information sera utilisée plus tard pour affecter l'approval policy à l'action au sein de vRA, dans l'entitlement.
 		$secondDayActions.setActionApprovalPolicyId($approvalPolicyInfos.actionHash, $actionReqApprovalPolicy.id)
 
-		# Ajout de la policy (et du nom du fichier JSON à la liste)
-		$policyList += @{JSONFile = $JSONFile
-				  		 policy = $actionReqApprovalPolicy}
-		
 	}
 
-	return $policyList
 }
 
 <#
@@ -463,8 +504,9 @@ function createOrUpdateBGEnt
 {
 	param([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc)
 
-	# Si l'entitlement n'existe pas,
+	# On recherche l'entitlement 
 	$ent = $vra.getBGEnt($bg.id)
+
 	if($null -eq $ent)
 	{
 		$logHistory.addLineAndDisplay(("-> Creating Entitlement {0}..." -f $entName))
@@ -527,6 +569,9 @@ function prepareAddMissingBGEntPublicServices
 				$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement" -f $publicService.name))
 				$serviceExists = $true
 
+				# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
+				$entService.approvalPolicyId = $approvalPolicy.id
+				
 				$counters.inc('EntServices')
 				break;
 			}
@@ -1053,11 +1098,13 @@ function checkIfADGroupsExists
 }
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# ----------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
-# ----------------------------------------------------------------------------------------------------------------------
-# ----------------------------------------------------------------------------------------------------------------------
+<#
+	-------------------------------------------------------------------------------------
+	-------------------------------------------------------------------------------------
+									Programme principal
+	-------------------------------------------------------------------------------------
+	-------------------------------------------------------------------------------------
+#>
 
 Import-Module ActiveDirectory
 
@@ -1106,7 +1153,7 @@ $counters.add('MachinePrefNotFound', '# machines prefixes not found')
 $counters.add('AppPolCreated', '# Approval Policies created')
 $counters.add('AppPolExisting', '# Approval Policies already existing')
 
-<# Pour enregistrer la liste des IDs des approval policies qui ont été traitées. Ceci permettra de désactiver les autres à la fin #>
+<# Pour enregistrer la liste des IDs des approval policies qui ont été traitées. Ceci permettra de désactiver les autres à la fin. #>
 $processedApprovalPoliciesIDs = @()
 
 <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
@@ -1364,19 +1411,12 @@ try
 		$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
 																 -approvalLevelJSON $itemReqApprovalLevelJSON -approverGroupAtDomainList $approverGroupAtDomainList  `
 																 -approvalPolicyJSON $itemReqApprovalPolicyJSON `
-																 -additionnalReplace @{}
+																 -additionnalReplace @{} -processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
 
 		# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
 		$actionReqApprovalPolicies = create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
-																-approverGroupAtDomainList $approverGroupAtDomainList -secondDayActions $secondDayActions 
-
-		# Ajout des d'approval policies dans la liste
-		$processedApprovalPoliciesIDs += $itemReqApprovalPolicy.id
-		ForEach($approvalPolicy in $actionReqApprovalPolicies)
-		{
-			$processedApprovalPoliciesIDs += $approvalPolicy.policy.id
-		}
-
+																-approverGroupAtDomainList $approverGroupAtDomainList -secondDayActions $secondDayActions `
+																-processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Roles
@@ -1500,6 +1540,15 @@ try
 										$notifications['facRenameMachinePrefixNotFound'].count)
 
 	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
+
+	# Si le fichier qui demandait à ce que l'on force la recréation des policies existe, on le supprime, afin d'éviter 
+	# que le script ne s'exécute à nouveau en recréant les approval policies, ce qui ne serait pas très bien...
+	$recreatePoliciesFile = ([IO.Path]::Combine("$PSScriptRoot", "RECREATE_APPROVAL_POLICIES"))
+	if(Test-Path -Path $recreatePoliciesFile)
+	{
+		Remove-Item -Path $recreatePoliciesFile
+	}
+
 }
 catch # Dans le cas d'une erreur dans le script
 {
