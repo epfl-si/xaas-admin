@@ -222,13 +222,13 @@ $EPFL_FAC_UNIT_NB_LEVEL = 3
 # aucune écriture. 
 # Pour passer en mode simulation, il suffit de créer un fichier "SIMULATION_MODE" au même niveau que
 # le script courant
-$SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", "SIMULATION_MODE")))
+$SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__SIMULATION_MODE)))
 
 # Pour dire si on est en mode test. Si c'est le cas, on ne traitera qu'un nombre limité d'unités, nombre qui est
 # spécifié par $EPFL_TEST_NB_UNITS_MAX ci-dessous (si Tenant EPFL).
 # Pour passer en mode simulation, il suffit de créer un fichier "TEST_MODE" au même niveau que
 # le script courant
-$TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", "TEST_MODE")))
+$TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__TEST_MODE)))
 $EPFL_TEST_NB_UNITS_MAX = 10
 $EPFL_LIMIT_TO_FAC = @("SV")
 

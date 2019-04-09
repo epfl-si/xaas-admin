@@ -77,3 +77,8 @@ $global:NAS_PRIVATE_ISO_PROD = "\\nassvmmix01\si_vsissp_iso_priv_repo_p01_app"
 
 # Le nombre de jours pendant lesquels on garde les fichiers ISO privés avant de les supprimer
 $global:PRIVATE_ISO_LIFETIME_DAYS = 30
+
+# Fichiers utilisés pour "altérer" le fonctionnement des scripts
+$global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES = "RECREATE_APPROVAL_POLICIES"
+$global:SCRIPT_ACTION_FILE__SIMULATION_MODE = "SIMULATION_MODE"
+$global:SCRIPT_ACTION_FILE__TEST_MODE = "TEST_MODE"

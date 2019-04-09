@@ -153,7 +153,9 @@ function getFullElementNameFromJSON([string]$baseName, [string]$JSONFile, [strin
 											les 2nd day actions.
 	IN  : $processedApprovalPoliciesIDs	-> REF sur la liste des ID de policies déjà traités. On passe par référence pour que le
 											paramètre puisse être modifié. Il devra donc être accédé via $processedApprovalPoliciesIDs.value 
-											au sein de la fonction										
+											au sein de la fonction.
+											Les autres paramètres n'ont pas besoin d'être passés par référence car ce sont des objets et 
+											il semblerait que sur PowerShell, les objets soient par défaut passés en IN/OUT 								
 
 	RET : Objet représentant l'approval policy
 #>
@@ -168,7 +170,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	# Si l'approval policy existe, qu'elle n'a pas encore été traitée et qu'il est demandé de les recréer 
 	if(($null -ne $approvalPolicy) -and `
 		($processedApprovalPoliciesIDs.value -notcontains $approvalPolicy.id) -and `
-		(Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", "RECREATE_APPROVAL_POLICIES"))))
+		(Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))))
 	{
 		$logHistory.addLineAndDisplay(("-> Approval Policy '{0}' already exists but recreation asked. Deleting it..." -f $fullName))
 
@@ -227,6 +229,8 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	IN  : $processedApprovalPoliciesIDs	-> REF sur la liste des ID de policies déjà traités. On passe par référence pour que le
 											paramètre puisse être modifié. Il devra donc être accédé via $processedApprovalPoliciesIDs.value 
 											au sein de la fonction
+											Les autres paramètres n'ont pas besoin d'être passés par référence car ce sont des objets et 
+											il semblerait que sur PowerShell, les objets soient par défaut passés en IN/OUT 
 	
 #>
 function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$secondDayActions, [string]$baseName, [string]$desc, [Array]$approverGroupAtDomainList, [ref] $processedApprovalPoliciesIDs)
@@ -1543,7 +1547,7 @@ try
 
 	# Si le fichier qui demandait à ce que l'on force la recréation des policies existe, on le supprime, afin d'éviter 
 	# que le script ne s'exécute à nouveau en recréant les approval policies, ce qui ne serait pas très bien...
-	$recreatePoliciesFile = ([IO.Path]::Combine("$PSScriptRoot", "RECREATE_APPROVAL_POLICIES"))
+	$recreatePoliciesFile = ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))
 	if(Test-Path -Path $recreatePoliciesFile)
 	{
 		Remove-Item -Path $recreatePoliciesFile
