@@ -43,6 +43,8 @@ class EPFLLDAP
 	#>
 	hidden [Array] LDAPSearch([string]$ldapServer, [string]$baseDN, [string]$scope, [string]$filter, [Array]$properties)
 	{
+		# On ne fait pas de LDAPS car seul ldap.epfl.ch le supporte... visiblement, scoldap.epfl.ch pas car ça pète ensuite
+		# sur l'appel à $ds.findAll()...
 		$dn = New-Object System.DirectoryServices.DirectoryEntry ("LDAP://$($ldapServer):389/$($baseDN)", "", "", $this.auth)
 		$ds = new-object System.DirectoryServices.DirectorySearcher($dn)
 
