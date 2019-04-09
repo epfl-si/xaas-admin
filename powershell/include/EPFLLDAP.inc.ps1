@@ -187,6 +187,13 @@ class EPFLLDAP
 		# ou un truc over bizarre qui fait qu'il faut mettre un U avant le no d'unité... là de nouveau, WTF?
 		$allMembers = $this.LDAPSearch($this.LDAP_SERVER_UNIT_MEMBERS, $this.LDAP_ROOT_DN, "subtree", "((uniqueidentifier=U$($unitUniqueIdentifier)))", @("memberuid"))
 
+		# Si rien trouvé, 
+		if($allMembers.count -eq 0)
+		{
+			# on retourne simplement la liste vide
+			return $allMembers
+		}
+
 		return $allMembers.Properties['memberuid']
 	}
 
