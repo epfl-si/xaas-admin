@@ -20,8 +20,15 @@ DATABASES = {
         'USER': get_mandatory_env('MYSQL_USER'),
         'PASSWORD': get_mandatory_env('MYSQL_PASSWORD'),  # noqa
         'PORT': get_mandatory_env('MYSQL_PORT'),  # noqa
+        'OPTIONS': {
+            'connect_timeout': 3, # For health check, to avoid infinite wait
+        }
     }
 }
+
+# We add custom middleware for OpenShift health check
+# https://stackoverflow.com/questions/18322262/how-to-setup-custom-middleware-in-django
+MIDDLEWARE = ['xaas-admin.middleware.health_check_middleware.HealthCheckMiddleware'] + MIDDLEWARE
 
 # Because we're on production, we add 'whitenoise' middleware in the list. And we have to add it right after
 # 'SecurityMiddleware', as requested in documentation -> http://whitenoise.evans.io/en/stable/django.html
