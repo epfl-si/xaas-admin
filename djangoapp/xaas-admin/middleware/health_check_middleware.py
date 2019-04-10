@@ -4,6 +4,7 @@ from django.http import HttpResponse, HttpResponseServerError
 
 logger = logging.getLogger("healthz")
 
+
 class HealthCheckMiddleware(object):
     def __init__(self, get_response):
         self.get_response = get_response
@@ -35,7 +36,7 @@ class HealthCheckMiddleware(object):
                 row = cursor.fetchone()
                 if row is None:
                     return HttpResponseServerError("db: invalid response")
-        except Exception, e:
+        except Exception as e:
             logger.exception(e)
             return HttpResponseServerError("db: cannot connect to database.")
 
@@ -49,7 +50,7 @@ class HealthCheckMiddleware(object):
                     stats = cache._cache.get_stats()
                     if len(stats) != len(cache._servers):
                         return HttpResponseServerError("cache: cannot connect to cache.")
-        except Exception, e:
+        except Exception as e:
             logger.exception(e)
             return HttpResponseServerError("cache: cannot connect to cache.")
 

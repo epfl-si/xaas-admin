@@ -61,6 +61,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Add custom middleware for OpenShift health/readiness check
+    # https://stackoverflow.com/questions/18322262/how-to-setup-custom-middleware-in-django
+    'middleware.health_check_middleware.HealthCheckMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
