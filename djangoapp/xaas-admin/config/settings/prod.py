@@ -21,7 +21,7 @@ DATABASES = {
         'PASSWORD': get_mandatory_env('MYSQL_PASSWORD'),  # noqa
         'PORT': get_mandatory_env('MYSQL_PORT'),  # noqa
         'OPTIONS': {
-            'connect_timeout': 3, # For health check, to avoid infinite wait
+            'connect_timeout': 3,  # For health check, to avoid infinite wait
         }
     }
 }
