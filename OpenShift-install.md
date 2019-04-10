@@ -57,8 +57,8 @@ C2C put limits on resource that can be used, so we have to fix some limits in `*
           cpu: "50m"
           memory: "200Mi"
         limits:
-          cpu: "100m"
-          memory: "400Mi"
+          cpu: "50m"
+          memory: "200Mi"
     ```
 
 1. Modify resources `xaas-django-deploymentconfig.yaml` (two locations )
@@ -75,6 +75,30 @@ C2C put limits on resource that can be used, so we have to fix some limits in `*
         limits:
           cpu: "100m"
           memory: "400Mi"
+    ```
+    
+1. Still in `xaas-django-deploymentconfig.yaml`, add the following right after `ports` section (at the same level)
+    ```
+    readinessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /readiness
+        port: 8080
+        scheme: HTTP
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 5
+    livenessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /healthz
+        port: 8080
+        scheme: HTTP
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 1
     ```
 
 1. You will also have to remove all references to volumes in `xaas-django-deploymentconfig.yaml` because we won't use them on OpenShift.
