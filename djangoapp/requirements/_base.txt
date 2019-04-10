@@ -1,4 +1,4 @@
-django==1.11.13
+django<2.0
 django-tequila==2.1.18
 # https://docs.djangoproject.com/en/2.0/ref/databases/#mysql-db-api-drivers
 # mysqlclient is a native driver. It’s the recommended choice.

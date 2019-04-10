@@ -1,5 +1,8 @@
 src/config/settings/default.py
 
+# Kompose out files
+xaas-*.yaml
+
 .idea/
 conf/
 
@@ -104,4 +107,4 @@ ENV/
 
 # mypy
 .mypy_cache/
-secrets.json
+.env

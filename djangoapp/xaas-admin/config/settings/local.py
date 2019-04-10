@@ -6,6 +6,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     '127.0.0.1',
+    'localhost',
 ]
 
 # Database
@@ -13,9 +14,11 @@ ALLOWED_HOSTS = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'xaas_admin_dev',
-        'USER': 'xaas_admin_user',
-        'PASSWORD': get_secret('DB_USER_PWD'),  # noqa
+        'HOST': get_mandatory_env('MYSQL_HOST'),  # noqa
+        'NAME': get_mandatory_env('MYSQL_DATABASE'),
+        'USER': get_mandatory_env('MYSQL_USER'),
+        'PASSWORD': get_mandatory_env('MYSQL_PASSWORD'),  # noqa
+        'PORT': get_mandatory_env('MYSQL_PORT'),  # noqa
     }
 }
 
