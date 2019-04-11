@@ -26,18 +26,22 @@ class SecondDayActions
     <#
         -------------------------------------------------------------------------------------
         BUT : Charge les données du fichier JSON passé en paramètre
-        
-        IN  : $JSONFilename     -> Nom court du fichier JSON à charger
     #>
-    SecondDayActions([string]$JSONFilename)
+    SecondDayActions()
     {
         $this.actionToApprovalPolicyId = @{}
-        $filepath = (Join-Path $global:RESOURCES_FOLDER $JSONFilename)
-	
+        
         try 
         {
-            # Chargement de la liste des actions depuis le fichier JSON
-            $this.JSONData = (Get-Content -Path $filepath) -join "`n" | ConvertFrom-Json
+            $this.JSONData = @()
+
+            # Parcours des fichier JSON qui sont dans le dossier des 2nd day actions
+            Get-ChildItem -Path $global:JSON_2ND_DAY_ACTIONS_FOLDER -Filter "*.json" | ForEach-Object {
+            
+                # Chargement de la liste des actions depuis le fichier JSON et ajout à la liste de toutes les actions
+                $this.JSONData += (Get-Content -Path (Join-Path $global:JSON_2ND_DAY_ACTIONS_FOLDER $_.name)) -join "`n" | ConvertFrom-Json
+            }
+            
         }
         catch
         {

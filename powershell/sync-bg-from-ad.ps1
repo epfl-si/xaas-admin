@@ -1214,13 +1214,14 @@ try
 	$newItems = [NewItems]::new("new-items.json")
 
 	# Création de l'objet pour gérer les 2nd day actions
-	$secondDayActions = [SecondDayActions]::new("2nd-day-actions.json")
+	$secondDayActions = [SecondDayActions]::new()
 
 	# Parcours des groupes AD pour l'environnement/tenant donné
 	$adGroupList | ForEach-Object {
 
 		$counters.inc('ADGroups')
 
+		# Pour repartir "propre" pour le groupe AD courant
 		$secondDayActions.clearApprovalPolicyMapping()
 
 		# Génération du nom du groupe avec le domaine
@@ -1418,9 +1419,9 @@ try
 																 -additionnalReplace @{} -processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
 
 		# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
-		$actionReqApprovalPolicies = create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
-																-approverGroupAtDomainList $approverGroupAtDomainList -secondDayActions $secondDayActions `
-																-processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
+		create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
+											-approverGroupAtDomainList $approverGroupAtDomainList -secondDayActions $secondDayActions `
+											-processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Roles
@@ -1433,7 +1434,7 @@ try
 		$ent = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entName -entDesc $entDesc
 		
 		# ----------------------------------------------------------------------------------
-		# --------------------------------- Business Group Entitlement - Actions
+		# --------------------------------- Business Group Entitlement - 2nd day Actions
 		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
 		$ent = $vra.prepareEntActions($ent, $secondDayActions)
 		
