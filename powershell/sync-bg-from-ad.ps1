@@ -1233,9 +1233,6 @@ try
 
 		# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
 		$capacityAlertMails = @($global:CAPACITY_ALERT_DEFAULT_MAIL)
-
-		# Recherche des Workflows vRO à utiliser
-		#$workflowNewItem = $vro.getWorkflow($global:VRO_WORKFLOW_NEW_ITEM)
 		
 		# Si Tenant EPFL
 		if($targetTenant -eq $global:VRA_TENANT__EPFL)

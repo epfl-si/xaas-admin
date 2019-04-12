@@ -34,7 +34,7 @@ $global:MYSQL_ITS_SERVICES__SNOWID = 'its_serv_snow_id'
 <#
 	-------------------------------------------------------------------------------------
 	BUT : Charge les informations de connexion à la DB MySQL depuis le fichier passé
-		  en paramètre (secrets.json)
+		  en paramètre (.env) qui est le même que celui utilisé pour l'application Django
 	   
 	IN  : $file			-> Chemin jusqu'au fichier à charger.
 	IN  : $targetEnv	-> Nom de l'environnement "cible"
@@ -46,21 +46,27 @@ function loadMySQLInfos
 	# Si le fichier n'existe pas
 	if(-not( Test-Path $file))
 	{
-		Throw ("JSON file not found ({0})" -f $file)
+		Throw ("ENV file not found ({0})" -f $file)
 	}
 
 	# Chargement du code JSON
-	$infos = (Get-Content -Path $file) -join "`n" | ConvertFrom-Json
+	$infos = @{}
+	# Chargement du fichier .env et des déclarations contenues dans celui-ci (en virant les lignes vides ou commençant par #)
+	((Get-Content -Path $file) -notlike "#*").Trim() -notlike "" | ForEach-Object { 
+		$name = $_.Split("=")[0]
+		$value = $_.Split("=")[1]
+		$infos.$name = $value }
+
 	# Si on n'a pas overridé le nom de la DB dans le fichier "secrets.json", on l'initialise avec le contenu de $global:TARGET_ENV_MYSQL_DB_NAME
-	if(! [bool]($infos.PSObject.Properties.name -match 'DB_NAME'))
+	if(! $infos.ContainsKey('MYSQL_DATABASE'))
 	{
-		$infos | Add-Member -NotePropertyName DB_NAME -NotePropertyValue $TARGET_ENV_MYSQL_DB_NAME[$targetEnv]
-    }
+		$infos.MYSQL_DATABASE = $TARGET_ENV_MYSQL_DB_NAME[$targetEnv]
+	}
     
     # Si on n'a pas overridé le nom de le l'utilisateur dans le fichier "secrets.json", on l'initialise 
-	if(! [bool]($infos.PSObject.Properties.name -match 'DB_USER_NAME'))
+	if(! $infos.ContainsKey('MYSQL_USER'))
 	{
-		$infos | Add-Member -NotePropertyName DB_USER_NAME -NotePropertyValue $MYSQL_USERNAME
+		$infos.MYSQL_USER = $MYSQL_USERNAME
 	}
 
 	return $infos

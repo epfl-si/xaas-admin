@@ -605,15 +605,15 @@ try
 		$counters.add('its.serviceProcessed', '# Service processed')
 		$counters.add('its.serviceSkipped', '# Service skipped')
 
-		# Chargement des infos se trouvant dans le fichier "secrets.json" pour pouvoir accéder à la DB
-		$dbInfos = loadMySQLInfos -file $global:JSON_SECRETS_FILE -targetEnv $targetEnv
+		# Chargement des infos se trouvant dans le fichier ".env" pour pouvoir accéder à la DB
+		$dbInfos = loadMySQLInfos -file $global:ENV_FILE -targetEnv $targetEnv
 
-		$django = [DjangoMySQL]::new($dbInfos.DB_HOST, [int]$dbInfos.DB_PORT, $dbInfos.DB_NAME, $dbInfos.DB_USER_NAME, $dbInfos.DB_USER_PWD)
+		$django = [DjangoMySQL]::new($dbInfos.MYSQL_HOST, [int]$dbInfos.MYSQL_PORT, $dbInfos.MYSQL_DATABASE, $dbInfos.MYSQL_USER, $dbInfos.MYSQL_PASSWORD)
 
 		$servicesList = $django.getServicesList()
 
 		# Si on rencontre une erreur, 
-		if($serviceList -eq $false)
+		if(($serviceList -eq $false) -or ($null -eq $serviceList))
 		{
 			Throw ("Error getting Services list for '{0}' tenant" -f $targetTenant)
 		}
