@@ -230,7 +230,7 @@ $SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global
 # le script courant
 $TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__TEST_MODE)))
 $EPFL_TEST_NB_UNITS_MAX = 10
-$EPFL_LIMIT_TO_FAC = @("SV")
+$EPFL_LIMIT_TO_FAC = @("SV", "SI")
 
 
 # CONFIGURATION
