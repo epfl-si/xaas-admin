@@ -168,8 +168,8 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	$approvePolicy = $vra.getApprovalPolicy($fullName)
 
 	# Si l'approval policy existe, qu'elle n'a pas encore été traitée et qu'il est demandé de les recréer 
-	if(($null -ne $approvalPolicy) -and `
-		($processedApprovalPoliciesIDs.value -notcontains $approvalPolicy.id) -and `
+	if(($null -ne $approvePolicy) -and `
+		($processedApprovalPoliciesIDs.value -notcontains $approvePolicy.id) -and `
 		(Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))))
 	{
 		$logHistory.addLineAndDisplay(("-> Approval Policy '{0}' already exists but recreation asked. Deleting it..." -f $fullName))
