@@ -316,7 +316,7 @@ class vRAAPI
 		# Ajout des éventuelles custom properties
 		$customProperties.Keys | ForEach-Object {
 
-			$body.extensionData.entries += $this.loadJSON("vra-vra-vra-business-group-extension-data-custom.json", `
+			$body.extensionData.entries += $this.loadJSON("vra-business-group-extension-data-custom.json", `
 															 			 @{"key" = $_
 															 			  "value" = $customProperties.Item($_)})
 		}
@@ -416,7 +416,7 @@ class vRAAPI
 				else # Aucune entrée n'a été trouvée
 				{
 					# Ajout des infos avec le template présent dans le fichier JSON
-					$bg.ExtensionData.entries += $this.loadJSON("vra-vra-vra-business-group-extension-data-custom.json", `
+					$bg.ExtensionData.entries += $this.loadJSON("vra-business-group-extension-data-custom.json", `
 																			@{"key" = $customPropertyKey
 																			"value" = $customProperties.Item($customPropertyKey)})
 				}
@@ -582,7 +582,7 @@ class vRAAPI
 		$replace = @{name = $userOrGroup
 						 domain = $domain}
 
-		$body = vRALoadJSON -file "vra-vra-business-group-role-principal.json"  -valToReplace $replace
+		$body = vRALoadJSON -file "vra-business-group-role-principal.json"  -valToReplace $replace
 		#>
 		# ******
 

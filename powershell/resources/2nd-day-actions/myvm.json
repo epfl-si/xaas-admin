@@ -45,14 +45,14 @@
                     {
                         "tenant": "EPFL",
                         "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-vra-approval-level-usrgrp-admin-passthrough.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
                         "JSONReplacements": {},
                         "approvalLevels": 2
                     },
                     {
                         "tenant": "ITServices",
                         "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-vra-approval-level-usrgrp-admin-passthrough.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
                         "JSONReplacements": {},
                         "approvalLevels": 1
                     }
@@ -118,14 +118,14 @@
                     {
                         "tenant": "EPFL",
                         "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-vra-approval-level-usrgrp-admin-passthrough.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
                         "JSONReplacements": {},
                         "approvalLevels": 2
                     },
                     {
                         "tenant": "ITServices",
                         "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-vra-approval-level-usrgrp-admin-passthrough.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
                         "JSONReplacements": {},
                         "approvalLevels": 1
                     }
