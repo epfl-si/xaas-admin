@@ -1,0 +1,54 @@
+{
+    "rules" : [
+      {
+        "display_name":"{{ruleNameIn}}",
+        "action":"ALLOW",
+        "direction":"IN",
+        "logged": true,
+        "destinations": [
+          {
+            "target_display_name": "{{nsGroupName}}",
+            "is_valid": true,
+            "target_type": "NSGroup",
+            "target_id": "{{nsGroupId}}"
+          }
+        ]
+      },
+      {
+        "display_name":"{{ruleNameCommunication}}",
+        "action":"ALLOW",
+        "direction":"IN_OUT",
+        "logged": true,
+        "sources": [
+          {
+            "target_display_name": "{{nsGroupName}}",
+            "is_valid": true,
+            "target_type": "NSGroup",
+            "target_id": "{{nsGroupId}}"
+          }
+        ],
+        "destinations": [
+          {
+            "target_display_name": "{{nsGroupName}}",
+            "is_valid": true,
+            "target_type": "NSGroup",
+            "target_id": "{{nsGroupId}}"
+          }
+        ]
+      },
+          {
+        "display_name":"{{ruleNameOut}}",
+        "action":"ALLOW",
+        "direction":"OUT",
+        "logged": true,
+        "sources": [
+          {
+            "target_display_name": "{{nsGroupName}}",
+            "is_valid": true,
+            "target_type": "NSGroup",
+            "target_id": "{{nsGroupId}}"
+          }
+        ]
+      }
+    ]
+  }
