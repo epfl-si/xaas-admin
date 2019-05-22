@@ -1,12 +1,12 @@
 [
     {
         "tenant": "EPFL",
-        "approvalPolicyJSON": "pre-approval-policy-new-item.json",
-        "approvalLevelJSON": "approval-level-usrgrp-admin-passthrough.json"
+        "approvalPolicyJSON": "vra-pre-approval-policy-new-item.json",
+        "approvalLevelJSON": "vra-vra-approval-level-usrgrp-admin-passthrough.json"
     },
     {
         "tenant": "ITServices",
-        "approvalPolicyJSON": "pre-approval-policy-new-item.json",
-        "approvalLevelJSON": "approval-level-usrgrp-admin-passthrough.json"
+        "approvalPolicyJSON": "vra-pre-approval-policy-new-item.json",
+        "approvalLevelJSON": "vra-vra-approval-level-usrgrp-admin-passthrough.json"
     }
 ]

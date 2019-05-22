@@ -48,7 +48,7 @@ class vRAAPI
 						 password = $password
 						 tenant = $tenant}
 
-		$body = $this.loadJSON("user-credentials.json", $replace)
+		$body = $this.loadJSON("vra-user-credentials.json", $replace)
 
 		$uri = "https://{0}/identity/api/tokens" -f $this.server
 
@@ -195,7 +195,7 @@ class vRAAPI
 	<#
 		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
-													Business Groups
+											Business Groups
 		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
 	#>
@@ -311,12 +311,12 @@ class vRAAPI
 		}
 
 		
-		$body = $this.loadJSON("business-group.json", $replace)
+		$body = $this.loadJSON("vra-business-group.json", $replace)
 
 		# Ajout des éventuelles custom properties
 		$customProperties.Keys | ForEach-Object {
 
-			$body.extensionData.entries += $this.loadJSON("business-group-extension-data-custom.json", `
+			$body.extensionData.entries += $this.loadJSON("vra-vra-vra-business-group-extension-data-custom.json", `
 															 			 @{"key" = $_
 															 			  "value" = $customProperties.Item($_)})
 		}
@@ -416,7 +416,7 @@ class vRAAPI
 				else # Aucune entrée n'a été trouvée
 				{
 					# Ajout des infos avec le template présent dans le fichier JSON
-					$bg.ExtensionData.entries += $this.loadJSON("business-group-extension-data-custom.json", `
+					$bg.ExtensionData.entries += $this.loadJSON("vra-vra-vra-business-group-extension-data-custom.json", `
 																			@{"key" = $customPropertyKey
 																			"value" = $customProperties.Item($customPropertyKey)})
 				}
@@ -582,7 +582,7 @@ class vRAAPI
 		$replace = @{name = $userOrGroup
 						 domain = $domain}
 
-		$body = vRALoadJSON -file "business-group-role-principal.json"  -valToReplace $replace
+		$body = vRALoadJSON -file "vra-vra-business-group-role-principal.json"  -valToReplace $replace
 		#>
 		# ******
 
@@ -734,7 +734,7 @@ class vRAAPI
 						 bgID = $BGID
 						 bgName = $bgName}
 
-		$body = $this.loadJSON("entitlement.json", $replace)
+		$body = $this.loadJSON("vra-entitlement.json", $replace)
 
 		$res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))
 		
@@ -912,7 +912,7 @@ class vRAAPI
 					approvalPolicyId = $approvalPolicy.id}
 
 		# Création du nécessaire pour le service à ajouter
-		$service = $this.loadJSON("entitlement-service.json", $replace)
+		$service = $this.loadJSON("vra-entitlement-service.json", $replace)
 
 		# Ajout du service à l'objet
 		$ent.entitledServices += $service
@@ -961,7 +961,7 @@ class vRAAPI
 									approvalPolicyId = $approvalPolicyId}
 
 					# Création du nécessaire pour l'action à ajouter
-					$actionsToAdd += $this.loadJSON("entitlement-action.json", $replace)
+					$actionsToAdd += $this.loadJSON("vra-entitlement-action.json", $replace)
 				}
 				else # Pas d'infos trouvées pour l'action
 				{
