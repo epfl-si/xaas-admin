@@ -130,7 +130,7 @@ try
 			# bidon sinon c'est affiché à l'écran.
 			$dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 
-			$vCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_USERNAME -Password $global:VSPHERE_PASSWORD
+			$vCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_RO_USERNAME -Password $global:VSPHERE_RO_PASSWORD
 		}
 		
 		# Recherche des infos du BG
