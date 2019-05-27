@@ -613,7 +613,7 @@ try
 		$servicesList = $django.getServicesList()
 
 		# Si on rencontre une erreur, 
-		if(($serviceList -eq $false) -or ($null -eq $serviceList))
+		if(($servicesList -eq $false) -or ($null -eq $servicesList))
 		{
 			Throw ("Error getting Services list for '{0}' tenant" -f $targetTenant)
 		}
