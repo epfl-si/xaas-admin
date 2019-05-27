@@ -216,8 +216,8 @@ function loadConfigFile([string]$filename)
 	}
 	catch 
 	{
-		Write-Error ("Config file not found ! ({0})`nPlease create it from 'sample' file" -f $filename)
-		exit
+		Throw ("Config file not found ! ({0})`nPlease create it from 'sample' file" -f $filename)
+		
 	}
 }
 

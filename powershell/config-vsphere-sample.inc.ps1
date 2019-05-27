@@ -11,5 +11,11 @@
 
 # vSphere
 $global:VSPHERE_HOST     = ""
-$global:VSPHERE_USERNAME = ""
-$global:VSPHERE_PASSWORD = ""
+
+# Utilisateur Read-Only
+$global:VSPHERE_RO_USERNAME = ""
+$global:VSPHERE_RO_PASSWORD = ""
+
+# Utilisateur Read-Write
+$global:VSPHERE_RW_USERNAME = ""
+$global:VSPHERE_RW_PASSWORD = ""
