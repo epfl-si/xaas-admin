@@ -86,6 +86,10 @@ try
     # Chargement des modules PowerCLI pour pouvoir accéder à vSphere.
     loadPowerCliModules
 
+    # Pour éviter que le script parte en erreur si le certificat vCenter ne correspond pas au nom DNS primaire. On met le résultat dans une variable
+    # bidon sinon c'est affiché à l'écran.
+    $dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
+
     # Connexion au serveur vSphere
     $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_RW_USERNAME -Password $global:VSPHERE_RW_PASSWORD
 
