@@ -117,8 +117,7 @@ try
             $logHistory.addLineAndDisplay("{0} Notes OK" -f $logLine)
             $counters.inc('VMNotesOK')
         }
-        break
-
+        
     }# FIN BOUCLE de parcours des VM existantes
 
 
