@@ -557,7 +557,7 @@ class NameGenerator
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom et la description d'un Entitlement pour le tenant EPFL
 
-        IN  : $facultyName  -> Nom des la faculté
+        IN  : $facultyName  -> Nom de la faculté
         IN  : $unitName     -> Nom de l'unité
 
         RET : Tableau avec :
@@ -571,6 +571,57 @@ class NameGenerator
         return @($name, $desc)
         
     }
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom et la description du Security Group (NSX) pour une faculté donnée
+
+        IN  : $facultyName  -> Nom de la faculté
+        
+        RET : Tableau avec :
+                - Le nom du NS Group
+                - La description du NS Group
+    #>
+    [System.Collections.ArrayList] getEPFLSecurityGroupNameAndDesc([string]$facultyName)
+    {
+        $name = "sg.epfl_{0}" -f $facultyName
+        $desc = "Tenant: {0}\nFaculty: {1}" -f $this.tenant, $facultyName
+
+        return @($name, $desc)
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du security tag (NSX) pour une faculté donnée
+
+        IN  : $facultyName      -> Le nom court de la faculté
+        
+        RET : Le nom du NS Group
+    #>
+    [string] getEPFLSecurityTagName([string]$facultyName)
+    {
+        return "st.epfl_{0}" -f $facultyName
+    }
+
+    
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom et la description de la section de firewall (NSX) pour une faculté donnée
+
+        IN  : $facultyName  -> Nom de la faculté
+        
+        RET : Tableau avec :
+                - Le nom du NS Group
+                - La description du NS Group
+    #>
+    [System.Collections.ArrayList] getEPFLFirewallSectionNameAndDesc([string]$facultyName)
+    {
+        $name = "sg.epfl_{0}" -f $facultyName
+        $desc = "Tenant: {0}\nFaculty: {1}" -f $this.tenant, $facultyName
+
+        return @($name, $desc)
+    }
+
 
 
     
@@ -967,8 +1018,38 @@ class NameGenerator
         
     }
 
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du Security Group (NSX) pour un service donné
 
-    
+        IN  : $serviceShortName -> Nom court du service
+        IN  : $bgName           -> Nom du business group lié au security group
+        IN  : $snowServiceId    -> ID du service dans Snow
+        
+        RET : Tableau avec :
+                - Le nom du NS Group
+                - La description du NS Group
+    #>
+    [System.Collections.ArrayList] getITSSecurityGroupNameAndDesc([string]$serviceShortName, [string]$bgName, [string]$snowServiceId)
+    {
+        $name = "sg.{0}" -f $serviceShortName
+        $desc = "Tenant: {0}\nBusiness Group: {1}\nSNOWID: {2}" -f $this.tenant, $bgName, $snowServiceId
+
+        return @($name, $desc)
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du security tag (NSX) pour un service donné
+
+        IN  : $serviceShortName -> Nom court du service
+        
+        RET : Le nom du NS Group
+    #>
+    [string] getITSSecurityTagName([string]$serviceShortName)
+    {
+        return "st.{0}" -f $serviceShortName
+    }    
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# --------------------------------------------------------------------------- AUTRES --------------------------------------------------------------------------------------- #>
