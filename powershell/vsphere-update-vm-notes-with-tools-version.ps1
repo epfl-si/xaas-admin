@@ -20,7 +20,7 @@
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 # Fichiers propres au script courant 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "vsphere", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "functions-vsphere.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
