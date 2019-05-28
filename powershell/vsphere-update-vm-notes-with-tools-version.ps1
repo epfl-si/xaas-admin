@@ -64,7 +64,6 @@ function getUpdatedNote()
 
 
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -91,7 +90,7 @@ try
     $dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 
     # Connexion au serveur vSphere
-    $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_RW_USERNAME -Password $global:VSPHERE_RW_PASSWORD
+    $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_USERNAME -Password $global:VSPHERE_PASSWORD
 
     $logHistory.addLineAndDisplay("Getting VMs...")
 
