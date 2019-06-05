@@ -238,7 +238,7 @@ function loadConfigFile([string]$filename)
 function getStringHash([String] $string, $hashName = "MD5") 
 { 
 	$stringBuilder = New-Object System.Text.StringBuilder 
-	[System.Security.Cryptography.HashAlgorithm]::Create($hashName).ComputeHash([System.Text.Encoding]::UTF8.GetBytes($string))|%{ 
+	[System.Security.Cryptography.HashAlgorithm]::Create($hashName).ComputeHash([System.Text.Encoding]::UTF8.GetBytes($string))| ForEach-Object{ 
 		[Void]$stringBuilder.Append($_.ToString("x2")) 
 	} 
 	return $stringBuilder.ToString() 
