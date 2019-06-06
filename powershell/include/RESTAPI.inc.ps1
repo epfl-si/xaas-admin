@@ -49,14 +49,16 @@ class RESTAPI
 			}
 			else 
 			{
-				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers
+				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers 
 			}
+
+
 		}
 		catch 
 		{
 			# Si une erreur survient, on la "repropage" mais avec un message d'erreur plus parlant qu'un "Bad Request" ou autre... 
 			# On va récupérer le message qui a été renvoyé par vRA et on va le rebalance en exception !
-			if($null -ne $_.ErrorDetails) 
+			if($null -ne $_.ErrorDetails)  
 			{
 				$errorDetails = $_.ErrorDetails.Message
 			}
@@ -69,7 +71,7 @@ class RESTAPI
 			# Le nom de la classe est récupéré dynamiquement car la classe courante va être dérivée en d'autres classes
             $classNameAndFunc =  "{0}::{1}" -f $this.gettype().Name, (Get-PSCallStack)[1].FunctionName
 
-			Throw ("{0}(): {1}" -f $classNameAndFunc, $errorDetails.errors.message)
+			Throw ("{0}(): {1}" -f $classNameAndFunc, $errorDetails)
 		}
 	}
 
