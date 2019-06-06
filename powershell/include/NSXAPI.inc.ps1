@@ -10,7 +10,6 @@
 
     et celui-ci spécifique sur Postman:
     http://cloudmaniac.net/why-postman-api-client/
-
     Doc API
     https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api
 
@@ -43,10 +42,34 @@ class NSXAPI: RESTAPI
         # Mise à jour des headers
         $this.headers.Add('Authorization', ("Basic {0}" -f $this.authInfos))
         
-        # Pour autoriser les certificats self-signed
-		[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $True }
+        <# Pour autoriser les certificats self-signed, on créé une policy que l'on assigne ensuite au bon endroit. 
+         https://stackoverflow.com/questions/31360980/runspace-issus-using-async-apis-from-powershell
+        
+         En effet, avec NSX, pour une raison inconnue, utiliser les 2 lignes plus bas pour ignorer les certificats "Self-Signed",
+         ça ne fonctionne pas et ça amène à l'erreur : 
+        
+         There is no Runspace available to run scripts in this thread. You can provide one in the DefaultRunspace property of the 
+         System.Management.Automation.Runspaces.Runspace type. The script block you attempted to invoke was: $true
+        
+         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $True }
+         [Net.ServicePointManager]::SecurityProtocol += [Net.SecurityProtocolType]::Tls12
+        #>
 
-		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Add-Type " 
+            using System.Net; 
+            using System.Security.Cryptography.X509Certificates; 
+        
+            public class NoSSLCheckPolicy : ICertificatePolicy { 
+                public NoSSLCheckPolicy() {} 
+                public bool CheckValidationResult( 
+                    ServicePoint sPoint, X509Certificate cert, 
+                    WebRequest wRequest, int certProb) { 
+                    return true; 
+                } 
+            } 
+        "
+        [System.Net.ServicePointManager]::CertificatePolicy = new-object NoSSLCheckPolicy 
+
     }
 
 
