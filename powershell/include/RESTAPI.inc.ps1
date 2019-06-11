@@ -67,6 +67,8 @@ class RESTAPI
 				$errorDetails = $_.Exception.message
 			}
 
+			$errorDetails = "{}`n{}" -f $errorDetails, $_.Exception.InnerException.Message
+
 			# On récupère aussi le nom de la classe et de la fonction qui a appelé celle-ci, histoire d'avoir un peu d'infos dans le message d'erreur
 			# Le nom de la classe est récupéré dynamiquement car la classe courante va être dérivée en d'autres classes
             $classNameAndFunc =  "{0}::{1}" -f $this.gettype().Name, (Get-PSCallStack)[1].FunctionName
