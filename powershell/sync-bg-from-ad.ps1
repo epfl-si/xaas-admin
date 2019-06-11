@@ -54,6 +54,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "vRAAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "vROAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NSXAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
@@ -63,6 +64,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vra.inc.ps1"))
 loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vro.inc.ps1"))
 loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-mail.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-nsx.inc.ps1"))
 
 
 
@@ -717,7 +719,7 @@ function createOrUpdateBGReservations
 		{
 			# On appelle la fonction de mise à jour mais c'est cette dernière qui va déterminer si une mise à jour est
 			# effectivement nécessaire (car il y a eu des changements) ou pas...
-			$logHistory.addLineAndDisplay(("--> Updating Reservation '{0}' to '{1}'..." -f $matchingRes.name, $resName))
+			$logHistory.addLineAndDisplay(("--> Updating Reservation if needed '{0}' to '{1}'..." -f $matchingRes.name, $resName))
 			$updateResult = $vra.updateRes($matchingRes, $resTemplate, $resName)
 
 			# Si la Reservation a effectivement été mise à jour 
@@ -1098,15 +1100,136 @@ function checkIfADGroupsExists
 			}
 		}
 	}
-
 	return $allOK
 }
 
 
 <#
+-------------------------------------------------------------------------------------
+	BUT : Ajoute un NSGroup à NSX
+
+	IN  : $nsx				-> Objet permettant d'accéder à l'API NSX
+	IN  : $nsxNSGroupName	-> Nom du groupe
+	IN  : $nsxNSGroupDesc	-> Description du groupe
+	IN  : $nsxSecurityTag	-> Le tag de sécurité 
+
+	RET : Objet représentant le NSGroup
+#>
+function createNSGroup 
+{
+	param([NSXAPI]$nsx, [string]$nsxNSGroupName, [string]$nsxNSGroupDesc, [string]$nsxSecurityTag)
+
+	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName)
+
+	# Si le NSGroup n'existe pas,
+	if($null -eq $nsGroup)
+	{
+		$logHistory.addLineAndDisplay(("-> Creating NSX NS Group '{0}'... " -f $nsxNSGroupName))
+
+		# Création de celui-ci
+		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag)
+
+		$counters.inc('NSXNSGroupCreated')
+	}
+	else  # Le NS Group existe
+	{
+		$logHistory.addLineAndDisplay(("-> NSX NS Group '{0}' already exists!" -f $nsxNSGroupName))
+
+		$counters.inc('NSXNSGroupExisting')
+	}
+
+	return $nsGroup
+}
+
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Ajoute une section de firewall vide à NSX
+
+	IN  : $nsx				-> Objet permettant d'accéder à l'API NSX
+	IN  : $nsxFWSectionName	-> Nom du groupe
+	IN  : $nsxFWSectionDesc	-> Description du groupe
+	
+	RET : Objet représentant la section de firewall
+#>
+function createFirewallSection
+{
+	param([NSXAPI]$nsx, [string]$nsxFWSectionName, [string]$nsxFWSectionDesc)
+
+	$fwSection = $nsx.getFirewallSectionByName($nsxFWSectionName)
+
+	# Si la section n'existe pas, 
+	if($null -eq $fwSection)
+	{
+		# Recherche de la section qui doit se trouver après la section que l'on va créer.
+		$insertBeforeSection = $nsx.getFirewallSectionByName($global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME)
+
+		# Si la section n'existe pas, il y a une erreur 
+		if($null -eq $insertBeforeSection)
+		{
+			Throw ("NSX Firewall section not found: {0}" -f $global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME)
+		}
+
+		$logHistory.addLineAndDisplay(("-> Creating NSX Firewall section '{0}'... " -f $nsxFWSectionName))
+
+		# Création de la section
+		$fwSection = $nsx.addFirewallSection($nsxFWSectionName, $nsxFWSectionDesc, $insertBeforeSection.id)
+
+		$counters.inc('NSXFWSectionCreated')
+
+	}
+	else # La section existe 
+	{
+		$logHistory.addLineAndDisplay(("-> NSX Firewall section '{0}' already exists!" -f $nsxFWSectionName))
+
+		$counters.inc('NSXFWSectionExisting')
+	}
+
+	return $fwSection
+}
+
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Ajoute une section de firewall vide à NSX
+
+	IN  : $nsx				-> Objet permettant d'accéder à l'API NSX
+	IN  : $nsxNSGroup		-> Objet représantant le NS Group
+	IN  : $nsxFWSection		-> Objet représantant la section de Firewall à laquelle ajouter les règles
+	IN  : $nsxFWRuleNames	-> Tableau avec les noms des règles
+
+#>
+function createFirewallSectionRules
+{
+	param([NSXAPI]$nsx, [PSObject]$nsxFWSection, [PSObject]$nsxNSGroup, [Array]$nsxFWRuleNames)
+
+	$nbExpectedRules = 3
+	# On commence par check le nombre de noms qu'on a pour les règles
+	if($nsxFWRuleNames.Count -ne $nbExpectedRules)
+	{
+		Throw ("# of rules for NSX Section incorrect! {0} expected, {1} given " -f $nbExpectedRules, $nsxFWRuleNames.Count)
+	}
+
+	# Recherche des règles existantes 
+	$rules = $nsx.getFirewallSectionRules($nsxFWSection.id)
+
+	# Si les règles existent 
+		
+	# On met dans des variables pour que ça soit plus clair
+	$ruleIn, $ruleComm, $ruleOut = $nsxFWRuleNames
+
+		#$nsx.addFirewallSectionRules($fwSection.id, [string]$nameIn, [string]$nameCommunication, [string]$nameOut, [PSObject]$nsGroup)
+
+}
+
+
+
+<#
+	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 									Programme principal
+	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 #>
@@ -1132,7 +1255,6 @@ $nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 
 $doneBGList = @()
 
-
 # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 $counters = [Counters]::new()
 $counters.add('ADGroups', '# AD group processed')
@@ -1157,6 +1279,13 @@ $counters.add('MachinePrefNotFound', '# machines prefixes not found')
 # Approval policies 
 $counters.add('AppPolCreated', '# Approval Policies created')
 $counters.add('AppPolExisting', '# Approval Policies already existing')
+# NSX - NS Group
+$counters.add('NSXNSGroupCreated', '# NSX NS Group created')
+$counters.add('NSXNSGroupExisting', '# NSX NS Group existing')
+# NSX - Firewall section
+$counters.add('NSXFWSectionCreated', '# NSX Firewall Section created')
+$counters.add('NSXFWSectionExisting', '# NSX Firewall Section existing')
+
 
 <# Pour enregistrer la liste des IDs des approval policies qui ont été traitées. Ceci permettra de désactiver les autres à la fin. #>
 $processedApprovalPoliciesIDs = @()
@@ -1189,8 +1318,8 @@ try
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
 
-	# Création d'une connexion au serveur vRA pour accéder aux API REST de vRO
-	#$vro = [vROAPI]::new($nameGenerator.getvRAServerName(), $global:VRO_CAFE_CLIENT_ID[$targetEnv], $global:VRA_PASSWORD_LIST[$targetEnv][$global:VRA_TENANT__DEFAULT])
+	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
+	$nsx = [NSXAPI]::new($global:NSX_SERVER_LIST[$targetEnv], $global:NSX_ADMIN_USERNAME, $global:NSX_PASSWORD_LIST[$targetEnv])
 
 	# Recherche de BG existants
 	$existingBGList = $vra.getBGList()
@@ -1300,6 +1429,17 @@ try
 			# -> Pour créer les différents niveaux (si besoin) pour l'approbation 
 			$itemReqApprovalLevelJSON = $newItems.getApprovalLevelJSON($targetTenant)
 
+
+			# -- NSX --
+			# Nom et description du NSGroup
+			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getEPFLSecurityGroupNameAndDesc($faculty)
+			# Nom du security Tag
+			$nsxSTName = $nameGenerator.getEPFLSecurityTagName($faculty)
+			# Nom et description de la section de firewall
+			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getEPFLFirewallSectionNameAndDesc($faculty)
+			# Nom de règles de firewall
+			$nsxFWRuleNames = $nameGenerator.getEPFLFirewallRuleNames($faculty)
+
 		}
 		# Si Tenant ITServices
 		elseif($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
@@ -1364,6 +1504,17 @@ try
 			$itemReqApprovalPolicyJSON = $newItems.getApprovalPolicyJSON($targetTenant)
 			# -> Pour créer les différents niveaux (si besoin) pour l'approbation (appelée dans tous les cas, avec un groupe devant approuver)
 			$itemReqApprovalLevelJSON = $newItems.getApprovalLevelJSON($targetTenant)
+
+
+			# -- NSX --
+			# Nom et description du NSGroup
+			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getITSSecurityGroupNameAndDesc($serviceShortName, $bgName, $snowServiceId)
+			# Nom du security Tag
+			$nsxSTName = $nameGenerator.getITSSecurityTagName($serviceShortName)
+			# Nom et description de la section de firewall
+			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getITSFirewallSectionNameAndDesc($serviceShortName)
+			# Nom de règles de firewall
+			$nsxFWRuleNames = $nameGenerator.getITSFirewallRuleNames($serviceShortName)
 		}
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
@@ -1480,6 +1631,20 @@ try
 		} # FIN SI on n'est pas sur l'environnement de DEV 
 		
 
+
+
+		# ----------------------------------------------------------------------------------
+		# --------------------------------- NSX
+
+		# Création du NSGroup si besoin 
+		$nsxNSGroup = createNSGroup -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSecurityTag
+
+		# Création de la section de Firewall si besoin
+		$nsxFWSection = createFirewallSection -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc
+
+		# Création des règles dans la section de firewall
+		createFirewallSectionRules -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
+
 		$doneBGList += $bg.name
 
 	}# Fin boucle de parcours des groupes AD pour l'environnement/tenant donnés
@@ -1569,4 +1734,3 @@ catch # Dans le cas d'une erreur dans le script
 	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
 	
 }
-
