@@ -70,6 +70,7 @@ class NSXAPI: RESTAPI
         "
         [System.Net.ServicePointManager]::CertificatePolicy = new-object NoSSLCheckPolicy 
 
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     }
 
 
@@ -93,7 +94,7 @@ class NSXAPI: RESTAPI
     {
         $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $id
 
-        return $this.callAPI($uri, "Get", "").content
+        return $this.callAPI($uri, "Get", "")
         
     }
 
@@ -114,8 +115,13 @@ class NSXAPI: RESTAPI
     {
         $uri = "https://{0}/api/v1/ns-groups/?populate_references=false" -f $this.server
 
-        $id = (($this.callAPI($uri, "Get", "").content) | Where-Object {$_.display_name -eq $name}).id
+        $id =  ($this.callAPI($uri, "Get", "").results | Where-Object {$_.display_name -eq $name}).id
      
+        if($null -eq $id)
+        {
+            return $null
+        }
+
         # Recherche par ID
         return $this.getNSGroupById($id)
     }
@@ -184,11 +190,11 @@ class NSXAPI: RESTAPI
 
 		$uri = "https://{0}/api/v1/firewall/sections?filter_type={1}&page_size=1000&search_invalid_references=false&type={2}" -f $this.server, $filterType, $type
 
-        # Création du NSGroup
-		$res = $this.callAPI($uri, "GET", "")
+        # Récupération de la liste
+		$sectionList = $this.callAPI($uri, "GET", "").results
         
         # Retour de celui-ci
-        return $res | Where-Object {$_.display_name -eq $name }
+        return $sectionList | Where-Object {$_.display_name -eq $name }
     }
     
     <#
@@ -217,7 +223,7 @@ class NSXAPI: RESTAPI
         $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $id
 
         # Création du NSGroup
-		return $this.callAPI($uri, "GET", "").content
+		return $this.callAPI($uri, "GET", "")
     }
 
 
@@ -296,7 +302,23 @@ class NSXAPI: RESTAPI
 	    							FIREWALL SECTION RULES
 		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
-    #>    
+    #> 
+    
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Ajoute les règles dans une section de firewall
+        
+        IN  : $firewallSectionId    -> ID de la section de firewall
+        
+        RET : La liste des règles pour la section donnée
+    #>
+    [Array] getFirewallSectionRules([string]$firewallSectionId)
+    {
+        $uri = "https://{0}/api/v1/firewall/sections/{1}/rules" -f $this.server, $firewallSectionId
+
+        return $this.callAPI($uri, "GET", "").results
+    }
 
     <#
 		-------------------------------------------------------------------------------------
