@@ -1640,7 +1640,7 @@ try
 		# --------------------------------- NSX
 
 		# Création du NSGroup si besoin 
-		$nsxNSGroup = createNSGroup -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSecurityTag
+		#$nsxNSGroup = createNSGroup -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSecurityTag
 
 		# Création de la section de Firewall si besoin
 		#$nsxFWSection = createFirewallSection -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc
