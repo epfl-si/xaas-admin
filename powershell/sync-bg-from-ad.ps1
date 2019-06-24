@@ -1316,10 +1316,13 @@ $logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenan
 try
 {
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
+	$logHistory.addLineAndDisplay("Connecting to vRA...")
 	$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
 
 	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
+	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
 	$nsx = [NSXAPI]::new($global:NSX_SERVER_LIST[$targetEnv], $global:NSX_ADMIN_USERNAME, $global:NSX_PASSWORD_LIST[$targetEnv])
+
 
 	# Recherche de BG existants
 	$existingBGList = $vra.getBGList()
@@ -1640,10 +1643,10 @@ try
 		$nsxNSGroup = createNSGroup -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSecurityTag
 
 		# Création de la section de Firewall si besoin
-		$nsxFWSection = createFirewallSection -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc
+		#$nsxFWSection = createFirewallSection -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc
 
 		# Création des règles dans la section de firewall
-		createFirewallSectionRules -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
+		#createFirewallSectionRules -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
 
 		$doneBGList += $bg.name
 
