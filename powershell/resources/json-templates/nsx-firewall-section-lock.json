@@ -1,4 +1,4 @@
 {
     "comments": "Lock the Section",
-    "section_revision": {{sectionRevision}}
-  }
+    "section_revision": "{{sectionRevision}}"
+}
