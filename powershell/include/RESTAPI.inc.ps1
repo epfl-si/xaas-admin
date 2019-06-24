@@ -1,6 +1,7 @@
 <#
    BUT : Contient une classe avec les fonctions de base pour faire des appels REST
-         en utilisant des templates se trouvant dans des fichiers JSON.
+		 via le cmdlet Invoke-RestMethod.
+         La classe utilise des templates se trouvant dans des fichiers JSON.
          Cette classe devra ensuite être utilisée comme classe parente par les
          classes spécifiques pour accéder en REST à l'un ou l'autre système.
 

@@ -1,27 +1,21 @@
 <#
    BUT : Contient les fonctions donnant accès à l'API vRA
 
+   Documentation: https://code.vmware.com/apis/222/nsx-t
+
    AUTEUR : Lucien Chaboudez
    DATE   : Mai 2019
 
-    Un peu de documentation:
-    http://cloudmaniac.net/nsx-t-api-embedded-documentation-and-postman-collection/
-    https://sostechblog.com/2018/08/07/nsx-t-a-k-a-nsx-cloud-api-tips-and-tricks/
-
-    et celui-ci spécifique sur Postman:
-    http://cloudmaniac.net/why-postman-api-client/
-    Doc API
-    https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api
 
    ----------
    HISTORIQUE DES VERSIONS
    0.1 - Version de base
 
 #>
-class NSXAPI: RESTAPI
+class NSXAPI: RESTAPICurl
 {
     hidden [string]$authInfos
-    hidden [System.Collections.Hashtable]$headers
+    
     
     <#
 	-------------------------------------------------------------------------------------
@@ -42,35 +36,6 @@ class NSXAPI: RESTAPI
         # Mise à jour des headers
         $this.headers.Add('Authorization', ("Basic {0}" -f $this.authInfos))
         
-        <# Pour autoriser les certificats self-signed, on créé une policy que l'on assigne ensuite au bon endroit. 
-         https://stackoverflow.com/questions/31360980/runspace-issus-using-async-apis-from-powershell
-        
-         En effet, avec NSX, pour une raison inconnue, utiliser les 2 lignes plus bas pour ignorer les certificats "Self-Signed",
-         ça ne fonctionne pas et ça amène à l'erreur : 
-        
-         There is no Runspace available to run scripts in this thread. You can provide one in the DefaultRunspace property of the 
-         System.Management.Automation.Runspaces.Runspace type. The script block you attempted to invoke was: $true
-        
-         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $True }
-         [Net.ServicePointManager]::SecurityProtocol += [Net.SecurityProtocolType]::Tls12
-        #>
-
-        Add-Type " 
-            using System.Net; 
-            using System.Security.Cryptography.X509Certificates; 
-        
-            public class NoSSLCheckPolicy : ICertificatePolicy { 
-                public NoSSLCheckPolicy() {} 
-                public bool CheckValidationResult( 
-                    ServicePoint sPoint, X509Certificate cert, 
-                    WebRequest wRequest, int certProb) { 
-                    return true; 
-                } 
-            } 
-        "
-        [System.Net.ServicePointManager]::CertificatePolicy = new-object NoSSLCheckPolicy 
-
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     }
 
 
@@ -251,17 +216,30 @@ class NSXAPI: RESTAPI
 
 		# Valeur à mettre pour la configuration de la section de firewall
 		$replace = @{name = $name
-					description = $desc}
+					desc = $desc}
 
         $body = $this.loadJSON("nsx-firewall-section.json", $replace)
         
 		# Création de la section de firewall
-        $res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))       
-        
-        # Retour de la section de firewall en la cherchant par son nom
-        return $this.getFirewallSection($name)
+        return $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))       
     }
 
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Efface une section de firewall 
+        
+        IN  : $id	        -> ID de la section de firewall
+    #>
+    [void] deleteFirewallSection([string]$id)
+    {
+        
+        $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $id
+        
+		# Création de la section de firewall
+        $res = $this.callAPI($uri, "Delete", "")       
+        
+    }
 
 
     <#
@@ -272,7 +250,7 @@ class NSXAPI: RESTAPI
 
 		RET : la section modifiée
     #>
-    [void] lockFirewallSection([string]$id)
+    [PSObject] lockFirewallSection([string]$id)
     {
         # on commence par récupérer les informations de la section
         $section = $this.getFirewallSectionById($id)
@@ -283,7 +261,7 @@ class NSXAPI: RESTAPI
         }
 
         # Ensuite on va la modifier en prenant soin de mettre le bon no de révision 
-        $uri = "https://{0}/api/v1/firewall/sections/{1}?action=lock" -f $this.server
+        $uri = "https://{0}/api/v1/firewall/sections/{1}?action=lock" -f $this.server, $id
 
 
         # Valeur à mettre pour la configuration de la section de firewall
@@ -292,7 +270,7 @@ class NSXAPI: RESTAPI
         $body = $this.loadJSON("nsx-firewall-section-lock.json", $replace)
 
         # Verrouillage de la section
-        $res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $body -Depth 20))   
+        return $this.callAPI($uri, "POST", (ConvertTo-Json -InputObject $body -Depth 20))   
     }
 
 
