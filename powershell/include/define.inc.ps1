@@ -13,6 +13,8 @@
 # ---------------------------------------------------------
 # Global
 $global:RESOURCES_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources"))
+$global:BINARY_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "bin"))
+$global:TEMP_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "tmp"))
 $global:JSON_TEMPLATE_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "json-templates"))
 $global:JSON_2ND_DAY_ACTIONS_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "2nd-day-actions"))
 $global:ENV_FILE = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", ".env"))
@@ -74,3 +76,8 @@ $global:PRIVATE_ISO_LIFETIME_DAYS = 30
 $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES = "RECREATE_APPROVAL_POLICIES"
 $global:SCRIPT_ACTION_FILE__SIMULATION_MODE = "SIMULATION_MODE"
 $global:SCRIPT_ACTION_FILE__TEST_MODE = "TEST_MODE"
+
+
+# NSX
+# Nom de la section avant laquelle il faut créer les sections de Firewall vide
+$global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME = "Legacy VLAN"

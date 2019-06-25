@@ -1,0 +1,12 @@
+{
+    "display_name": "{{name}}",
+    "description": "{{description}}",
+    "membership_criteria": [
+        {
+            "resource_type": "NSGroupTagExpression",
+            "target_type": "VirtualMachine",
+            "tag": "{{tag}}"
+
+        }
+    ]
+}
