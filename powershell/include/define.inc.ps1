@@ -14,6 +14,7 @@
 # Global
 $global:RESOURCES_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources"))
 $global:BINARY_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "bin"))
+$global:TEMP_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "tmp"))
 $global:JSON_TEMPLATE_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "json-templates"))
 $global:JSON_2ND_DAY_ACTIONS_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "2nd-day-actions"))
 $global:ENV_FILE = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", ".env"))

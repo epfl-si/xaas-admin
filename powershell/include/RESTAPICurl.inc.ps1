@@ -46,6 +46,14 @@ class RESTAPICurl: RESTAPI
 			Throw ("Binary file 'curl.exe' is missing... ({0})" -f $pathToCurl)
 		}
 
+		<# Si le dossier n'existe pas, on le créé (il se peut qu'il n'existe pas car vu qu'il est vide,
+			il ne sera pas ajouté dans GIT)
+		#>
+		if(!(Test-Path $global:TEMP_FOLDER))
+		{
+			$dummy = New-Item -Path $global:TEMP_FOLDER -ItemType "directory"
+		}
+
 		# Création du nécessaire pour exécuter un process CURL
 		$this.curl = New-Object System.Diagnostics.Process
 		$this.curl.StartInfo.FileName = $pathToCurl
@@ -78,7 +86,22 @@ class RESTAPICurl: RESTAPI
 
 		return $headersStr
 	}
-    
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie un nom de fichier temporaire contenant les informations à envoyer via
+				un appel à curl.exe
+
+		RET : Chemin jusqu'au fichier
+	#>
+	hidden [String]getTmpFilename()
+	{
+		$length = 10
+		return [IO.Path]::Combine($global:TEMP_FOLDER, ( -join ((0x30..0x39) + ( 0x41..0x5A) + ( 0x61..0x7A) | Get-Random -Count $length | ForEach-Object {[char]$_}) )) 
+	}
+	
+	
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Effectue un appel à l'API REST via Curl
@@ -95,9 +118,15 @@ class RESTAPICurl: RESTAPI
 		{
 			$args = "--insecure -s --request {0}" -f $method.ToUpper()
 
+			$tmpFile = $null
+
 			if($json -ne "")
 			{
-				$args += ' --data "{0}"' -f $json.Replace('"', '"""')
+				# Génération d'un nom de fichier temporaire et ajout du JSON dans celui-ci
+				$tmpFile = $this.getTmpFilename()
+				$json | Out-File -FilePath $tmpFile -Encoding:default
+
+				$args += ' --data "@{0}"' -f $tmpFile
 			}
 
 			# Ajout des arguments 
@@ -108,6 +137,13 @@ class RESTAPICurl: RESTAPI
 
 			$output = $this.curl.StandardOutput.ReadToEnd()
 			$errorStr = $this.curl.StandardError.ReadToEnd()
+
+			# Si on a utilisé un fichier temporaire, 
+			if($null -ne $tmpFile)
+			{
+				# Suppression du fichier temporaire 
+				Remove-Item -Path $tmpFile -Force:$true -Confirm:$false
+			}
 
 			if($this.curl.ExitCode -ne 0)
 			{
