@@ -4,3 +4,4 @@ config-vro.inc.ps1
 config-mail.inc.ps1
 config-vsphere.inc.ps1
 config-nsx.inc.ps1
+config-xaas-backup.inc.ps1
