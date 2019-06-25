@@ -557,7 +557,7 @@ class NameGenerator
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom et la description d'un Entitlement pour le tenant EPFL
 
-        IN  : $facultyName  -> Nom des la faculté
+        IN  : $facultyName  -> Nom de la faculté
         IN  : $unitName     -> Nom de l'unité
 
         RET : Tableau avec :
@@ -572,6 +572,75 @@ class NameGenerator
         
     }
 
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom et la description du Security Group (NSX) pour une faculté donnée
+
+        IN  : $facultyName  -> Nom de la faculté
+        
+        RET : Tableau avec :
+                - Le nom du NS Group
+                - La description du NS Group
+    #>
+    [System.Collections.ArrayList] getEPFLSecurityGroupNameAndDesc([string]$facultyName)
+    {
+        $name = "sg.epfl_{0}" -f $facultyName
+        $desc = "Tenant: {0}\nFaculty: {1}" -f $this.tenant, $facultyName
+
+        return @($name, $desc)
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du security tag (NSX) pour une faculté donnée
+
+        IN  : $facultyName      -> Le nom court de la faculté
+        
+        RET : Le nom du NS Group
+    #>
+    [string] getEPFLSecurityTagName([string]$facultyName)
+    {
+        return "st.epfl_{0}" -f $facultyName
+    }
+
+    
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom et la description de la section de firewall (NSX) pour une faculté donnée
+
+        IN  : $facultyName  -> Nom de la faculté
+        
+        RET : Tableau avec :
+                - Le nom de la section de firewall
+                - La description de la section de firewall
+    #>
+    [System.Collections.ArrayList] getEPFLFirewallSectionNameAndDesc([string]$facultyName)
+    {
+        $name = "epfl_{0}" -f $facultyName
+        $desc = "Section for Tenant {0} and Faculty {1}" -f $this.tenant, $facultyName
+
+        return @($name, $desc)
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des noms de "rules" pour une section de firewall
+
+        IN  : $facultyName  -> Nom de la faculté
+        
+        RET : Tableau avec :
+                - Nom de la Rule "in"
+                - Nom de la Rule "intra"¨
+                - Nom de la Rule "out"
+    #>
+    [System.Collections.ArrayList] getEPFLFirewallRuleNames([string]$facultyName)
+    {
+        $in = "allow-{0}-in" -f $facultyName.ToUpper()
+        $intra = "allow-intra-{0}-communication" -f $facultyName.ToUpper()
+        $out = "allow-{0}-out" -f $facultyName.ToUpper()
+
+        return @($in, $intra, $out )
+    }
 
     
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -967,8 +1036,76 @@ class NameGenerator
         
     }
 
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du Security Group (NSX) pour un service donné
 
-    
+        IN  : $serviceShortName -> Nom court du service
+        IN  : $bgName           -> Nom du business group lié au security group
+        IN  : $snowServiceId    -> ID du service dans Snow
+        
+        RET : Tableau avec :
+                - Le nom du NS Group
+                - La description du NS Group
+    #>
+    [System.Collections.ArrayList] getITSSecurityGroupNameAndDesc([string]$serviceShortName, [string]$bgName, [string]$snowServiceId)
+    {
+        $name = "sg.its_{0}" -f $serviceShortName
+        $desc = "Tenant: {0}\nBusiness Group: {1}\nSNOWID: {2}" -f $this.tenant, $bgName, $snowServiceId
+
+        return @($name, $desc)
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du security tag (NSX) pour un service donné
+
+        IN  : $serviceShortName -> Nom court du service
+        
+        RET : Le nom du NS Group
+    #>
+    [string] getITSSecurityTagName([string]$serviceShortName)
+    {
+        return "st.its_{0}" -f $serviceShortName
+    }    
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom et la description de la section de firewall (NSX) pour une faculté donnée
+
+        IN  : $serviceShortName  -> Nom court du service
+        
+        RET : Tableau avec :
+                - Le nom de la section de firewall
+                - La description de la section de firewall
+    #>
+    [System.Collections.ArrayList] getITSFirewallSectionNameAndDesc([string]$serviceShortName)
+    {
+        $name = "its_{0}" -f $serviceShortName
+        $desc = "Section for Tenant {0} and Service {1}" -f $this.tenant, $serviceShortName
+
+        return @($name, $desc)
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des noms de "rules" pour une section de firewall
+
+        IN  : $serviceShortName  -> Nom court du service
+        
+        RET : Tableau avec :
+                - Nom de la Rule "in"
+                - Nom de la Rule "intra"¨
+                - Nom de la Rule "out"
+    #>
+    [System.Collections.ArrayList] getITSFirewallRuleNames([string]$serviceShortName)
+    {
+        $in = "allow-{0}-in" -f $serviceShortName
+        $intra = "allow-intra-{0}-communication" -f $serviceShortName
+        $out = "allow-{0}-out" -f $serviceShortName
+
+        return @($in, $intra, $out )
+    }    
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# --------------------------------------------------------------------------- AUTRES --------------------------------------------------------------------------------------- #>

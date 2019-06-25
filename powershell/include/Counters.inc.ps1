@@ -11,6 +11,7 @@
 class Counters
 {
     hidden [System.Collections.IDictionary]$counters = @{}
+    hidden [Array] $idList = @()
 
     Counters()
     {
@@ -30,6 +31,10 @@ class Counters
         $this.counters.Add($id, @{description = $description
                                value = 0
                                list = @()})
+        <# on enregistre l'ordre dans lequel les ID sont ajouté à l'objet. On ne peut pas se fier à 
+        $this.counters car c'est un dictionnaire et celui-ci ne garde pas l'ordre d'ajout des éléments.
+        #>
+        $this.idList += $id
     }
 
 
@@ -119,7 +124,8 @@ class Counters
 
         $code = "`n{0}`n{1}`n" -f $title, ($dash.PadRight($maxLength+5,$dash))
 
-        foreach($id in $this.counters.Keys)
+        # Ajout des lignes avec les valeurs à partir de l'ordre d'ajout de ceux-ci dans l'objet
+        foreach($id in $this.idList)
         {
             $code += ("{0}: {1}`n" -f $this.counters.Item($id).description.PadRight($maxLength+1," "), `
                     $this.counters.Item($id).value)
