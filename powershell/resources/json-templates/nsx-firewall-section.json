@@ -1,0 +1,7 @@
+{
+    "description": "{{desc}}",
+    "display_name": "{{name}}",
+    "section_type": "LAYER3",
+    "stateful": true,
+    "enforced_on": "VIF"
+}
