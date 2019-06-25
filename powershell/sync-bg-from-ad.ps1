@@ -62,10 +62,10 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vra.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vro.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-mail.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-nsx.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vra.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vro.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-nsx.inc.ps1"))
 
 
 
@@ -1367,7 +1367,7 @@ try
 	Where-Object {$_.Name -match $adGroupNameRegex} 
 
 	# Création de l'objet pour récupérer les informations sur les approval policies à créer pour les demandes de nouveaux éléments
-	$newItems = [NewItems]::new("new-items.json")
+	$newItems = [NewItems]::new("vra-new-items.json")
 
 	# Création de l'objet pour gérer les 2nd day actions
 	$secondDayActions = [SecondDayActions]::new()
