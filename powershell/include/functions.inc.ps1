@@ -210,13 +210,19 @@ function getvRAMailContent
 #>
 function loadConfigFile([string]$filename)
 {
+	if(!(Test-Path -Path $filename))
+	{
+		Throw ("Config file not found ! ({0})`nPlease create it from 'sample' file" -f $filename)
+	}
+
+
 	try 
 	{
 		. $filename
 	}
 	catch 
 	{
-		Throw ("Config file not found ! ({0})`nPlease create it from 'sample' file" -f $filename)
+		Throw ("Error reading config file ! ({0})`n{1}`n`n{2}" -f $filename,  $_.Exception.Message, $_.ScriptStackTrace)
 		
 	}
 }
