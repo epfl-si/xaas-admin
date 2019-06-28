@@ -89,6 +89,9 @@ try
     # bidon sinon c'est affiché à l'écran.
     $dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 
+    # Pour éviter la demande de rejoindre le programme de "Customer Experience"
+    $dummy = Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $false -Confirm:$false
+
     # Connexion au serveur vSphere
     $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_USERNAME -Password $global:VSPHERE_PASSWORD
 
