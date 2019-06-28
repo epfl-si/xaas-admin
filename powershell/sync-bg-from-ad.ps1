@@ -51,14 +51,17 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "JSONUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NewItems.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "RESTAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "vRAAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "vROAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "NSXAPI.inc.ps1"))
+
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
+# Chargement des fichiers pour API REST
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vROAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "NSXAPI.inc.ps1"))
+
 
 
 # Chargement des fichiers de configuration
