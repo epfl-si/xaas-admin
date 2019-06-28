@@ -231,19 +231,17 @@ try
             $tagList = Get-VM -Name $vmName | Get-TagAssignment | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)}
             
             # Si aucun tag dans la liste
-            if($null -eq $tagList)
-            {
-                $tag = ""
-            }
-            else 
+            if($null -ne $tagList)
             {
                 # Le tag étant au format <Category>/<tagName>, on extrait les informations.
                 # NOTE: on ne renvoie que le premier tag de la liste. Pas d'erreur/warning si plusieurs tags sont définis (à priori, ce n'est pas possible)
                 $tagCategory, $tag = ([string]($tagList[0].tag)).split("/")
+
+                # Génération du résultat
+                $output.results += $tag
             }
             
-            # Génération du résultat
-            $output.results += $tag
+            
         }
 
 
