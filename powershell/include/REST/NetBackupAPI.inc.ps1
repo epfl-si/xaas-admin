@@ -10,16 +10,28 @@
 	De la documentation sur l'API peut être trouvée ici :
 	https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/
 
+	Des exemples de code peuvent être trouvés ici :
+	https://github.com/VeritasOS/netbackup-api-code-samples
+
+
+	REMARQUES:
+	Si on utilise les filtres (filter) dans une requête (dans la query string), il ne faut pas mettre 
+	de caractère $ avant (ex: $filter) comme pour l'API de vRA
 
    ----------
    HISTORIQUE DES VERSIONS
    0.1 - Version de base
 
 #>
+
+# Nombre d'éléments max supportés par NetBackup pour la pagination 
+$global:NETBACKUP_API_PAGE_LIMIT_MAX = 99
+
 class NetBackupAPI: RESTAPI
 {
 	hidden [string]$token
 	hidden [System.Collections.Hashtable]$headers
+	
 
 	<#
 	-------------------------------------------------------------------------------------
@@ -59,7 +71,7 @@ class NetBackupAPI: RESTAPI
 
     }
 
-
+	
     <#
 		-------------------------------------------------------------------------------------
 		BUT : Ferme une connexion via l'API REST
@@ -75,15 +87,78 @@ class NetBackupAPI: RESTAPI
 
     <#
 		-------------------------------------------------------------------------------------
-		BUT : Ferme une connexion via l'API REST
+		BUT : Renvoie la liste des $global:NETBACKUP_API_PAGE_LIMIT_MAX derniers backups pour une VM.
+		
+		IN  : $vmName		-> le nom de la VM
+		IN  : $scheduleType	-> Le type de schedule (peut être une chaîne vide):
+								FULL 
+								DIFFERENTIAL_INCREMENTAL 
+								USER_BACKUP 
+								USER_ARCHIVE 
+								CUMULATIVE_INCREMENTAL
+		IN  : $nbDaysAgo	-> (optionnel) Nombre de jour en arrière dans le temps pour la recherche de backups
+							   	Si pas passé, on prend 1 année.
 
+		REMARQUE: Seuls les $global:NETBACKUP_API_PAGE_LIMIT_MAX derniers backups de la VM seront renvoyés.
+					Dans le cas où il faudrait plus d'infos, il faudra faire plusieurs appels à l'API en 
+					modifiant le paramètre "page[offset]"
+
+		Documentation:
+		https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/#_catalog-catalog_images_get	
     #>
-    [Array] getVMBackupList([string]$vmName)
+    [Array] getVMBackupList([string]$vmName, [string]$scheduleType, [int]$nbDaysAgo)
     {
-        $uri = "https://{0}/catalog/images?`$filter=Name eq '{1}'" -f $this.server, $vmName
+
+		if($nbDaysAgo -eq "")
+		{
+			$nbDaysAgo = 365
+		}
+
+		# Calcul de la date dans le passé en soustrayant les jours. Et on met celle-ci au format ISO8601 comme demandé par 
+		# NetBackup (et on ajoute un Z à la fin sinon ça ne passe pas...)
+		$dateAgo = "{0}Z" -f (get-date -date ((GET-Date).AddDays(-$nbDaysAgo)) -format "s")
+
+		$uri = "https://{0}/catalog/images?page[offset]=0&page[limit]={2}&filter=clientName eq '{1}' and backupTime ge '{3}'" -f `
+				$this.server, $vmName, $global:NETBACKUP_API_PAGE_LIMIT_MAX, $dateAgo
+		
+		if($scheduleType -ne "")
+		{
+			$uri = "{0} and scheduleType eq '{1}'" -f $uri, $scheduleType
+		}
 
 		return ($this.callAPI($uri, "Get", "")).data
-    }
+	}
+	
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Démarre la restauration d'une VM from scratch
+
+		IN  : $vmName	-> Nom de la VM
+		IN  : $backupId	-> ID du backup à restaurer
+
+		Documentation (scroller pour voir les descriptions des différents éléments ):
+		https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/#_recovery-recovery_workloads_vmware_scenarios_full-vm_recover_post
+
+		RET : Objet avec les infos du job de backup
+    #>
+    [PSObject] restoreVM([string]$vmName, [string]$backupId)
+    {
+        $uri = "https://{0}/recovery/workloads/vmware/scenarios/full-vm/recover" -f $this.server
+
+		$replace = @{vmName = $vmName
+					backupId = $backupId}
+
+		$body = $this.loadJSON("xaas-backup-restore-vm.json", $replace)
+
+		# Appel de l'API 
+		return ($this.callAPI($uri, "Get", (ConvertTo-Json -InputObject $body -Depth 20))).data
+
+	}
+
+
+
+	
 
 
 }

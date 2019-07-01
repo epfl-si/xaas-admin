@@ -318,11 +318,11 @@ try
 
         # ------------------------- NetBackup -------------------------
 
-        # Récupération de la liste des backup FULL d'une VM
+        # Récupération de la liste des backup FULL d'une VM durant l'année écoulée
         $ACTION_GET_BACKUP_LIST {
             
-            # Recherche de la liste des backup de la VM et on filtre pour les FULL et ceux qui se sont bien terminés
-            $nbu.getVMBackupList($vmName) | Where-Object {$_.attributes.backupStatus -eq 0 -and $_.attributes.scheduleType -eq "FULL"} | ForEach-Object {
+            # Recherche de la liste des backup de la VM et on filtre ceux qui se sont bien terminés
+            $nbu.getVMBackupList($vmName, "FULL", 365) | Where-Object {$_.attributes.backupStatus -eq 0} | ForEach-Object {
 
                 # Création d'un objet avec la liste des infos que l'on veut renvoyer 
                 $backup = @{ 
@@ -341,6 +341,15 @@ try
         # Lancement de la restauration d'un backup
         $ACTION_RESTORE_BACKUP {
 
+            $res = $nbu.restoreVM($vmName, $restoreBackupId)
+
+            # Génération de quelques infos pour le job de restore 
+            $infos = @{
+                        jobId = $res.id
+                        msg = $res.attributes.msg
+                    }
+            # Ajout à la liste 
+            $output.results += $infos
         }
     }
 
@@ -362,7 +371,7 @@ catch
 	$logHistory.addError(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
 	
 	# Envoi d'un message d'erreur aux admins 
-	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant $targetTenant
+	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant ""
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Web.HttpUtility]::HtmlEncode($errorTrace))
 
