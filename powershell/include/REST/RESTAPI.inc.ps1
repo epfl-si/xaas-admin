@@ -39,6 +39,9 @@ class RESTAPI
 		IN  : $json 	-> Code JSON
 
 		RET : Retour de l'appel
+
+		REMARQUE: Si on a un retour autre qu'un code 200 lors de l'appel à Invoke-RestMethod, 
+					cela fait qu'on passe directement dans le bloc "catch"
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [string]$json)
 	{
@@ -57,6 +60,7 @@ class RESTAPI
 		}
 		catch 
 		{
+			$exceptionMessage = ""
 			# Si une erreur survient, on la "repropage" mais avec un message d'erreur plus parlant qu'un "Bad Request" ou autre... 
 			# On va récupérer le message qui a été renvoyé par vRA et on va le rebalance en exception !
 			if($null -ne $_.ErrorDetails)  
@@ -68,7 +72,13 @@ class RESTAPI
 				$errorDetails = $_.Exception.message
 			}
 
-			$errorDetails = "{}`n{}" -f $errorDetails, $_.Exception.InnerException.Message
+			if($null -ne $_.Exception.InnerException)
+			{
+				$exceptionMessage = $_.Exception.InnerException.Message
+			}
+
+
+			$errorDetails = "{0}`n{1}" -f $errorDetails, $exceptionMessage
 
 			# On récupère aussi le nom de la classe et de la fonction qui a appelé celle-ci, histoire d'avoir un peu d'infos dans le message d'erreur
 			# Le nom de la classe est récupéré dynamiquement car la classe courante va être dérivée en d'autres classes
