@@ -23,14 +23,14 @@
     results -> liste avec un ou plusieurs éléments suivant ce qui est demandé.
 
     PARAMETRES:
-        $targetEnv          -> Environnement cible pour l'exécution. Les valeurs possibles sont définies dans
+        -targetEnv          -> Environnement cible pour l'exécution. Les valeurs possibles sont définies dans
                                 include/define.inc.ps1 => $global:TARGET_ENV__*
-        $action             -> l'action que l'on demande au script d'effectuer, elles sont définies plus bas, dans
+        -action             -> l'action que l'on demande au script d'effectuer, elles sont définies plus bas, dans
                                 la partie qui traite des constantes.
-        $vmName             -> Nom de la VM concernée par l'action.
-        $backupTag          -> Tag de backup à affecter à une VM. A passer uniquement si $action == $ACTION_SET_BACKUP_TAG
+        -vmName             -> Nom de la VM concernée par l'action.
+        -backupTag          -> Tag de backup à affecter à une VM. A passer uniquement si $action == $ACTION_SET_BACKUP_TAG
                                 Si on désire désactiver le backup pour une VM, on doit passer un tag vide.
-        $restoreBackupId    -> ID du backup à restaurer. A passer uniquement si $action == $ACTION_RESTORE_BACKUP
+        -restoreBackupId    -> ID du backup à restaurer. A passer uniquement si $action == $ACTION_RESTORE_BACKUP
 
 #>
 param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId)
@@ -43,6 +43,9 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions-vsphere.inc.ps1"))
 
+# Chargement des fichiers pour API REST
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "NetBackupAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
 loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
@@ -165,6 +168,51 @@ function checkParam
 }
 
 
+<#
+-------------------------------------------------------------------------------------
+    BUT: Retourne le tag de backup pour la VM dont le nom est passé en paramètre 
+
+    IN  : $vmName       -> Nom de la VM dont on veut le tag de backup
+
+    RET :   Le tag de backup
+            $null si n'existe pas
+#>
+function getVMBackupTag
+{
+    param([string]$vmName)
+
+    $tagList = Get-VM -Name $vmName | Get-TagAssignment | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)}
+
+    # Si aucun tag dans la liste
+    if($null -ne $tagList)
+    {
+        # Le tag étant au format <Category>/<tagName>, on extrait les informations.
+        # NOTE: on ne renvoie que le premier tag de la liste. Pas d'erreur/warning si plusieurs tags sont définis (à priori, ce n'est pas possible)
+        $tagCategory, $tag = ([string]($tagList[0].tag)).split("/")
+
+        return $tag
+    }
+
+    return $null
+}
+
+
+<#
+-------------------------------------------------------------------------------------
+    BUT: Supprime le tag de backup de la VM donnée
+
+    IN  : $vmName       -> Nom de la VM dont on veut le tag de backup
+
+#>
+function deleteVMBackupTag
+{
+    param([string]$vmName)
+
+    # Recherche du tag avec le filtre puis suppression de celui-ci 
+    Get-VM -Name $vmName | Get-TagAssignment | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)} | Remove-TagAssignment -Confirm:$false
+}
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -193,6 +241,8 @@ try
 
     # -------------------------------------------------------------------------------------------
 
+    # Création de l'objet pour l'affichage 
+    $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new('xaas-backup', (Join-Path $PSScriptRoot "logs"), 30)
@@ -209,15 +259,15 @@ try
                                          -user $global:XAAS_BACKUP_VCENTER_USER_LIST[$targetEnv] `
                                          -Password $global:XAAS_BACKUP_VCENTER_PASSWORD_LIST[$targetEnv]
 
+    # Connexion à l'API REST de NetBackup
+    $nbu = [NetBackupAPI]::new($global:XAAS_BACKUP_SERVER_LIST[$targetEnv], $global:XAAS_BACKUP_USER_LIST[$targetEnv], $global:XAAS_BACKUP_PASSWORD_LIST[$targetEnv])   
+
     # Ajout d'informations dans le log
     $logHistory.addLine("Script executed with following parameters")
     $logHistory.addLine("-action = {0}" -f $action)
     $logHistory.addLine("-vmName = {0}" -f $vmName)
     $logHistory.addLine("-backupTag = {0}" -f $backupTag)
     $logHistory.addLine("-restoreBackupId = {0}" -f $restoreBackupId)
-
-    # Création de l'objet pour l'affichage 
-    $output = getObjectForOutput
 
     # En fonction de l'action demandée
     switch ($action)
@@ -227,23 +277,17 @@ try
         # Récupération du tag d'une VM
         $ACTION_GET_BACKUP_TAG {
 
-            # Récupération de la liste des tags NetBackup avec le bon filtre
-            $tagList = Get-VM -Name $vmName | Get-TagAssignment | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)}
+            # Récupération du tag de backup existant
+            $tag = getVMBackupTag -vmName $vmName
             
-            # Si aucun tag dans la liste
-            if($null -ne $tagList)
+            # Si un tag est trouvé,
+            if($null -ne $tag)
             {
-                # Le tag étant au format <Category>/<tagName>, on extrait les informations.
-                # NOTE: on ne renvoie que le premier tag de la liste. Pas d'erreur/warning si plusieurs tags sont définis (à priori, ce n'est pas possible)
-                $tagCategory, $tag = ([string]($tagList[0].tag)).split("/")
-
                 # Génération du résultat
                 $output.results += $tag
             }
             
-            
         }
-
 
 
         # Initialisation du tag d'une VM
@@ -252,21 +296,46 @@ try
             # Si on doit ajouter un tag
             if($backupTag -ne "")
             {
+                # Récupération du tag de backup existant
+                $tag = getVMBackupTag -vmName $vmName
+                
+                # Si un tag est trouvé,
+                if($null -ne $tag)
+                {
+                    # Suppression du tag existant
+                    deleteVMBackupTag -vmName $vmName
+                }
+                
+                # Ajout du tag
                 $dummy = Get-VM -Name $vmName | New-TagAssignment -Tag $backupTag -Confirm:$false
             }
             else # On doit supprimer le tag existant
             {
-                # Recherche du tag avec le filtre puis suppression de celui-ci 
-                Get-VM -Name $vmName | Get-TagAssignment | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)} | Remove-TagAssignment -Confirm:$false
+                deleteVMBackupTag -vmName $vmName
             }
         }
 
 
         # ------------------------- NetBackup -------------------------
 
-        # Récupération de la liste des backup d'une VM
+        # Récupération de la liste des backup FULL d'une VM
         $ACTION_GET_BACKUP_LIST {
+            
+            # Recherche de la liste des backup de la VM et on filtre pour les FULL et ceux qui se sont bien terminés
+            $nbu.getVMBackupList($vmName) | Where-Object {$_.attributes.backupStatus -eq 0 -and $_.attributes.scheduleType -eq "FULL"} | ForEach-Object {
 
+                # Création d'un objet avec la liste des infos que l'on veut renvoyer 
+                $backup = @{ 
+                            id = $_.id
+                            policyType = $_.attributes.policyType
+                            policyName = $_.attributes.policyName
+                            scheduleType = $_.attributes.scheduleType
+                            backupTime = $_.attributes.backupTime
+                            }
+
+                # Ajout de l'objet à la liste
+                $output.results += $backup
+            }
         }
 
         # Lancement de la restauration d'un backup
@@ -277,6 +346,7 @@ try
 
     # Affichage du résultat
     displayJSONOutput -output $output
+
 
 }
 catch
@@ -302,3 +372,6 @@ catch
 
 # Déconnexion du serveur vCenter
 Disconnect-VIServer  -Server $connectedvCenter -Confirm:$false 
+
+# Déconnexion de l'API de backup
+$nbu.disconnect()
