@@ -68,7 +68,17 @@ class RESTAPI
 				$errorDetails = $_.Exception.message
 			}
 
-			$errorDetails = "{}`n{}" -f $errorDetails, $_.Exception.InnerException.Message
+			if($null -ne $_.Exception.InnerException)
+			{
+				$exceptionMessage = $_.Exception.InnerException.Message
+			}
+			else 
+			{
+				$exceptionMessage = $_.Exception.message
+			}
+
+
+			$errorDetails = "{}`n{}" -f $errorDetails, $exceptionMessage
 
 			# On récupère aussi le nom de la classe et de la fonction qui a appelé celle-ci, histoire d'avoir un peu d'infos dans le message d'erreur
 			# Le nom de la classe est récupéré dynamiquement car la classe courante va être dérivée en d'autres classes
