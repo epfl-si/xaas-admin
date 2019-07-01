@@ -152,7 +152,7 @@ class NetBackupAPI: RESTAPI
 		$body = $this.loadJSON("xaas-backup-restore-vm.json", $replace)
 
 		# Appel de l'API 
-		return ($this.callAPI($uri, "Get", (ConvertTo-Json -InputObject $body -Depth 20))).data
+		return ($this.callAPI($uri, "POST", (ConvertTo-Json -InputObject $body -Depth 20))).data
 
 	}
 
