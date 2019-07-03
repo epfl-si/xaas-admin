@@ -322,8 +322,13 @@ try
         # Récupération de la liste des backup FULL d'une VM durant l'année écoulée
         $ACTION_GET_BACKUP_LIST {
             
-            # Recherche de la liste des backup de la VM et on filtre ceux qui se sont bien terminés
-            $nbu.getVMBackupList($vmName, "FULL", 365) | Where-Object {$_.attributes.backupStatus -eq 0} | ForEach-Object {
+            <# Recherche de la liste des backup de la VM durant la dernière année et on filtre :
+                - Ceux qui se sont bien terminés 
+                - Ceux qui ne sont pas encore expirés  #>
+            $nbu.getVMBackupList($vmName, "FULL", 365) | Where-Object {
+                $_.attributes.backupStatus -eq 0 `
+                -and `
+                (Get-Date) -lt [DateTime]($_.attributes.expiration -replace "Z", "")} | ForEach-Object {
 
                 # Création d'un objet avec la liste des infos que l'on veut renvoyer 
                 $backup = @{ 
