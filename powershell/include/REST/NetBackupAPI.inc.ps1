@@ -15,8 +15,10 @@
 
 
 	REMARQUES:
-	Si on utilise les filtres (filter) dans une requête (dans la query string), il ne faut pas mettre 
+	- Si on utilise les filtres (filter) dans une requête (dans la query string), il ne faut pas mettre 
 	de caractère $ avant (ex: $filter) comme pour l'API de vRA
+	- On hérite de RESTAPICurl et pas RESTAPI parce que sur les machines de test/prod, il y a des problèmes
+	de connexion refermée...
 
    ----------
    HISTORIQUE DES VERSIONS
@@ -27,7 +29,7 @@
 # Nombre d'éléments max supportés par NetBackup pour la pagination 
 $global:NETBACKUP_API_PAGE_LIMIT_MAX = 99
 
-class NetBackupAPI: RESTAPI
+class NetBackupAPI: RESTAPICurl
 {
 	hidden [string]$token
 	hidden [System.Collections.Hashtable]$headers
