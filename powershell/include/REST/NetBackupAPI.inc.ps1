@@ -66,7 +66,7 @@ class NetBackupAPI: RESTAPICurl
 
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-		$this.token = (Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)).token
+		$this.token = ($this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))).token
 
 		# Mise à jour des headers
 		$this.headers.Add('Authorization', ("{0}" -f $this.token))
@@ -83,7 +83,7 @@ class NetBackupAPI: RESTAPICurl
 	{
 		$uri = "https://{0}/logout" -f $this.server
 
-		Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers
+		$this.callAPI($uri, "Post", "")
     }
     
 
