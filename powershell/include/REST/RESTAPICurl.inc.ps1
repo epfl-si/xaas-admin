@@ -130,7 +130,7 @@ class RESTAPICurl: RESTAPI
 
 		# Ajout des arguments 
 		# Explication sur le @'...'@ ici : https://stackoverflow.com/questions/18116186/escaping-quotes-and-double-quotes
-		$this.curl.StartInfo.Arguments = "{0} {1} {2}" -f ( $this.getCurlHeaders() ), $args, $uri
+		$this.curl.StartInfo.Arguments = "{0} {1} `"{2}`"" -f ( $this.getCurlHeaders() ), $args, ($uri -replace " ","%20")
 
 		$out = $this.curl.Start()
 
