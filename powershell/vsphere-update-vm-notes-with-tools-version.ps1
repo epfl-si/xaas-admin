@@ -24,8 +24,8 @@
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vsphere.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-mail.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vsphere.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
 
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
@@ -64,7 +64,6 @@ function getUpdatedNote()
 
 
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -81,13 +80,20 @@ try
     $counters.add('VMNotesOK', '# VM notes OK')
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new('vsphere - update VM notes with Tools version', (Join-Path $PSScriptRoot "logs"), 30)
+    $logHistory = [LogHistory]::new('vsphere-update-VM-notes-with-Tools-version', (Join-Path $PSScriptRoot "logs"), 30)
     
     # Chargement des modules PowerCLI pour pouvoir accéder à vSphere.
     loadPowerCliModules
 
+    # Pour éviter que le script parte en erreur si le certificat vCenter ne correspond pas au nom DNS primaire. On met le résultat dans une variable
+    # bidon sinon c'est affiché à l'écran.
+    $dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
+
+    # Pour éviter la demande de rejoindre le programme de "Customer Experience"
+    $dummy = Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $false -Confirm:$false
+
     # Connexion au serveur vSphere
-    $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_RW_USERNAME -Password $global:VSPHERE_RW_PASSWORD
+    $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_USERNAME -Password $global:VSPHERE_PASSWORD
 
     $logHistory.addLineAndDisplay("Getting VMs...")
 
@@ -113,8 +119,7 @@ try
             $logHistory.addLineAndDisplay("{0} Notes OK" -f $logLine)
             $counters.inc('VMNotesOK')
         }
-        break
-
+        
     }# FIN BOUCLE de parcours des VM existantes
 
 

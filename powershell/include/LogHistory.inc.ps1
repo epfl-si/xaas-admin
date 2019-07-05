@@ -49,7 +49,7 @@ class LogHistory
 
         IN  : $line -> La ligne à ajouter
 	#>
-    hidden [void] addLine([string]$line)
+    [void] addLine([string]$line)
     {
         ("{0}: {1}" -f (Get-Date -format "yyyy-MM-dd HH:mm:ss"), $line) | `
             Out-File -FilePath (Join-Path $this.logFolderPath $this.logFilename) -Append:$true 
@@ -68,6 +68,16 @@ class LogHistory
         $this.addLine($line)
     }
 
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Ajoute une ligne au fichier Log
+
+        IN  : $line -> La ligne à ajouter (et à afficher)
+	#>
+	[void] addError([string]$line)
+	{
+        $this.addLine(("!!ERROR!! {0}" -f $line))
+    }
 
     <#
 	-------------------------------------------------------------------------------------

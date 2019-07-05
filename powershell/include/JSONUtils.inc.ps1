@@ -30,7 +30,7 @@ class JSONUtils
     JSONUtils([string]$JSONFilename) 
     {
         $this.sourceFilename = $JSONFilename
-        $filepath = (Join-Path $global:RESOURCES_FOLDER $JSONFilename)
+        $filepath = (Join-Path $global:JSON_TEMPLATE_FOLDER $JSONFilename)
 	
         try 
         {

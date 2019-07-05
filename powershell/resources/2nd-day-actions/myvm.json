@@ -44,15 +44,15 @@
                 "approvals": [
                     {
                         "tenant": "EPFL",
-                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "approval-level-usrgrp-admin-passthrough.json",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
                         "JSONReplacements": {},
                         "approvalLevels": 2
                     },
                     {
                         "tenant": "ITServices",
-                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "approval-level-usrgrp-admin-passthrough.json",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
                         "JSONReplacements": {},
                         "approvalLevels": 1
                     }
@@ -117,15 +117,15 @@
                 "approvals": [
                     {
                         "tenant": "EPFL",
-                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "approval-level-usrgrp-admin-passthrough.json",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
                         "JSONReplacements": {},
                         "approvalLevels": 2
                     },
                     {
                         "tenant": "ITServices",
-                        "approvalPolicyJSON": "pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "approval-level-usrgrp-admin-passthrough.json",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
                         "JSONReplacements": {},
                         "approvalLevels": 1
                     }

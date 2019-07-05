@@ -23,16 +23,19 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions-vsphere.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "vRAAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 
+# Chargement des fichiers pour API REST
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vra.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-vsphere.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config-mail.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vra.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vsphere.inc.ps1"))
+loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
 
 
 <#
@@ -130,7 +133,7 @@ try
 			# bidon sinon c'est affiché à l'écran.
 			$dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 
-			$vCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_RO_USERNAME -Password $global:VSPHERE_RO_PASSWORD
+			$vCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_USERNAME -Password $global:VSPHERE_PASSWORD
 		}
 		
 		# Recherche des infos du BG
