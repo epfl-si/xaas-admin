@@ -93,7 +93,11 @@ try
     $dummy = Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $false -Confirm:$false
 
     # Connexion au serveur vSphere
-    $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_USERNAME -Password $global:VSPHERE_PASSWORD
+
+    $credSecurePwd = $global:VSPHERE_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
+    $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $global:VSPHERE_USERNAME, $credSecurePwd	
+            
+    $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -Credential $credObject
 
     $logHistory.addLineAndDisplay("Getting VMs...")
 
