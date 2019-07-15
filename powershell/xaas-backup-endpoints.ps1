@@ -260,10 +260,15 @@ try
     # bidon sinon c'est affiché à l'écran.
     $dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 
-    # Connexion au serveur vSphere
-    $connectedvCenter = Connect-VIServer -Server $global:XAAS_BACKUP_VCENTER_SERVER_LIST[$targetEnv] `
-                                         -user $global:XAAS_BACKUP_VCENTER_USER_LIST[$targetEnv] `
-                                         -Password $global:XAAS_BACKUP_VCENTER_PASSWORD_LIST[$targetEnv]
+    
+	# On encrypte le mot de passe
+	$credSecurePwd = $global:XAAS_BACKUP_VCENTER_PASSWORD_LIST[$targetEnv] | ConvertTo-SecureString -AsPlainText -Force
+	$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $global:XAAS_BACKUP_VCENTER_USER_LIST[$targetEnv], $credSecurePwd
+
+    # Connexion au serveur vSphere.
+    # On passe par le paramètre -credential car sinon, on a des erreurs avec Get-AssignmentTag et Get-Tag, ou peut-être tout simplement avec les commandes dans
+    # lesquelles on faite un | pour passer à la suivante.
+    $connectedvCenter = Connect-VIServer -Server $global:XAAS_BACKUP_VCENTER_SERVER_LIST[$targetEnv] -credential $credObject
 
     # Connexion à l'API REST de NetBackup
     $nbu = [NetBackupAPI]::new($global:XAAS_BACKUP_SERVER_LIST[$targetEnv], $global:XAAS_BACKUP_USER_LIST[$targetEnv], $global:XAAS_BACKUP_PASSWORD_LIST[$targetEnv])   
