@@ -185,7 +185,13 @@ function getVMBackupTag
 
     $vm = Get-VM -Server $vSphere -Name $vmName
 
-    $tagList = Get-TagAssignment -Server $vSphere -Entity $vm | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)}
+    # Pour une raison inconnue, toutes les commandes liées aux tags génèrent des erreurs lorsque le
+    # script est exécuté sur le endpoint via vRO. Du coup, on passe par un Invoke-Command afin de 
+    # contourner le problème. Donc, en plus de ne pas pouvoir utiliser la puissance de PowerShell
+    # avec les pipes, on est obligé de passer par Invoke-Command en plus...
+    $cmd = {Get-TagAssignment -Server $vSphere -Entity $vm}
+    $tagList = Invoke-Command -ScriptBlock $cmd
+    $tagList = $tagList | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)}
 
     # Si aucun tag dans la liste
     if($null -ne $tagList)
