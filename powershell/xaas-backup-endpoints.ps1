@@ -183,7 +183,9 @@ function getVMBackupTag
 {
     param([string]$vmName, [PSObject]$vSphere)
 
-    $tagList = Get-VM -Server $vSphere -Name $vmName | Get-TagAssignment -Server $vSphere | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)}
+    $vm = Get-VM -Server $vSphere -Name $vmName
+
+    $tagList = Get-TagAssignment -Server $vSphere -Entity $vm | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)}
 
     # Si aucun tag dans la liste
     if($null -ne $tagList)
@@ -212,7 +214,9 @@ function deleteVMBackupTag
     param([string]$vmName, [PSObject]$vSphere)
 
     # Recherche du tag avec le filtre puis suppression de celui-ci 
-    Get-VM -Server $vSphere -Name $vmName | Get-TagAssignment -Server $vSphere | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)} | Remove-TagAssignment -Server $vSphere -Confirm:$false
+    $vm = Get-VM -Server $vSphere -Name $vmName 
+    $tagList = Get-TagAssignment -Server $vSphere -Entity $vm | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)} 
+    $tagList | ForEach-Object { Remove-TagAssignment -TagAssignment $_ -Confirm:$false }
 }
 
 
@@ -318,7 +322,8 @@ try
                 }
                 
                 # Ajout du tag
-                $dummy = Get-VM -Server $connectedvCenter -Name $vmName | New-TagAssignment -Server $connectedvCenter -Tag $backupTag -Confirm:$false
+                $vm = Get-VM -Server $connectedvCenter -Name $vmName
+                $dummy = New-TagAssignment -Server $vSphere -Entity $vm -Tag $backupTag -Confirm:$false
             }
             else # On doit supprimer le tag existant
             {
