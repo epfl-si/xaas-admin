@@ -61,6 +61,15 @@ class Scality
 
 
     <#
+    -------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------
+                                        BUCKETS 
+    -------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------
+    #>
+
+
+    <#
 	-------------------------------------------------------------------------------------
         BUT : Ajoute un bucket
         
@@ -101,10 +110,44 @@ class Scality
 
 
     <#
+    -------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------
+                                        USERS 
+    -------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------
+    #>
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Ajoute un utilisateur
+        
+        IN  : $username     -> Nom de l'utilisateur
+
+        RET : L'utilisateur ajouté
+    #>
+    [PSObject] addUser([string]$username)
+    {
+        # Recherche si l'utilisateur existe 
+        $user = $this.getUser($username)
+
+        # S'il existe déjà, on le retourne
+        if($null -ne $user)
+        {
+            return $user
+        }
+
+        return New-IAMUser -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -UserName $username
+    }
+
+
+    <#
 	-------------------------------------------------------------------------------------
         BUT : Renvoie un utilisateur de Scality
         
         IN  : $username     -> Nom de l'utilisateur
+
+        RET : L'utilisateur recherché ou $null si pas trouvé
 	#>
     [PSObject] getUser([string]$username)
     {
@@ -114,14 +157,13 @@ class Scality
 
     <#
 	-------------------------------------------------------------------------------------
-        BUT : Renvoie une policy de Scality
+        BUT : Supprime un utilisateur
         
-        IN  : $policyName     -> Nom de la policy
-
+        IN  : $username     -> Nom de l'utilisateur
 	#>
-    [PSObject] getPolicy([string]$policyName)
+    [void] deleteUser([string]$username)
     {
-        return Get-IAMPolicies -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | Where-Object { $_.PolicyName -eq $policyName}
+        Remove-IAMUser -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -UserName $username -Confirm:$false
     }
 
 
@@ -152,6 +194,82 @@ class Scality
 
 
     <#
+    -------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------
+                                    ACCESS KEYS
+    -------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------
+    #>
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : regénère une nouvelle combinaison AccessKey et SecretAccessKey pour 
+                un utilisateur
+
+        IN  : $username    -> Nom de l'utilisateur pour lequel générer les clefs d'accès
+
+        RET : Objet avec les infos de l'access key générée
+	#>
+    [PSObject] regenerateUserAccessKey([string]$username)
+    {
+        # On commence par supprimer les clefs existantes afin de toujours en avoir qu'une seule de valide
+        $this.deleteUserAccessKeys($username)
+        # Génération de nouvelles clefs
+        return New-IAMAccessKey -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -UserName $username
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des clefs pour un utilisateur
+
+        IN  : $username    -> Nom de l'utilisateur
+
+        RET : Tableau avec les objets contenant les infos des access keys.
+                $null si aucune access key n'existe
+	#>
+    [Array] getUserAccessKeys([string]$username)
+    {
+        return Get-IAMAccessKey -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -UserName $username
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Supprime toutes les access keys d'un utilisateur
+
+        IN  : $username    -> Nom de l'utilisateur
+	#>
+    [void] deleteUserAccessKeys([string] $username)
+    {
+        Get-IAMAccessKey -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -UserName $username | ForEach-Object {
+             Remove-IAMAccessKey -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -UserName $username -AccessKeyId $_.AccessKeyId -Confirm:$false
+        }
+    }
+
+    <#
+    -------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------
+                                        POLICIES 
+    -------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------
+    #>
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Renvoie une policy de Scality
+        
+        IN  : $policyName     -> Nom de la policy
+
+	#>
+    [PSObject] getPolicy([string]$policyName)
+    {
+        return Get-IAMPolicies -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | Where-Object { $_.PolicyName -eq $policyName}
+    }
+
+
+    <#
 	-------------------------------------------------------------------------------------
         BUT : Ajoute un utilisateur à une policy
         
@@ -177,13 +295,6 @@ class Scality
         # Documentation : https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Unregister-IAMUserPolicy.html
         Unregister-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -UserName $username -PolicyArn $policyArn -Credential $this.credentials
     }    
-
-
-
-
-
-
-    
 
 
 
