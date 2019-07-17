@@ -20,9 +20,8 @@
 
 	RET : $true|$false
 #>
-function targetEnvOK
+function targetEnvOK([string] $targetEnv)
 {
-	param([string] $targetEnv)
 	return $global:TARGET_ENV_LIST -contains $targetEnv
 }
 
@@ -34,9 +33,8 @@ function targetEnvOK
 
 	RET : $true|$false
 #>
-function targetTenantOK
+function targetTenantOK([string] $targetTenant)
 {
-	param([string] $targetTenant)
 	return $global:TARGET_TENANT_LIST -ccontains $targetTenant
 }
 
@@ -48,10 +46,8 @@ function targetTenantOK
 
 	RET : Adresse mail
 #>
-function getManagerEmail
+function getManagerEmail([string] $faculty)
 {
-	param([string] $faculty)
-
 	Write-Warning "!!!! getManagerEmail !!!! --> TODO"
 
 	return "facadm-{0}@epfl.ch" -f $faculty
@@ -68,10 +64,8 @@ function getManagerEmail
 	RET : Valeur de la custom property
 			$null si pas trouvé
 #>
-function getBGCustomPropValue
+function getBGCustomPropValue([object]$bg, [string]$customPropName)
 {
-	param([object]$bg, [string]$customPropName)
-
 	# Recherche de la valeur de la "Custom Property" en PowerShell "optmisé"
 	return (($bg.ExtensionData.entries | Where-Object {$_.key -eq $customPropName}).value.values.entries | Where-Object {$_.key -eq "value"}).value.value
 
@@ -89,13 +83,10 @@ function getBGCustomPropValue
 	RET : PSObject contenant le BG
 			$null si pas trouvé
 #>
-function getBGWithCustomProp
+function getBGWithCustomProp([Object] $fromList, [string] $customPropName, [string] $customPropValue )
 {
-	param([Object] $fromList, [string] $customPropName, [string] $customPropValue )
-
 	# Recherche dans la liste en utilisant la puissance de PowerShell
 	return $fromList | Where-Object {(getBGCustomPropValue -bg $_ -customPropName $customPropName) -eq $customPropValue }
-
 }
 
 
@@ -105,12 +96,9 @@ function getBGWithCustomProp
 
 	IN  : $reservation	-> Objet contenant la réservation.
 #>
-function getResClusterName
+function getResClusterName([PSObject]$reservation)
 {
-	param([PSObject]$reservation)
-
 	return ($reservation.ExtensionData.entries | Where-Object {$_.key -eq "computeResource"} ).value.label
-
 }
 
 
@@ -131,10 +119,8 @@ function getResClusterName
    IN  : $mailSubject   -> Le sujet du mail
    IN  : $mailMessage   -> Le contenu du message
 #>
-function sendMailTo
+function sendMailTo([string]$mailAddress, [string] $mailSubject, [string] $mailMessage)
 {
-	param([string]$mailAddress, [string] $mailSubject, [string] $mailMessage)
-
 	$tmpMailFile = ".\tmpmail.txt"
 
 	$mailMessage | Out-File $tmpMailFile -Encoding default
@@ -150,10 +136,8 @@ function sendMailTo
 	   
 	IN  : $groupName	-> Le nom du groupe à contrôler.
 #>
-function ADGroupExists
+function ADGroupExists([string]$groupName)
 {
-	param([string]$groupName)
-
 	try
 	{
 		# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
@@ -179,9 +163,8 @@ function ADGroupExists
 	IN  : $targetEnv	-> Environnement courant
 	IN  : $targetTenant -> Tenant courant
 #>
-function getvRAMailSubject
+function getvRAMailSubject([string] $shortSubject, [string]$targetEnv, [string]$targetTenant)
 {
-	param([string] $shortSubject, [string]$targetEnv)
 
 	return "vRA Service [{0}->{1}]: {2}" -f $targetEnv, $targetTenant, $shortSubject
 }
@@ -193,9 +176,8 @@ function getvRAMailSubject
 
 	IN  : $content -> contenu du mail initial
 #>
-function getvRAMailContent
+function getvRAMailContent([string] $content)
 {
-	param([string] $content)
 
 	return "Bonjour,<br><br>{0}<br><br>Salutations,<br>L'équipe vRA.<br> Paix et prospérité \\//" -f $content
 }
@@ -248,4 +230,14 @@ function getStringHash([String] $string, $hashName = "MD5")
 		[Void]$stringBuilder.Append($_.ToString("x2")) 
 	} 
 	return $stringBuilder.ToString() 
+}
+
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Retourne le timestamp unix actuel
+#>
+function getUnixTimestamp()
+{
+	return [int][double]::Parse((Get-Date -UFormat %s))
 }
