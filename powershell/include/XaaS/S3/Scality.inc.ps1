@@ -2,6 +2,9 @@
    BUT : Contient une classe permetant de faire des faire certaines requêtes dans Scality
          de manière simple.
 
+         La classe parente est APIUtils et celle-ci fourni juste une méthode, celle pour
+         charger le nécessaire depuis des fichiers JSON.
+
          Cette classe aura besoin d'un profil de credential pour fonctionner. De la 
          documentation pour créer un profil peut être trouvée ici : 
          https://docs.aws.amazon.com/powershell/latest/userguide/specifying-your-aws-credentials.html
@@ -15,10 +18,10 @@
    AUTEUR : Lucien Chaboudez
    DATE   : Mai 2019    
 #>
-class Scality
+class Scality: APIUtils
 {
 	hidden [string]$s3EndpointUrl
-    hidden [Amazon.Runtime.AWSCredentials]$credentials
+    hidden [PSObject]$credentials
 
 	<#
 	-------------------------------------------------------------------------------------
