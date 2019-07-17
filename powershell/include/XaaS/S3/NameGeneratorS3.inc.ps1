@@ -92,7 +92,7 @@ class NameGeneratorS3
       IN  : $accessType -> Le type d'accès. Celui-ci doit se trouver dans 
                            $global:XAAS_S3_ACCESS_TYPES
 	#>
-   [string] getPolicyName([string]$accessType)
+   [string] getUserName([string]$accessType)
    {
       return $this.getUserOrPolicyName($accessType, "usr")
    }
