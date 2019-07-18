@@ -14,6 +14,7 @@
 loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
 loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-xaas-backup.inc.ps1"))
 
+$targetEnv = "test"
 $vmName = "itstxaas0436"
 
 # Chargement des modules PowerCLI pour pouvoir accéder à vSphere.
@@ -36,4 +37,3 @@ $connectedvCenter = Connect-VIServer -Server $global:XAAS_BACKUP_VCENTER_SERVER_
 
 $vm = Get-VM -Server $vSphere -Name $vmName
 $tagList = Get-TagAssignment -Server $vSphere -Entity $vm
-    
