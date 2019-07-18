@@ -261,6 +261,40 @@ class Scality: APIUtils
 
     <#
 	-------------------------------------------------------------------------------------
+        BUT : Créé une policy pour un bucket
+
+        IN  : $policyName       -> Le nom de la policy à créer
+        IN  : $bucketName       -> Le nom du bucket lié à la policy
+        IN  : $accessType       -> Le type d'accès pour la Policy. Celui-ci doit se trouver dans 
+                                    $global:XAAS_S3_ACCESS_TYPES
+
+        RET : L'objet représentant la policy
+	#>
+    [PSObject] addPolicy([string]$policyName, [string]$bucketName, [string]$accessType)
+    {
+        if($global:XAAS_S3_ACCESS_TYPES -notcontains $accessType)
+        {
+            Throw "Unknown access type ({0})" -f $accessType
+        }
+
+        $replace = @{
+            bucketName = $bucketName
+        }
+
+        $jsonFile = "xaas-s3-policy-{0}.json" -f $accessType
+
+        $body = $this.loadJSON($jsonFile, $replace)
+
+        # Ajout de la nouvelle policy
+        $pol = New-IAMPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -PolicyName $policyName `
+                            -PolicyDocument (ConvertTo-Json -InputObject $body -Depth 20)
+
+        return $pol
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
         BUT : Renvoie une policy de Scality
         
         IN  : $policyName     -> Nom de la policy
