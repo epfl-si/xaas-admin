@@ -7,7 +7,7 @@
 
    Prérequis:
    Les fichiers doivent avoir été inclus au programme principal avant que le fichier courant puisse être inclus.
-   - include/define.inc.ps1
+   - include/XaaS/S3/define.inc.ps1
    - include/functions.inc.ps1
    
 
@@ -16,10 +16,6 @@
    0.1 - Version de base
 
 #>
-
-# Les types d'accès possibles 
-$global:XAAS_S3_ACCESS_TYPES = @("rw", "ro")
-
 
 class NameGeneratorS3
 {
