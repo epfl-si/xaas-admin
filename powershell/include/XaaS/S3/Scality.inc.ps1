@@ -302,7 +302,60 @@ class Scality: APIUtils
 	#>
     [PSObject] getPolicy([string]$policyName)
     {
-        return Get-IAMPolicies -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | Where-Object { $_.PolicyName -eq $policyName}
+        # Recherche des informations basiques de la policy
+        $pol = Get-IAMPolicies -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | Where-Object { $_.PolicyName -eq $policyName}
+
+        # Si on n'a pas trouvé, pas besoin d'aller plus loin.
+        if($null -eq $pol) 
+        {
+            return $null
+        }
+
+        # Retour des informations complètes en cherchant avec l'Arn
+        return Get-IAMPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                            -PolicyArn $pol.Arn
+    }
+
+
+    [Array] getBucketsInPolicy([string] $policyName)
+    {
+        $b = Get-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials
+
+        return Get-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | Foreach-Object {
+                    Get-S3BucketPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                                        -BucketName $_.BucketName | Where-Object {
+                                            $_.polcicyName -eq $policyName
+                                        }
+        }
+    }
+
+
+    [PSObject] addBucketToPolicy([string]$policyName, [string]$bucketName)
+    {
+        $accessType = "rw"
+
+        $pol = $this.getPolicy($policyName)
+
+        $replace = @{
+            bucketName = $bucketName
+        }
+
+        $jsonFile = "xaas-s3-policy-{0}.json" -f $accessType
+
+        $body = $this.loadJSON($jsonFile, $replace)
+
+        # Ajout de la nouvelle policy
+        $pol = New-IAMPolicyVersion -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                                    -PolicyArn $pol.Arn -PolicyDocument (ConvertTo-Json -InputObject $body -Depth 20) `
+                                    -SetAsDefault $true
+        
+        return $pol
+
+
+        #$pol = $this.getPolicy($policyName)
+
+        #$ac = Get-IAMPolicyGrantingServiceAccessList -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -Arn $pol.Arn
+
     }
 
 
