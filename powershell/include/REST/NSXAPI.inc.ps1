@@ -244,7 +244,7 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Verrouille une section de firewall
+        BUT : Verrouille une section de firewall. Quitte si celle-ci est déjà verrouillée.
         
         IN  : $id       -> ID de la section à verrouiller
 
@@ -258,6 +258,12 @@ class NSXAPI: RESTAPICurl
         if($null -eq $section)
         {
             Throw ("Firewall section with ID {0} not found!" -f $id)
+        }
+
+        # Si la section est déjà verrouillée, on la retourne tout simplement
+        if($section.locked)
+        {
+            return $section
         }
 
         # Ensuite on va la modifier en prenant soin de mettre le bon no de révision 
