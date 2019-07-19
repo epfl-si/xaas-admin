@@ -1225,7 +1225,7 @@ function createFirewallSectionRulesIfNotExists
 	$rules = $nsx.getFirewallSectionRules($nsxFWSection.id)
 
 	# Si les règles n'existent pas
-	if($null -eq $rules)
+	if($rules.Count -eq 0)
 	{
 		
 		$logHistory.addLineAndDisplay(("-> Creating NSX Firewall section rules '{0}', '{1}', '{2}'... " -f $ruleIn, $ruleComm, $ruleOut))
@@ -1673,6 +1673,9 @@ try
 
 		# Création des règles dans la section de firewall
 		createFirewallSectionRulesIfNotExists -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
+
+		# Verrouillage de la section de firewall (si elle ne l'est pas encore)
+		$nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
 
 		$doneBGList += $bg.name
 
