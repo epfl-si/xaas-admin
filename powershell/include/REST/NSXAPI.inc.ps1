@@ -310,7 +310,7 @@ class NSXAPI: RESTAPICurl
     #>
     [void] addFirewallSectionRules([string]$firewallSectionId, [string]$nameIn, [string]$nameCommunication, [string]$nameOut, [PSObject]$nsGroup)
     {
-        $uri = "https://{0}/api/v1/firewall/sections/{1}/rules?action=create_multiple&operation=insert_top" -f $this.server, $firewallSectionId
+        $uri = "https://{0}/api/v1/firewall/sections/{1}/rules?action=create_multiple" -f $this.server, $firewallSectionId
 
 		# Valeur à mettre pour la configuration des règles
 		$replace = @{ruleNameIn             = $nameIn
@@ -319,36 +319,10 @@ class NSXAPI: RESTAPICurl
                      nsGroupName            = $nsGroup.display_name
                      nsGroupId              = $nsGroup.id}
 
-        $body = $this.loadJSON("nsx-firewall-section-rules", $replace)
+        $body = $this.loadJSON("nsx-firewall-section-rules.json", $replace)
 
         # Création des règles
         $res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))       
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    [psobject]getNSGroups()
-    {
-        $uri = "https://{0}/api/v1/ns-groups" -f $this.server
-        return $this.callAPI($uri, "Get", "")
-        
-    }
 }
