@@ -15,6 +15,8 @@
          https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/<cmdLetCaseSensitive>.html
 
 
+        http://forum.zenko.io/
+
    AUTEUR : Lucien Chaboudez
    DATE   : Mai 2019    
 #>
@@ -319,7 +321,9 @@ class Scality: APIUtils
 
     [Array] getBucketsInPolicy([string] $policyName)
     {
-        $b = Get-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials
+        
+
+        $b = Get-S3BucketPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -BucketName "chaboude-bucket"
 
         return Get-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | Foreach-Object {
                     Get-S3BucketPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
