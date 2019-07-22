@@ -1231,7 +1231,7 @@ function createFirewallSectionRulesIfNotExists
 		$logHistory.addLineAndDisplay(("-> Creating NSX Firewall section rules '{0}', '{1}', '{2}'... " -f $ruleIn, $ruleComm, $ruleOut))
 
 		# Création des règles 
-		$rules = $nsx.addFirewallSectionRules($fwSection.id, $ruleIn, $ruleComm, $ruleOut, $nsxNSGroup)
+		$rules = $nsx.addFirewallSectionRules($nsxFWSection.id, $ruleIn, $ruleComm, $ruleOut, $nsxNSGroup)
 
 		$counters.inc('NSXFWSectionRulesCreated')
 	}
