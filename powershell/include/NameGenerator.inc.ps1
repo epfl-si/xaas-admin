@@ -600,7 +600,7 @@ class NameGenerator
     #>
     [string] getEPFLSecurityTagName([string]$facultyName)
     {
-        return "st.epfl_{0}" -f $facultyName
+        return "st.epfl_{0}" -f $facultyName.ToLower()
     }
 
     
@@ -619,7 +619,7 @@ class NameGenerator
         $name = "epfl_{0}" -f $facultyName
         $desc = "Section for Tenant {0} and Faculty {1}" -f $this.tenant, $facultyName
 
-        return @($name, $desc)
+        return @($name.ToLower(), $desc)
     }
 
     <#
