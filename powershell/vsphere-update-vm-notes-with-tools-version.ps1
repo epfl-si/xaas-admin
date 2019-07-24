@@ -48,6 +48,7 @@ function getUpdatedNote()
         # on supprime ceux-ci 
         $note = $note -replace ("\n?{0}[\n\d\s\w:\-_,\.]*" -f $VM_NOTE_SEPARATOR)
     }
+    $note = $note -replace "-to-date", ""
 
     # Définition d'un texte de statut en fonction de celui renvoyé par vSphere
     $status = Switch ($vm.Guest.ExtensionData.ToolsVersionStatus)
