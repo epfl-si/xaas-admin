@@ -211,7 +211,7 @@ try
     $logHistory = [LogHistory]::new('xaas-backup', (Join-Path $PSScriptRoot "logs"), 30)
     
     # Chargement des modules PowerCLI pour pouvoir accéder à vSphere.
-    loadPowerCliModules
+    loadPowerCliModules -displayOutput $false
 
     # Pour éviter que le script parte en erreur si le certificat vCenter ne correspond pas au nom DNS primaire. On met le résultat dans une variable
     # bidon sinon c'est affiché à l'écran.
