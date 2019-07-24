@@ -375,3 +375,6 @@ Disconnect-VIServer  -Server $connectedvCenter -Confirm:$false
 
 # Déconnexion de l'API de backup
 $nbu.disconnect()
+
+# Déconnexion de l'API vSphere
+$vsphereApi.disconnect()
