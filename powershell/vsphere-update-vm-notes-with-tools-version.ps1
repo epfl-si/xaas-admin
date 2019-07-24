@@ -46,7 +46,7 @@ function getUpdatedNote()
     if($note -match $VM_NOTE_SEPARATOR)
     {
         # on supprime ceux-ci 
-        $note = $note -replace ("\n?{0}[\n\d\s\w:-_,\.]*" -f $VM_NOTE_SEPARATOR)
+        $note = $note -replace ("\n?{0}[\n\d\s\w:\-_,\.]*" -f $VM_NOTE_SEPARATOR)
     }
 
     # Définition d'un texte de statut en fonction de celui renvoyé par vSphere
