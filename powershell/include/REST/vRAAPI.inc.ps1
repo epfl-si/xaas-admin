@@ -22,7 +22,6 @@ class vRAAPI: RESTAPI
 {
 	hidden [string]$token
 	hidden [string]$tenant
-	hidden [System.Collections.Hashtable]$headers
 
 	<#
 	-------------------------------------------------------------------------------------
@@ -39,7 +38,6 @@ class vRAAPI: RESTAPI
 		$this.server = $server
 		$this.tenant = $tenant
 
-		$this.headers = @{}
 		$this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
 
