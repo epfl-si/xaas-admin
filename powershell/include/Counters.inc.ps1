@@ -54,6 +54,20 @@ class Counters
 
     <#
 	-------------------------------------------------------------------------------------
+        BUT : décrémente un compteur
+
+        IN  : $id           -> Identifiant unique pour le compteur
+    #>
+    [void] dec([string]$id)
+    {
+        if($this.counters.Keys -contains $id)
+        {
+            $this.counters[$id].value -= 1
+        }
+    }
+
+    <#
+	-------------------------------------------------------------------------------------
         BUT : Incrémente un compteur avec une valeur donnée (pour pouvoir gérer les doublons et
                 éviter d'incrémenter le compteur trop de fois)
 

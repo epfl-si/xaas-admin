@@ -46,7 +46,7 @@ function getUpdatedNote()
     if($note -match $VM_NOTE_SEPARATOR)
     {
         # on supprime ceux-ci 
-        $note = $note -replace ("\n?{0}[\n\d\s\w:-_,\.]*" -f $VM_NOTE_SEPARATOR)
+        $note = $note -replace ("\n?{0}[\n\d\s\w:\-_,\.]*" -f $VM_NOTE_SEPARATOR)
     }
 
     # Définition d'un texte de statut en fonction de celui renvoyé par vSphere
@@ -93,7 +93,11 @@ try
     $dummy = Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $false -Confirm:$false
 
     # Connexion au serveur vSphere
-    $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -user $global:VSPHERE_USERNAME -Password $global:VSPHERE_PASSWORD
+
+    $credSecurePwd = $global:VSPHERE_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
+    $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $global:VSPHERE_USERNAME, $credSecurePwd	
+            
+    $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -Credential $credObject
 
     $logHistory.addLineAndDisplay("Getting VMs...")
 

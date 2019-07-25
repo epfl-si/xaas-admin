@@ -1,6 +1,7 @@
 {
     "rules" : [
       {
+        "_revision": 0,
         "display_name":"{{ruleNameIn}}",
         "action":"ALLOW",
         "direction":"IN",
@@ -15,6 +16,7 @@
         ]
       },
       {
+        "_revision": 0,
         "display_name":"{{ruleNameCommunication}}",
         "action":"ALLOW",
         "direction":"IN_OUT",
@@ -36,7 +38,8 @@
           }
         ]
       },
-          {
+      {
+        "_revision": 0,
         "display_name":"{{ruleNameOut}}",
         "action":"ALLOW",
         "direction":"OUT",

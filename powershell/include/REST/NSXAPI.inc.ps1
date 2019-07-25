@@ -27,8 +27,7 @@ class NSXAPI: RESTAPICurl
 	#>
 	NSXAPI([string] $server, [string] $username, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
-        $this.headers = @{}
-		$this.headers.Add('Accept', 'application/json')
+        $this.headers.Add('Accept', 'application/json')
         $this.headers.Add('Content-Type', 'application/json')
         
         $this.authInfos = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$password)))
@@ -244,7 +243,7 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Verrouille une section de firewall
+        BUT : Verrouille une section de firewall. Quitte si celle-ci est déjà verrouillée.
         
         IN  : $id       -> ID de la section à verrouiller
 
@@ -258,6 +257,12 @@ class NSXAPI: RESTAPICurl
         if($null -eq $section)
         {
             Throw ("Firewall section with ID {0} not found!" -f $id)
+        }
+
+        # Si la section est déjà verrouillée, on la retourne tout simplement
+        if($section.locked)
+        {
+            return $section
         }
 
         # Ensuite on va la modifier en prenant soin de mettre le bon no de révision 
@@ -310,7 +315,7 @@ class NSXAPI: RESTAPICurl
     #>
     [void] addFirewallSectionRules([string]$firewallSectionId, [string]$nameIn, [string]$nameCommunication, [string]$nameOut, [PSObject]$nsGroup)
     {
-        $uri = "https://{0}/api/v1/firewall/sections/{1}/rules?action=create_multiple&operation=insert_top" -f $this.server, $firewallSectionId
+        $uri = "https://{0}/api/v1/firewall/sections/{1}/rules?action=create_multiple" -f $this.server, $firewallSectionId
 
 		# Valeur à mettre pour la configuration des règles
 		$replace = @{ruleNameIn             = $nameIn
@@ -319,36 +324,10 @@ class NSXAPI: RESTAPICurl
                      nsGroupName            = $nsGroup.display_name
                      nsGroupId              = $nsGroup.id}
 
-        $body = $this.loadJSON("nsx-firewall-section-rules", $replace)
+        $body = $this.loadJSON("nsx-firewall-section-rules.json", $replace)
 
         # Création des règles
         $res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))       
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    [psobject]getNSGroups()
-    {
-        $uri = "https://{0}/api/v1/ns-groups" -f $this.server
-        return $this.callAPI($uri, "Get", "")
-        
-    }
 }

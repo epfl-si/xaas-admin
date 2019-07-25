@@ -25,7 +25,7 @@
 #>
 class RESTAPICurl: RESTAPI
 {
-	hidden [System.Collections.Hashtable]$headers
+	
 	hidden [System.Diagnostics.Process]$curl
 	hidden [PSObject]$process
 	

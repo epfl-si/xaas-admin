@@ -175,15 +175,16 @@ function checkParam
     BUT: Retourne le tag de backup pour la VM dont le nom est passé en paramètre 
 
     IN  : $vmName       -> Nom de la VM dont on veut le tag de backup
+    IN  : $vSphere      -> Objet qui représente la connexion à vSphere
 
     RET :   Le tag de backup
             $null si n'existe pas
 #>
 function getVMBackupTag
 {
-    param([string]$vmName)
+    param([string]$vmName, [PSObject]$vSphere)
 
-    $tagList = Get-VM -Name $vmName | Get-TagAssignment | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)}
+    $tagList = Get-VM -Server $vSphere -Name $vmName | Get-TagAssignment -Server $vSphere | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)}
 
     # Si aucun tag dans la liste
     if($null -ne $tagList)
@@ -204,14 +205,15 @@ function getVMBackupTag
     BUT: Supprime le tag de backup de la VM donnée
 
     IN  : $vmName       -> Nom de la VM dont on veut le tag de backup
+    IN  : $vSphere      -> Objet qui représente la connexion à vSphere
 
 #>
 function deleteVMBackupTag
 {
-    param([string]$vmName)
+    param([string]$vmName, [PSObject]$vSphere)
 
     # Recherche du tag avec le filtre puis suppression de celui-ci 
-    Get-VM -Name $vmName | Get-TagAssignment | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)} | Remove-TagAssignment -Confirm:$false
+    Get-VM -Server $vSphere -Name $vmName | Get-TagAssignment -Server $vSphere | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)} | Remove-TagAssignment -Server $vSphere -Confirm:$false
 }
 
 
@@ -220,6 +222,7 @@ function deleteVMBackupTag
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+
 try
 {
     # Test des paramètres
@@ -243,6 +246,8 @@ try
 
     # -------------------------------------------------------------------------------------------
 
+
+
     # Création de l'objet pour l'affichage 
     $output = getObjectForOutput
 
@@ -256,10 +261,15 @@ try
     # bidon sinon c'est affiché à l'écran.
     $dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 
-    # Connexion au serveur vSphere
-    $connectedvCenter = Connect-VIServer -Server $global:XAAS_BACKUP_VCENTER_SERVER_LIST[$targetEnv] `
-                                         -user $global:XAAS_BACKUP_VCENTER_USER_LIST[$targetEnv] `
-                                         -Password $global:XAAS_BACKUP_VCENTER_PASSWORD_LIST[$targetEnv]
+    
+	# On encrypte le mot de passe
+	$credSecurePwd = $global:XAAS_BACKUP_VCENTER_PASSWORD_LIST[$targetEnv] | ConvertTo-SecureString -AsPlainText -Force
+	$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $global:XAAS_BACKUP_VCENTER_USER_LIST[$targetEnv], $credSecurePwd
+
+    # Connexion au serveur vSphere.
+    # On passe par le paramètre -credential car sinon, on a des erreurs avec Get-AssignmentTag et Get-Tag, ou peut-être tout simplement avec les commandes dans
+    # lesquelles on faite un | pour passer à la suivante.
+    $connectedvCenter = Connect-VIServer -Server $global:XAAS_BACKUP_VCENTER_SERVER_LIST[$targetEnv] -credential $credObject
 
     # Connexion à l'API REST de NetBackup
     $nbu = [NetBackupAPI]::new($global:XAAS_BACKUP_SERVER_LIST[$targetEnv], $global:XAAS_BACKUP_USER_LIST[$targetEnv], $global:XAAS_BACKUP_PASSWORD_LIST[$targetEnv])   
@@ -280,7 +290,7 @@ try
         $ACTION_GET_BACKUP_TAG {
 
             # Récupération du tag de backup existant
-            $tag = getVMBackupTag -vmName $vmName
+            $tag = getVMBackupTag -vmName $vmName -vSphere $connectedvCenter
             
             # Si un tag est trouvé,
             if($null -ne $tag)
@@ -299,7 +309,7 @@ try
             if($backupTag -ne "")
             {
                 # Récupération du tag de backup existant
-                $tag = getVMBackupTag -vmName $vmName
+                $tag = getVMBackupTag -vmName $vmName -vSphere $connectedvCenter
                 
                 # Si un tag est trouvé,
                 if($null -ne $tag)
@@ -309,11 +319,11 @@ try
                 }
                 
                 # Ajout du tag
-                $dummy = Get-VM -Name $vmName | New-TagAssignment -Tag $backupTag -Confirm:$false
+                $dummy = Get-VM -Server $connectedvCenter -Name $vmName | New-TagAssignment -Server $connectedvCenter -Tag $backupTag -Confirm:$false
             }
             else # On doit supprimer le tag existant
             {
-                deleteVMBackupTag -vmName $vmName
+                deleteVMBackupTag -vmName $vmName -vSphere $connectedvCenter
             }
         }
 

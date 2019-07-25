@@ -20,7 +20,8 @@
 #>
 class RESTAPI: APIUtils
 {
-    hidden [string]$server
+	hidden [string]$server
+	hidden [System.Collections.Hashtable]$headers
 
     <#
 	-------------------------------------------------------------------------------------
@@ -30,7 +31,8 @@ class RESTAPI: APIUtils
 	#>
     RESTAPI([string] $server)
     {
-        $this.server = $server
+		$this.server = $server
+		$this.headers = @{}
     }
 
 

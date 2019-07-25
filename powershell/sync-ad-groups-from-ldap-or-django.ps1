@@ -233,7 +233,7 @@ $SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global
 # le script courant
 $TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__TEST_MODE)))
 $EPFL_TEST_NB_UNITS_MAX = 10
-$EPFL_LIMIT_TO_FAC = @("SV", "SI")
+$EPFL_LIMIT_TO_FAC = @("SV", "SI", "P")
 
 
 # CONFIGURATION
@@ -450,6 +450,9 @@ try
 				$adGroupName = $nameGenerator.getEPFLRoleADGroupName("CSP_CONSUMER", [int]$faculty['uniqueidentifier'], [int]$unit['uniqueidentifier'])
 				$adGroupDesc = $nameGenerator.getEPFLRoleADGroupDesc("CSP_CONSUMER", $faculty['name'], $unit['name'])
 
+				# Pour définir si un groupe AD a été créé lors de l'itération courante
+				$newADGroupCreated = $false
+
 				try
 				{
 					# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
@@ -481,6 +484,8 @@ try
 							# Création du groupe
 							New-ADGroup -Name $adGroupName -Description $adGroupDesc -GroupScope DomainLocal -Path $nameGenerator.getADGroupsOUDN($true)
 						}
+						
+						$newADGroupCreated = $true;
 
 						$counters.inc('ADGroupsCreated')
 
@@ -526,6 +531,21 @@ try
 
 						$counters.inc('ADGroupsMembersAdded')
 					}
+					else # Il n'y a aucun membre à ajouter dans le groupe 
+					{
+						# Si on vient de créer le groupe AD
+						if($newADGroupCreated)
+						{
+							if(-not $SIMULATION_MODE)
+							{
+								# On peut le supprimer car il est de toute façon vide... Et ça ne sert à rien qu'un BG soit créé pour celui-ci du coup
+								Remove-ADGroup $adGroupName -Confirm:$false
+							}
+						
+							$counters.dec('ADGroupsCreated')
+						}
+
+					}
 					# Suppression des "vieux" membres s'il y en a
 					if($toRemove.Count -gt 0)
 					{
@@ -546,7 +566,9 @@ try
 					# On enregistre le nom du groupe AD traité
 					$doneADGroupList += $adGroupName
 
-				} # FIN SI l'unité à des membres
+				} # FIN SI le groupe AD existe
+
+
 
 				$counters.inc('epfl.LDAPUnitsProcessed')
 				$unitNo += 1
