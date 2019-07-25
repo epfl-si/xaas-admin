@@ -20,6 +20,9 @@
    AUTEUR : Lucien Chaboudez
    DATE   : Mai 2019    
 #>
+
+$global:XAAS_S3_STATEMENT_KEYWORD = "s3:Get*"
+
 class Scality: APIUtils
 {
 	hidden [string]$s3EndpointUrl
@@ -286,7 +289,24 @@ class Scality: APIUtils
                                         -PolicyArn $policyArn -VersionId $_.VersionId -Confirm:$false
             }
         }
+    }
 
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Renvoie un tableau avec les noms des ressources pour référencer un bucket 
+                dans une policy.
+
+        IN  : $bucketName   -> nom du bucket pour lequel on veut le nom des resources
+
+        RET : Tableau avec les noms à utiliser
+	#>
+    hidden [Array] getPolicyResourcesNames([string]$bucketName)
+    {
+        return  @(
+                    ("arn:aws:s3:::{0}" -f $bucketName) 
+                    ("arn:aws:s3:::{0}/*" -f $bucketName)
+                )
     }
 
     <#
@@ -369,21 +389,17 @@ class Scality: APIUtils
         # Celui-ci, si on le converti en JSON, est exactement le même que celui utilisé par la fonction 'addPolicy'
         $polContent = $this.scalityWebConsole.getPolicyContent($policy.Arn, $policy.DefaultVersionId)
 
-        # Liste des ressources à ajouter 
-        $resourceList = @(("arn:aws:s3:::{0}" -f $bucketName) 
-                            ("arn:aws:s3:::{0}/*" -f $bucketName))
-
         $updateNeeded = $false
 
         # On parcours les statements pour trouver celui qui donne les accès
         ForEach($statement in $polContent.Statement)
         {
             # Si on est sur le statement qui donne les droits autre que lister le bucket,
-            if($statement.Action -contains "s3:Get*")
+            if($statement.Action -contains $global:XAAS_S3_STATEMENT_KEYWORD)
             {
                 $nbBucketsInList = $statement.Resource.Count
                 # Ajout des éléments en virant ce qui est à double
-                $statement.Resource = (($statement.Resource + $resourceList) | Select-Object -Unique)
+                $statement.Resource = (($statement.Resource + $this.getPolicyResourcesNames($bucketName)) | Select-Object -Unique)
 
                 $updateNeeded = ($statement.Resource.count -ne $nbBucketsInList)
                 
@@ -427,6 +443,14 @@ class Scality: APIUtils
 	#>
     [PSObject] removeBucketFromPolicy([string]$policyName, [string]$bucketName)
     {
+        <# Si c'est le dernier bucket de la policy, on génère une erreur parce qu'on ne peut pas le supprimer, 
+            il faut virer la policy à la place. Normalement, on ne devrait pas arriver dans ce cas de figure si 
+            on code correctement mais ça fait garde fou au moins #> 
+        if($this.lastBucketInPolicy($policyName))
+        {
+            Throw "Cannot remove last Bucket from Policy '{0}', delete policy instead!" -f $policyName
+        }
+
         # Récupération des informations de la policy
         $policy = $this.getPolicy($policyName)
 
@@ -435,8 +459,7 @@ class Scality: APIUtils
         $polContent = $this.scalityWebConsole.getPolicyContent($policy.Arn, $policy.DefaultVersionId)
 
         # Liste des ressources à ajouter 
-        $resourceList = @(("arn:aws:s3:::{0}" -f $bucketName) 
-                            ("arn:aws:s3:::{0}/*" -f $bucketName))
+        $resourceList = $this.getPolicyResourcesNames($bucketName)
 
         $updateNeeded = $false
 
@@ -444,11 +467,17 @@ class Scality: APIUtils
         ForEach($statement in $polContent.Statement)
         {
             # Si on est sur le statement qui donne les droits autre que lister le bucket,
-            if($statement.Action -contains "s3:Get*")
+            if($statement.Action -contains $global:XAAS_S3_STATEMENT_KEYWORD)
             {
                 $nbBucketsInList = $statement.Resource.Count
                 # Ajout des éléments en virant ce qui est à double
                 $statement.Resource = $statement.Resource | Where-Object { $resourceList -notcontains $_ }
+
+                # Si vide (donc $null), on remet un tableau vide sinon la requête va partir en erreur
+                if($null -eq $statement.Resource)
+                {
+                    $statement.Resource = @()
+                }
 
                 $updateNeeded = ($statement.Resource.count -ne $nbBucketsInList)
                 
@@ -474,6 +503,27 @@ class Scality: APIUtils
         }
 
         return $policy
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Permet de savoir si la policy n'a plus qu'un seul bucket de référencé
+        
+        IN  : $policyName   -> Nom de la policy
+
+        RET : $true|$false
+
+	#>
+    [bool] lastBucketInPolicy([string]$policyName)
+    {
+        # Récupération des informations de la policy
+        $policy = $this.getPolicy($policyName)
+
+        # Avec l'ARN et la version de la Policy, on peut récupérer le contenu de celle-ci.
+        # Celui-ci, si on le converti en JSON, est exactement le même que celui utilisé par la fonction 'addPolicy'
+        return ($this.scalityWebConsole.getPolicyBuckets($policy.Arn, $policy.DefaultVersionId)).Count -eq 1
+
     }
 
     <#
