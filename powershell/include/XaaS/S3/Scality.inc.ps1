@@ -24,6 +24,7 @@ class Scality: APIUtils
 {
 	hidden [string]$s3EndpointUrl
     hidden [PSObject]$credentials
+    hidden [ScalityWebConsole]$scalityWebConsole
 
 	<#
 	-------------------------------------------------------------------------------------
@@ -32,10 +33,13 @@ class Scality: APIUtils
         IN  : $endpointUrl          -> URL du endpoint Scality
         IN  : $credProfileName      -> Nom du profile à utiliser pour les credentials
                                         de connexion.
+        IN  : $scalityWebConsole    -> Objet de la classe ScalityWebConsole permettant d'accéder
+                                        aux informations de la console.
 	#>
-	Scality([string]$endpointUrl, [string]$credProfileName)
+	Scality([string]$endpointUrl, [string]$credProfileName, [ScalityWebConsole]$scalityWebConsole)
 	{
         $this.s3EndpointUrl = $endpointUrl
+        $this.scalityWebConsole = $scalityWebConsole
 
         # On tente de charger le profil pour voir s'il existe
         $this.credentials = Get-AWSCredential -ProfileName $credProfileName
@@ -263,6 +267,30 @@ class Scality: APIUtils
 
     <#
 	-------------------------------------------------------------------------------------
+        BUT : Supprime les anciennes versions d'une policy. On a un max de 5 versions 
+                autorisées par le système et si on y arrive, on ne peux plus modifier 
+                la policy. Il faut donc nettoyer les vielles versions.
+
+        IN  : $policyName       -> ARN de la policy pour laquelle il faut virer les anciennes versions
+	#>
+    hidden [void] cleanOldPolicyVersions([string]$policyArn)
+    {
+        # Recherche de la liste des versions de la policy
+        Get-IAMPolicyVersionList -endpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                                 -PolicyArn $policyArn | ForEach-Object {
+        
+            # Si ce n'est pas la version active, on la supprime
+            if(!($_.IsDefaultVersion))
+            {
+                Remove-IAMPolicyVersion -endpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                                        -PolicyArn $policyArn -VersionId $_.VersionId -Confirm:$false
+            }
+        }
+
+    }
+
+    <#
+	-------------------------------------------------------------------------------------
         BUT : Créé une policy pour un bucket
 
         IN  : $policyName       -> Le nom de la policy à créer
@@ -319,61 +347,149 @@ class Scality: APIUtils
     }
 
 
-    [Array] getBucketsInPolicy([string] $policyName)
-    {
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Ajoute un bucket à une policy. Une nouvelle version de la policy sera ajoutée
+                et on garde la version précédente pour avoir un historique.
+                Si le bucket se trouve déjà dans la policy, on ne fait rien.
         
+        IN  : $policyName   -> Nom de la policy
+        IN  : $bucketName   -> Nom du bucket à ajouter.
 
-        $b = Get-S3BucketPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -BucketName "chaboude-bucket"
+        RET : L'objet représentant la policy modifiée 
 
-        return Get-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | Foreach-Object {
-                    Get-S3BucketPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
-                                        -BucketName $_.BucketName | Where-Object {
-                                            $_.polcicyName -eq $policyName
-                                        }
-        }
-    }
-
-
+	#>
     [PSObject] addBucketToPolicy([string]$policyName, [string]$bucketName)
     {
-        $accessType = "rw"
 
-        $pol = $this.getPolicy($policyName)
+        # Récupération des informations de la policy
+        $policy = $this.getPolicy($policyName)
 
-        $replace = @{
-            bucketName = $bucketName
+        # Avec l'ARN et la version de la Policy, on peut récupérer le contenu de celle-ci.
+        # Celui-ci, si on le converti en JSON, est exactement le même que celui utilisé par la fonction 'addPolicy'
+        $polContent = $this.scalityWebConsole.getPolicyContent($policy.Arn, $policy.DefaultVersionId)
+
+        # Liste des ressources à ajouter 
+        $resourceList = @(("arn:aws:s3:::{0}" -f $bucketName) 
+                            ("arn:aws:s3:::{0}/*" -f $bucketName))
+
+        $updateNeeded = $false
+
+        # On parcours les statements pour trouver celui qui donne les accès
+        ForEach($statement in $polContent.Statement)
+        {
+            # Si on est sur le statement qui donne les droits autre que lister le bucket,
+            if($statement.Action -contains "s3:Get*")
+            {
+                $nbBucketsInList = $statement.Resource.Count
+                # Ajout des éléments en virant ce qui est à double
+                $statement.Resource = (($statement.Resource + $resourceList) | Select-Object -Unique)
+
+                $updateNeeded = ($statement.Resource.count -ne $nbBucketsInList)
+                
+                # On sort de la boucle
+                break
+            }
         }
 
-        $jsonFile = "xaas-s3-policy-{0}.json" -f $accessType
+        # S'il y a besoin de mettre à jour, 
+        if($updateNeeded)
+        {
+            <# On commence par nettoyer les vieilles versions pour ne pas arriver au max de 5 (défini dans S3).
+            Seule la version active va rester. Et on va ensuite modifier la policy, ce qui fait que la version
+            active passera en 'inactive' et on aura l'historique de la version précédente #>
+            $this.cleanOldPolicyVersions($policy.Arn)
 
-        $body = $this.loadJSON($jsonFile, $replace)
-
-        # Ajout de la nouvelle policy
-        $pol = New-IAMPolicyVersion -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
-                                    -PolicyArn $pol.Arn -PolicyDocument (ConvertTo-Json -InputObject $body -Depth 20) `
+            # Ajout de la nouvelle version de policy
+            $dummy = New-IAMPolicyVersion -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                                    -PolicyArn $policy.Arn -PolicyDocument (ConvertTo-Json -InputObject $polContent -Depth 20) `
                                     -SetAsDefault $true
-        
-        return $pol
+            
+            $policy = $this.getPolicy($policyName)
+        }
 
-
-        #$pol = $this.getPolicy($policyName)
-
-        #$ac = Get-IAMPolicyGrantingServiceAccessList -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -Arn $pol.Arn
+        return $policy
 
     }
 
 
     <#
 	-------------------------------------------------------------------------------------
+        BUT : Supprime un bucket d'une policy. Une nouvelle version de la policy sera ajoutée
+                et on garde la version précédente pour avoir un historique.
+                Si le bucket se trouve déjà dans la policy, on ne fait rien.
+        
+        IN  : $policyName   -> Nom de la policy
+        IN  : $bucketName   -> Nom du bucket à supprimer
+
+        RET : L'objet représentant la policy modifiée 
+
+	#>
+    [PSObject] removeBucketFromPolicy([string]$policyName, [string]$bucketName)
+    {
+        # Récupération des informations de la policy
+        $policy = $this.getPolicy($policyName)
+
+        # Avec l'ARN et la version de la Policy, on peut récupérer le contenu de celle-ci.
+        # Celui-ci, si on le converti en JSON, est exactement le même que celui utilisé par la fonction 'addPolicy'
+        $polContent = $this.scalityWebConsole.getPolicyContent($policy.Arn, $policy.DefaultVersionId)
+
+        # Liste des ressources à ajouter 
+        $resourceList = @(("arn:aws:s3:::{0}" -f $bucketName) 
+                            ("arn:aws:s3:::{0}/*" -f $bucketName))
+
+        $updateNeeded = $false
+
+        # On parcours les statements pour trouver celui qui donne les accès
+        ForEach($statement in $polContent.Statement)
+        {
+            # Si on est sur le statement qui donne les droits autre que lister le bucket,
+            if($statement.Action -contains "s3:Get*")
+            {
+                $nbBucketsInList = $statement.Resource.Count
+                # Ajout des éléments en virant ce qui est à double
+                $statement.Resource = $statement.Resource | Where-Object { $resourceList -notcontains $_ }
+
+                $updateNeeded = ($statement.Resource.count -ne $nbBucketsInList)
+                
+                # On sort de la boucle
+                break
+            }
+        }
+
+        # S'il y a besoin de mettre à jour, 
+        if($updateNeeded)
+        {
+            <# On commence par nettoyer les vieilles versions pour ne pas arriver au max de 5 (défini dans S3).
+            Seule la version active va rester. Et on va ensuite modifier la policy, ce qui fait que la version
+            active passera en 'inactive' et on aura l'historique de la version précédente #>
+            $this.cleanOldPolicyVersions($policy.Arn)
+
+            # Ajout de la nouvelle version de policy
+            $dummy = New-IAMPolicyVersion -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                                    -PolicyArn $policy.Arn -PolicyDocument (ConvertTo-Json -InputObject $polContent -Depth 20) `
+                                    -SetAsDefault $true
+            
+            $policy = $this.getPolicy($policyName)
+        }
+
+        return $policy
+    }
+
+    <#
+	-------------------------------------------------------------------------------------
         BUT : Ajoute un utilisateur à une policy
         
-        IN  : $username     -> Nom d'utilisateur
-        IN  : $policyArn    -> ARN de la policy
+        IN  : $policyArn    -> Nom de la policy
+        IN  : $username     -> Nom d'utilisateur        
 	#>
-    [void] addUserToPolicy([string]$username, [string]$policyArn)
+    [void] addUserToPolicy([string]$policyName, [string]$username)
     {
+        # Récupération des informations de la policy
+        $policy = $this.getPolicy($policyName)
+
         # Documentation : https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Register-IAMUserPolicy.html
-        Register-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -UserName $username -PolicyArn $policyArn -Credential $this.credentials
+        Register-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -UserName $username -PolicyArn $policy.Arn -Credential $this.credentials
     }
 
 
@@ -381,13 +497,17 @@ class Scality: APIUtils
 	-------------------------------------------------------------------------------------
         BUT : Supprime un utilisateur d'une policy
         
-        IN  : $username     -> Nom d'utilisateur
-        IN  : $policyArn    -> ARN de la policy
+        IN  : $policyArn    -> Nom de la policy
+        IN  : $username     -> Nom d'utilisateur    
 	#>
-    [void] removeUserFromPolicy([string]$username, [string]$policyArn)
+    [void] removeUserFromPolicy([string]$policyName, [string]$username)
     {
+
+        # Récupération des informations de la policy
+        $policy = $this.getPolicy($policyName)
+
         # Documentation : https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Unregister-IAMUserPolicy.html
-        Unregister-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -UserName $username -PolicyArn $policyArn -Credential $this.credentials
+        Unregister-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -UserName $username -PolicyArn $policy.Arn -Credential $this.credentials
     }    
 
 
