@@ -43,6 +43,7 @@ class ScalityWebConsole: RESTAPI
 
 
     <#
+        -------------------------------------------------------------------------------------
         BUT : Gère les erreurs s'il y en a. Si on a une erreur dans la requête passée en paramètre, on propage une exception
 
         IN  : $requestResult    -> Résultat d'une requête.
@@ -57,12 +58,13 @@ class ScalityWebConsole: RESTAPI
 
 
     <#
+        -------------------------------------------------------------------------------------
         BUT : Renvoie les noms des buckets associés à la policy passée.
 
         IN  : $policyArn        -> ARN de la Policy dont on veut les buckets
         IN  : $policyVersion    -> Version de la policy, ex: "v3" (ne pas oublier le "v" avant)
     #>
-    [PSObject]getPolicyBuckets([string]$policyArn, [string]$policyVersion)
+    [PSObject]getPolicyContent([string]$policyArn, [string]$policyVersion)
     {
         $uri = "https://{0}/_/console/iam/getpolicyversion" -f $this.server
 
@@ -75,7 +77,21 @@ class ScalityWebConsole: RESTAPI
         $this.handleError($result)
 
         # On décode le résultat pour avoir le JSON décrivant la policy, et on transforme celui-ci en objet
-        $policy = [System.Web.HttpUtility]::UrlDecode($result.policyVersion.Document) | ConvertFrom-Json
+        return [System.Web.HttpUtility]::UrlDecode($result.policyVersion.Document) | ConvertFrom-Json
+    }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie les noms des buckets associés à la policy passée.
+
+        IN  : $policyArn        -> ARN de la Policy dont on veut les buckets
+        IN  : $policyVersion    -> Version de la policy, ex: "v3" (ne pas oublier le "v" avant)
+    #>
+    [PSObject]getPolicyBuckets([string]$policyArn, [string]$policyVersion)
+    {
+
+        $policy = $this.getPolicyContent($policyArn, $policyVersion)
 
         $bucketList = @()
 
