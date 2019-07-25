@@ -15,7 +15,8 @@
 #>
 class RESTAPI
 {
-    hidden [string]$server
+	hidden [string]$server
+	hidden [System.Collections.Hashtable]$headers
 
     <#
 	-------------------------------------------------------------------------------------
@@ -25,7 +26,8 @@ class RESTAPI
 	#>
     RESTAPI([string] $server)
     {
-        $this.server = $server
+		$this.server = $server
+		$this.headers = @{}
     }
 
 

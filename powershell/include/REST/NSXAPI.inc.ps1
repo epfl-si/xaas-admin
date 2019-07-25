@@ -27,8 +27,7 @@ class NSXAPI: RESTAPICurl
 	#>
 	NSXAPI([string] $server, [string] $username, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
-        $this.headers = @{}
-		$this.headers.Add('Accept', 'application/json')
+        $this.headers.Add('Accept', 'application/json')
         $this.headers.Add('Content-Type', 'application/json')
         
         $this.authInfos = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$password)))
