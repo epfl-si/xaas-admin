@@ -113,7 +113,7 @@ class RESTAPICurl: RESTAPI
 
 		RET : Retour de l'appel
 	#>
-	hidden [Object] callAPI([string]$uri, [string]$method, [PSObject]$body)
+	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
 
 		$args = "--insecure -s --request {0}" -f $method.ToUpper()

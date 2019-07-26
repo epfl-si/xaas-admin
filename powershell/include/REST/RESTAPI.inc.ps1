@@ -46,14 +46,15 @@ class RESTAPI
 		REMARQUE: Si on a un retour autre qu'un code 200 lors de l'appel à Invoke-RestMethod, 
 					cela fait qu'on passe directement dans le bloc "catch"
 	#>
-	hidden [Object] callAPI([string]$uri, [string]$method, [PSObject]$body)
+	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
 		try
 		{
 			if($null -ne $body)
 			{
 				# On converti l'objet du Body en JSON pour faire la requête
-				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
+				$json = ConvertTo-Json -InputObject $body -Depth 20
+				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers -Body $json
 			}
 			else 
 			{
