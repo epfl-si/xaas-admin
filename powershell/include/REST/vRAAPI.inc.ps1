@@ -318,7 +318,7 @@ class vRAAPI: RESTAPI
 		}
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Put", $body)
+		$res = $this.callAPI($uri, "Put", $bg)
 		
 		# On recherche l'objet mis à jour
 		return $this.getBG($bg.name)
@@ -347,7 +347,7 @@ class vRAAPI: RESTAPI
 		
 		$bg.extensionData.entries = $entries
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Put", $body)
+		$res = $this.callAPI($uri, "Put", $bg)
 
 		# On recherche l'objet mis à jour
 		return $this.getBG($bg.name)
@@ -679,7 +679,7 @@ class vRAAPI: RESTAPI
 		}
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Put", $body)
+		$res = $this.callAPI($uri, "Put", $ent)
 		
 		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
 		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
