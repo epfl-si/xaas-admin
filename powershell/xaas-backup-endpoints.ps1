@@ -1,6 +1,10 @@
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
                   opérations en rapport avec le service de Backup en tant que XaaS.
+                  Pour accéder à vSphere, on utilise 2 manières de faire: 
+                  - via les PowerCLI
+                  - via la classe vSphereAPI qui permet de faire des opérations sur les tags
+                    à l'aide de commandes REST.
 
 	DATE 		: Juin 2019
 	AUTEUR 	: Lucien Chaboudez
@@ -46,7 +50,8 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "NetBackupAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vSphereAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "Backup", "NetBackupAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
 loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
@@ -70,7 +75,6 @@ $ALL_ACTIONS = @(
     $ACTION_RESTORE_BACKUP
 )
 
-$NBU_TAG_CATEGORY = "NBU"
 $NBU_TAG_PREFIX = "NBU-"
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
@@ -169,53 +173,6 @@ function checkParam
 }
 
 
-<#
--------------------------------------------------------------------------------------
-    BUT: Retourne le tag de backup pour la VM dont le nom est passé en paramètre 
-
-    IN  : $vmName       -> Nom de la VM dont on veut le tag de backup
-    IN  : $vSphere      -> Objet qui représente la connexion à vSphere
-
-    RET :   Le tag de backup
-            $null si n'existe pas
-#>
-function getVMBackupTag
-{
-    param([string]$vmName, [PSObject]$vSphere)
-
-    $tagList = Get-VM -Server $vSphere -Name $vmName | Get-TagAssignment -Server $vSphere | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)}
-
-    # Si aucun tag dans la liste
-    if($null -ne $tagList)
-    {
-        # Le tag étant au format <Category>/<tagName>, on extrait les informations.
-        # NOTE: on ne renvoie que le premier tag de la liste. Pas d'erreur/warning si plusieurs tags sont définis (à priori, ce n'est pas possible)
-        $tagCategory, $tag = ([string]($tagList[0].tag)).split("/")
-
-        return $tag
-    }
-
-    return $null
-}
-
-
-<#
--------------------------------------------------------------------------------------
-    BUT: Supprime le tag de backup de la VM donnée
-
-    IN  : $vmName       -> Nom de la VM dont on veut le tag de backup
-    IN  : $vSphere      -> Objet qui représente la connexion à vSphere
-
-#>
-function deleteVMBackupTag
-{
-    param([string]$vmName, [PSObject]$vSphere)
-
-    # Recherche du tag avec le filtre puis suppression de celui-ci 
-    Get-VM -Server $vSphere -Name $vmName | Get-TagAssignment -Server $vSphere | Where-Object { $_.Tag -like ("{0}/{1}*" -f $NBU_TAG_CATEGORY, $NBU_TAG_PREFIX)} | Remove-TagAssignment -Server $vSphere -Confirm:$false
-}
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -254,7 +211,7 @@ try
     $logHistory = [LogHistory]::new('xaas-backup', (Join-Path $PSScriptRoot "logs"), 30)
     
     # Chargement des modules PowerCLI pour pouvoir accéder à vSphere.
-    loadPowerCliModules
+    loadPowerCliModules -displayOutput $false
 
     # Pour éviter que le script parte en erreur si le certificat vCenter ne correspond pas au nom DNS primaire. On met le résultat dans une variable
     # bidon sinon c'est affiché à l'écran.
@@ -269,6 +226,10 @@ try
     # On passe par le paramètre -credential car sinon, on a des erreurs avec Get-AssignmentTag et Get-Tag, ou peut-être tout simplement avec les commandes dans
     # lesquelles on faite un | pour passer à la suivante.
     $connectedvCenter = Connect-VIServer -Server $global:XAAS_BACKUP_VCENTER_SERVER_LIST[$targetEnv] -credential $credObject
+
+    <# Connexion à l'API Rest de vSphere. On a besoin de cette connxion aussi (en plus de celle du dessus) parce que les opérations sur les tags ne fonctionnent
+    pas via les CMDLet Get-TagAssignement et autre...  #>
+    $vsphereApi = [vSphereAPI]::new($global:XAAS_BACKUP_VCENTER_SERVER_LIST[$targetEnv], $global:XAAS_BACKUP_VCENTER_USER_LIST[$targetEnv], $global:XAAS_BACKUP_VCENTER_PASSWORD_LIST[$targetEnv])
 
     # Connexion à l'API REST de NetBackup
     $nbu = [NetBackupAPI]::new($global:XAAS_BACKUP_SERVER_LIST[$targetEnv], $global:XAAS_BACKUP_USER_LIST[$targetEnv], $global:XAAS_BACKUP_PASSWORD_LIST[$targetEnv])   
@@ -288,14 +249,16 @@ try
         # Récupération du tag d'une VM
         $ACTION_GET_BACKUP_TAG {
 
+            $vm = Get-VM -Server $vSphere -Name $vmName
+
             # Récupération du tag de backup existant
-            $tag = getVMBackupTag -vmName $vmName -vSphere $connectedvCenter
+            $tag = $vSphereApi.getVMTags($vm) | Where-Object { $_.Name -like ("{0}*" -f $NBU_TAG_PREFIX)}
             
             # Si un tag est trouvé,
             if($null -ne $tag)
             {
                 # Génération du résultat
-                $output.results += $tag
+                $output.results += $tag.Name
             }
             
         }
@@ -304,26 +267,38 @@ try
         # Initialisation du tag d'une VM
         $ACTION_SET_BACKUP_TAG {
 
+            $vm = Get-VM -Server $vSphere -Name $vmName
+
+            # Recherche du tag de backup existant sur la VM
+            $tag = $vSphereApi.getVMTags($vm) | Where-Object { $_.Name -like ("{0}*" -f $NBU_TAG_PREFIX)}
+
+            # S'il y a un tag de backup,
+            if($null -ne $tag)
+            {
+                # On supprime le tag
+                $vsphereApi.detachVMTag($vm, $tag.id)
+            }
+
             # Si on doit ajouter un tag
             if($backupTag -ne "")
             {
-                # Récupération du tag de backup existant
-                $tag = getVMBackupTag -vmName $vmName -vSphere $connectedvCenter
-                
-                # Si un tag est trouvé,
-                if($null -ne $tag)
+                # Recherche du tag de backup à ajouter 
+                $tag = $vsphereApi.getTag($backupTag)
+
+                # Si le tag donné n'existe pas.
+                if($null -eq $tag)
                 {
-                    # Suppression du tag existant
-                    deleteVMBackupTag -vmName $vmName
+                    $output.error = ("Tag '{0}' doesn't exists in vSphere" -f $backupTag)
                 }
+                else # Le tag existe dans l'infra
+                {
+                    # Ajout du tag
+                    $vsphereApi.attachVMTag($vm, $tag.id)    
+                }
+
                 
-                # Ajout du tag
-                $dummy = Get-VM -Server $connectedvCenter -Name $vmName | New-TagAssignment -Server $connectedvCenter -Tag $backupTag -Confirm:$false
             }
-            else # On doit supprimer le tag existant
-            {
-                deleteVMBackupTag -vmName $vmName -vSphere $connectedvCenter
-            }
+
         }
 
 
@@ -400,3 +375,6 @@ Disconnect-VIServer  -Server $connectedvCenter -Confirm:$false
 
 # Déconnexion de l'API de backup
 $nbu.disconnect()
+
+# Déconnexion de l'API vSphere
+$vsphereApi.disconnect()

@@ -1,0 +1,7 @@
+{
+    "object_id": {
+      "type": "{{objectType}}",
+      "id": "{{objectId}}"
+    }
+  }
+  

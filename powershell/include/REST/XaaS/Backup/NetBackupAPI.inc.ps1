@@ -52,10 +52,10 @@ class NetBackupAPI: RESTAPICurl
 		$this.headers.Add('Accept', 'application/vnd.netbackup+json;version=2.0')
 		$this.headers.Add('Content-Type', 'application/vnd.netbackup+json;version=1.0')
 
-		$replace = @{username = $user
-						 password = $password}
-
-		$body = $this.loadJSON("xaas-backup-user-credentials.json", $replace)
+		# On n'utilise pas de fichier JSON pour faire cette requête car la structure est relativement simple. De ce fait, on peut
+		# se permettre de la "coder" directement.
+		$body = @{username = $user
+					password = $password}
 
 		$uri = "https://{0}/login" -f $this.server
 
