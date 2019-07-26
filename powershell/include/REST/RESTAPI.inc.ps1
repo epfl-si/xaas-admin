@@ -38,20 +38,22 @@ class RESTAPI
 
 		IN  : $uri		-> URL à appeler
 		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
-		IN  : $json 	-> Code JSON
+		IN  : $body 	-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
+						 	Si $null, on ne passe rien.
 
 		RET : Retour de l'appel
 
 		REMARQUE: Si on a un retour autre qu'un code 200 lors de l'appel à Invoke-RestMethod, 
 					cela fait qu'on passe directement dans le bloc "catch"
 	#>
-	hidden [Object] callAPI([string]$uri, [string]$method, [string]$json)
+	hidden [Object] callAPI([string]$uri, [string]$method, [PSObject]$body)
 	{
 		try
 		{
-			if($json -ne "")
+			if($null -ne $body)
 			{
-				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers -Body $json
+				# On converti l'objet du Body en JSON pour faire la requête
+				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)
 			}
 			else 
 			{

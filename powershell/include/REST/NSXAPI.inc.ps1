@@ -58,7 +58,7 @@ class NSXAPI: RESTAPICurl
     {
         $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $id
 
-        return $this.callAPI($uri, "Get", "")
+        return $this.callAPI($uri, "Get", $null)
         
     }
 
@@ -79,7 +79,7 @@ class NSXAPI: RESTAPICurl
     {
         $uri = "https://{0}/api/v1/ns-groups/?populate_references=false" -f $this.server
 
-        $id =  ($this.callAPI($uri, "Get", "").results | Where-Object {$_.display_name -eq $name}).id
+        $id =  ($this.callAPI($uri, "Get", $null).results | Where-Object {$_.display_name -eq $name}).id
      
         if($null -eq $id)
         {
@@ -113,7 +113,7 @@ class NSXAPI: RESTAPICurl
         $body = $this.loadJSON("nsx-nsgroup.json", $replace)
         
 		# Création du NS Group
-        $res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))       
+        $dummy = $this.callAPI($uri, "Post", $body)
         
         # Retour du NS Group en le cherchant par son nom
         return $this.getNSGroupByName($name)
@@ -155,7 +155,7 @@ class NSXAPI: RESTAPICurl
 		$uri = "https://{0}/api/v1/firewall/sections?filter_type={1}&page_size=1000&search_invalid_references=false&type={2}" -f $this.server, $filterType, $type
 
         # Récupération de la liste
-		$sectionList = $this.callAPI($uri, "GET", "").results
+		$sectionList = $this.callAPI($uri, "GET", $null).results
         
         # Retour de celui-ci
         return $sectionList | Where-Object {$_.display_name -eq $name }
@@ -187,7 +187,7 @@ class NSXAPI: RESTAPICurl
         $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $id
 
         # Création du NSGroup
-		return $this.callAPI($uri, "GET", "")
+		return $this.callAPI($uri, "GET", $null)
     }
 
 
@@ -220,7 +220,7 @@ class NSXAPI: RESTAPICurl
         $body = $this.loadJSON("nsx-firewall-section.json", $replace)
         
 		# Création de la section de firewall
-        return $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))       
+        return $this.callAPI($uri, "Post", $body)
     }
 
 
@@ -236,7 +236,7 @@ class NSXAPI: RESTAPICurl
         $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $id
         
 		# Création de la section de firewall
-        $res = $this.callAPI($uri, "Delete", "")       
+        $dummy = $this.callAPI($uri, "Delete", $null)       
         
     }
 
@@ -275,7 +275,7 @@ class NSXAPI: RESTAPICurl
         $body = $this.loadJSON("nsx-firewall-section-lock.json", $replace)
 
         # Verrouillage de la section
-        return $this.callAPI($uri, "POST", (ConvertTo-Json -InputObject $body -Depth 20))   
+        return $this.callAPI($uri, "POST", $body)
     }
 
 
@@ -300,7 +300,7 @@ class NSXAPI: RESTAPICurl
     {
         $uri = "https://{0}/api/v1/firewall/sections/{1}/rules" -f $this.server, $firewallSectionId
 
-        return $this.callAPI($uri, "GET", "").results
+        return $this.callAPI($uri, "GET", $null).results
     }
 
     <#
@@ -327,7 +327,7 @@ class NSXAPI: RESTAPICurl
         $body = $this.loadJSON("nsx-firewall-section-rules.json", $replace)
 
         # Création des règles
-        $res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))       
+        $dummy = $this.callAPI($uri, "Post", $body)
     }
 
 }

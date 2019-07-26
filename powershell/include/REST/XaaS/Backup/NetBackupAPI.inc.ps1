@@ -64,7 +64,7 @@ class NetBackupAPI: RESTAPICurl
 
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-		$this.token = ($this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))).token
+		$this.token = ($this.callAPI($uri, "Post", $body)).token
 
 		# Mise à jour des headers
 		$this.headers.Add('Authorization', ("{0}" -f $this.token))
@@ -81,7 +81,7 @@ class NetBackupAPI: RESTAPICurl
 	{
 		$uri = "https://{0}/logout" -f $this.server
 
-		$this.callAPI($uri, "Post", "")
+		$this.callAPI($uri, "Post", $null)
     }
     
 
@@ -126,7 +126,7 @@ class NetBackupAPI: RESTAPICurl
 			$uri = "{0} and scheduleType eq '{1}'" -f $uri, $scheduleType
 		}
 
-		return ($this.callAPI($uri, "Get", "")).data
+		return ($this.callAPI($uri, "Get", $null)).data
 	}
 	
 
@@ -152,7 +152,7 @@ class NetBackupAPI: RESTAPICurl
 		$body = $this.loadJSON("xaas-backup-restore-vm.json", $replace)
 
 		# Appel de l'API 
-		return ($this.callAPI($uri, "POST", (ConvertTo-Json -InputObject $body -Depth 20))).data
+		return ($this.callAPI($uri, "POST", $body)).data
 
 	}
 
