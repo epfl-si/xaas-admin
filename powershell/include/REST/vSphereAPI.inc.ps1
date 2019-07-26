@@ -44,10 +44,10 @@ class vSphereAPI: RESTAPICurl
 		$this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
 
-        $authInfos = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $userAtDomain, $password)))
+		$authInfos = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $userAtDomain, $password)))
 
-        # Mise à jour des headers
-        $this.headers.Add('Authorization', ("Basic {0}" -f $authInfos))
+		# Mise à jour des headers
+		$this.headers.Add('Authorization', ("Basic {0}" -f $authInfos))
 
 		$uri = "https://{0}/rest/com/vmware/cis/session" -f $this.server
 
@@ -119,10 +119,10 @@ class vSphereAPI: RESTAPICurl
 
 		$replace = @{tagId = $tagId
 					objectType = "VirtualMachine"
-                    objectId = $this.extractVMId($vm.id)}
+					objectId = $this.extractVMId($vm.id)}
 
 		$body = $this.loadJSON("vsphere-tag-operation.json", $replace)
-		
+
 		$this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))
 	}
 
@@ -164,12 +164,12 @@ class vSphereAPI: RESTAPICurl
 	#>
     [Array] getVMTags([PSObject] $vm)
     {
-        $uri = "https://{0}/rest/com/vmware/cis/tagging/tag-association?~action=list-attached-tags" -f $this.server
+		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag-association?~action=list-attached-tags" -f $this.server
 
-        $replace = @{objectType = "VirtualMachine"
-                    objectId = $this.extractVMId($vm.id)}
+		$replace = @{objectType = "VirtualMachine"
+					objectId = $this.extractVMId($vm.id)}
 
-        $body = $this.loadJSON("vsphere-object-infos.json", $replace)
+		$body = $this.loadJSON("vsphere-object-infos.json", $replace)
 
 		$tagList = @()
 
