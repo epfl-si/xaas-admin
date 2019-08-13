@@ -38,19 +38,22 @@ class RESTAPI
 
 		IN  : $uri		-> URL à appeler
 		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
-		IN  : $json 	-> Code JSON
+		IN  : $body 	-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
+						 	Si $null, on ne passe rien.
 
 		RET : Retour de l'appel
 
 		REMARQUE: Si on a un retour autre qu'un code 200 lors de l'appel à Invoke-RestMethod, 
 					cela fait qu'on passe directement dans le bloc "catch"
 	#>
-	hidden [Object] callAPI([string]$uri, [string]$method, [string]$json)
+	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
 		try
 		{
-			if($json -ne "")
+			if($null -ne $body)
 			{
+				# On converti l'objet du Body en JSON pour faire la requête
+				$json = ConvertTo-Json -InputObject $body -Depth 20
 				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers -Body $json
 			}
 			else 
@@ -111,7 +114,7 @@ class RESTAPI
 
 		RET : Objet créé depuis le code JSON
 	#>
-	hidden [Object] loadJSON([string] $file, [System.Collections.IDictionary] $valToReplace)
+	hidden [Object] createObjectFromJSON([string] $file, [System.Collections.IDictionary] $valToReplace)
 	{
 		# Chemin complet jusqu'au fichier à charger
 		$filepath = (Join-Path $global:JSON_TEMPLATE_FOLDER $file)

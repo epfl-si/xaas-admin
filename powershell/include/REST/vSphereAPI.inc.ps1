@@ -56,7 +56,7 @@ class vSphereAPI: RESTAPICurl
 
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-		$this.apiSessionId = ($this.callAPI($uri, "Post", "")).value
+		$this.apiSessionId = ($this.callAPI($uri, "Post", $null)).value
 
 		# Mise à jour des headers
 		$this.headers.Add('vmware-api-session-id', $this.apiSessionId)
@@ -73,7 +73,7 @@ class vSphereAPI: RESTAPICurl
 	{
 		$uri = "https://{0}/rest/com/vmware/cis/session" -f $this.server
 
-		$this.callAPI($uri, "Delete", "")
+		$this.callAPI($uri, "Delete", $null)
 	}    
 
 
@@ -101,7 +101,7 @@ class vSphereAPI: RESTAPICurl
 	hidden [PSObject] getTagById([string] $tagId)
 	{
 		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag/id:{1}" -f $this.server, $tagId
-		return ($this.callAPI($uri, "Get", "")).value
+		return ($this.callAPI($uri, "Get", $null)).value
 	}
 
 
@@ -121,9 +121,9 @@ class vSphereAPI: RESTAPICurl
 					objectType = "VirtualMachine"
 					objectId = $this.extractVMId($vm.id)}
 
-		$body = $this.loadJSON("vsphere-tag-operation.json", $replace)
+		$body = $this.createObjectFromJSON("vsphere-tag-operation.json", $replace)
 
-		$this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))
+		$res = $this.callAPI($uri, "Post", $body)
 	}
 
 
@@ -169,13 +169,13 @@ class vSphereAPI: RESTAPICurl
 		$replace = @{objectType = "VirtualMachine"
 					objectId = $this.extractVMId($vm.id)}
 
-		$body = $this.loadJSON("vsphere-object-infos.json", $replace)
+		$body = $this.createObjectFromJSON("vsphere-object-infos.json", $replace)
 
 		$tagList = @()
 
 		# On récupère la liste des tags mais on n'a que leurs ID... on boucle donc dessus pour récupérer les informations
 		# de chaque tag et l'ajouter à la liste que l'on va ensuite renvoyer
-		$this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20)).value | ForEach-Object {
+		$this.callAPI($uri, "Post", $body).value | ForEach-Object {
 
 			$tagList += $this.getTagById($_)
 		}
@@ -192,7 +192,7 @@ class vSphereAPI: RESTAPICurl
 	{
 		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag" -f $this.server
 
-		return $this.callAPI($uri, "Get", "").value
+		return $this.callAPI($uri, "Get", $null).value
 	}
 
 	
