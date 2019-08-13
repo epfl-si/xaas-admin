@@ -35,9 +35,12 @@
         -backupTag          -> Tag de backup à affecter à une VM. A passer uniquement si $action == $ACTION_SET_BACKUP_TAG
                                 Si on désire désactiver le backup pour une VM, on doit passer un tag vide.
         -restoreBackupId    -> ID du backup à restaurer. A passer uniquement si $action == $ACTION_RESTORE_BACKUP
+                                On peut aussi passer le timestamp (ci-dessous)
+        -restoreTimestamp   -> Timestamp du backup à restaurer. A passer uniquement si $action == $ACTION_RESTORE_BACKUP
+                                On peut aussi passer l'id du backup (ci-dessus)
 
 #>
-param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId)
+param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp)
 
 
 # Inclusion des fichiers nécessaires (génériques)
@@ -130,7 +133,7 @@ function printUsage
 Possibles usages: `n `
 {0} -targetEnv {1} -action {2}|{3} -vmName <vmName>`n `
 {0} -targetEnv {1} -action {4} -vmName <vmName> -backupTag <backupTag> `n `
-{0} -targetEnv {1} -action {5} -vmName <vmName> -restoreBackupId <backupId>" -f `
+{0} -targetEnv {1} -action {5} -vmName <vmName> (-restoreBackupId <backupId>| -restoreTimestamp <timestamp>)" -f `
                         $scriptName, ` # 0 
                         $envStr, ` # 1
                         $ACTION_GET_BACKUP_TAG, ` # 2
@@ -151,7 +154,7 @@ Possibles usages: `n `
 -------------------------------------------------------------------------------------
     BUT: Défini si un paramètre est valide. Si ce n'est pas le cas, on affiche l'usage et on quitte
 
-    IN  : $value            -> la valeur du paramètre
+    IN  : $value            -> la valeur du paramètre 
     IN  : $allowEmpty       -> $true|$false pour dire si le paramètre peut être vide
     IN  : $allowedValues    -> tableau avec la liste des valeurs autorisées pour le paramètre
                                 Si tableau vide passé, on ne prend pas en compte.   
@@ -170,6 +173,44 @@ function checkParam
         printUsage -errorDetails $errorDetails
         exit 1
     }
+}
+
+<#
+-------------------------------------------------------------------------------------
+    BUT: Défini si un groupe de paramètre est valide. Si ce n'est pas le cas, on affiche l'usage et on quitte
+         Par défaut, on admet qu'au moins une des valeurs doit être correcte
+
+    IN  : $valueList        -> tableau avec les valeurs possibles
+    IN  : $allowedValues    -> tableau avec la liste des valeurs autorisées pour le paramètre
+                                Si tableau vide passé, on ne prend pas en compte.   
+    IN  : $errorDetails     -> détails de l'erreur à afficher dans le cas où c'est une erreur    
+#>
+function checkParamGroup
+{
+    param([Array]$valueList, [Array]$allowedValues, [string]$errorDetails)
+
+    $ok = $false
+
+    ForEach($value in $valueList)
+    {
+        # Si on a une valeur et que celle-ci est autorisée (si liste définie)
+        if($value -ne "" `
+            -and `
+            # Si on a une liste de valeurs autorisées et que ce n'est pas dans celle-ci
+            ( (($allowedValues.Count -gt 0) -and ($allowedValues -notcontains $value)) -or $allowedValues.Count -eq 0 )  ) 
+        {
+            $ok = $true
+            break
+        }
+    }
+
+    # Si problème 
+    if(!($ok))
+    {
+        printUsage -errorDetails $errorDetails
+        exit 1
+    }
+
 }
 
 
@@ -196,7 +237,7 @@ try
 
     if($action -eq $ACTION_RESTORE_BACKUP)
     {
-        checkParam -value $restoreBackupId -allowEmpty $false -allowedValues @() -errorDetails "Incorrect value for '-restoreBackupId'"
+        checkParamGroup -valueList @($restoreBackupId, $restoreTimestamp) -allowedValues @() -errorDetails "Incorrect value for '-restoreBackupId' or '-restoreTimestamp'"
     }
     
 
@@ -240,6 +281,7 @@ try
     $logHistory.addLine("-vmName = {0}" -f $vmName)
     $logHistory.addLine("-backupTag = {0}" -f $backupTag)
     $logHistory.addLine("-restoreBackupId = {0}" -f $restoreBackupId)
+    $logHistory.addLine("-restoreTimestamp = {0}" -f $restoreTimestamp)
 
     # En fonction de l'action demandée
     switch ($action)
@@ -310,7 +352,7 @@ try
             <# Recherche de la liste des backup de la VM durant la dernière année et on filtre :
                 - Ceux qui se sont bien terminés 
                 - Ceux qui ne sont pas encore expirés  #>
-            $nbu.getVMBackupList($vmName, "FULL", 365) | Where-Object {
+            $nbu.getVMBackupList($vmName) | Where-Object {
                 $_.attributes.backupStatus -eq 0 `
                 -and `
                 (Get-Date) -lt [DateTime]($_.attributes.expiration -replace "Z", "")} | ForEach-Object {
@@ -332,7 +374,7 @@ try
         # Lancement de la restauration d'un backup
         $ACTION_RESTORE_BACKUP {
 
-            $res = $nbu.restoreVM($vmName, $restoreBackupId)
+            $res = $nbu.restoreVM($vmName, $restoreBackupId, $restoreTimestamp)
 
             # Génération de quelques infos pour le job de restore 
             $infos = @{

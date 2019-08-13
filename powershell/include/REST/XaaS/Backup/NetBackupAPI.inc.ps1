@@ -9,6 +9,7 @@
 
 	De la documentation sur l'API peut être trouvée ici :
 	https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/
+	https://sort.veritas.com/documents/doc_details/nbu/8.2/Windows%20and%20UNIX/Documentation/
 
 	Des exemples de code peuvent être trouvés ici :
 	https://github.com/VeritasOS/netbackup-api-code-samples
@@ -28,6 +29,8 @@
 
 # Nombre d'éléments max supportés par NetBackup pour la pagination 
 $global:NETBACKUP_API_PAGE_LIMIT_MAX = 99
+$global:NETBACKUP_BACKUP_SEARCH_DAYS_AGO = 365
+$global:NETBACKUP_SCHEDULE_FULL = "FULL"
 
 class NetBackupAPI: RESTAPICurl
 {
@@ -42,6 +45,8 @@ class NetBackupAPI: RESTAPICurl
 		IN  : $user         	-> Nom d'utilisateur 
 		IN  : $password			-> Mot de passe
 
+		Documentation:
+		https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/#_gateway-login_post
 	#>
 	NetBackupAPI([string] $server, [string] $user, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
@@ -54,7 +59,7 @@ class NetBackupAPI: RESTAPICurl
 
 		# On n'utilise pas de fichier JSON pour faire cette requête car la structure est relativement simple. De ce fait, on peut
 		# se permettre de la "coder" directement.
-		$body = @{username = $user
+		$body = @{userName = $user
 					password = $password}
 
 		$uri = "https://{0}/login" -f $this.server
@@ -66,11 +71,52 @@ class NetBackupAPI: RESTAPICurl
 
 		$this.token = ($this.callAPI($uri, "Post", $body)).token
 
+		if($this.token -eq "")
+		{
+			Throw "Error recovering NetBackup API Token!"
+		}
+
 		# Mise à jour des headers
 		$this.headers.Add('Authorization', ("{0}" -f $this.token))
 
     }
 
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Effectue un appel à l'API REST via Curl. La méthode parente a été surchargée afin
+				de pouvoir gérer de manière spécifique les messages d'erreur renvoyés par l'API
+
+		IN  : $uri		-> URL à appeler
+		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
+		IN  : $body 	-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
+						 	Si $null, on ne passe rien.
+
+		RET : Retour de l'appel
+	#>
+	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
+	{
+		# Appel de la fonction parente
+		$res = ([RESTAPICurl]$this).callAPI($uri, $method, $body)
+
+		# Si on a un messgae d'erreur
+		if([bool]($res.PSobject.Properties.name -match "errorMessage") -and ($res.errorMessage -ne ""))
+		{
+			# Création de l'erreur de base 
+			$err = "{0}::{1}(): {2}" -f $this.gettype().Name, (Get-PSCallStack)[0].FunctionName, $res.errorMessage
+
+			# Ajout des détails s'ils existent 
+			$res.attributeErrors.PSObject.Properties | ForEach-Object {
+			
+				$err = "{0}`n{1}: {2}" -f $err, $_.Name, $_.Value
+			}
+			
+
+			Throw $err
+		}
+
+		return $res
+	}
 	
     <#
 		-------------------------------------------------------------------------------------
@@ -90,14 +136,6 @@ class NetBackupAPI: RESTAPICurl
 		BUT : Renvoie la liste des $global:NETBACKUP_API_PAGE_LIMIT_MAX derniers backups pour une VM.
 		
 		IN  : $vmName		-> le nom de la VM
-		IN  : $scheduleType	-> Le type de schedule (peut être une chaîne vide):
-								FULL 
-								DIFFERENTIAL_INCREMENTAL 
-								USER_BACKUP 
-								USER_ARCHIVE 
-								CUMULATIVE_INCREMENTAL
-		IN  : $nbDaysAgo	-> (optionnel) Nombre de jour en arrière dans le temps pour la recherche de backups
-							   	Si pas passé, on prend 1 année.
 
 		REMARQUE: Seuls les $global:NETBACKUP_API_PAGE_LIMIT_MAX derniers backups de la VM seront renvoyés.
 					Dans le cas où il faudrait plus d'infos, il faudra faire plusieurs appels à l'API en 
@@ -106,25 +144,19 @@ class NetBackupAPI: RESTAPICurl
 		Documentation:
 		https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/#_catalog-catalog_images_get	
     #>
-    [Array] getVMBackupList([string]$vmName, [string]$scheduleType, [int]$nbDaysAgo)
+    [Array] getVMBackupList([string]$vmName)
     {
-
-		if($nbDaysAgo -eq "")
-		{
-			$nbDaysAgo = 365
-		}
 
 		# Calcul de la date dans le passé en soustrayant les jours. Et on met celle-ci au format ISO8601 comme demandé par 
 		# NetBackup (et on ajoute un Z à la fin sinon ça ne passe pas...)
-		$dateAgo = "{0}Z" -f (get-date -date ((GET-Date).AddDays(-$nbDaysAgo)) -format "s")
+		$dateAgo = "{0}Z" -f (get-date -date ((GET-Date).AddDays(-$global:NETBACKUP_BACKUP_SEARCH_DAYS_AGO)) -format "s")
 
-		$uri = "https://{0}/catalog/images?page[offset]=0&page[limit]={2}&filter=clientName eq '{1}' and backupTime ge '{3}'" -f `
-				$this.server, $vmName, $global:NETBACKUP_API_PAGE_LIMIT_MAX, $dateAgo
+
+		$pagination =  [System.Web.HttpUtility]::UrlEncode("page[offset]=0&page[limit]={0}&" -f $global:NETBACKUP_API_PAGE_LIMIT_MAX)
+
+		$uri = "https://{0}/catalog/images?filter=clientName eq '{1}' and backupTime ge {2}&{3}" -f $this.server, $vmName, $dateAgo, $pagination
+
 		
-		if($scheduleType -ne "")
-		{
-			$uri = "{0} and scheduleType eq '{1}'" -f $uri, $scheduleType
-		}
 
 		return ($this.callAPI($uri, "Get", $null)).data
 	}
@@ -132,19 +164,42 @@ class NetBackupAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
-		BUT : Démarre la restauration d'une VM from scratch
+		BUT : Démarre la restauration d'une VM from scratch.
+				On peut soit donner l'id du backup, soit le timestamp
 
-		IN  : $vmName	-> Nom de la VM
-		IN  : $backupId	-> ID du backup à restaurer
+		IN  : $vmName			-> Nom de la VM
+		IN  : $backupId			-> ID du backup à restaurer
+		IN  : $backupTimestamp	-> Timestamp du backup à restaurer
 
 		Documentation (scroller pour voir les descriptions des différents éléments ):
 		https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/#_recovery-recovery_workloads_vmware_scenarios_full-vm_recover_post
 
 		RET : Objet avec les infos du job de backup
     #>
-    [PSObject] restoreVM([string]$vmName, [string]$backupId)
+    [PSObject] restoreVM([string]$vmName, [string]$backupId, [string]$backupTimestamp)
     {
         $uri = "https://{0}/recovery/workloads/vmware/scenarios/full-vm/recover" -f $this.server
+
+		# Si c'est le timestamp qui a été donné, 
+		if($backupId -eq "")
+		{
+			# Mais si on n'a en fait pas donné de timestamp 
+			if($backupTimestamp -eq "")
+			{
+				Throw "BackupID and Backup Timestamp can not both be empty! This could lead in a break in the time space continuum!"
+			}
+
+			# Recherche de l'ID de backup en prenant la totalité des backups et en filtrant sur le timestamp donné.
+			$backup = $this.getVMBackupList($vmName) | Where-Object { $_.attributes.backupTime -eq $backupTimestamp}
+
+			# Si pas de backup trouvé
+			if($null -eq $backup)
+			{
+				Throw "No backup found for VM {0} and timestamp {1}" -f $vmName, $backupTimestamp
+			}
+
+			$backupId = $backup.id
+		}
 
 		$replace = @{vmName = $vmName
 					backupId = $backupId}
