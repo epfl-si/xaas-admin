@@ -110,7 +110,7 @@ class NSXAPI: RESTAPICurl
 					description = $desc
 					tag = $tag}
 
-        $body = $this.loadJSON("nsx-nsgroup.json", $replace)
+        $body = $this.createObjectFromJSON("nsx-nsgroup.json", $replace)
         
 		# Création du NS Group
         $dummy = $this.callAPI($uri, "Post", $body)
@@ -217,7 +217,7 @@ class NSXAPI: RESTAPICurl
 		$replace = @{name = $name
 					desc = $desc}
 
-        $body = $this.loadJSON("nsx-firewall-section.json", $replace)
+        $body = $this.createObjectFromJSON("nsx-firewall-section.json", $replace)
         
 		# Création de la section de firewall
         return $this.callAPI($uri, "Post", $body)
@@ -272,7 +272,7 @@ class NSXAPI: RESTAPICurl
         # Valeur à mettre pour la configuration de la section de firewall
 		$replace = @{sectionRevision = $section._revision}
 
-        $body = $this.loadJSON("nsx-firewall-section-lock.json", $replace)
+        $body = $this.createObjectFromJSON("nsx-firewall-section-lock.json", $replace)
 
         # Verrouillage de la section
         return $this.callAPI($uri, "POST", $body)
@@ -324,7 +324,7 @@ class NSXAPI: RESTAPICurl
                      nsGroupName            = $nsGroup.display_name
                      nsGroupId              = $nsGroup.id}
 
-        $body = $this.loadJSON("nsx-firewall-section-rules.json", $replace)
+        $body = $this.createObjectFromJSON("nsx-firewall-section-rules.json", $replace)
 
         # Création des règles
         $dummy = $this.callAPI($uri, "Post", $body)

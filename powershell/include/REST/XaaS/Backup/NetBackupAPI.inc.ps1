@@ -149,7 +149,7 @@ class NetBackupAPI: RESTAPICurl
 		$replace = @{vmName = $vmName
 					backupId = $backupId}
 
-		$body = $this.loadJSON("xaas-backup-restore-vm.json", $replace)
+		$body = $this.createObjectFromJSON("xaas-backup-restore-vm.json", $replace)
 
 		# Appel de l'API 
 		return ($this.callAPI($uri, "POST", $body)).data

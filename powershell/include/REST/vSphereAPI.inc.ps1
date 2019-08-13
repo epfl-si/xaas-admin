@@ -121,7 +121,7 @@ class vSphereAPI: RESTAPICurl
 					objectType = "VirtualMachine"
 					objectId = $this.extractVMId($vm.id)}
 
-		$body = $this.loadJSON("vsphere-tag-operation.json", $replace)
+		$body = $this.createObjectFromJSON("vsphere-tag-operation.json", $replace)
 
 		$res = $this.callAPI($uri, "Post", $body)
 	}
@@ -169,7 +169,7 @@ class vSphereAPI: RESTAPICurl
 		$replace = @{objectType = "VirtualMachine"
 					objectId = $this.extractVMId($vm.id)}
 
-		$body = $this.loadJSON("vsphere-object-infos.json", $replace)
+		$body = $this.createObjectFromJSON("vsphere-object-infos.json", $replace)
 
 		$tagList = @()
 
