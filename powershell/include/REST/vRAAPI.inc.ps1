@@ -45,7 +45,7 @@ class vRAAPI: RESTAPI
 						 password = $password
 						 tenant = $tenant}
 
-		$body = $this.loadJSON("vra-user-credentials.json", $replace)
+		$body = $this.createObjectFromJSON("vra-user-credentials.json", $replace)
 
 		$uri = "https://{0}/identity/api/tokens" -f $this.server
 
@@ -105,7 +105,7 @@ class vRAAPI: RESTAPI
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
 
-		return ($this.callAPI($uri, "Get", "")).content
+		return ($this.callAPI($uri, "Get", $null)).content
 	}
 	hidden [Array] getBGListQuery()
 	{
@@ -195,18 +195,18 @@ class vRAAPI: RESTAPI
 		}
 
 		
-		$body = $this.loadJSON("vra-business-group.json", $replace)
+		$body = $this.createObjectFromJSON("vra-business-group.json", $replace)
 
 		# Ajout des éventuelles custom properties
 		$customProperties.Keys | ForEach-Object {
 
-			$body.extensionData.entries += $this.loadJSON("vra-business-group-extension-data-custom.json", `
+			$body.extensionData.entries += $this.createObjectFromJSON("vra-business-group-extension-data-custom.json", `
 															 			 @{"key" = $_
 															 			  "value" = $customProperties.Item($_)})
 		}
 
 		# Création du BG
-		$res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))
+		$res = $this.callAPI($uri, "Post", $body)
 		
 		# Recherche et retour du BG
 		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
@@ -300,7 +300,7 @@ class vRAAPI: RESTAPI
 				else # Aucune entrée n'a été trouvée
 				{
 					# Ajout des infos avec le template présent dans le fichier JSON
-					$bg.ExtensionData.entries += $this.loadJSON("vra-business-group-extension-data-custom.json", `
+					$bg.ExtensionData.entries += $this.createObjectFromJSON("vra-business-group-extension-data-custom.json", `
 																			@{"key" = $customPropertyKey
 																			"value" = $customProperties.Item($customPropertyKey)})
 				}
@@ -318,7 +318,7 @@ class vRAAPI: RESTAPI
 		}
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $bg -Depth 20))
+		$res = $this.callAPI($uri, "Put", $bg)
 		
 		# On recherche l'objet mis à jour
 		return $this.getBG($bg.name)
@@ -347,7 +347,7 @@ class vRAAPI: RESTAPI
 		
 		$bg.extensionData.entries = $entries
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $bg -Depth 20))
+		$res = $this.callAPI($uri, "Put", $bg)
 
 		# On recherche l'objet mis à jour
 		return $this.getBG($bg.name)
@@ -366,7 +366,7 @@ class vRAAPI: RESTAPI
 		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.server, $this.tenant, $bgId
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Delete", "")
+		$res = $this.callAPI($uri, "Delete", $null)
 	}
 
 
@@ -396,7 +396,7 @@ class vRAAPI: RESTAPI
 		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/principals/" -f $this.server, $this.tenant, $BGID, $role
 
 		# Récupération de la liste d'objets
-		$res = ($this.callAPI($uri, "Get", "")).content
+		$res = ($this.callAPI($uri, "Get", $null)).content
 		
 		# On remet le tout dans un tableau en récupérant ce qui nous intéresse
 		$resArray = @()
@@ -424,7 +424,7 @@ class vRAAPI: RESTAPI
 			$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/" -f $this.server, $this.tenant, $BGID, $role
 
 			# Suppression du contenu du rôle
-			$res = $this.callAPI($uri, "Delete", "")
+			$res = $this.callAPI($uri, "Delete", $null)
 		}
 
 	}
@@ -478,7 +478,7 @@ class vRAAPI: RESTAPI
 		)
 
 		# Ajout du rôle
-		$res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 2))
+		$res = $this.callAPI($uri, "Post", $body)
 		
 	}
 
@@ -512,7 +512,7 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", "")).content
+		return ($this.callAPI($uri, "Get", $null)).content
 
 	}
 	hidden [Array] getEntListQuery()
@@ -618,9 +618,9 @@ class vRAAPI: RESTAPI
 						 bgID = $BGID
 						 bgName = $bgName}
 
-		$body = $this.loadJSON("vra-entitlement.json", $replace)
+		$body = $this.createObjectFromJSON("vra-entitlement.json", $replace)
 
-		$res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))
+		$res = $this.callAPI($uri, "Post", $body)
 		
 		# Retour de l'entitlement
 		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
@@ -679,7 +679,7 @@ class vRAAPI: RESTAPI
 		}
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $ent -Depth 20))
+		$res = $this.callAPI($uri, "Put", $ent)
 		
 		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
 		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
@@ -722,7 +722,7 @@ class vRAAPI: RESTAPI
 	{
 		$uri = "https://{0}/catalog-service/api/entitlements/{1}" -f $this.server, $entId
 
-		$res = $this.callAPI($uri, "Delete", "")
+		$res = $this.callAPI($uri, "Delete", $null)
 	}
 
 	<#
@@ -752,7 +752,7 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", "")).content
+		return ($this.callAPI($uri, "Get", $null)).content
 	}
 	hidden [Array] getServiceListQuery()
 	{
@@ -796,7 +796,7 @@ class vRAAPI: RESTAPI
 					approvalPolicyId = $approvalPolicy.id}
 
 		# Création du nécessaire pour le service à ajouter
-		$service = $this.loadJSON("vra-entitlement-service.json", $replace)
+		$service = $this.createObjectFromJSON("vra-entitlement-service.json", $replace)
 
 		# Ajout du service à l'objet
 		$ent.entitledServices += $service
@@ -845,7 +845,7 @@ class vRAAPI: RESTAPI
 									approvalPolicyId = $approvalPolicyId}
 
 					# Création du nécessaire pour l'action à ajouter
-					$actionsToAdd += $this.loadJSON("vra-entitlement-action.json", $replace)
+					$actionsToAdd += $this.createObjectFromJSON("vra-entitlement-action.json", $replace)
 				}
 				else # Pas d'infos trouvées pour l'action
 				{
@@ -892,7 +892,7 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", "")).content
+		return ($this.callAPI($uri, "Get", $null)).content
 		
 	}
 	hidden [Array] getResListQuery()
@@ -973,7 +973,7 @@ class vRAAPI: RESTAPI
 		# On l'active (dans le cas où le Template était désactivé)
 		$resTemplate.enabled = $true
 
-		$res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $resTemplate -Depth 20))
+		$res = $this.callAPI($uri, "Post", $resTemplate)
 		
 		return $this.getRes($name)
 
@@ -1010,7 +1010,7 @@ class vRAAPI: RESTAPI
 			$res.extensionData =  $resTemplate.extensionData
 			$res.alertPolicy =  $resTemplate.alertPolicy
 			
-			$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $res -Depth 20))
+			$res = $this.callAPI($uri, "Put", $res)
 
 			$updated = $true
 		}
@@ -1033,7 +1033,7 @@ class vRAAPI: RESTAPI
 	{
 		$uri = "https://{0}/reservation-service/api/reservations/{1}" -f $this.server, $resID
 
-		$res = $this.callAPI($uri, "Delete", "")
+		$res = $this.callAPI($uri, "Delete", $null)
 		
 	}
 
@@ -1064,7 +1064,7 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", "")).content
+		return ($this.callAPI($uri, "Get", $null)).content
 		
 	}
 	hidden [Array] getActionListQuery()
@@ -1135,7 +1135,7 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", "")).content
+		return ($this.callAPI($uri, "Get", $null)).content
 
 	}
 	hidden [Array] getPrincipalsListQuery()
@@ -1211,7 +1211,7 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", "")).content
+		return ($this.callAPI($uri, "Get", $null)).content
 
 	}
 	hidden [Array] getMachinePrefixListQuery()
@@ -1267,7 +1267,7 @@ class vRAAPI: RESTAPI
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
 
-		return ($this.callAPI($uri, "Get", "")).content
+		return ($this.callAPI($uri, "Get", $null)).content
 	}
 
 	<#
@@ -1318,7 +1318,7 @@ class vRAAPI: RESTAPI
 	{
 		$uri = "https://{0}/identity/api/tenants/{1}/directories/{2}/sync" -f $this.server, $this.tenant, $name
 
-		$res = $this.callAPI($uri, "Post", "")
+		$res = $this.callAPI($uri, "Post", $null)
 	}
 
 
@@ -1350,7 +1350,7 @@ class vRAAPI: RESTAPI
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
 
-		return ($this.callAPI($uri, "Get", "")).content
+		return ($this.callAPI($uri, "Get", $null)).content
 	}
 	hidden [Array] getApprovePolicyListQuery()
 	{
@@ -1425,7 +1425,7 @@ class vRAAPI: RESTAPI
 						 preApprovalLeveNumber = @($levelNo, $true)}
 
 			# Création du level d'approbation et ajout à la liste 
-			$approvalLevels += $this.loadJSON($approvalLevelJSON, $replace)
+			$approvalLevels += $this.createObjectFromJSON($approvalLevelJSON, $replace)
 		}
 
 		# Valeur à mettre pour la configuration du BG
@@ -1444,10 +1444,10 @@ class vRAAPI: RESTAPI
 			}
 		}
 
-		$body = $this.loadJSON($approvalPolicyJSON, $replace)
+		$body = $this.createObjectFromJSON($approvalPolicyJSON, $replace)
 
 		# Création de la Policy
-		$res = $this.callAPI($uri, "Post", (ConvertTo-Json -InputObject $body -Depth 20))
+		$res = $this.callAPI($uri, "Post", $body)
 
 		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
 		# le fichier JSON template
@@ -1497,7 +1497,7 @@ class vRAAPI: RESTAPI
 		}
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Put", (ConvertTo-Json -InputObject $approvalPolicy -Depth 20))
+		$res = $this.callAPI($uri, "Put", $approvalPolicy)
 
 		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
 		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
@@ -1522,7 +1522,7 @@ class vRAAPI: RESTAPI
 		$uri = "https://{0}/approval-service/api/policies/{1}" -f $this.server, $approvalPolicy.id
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Delete", "")
+		$res = $this.callAPI($uri, "Delete", $null)
 		
 	}
 

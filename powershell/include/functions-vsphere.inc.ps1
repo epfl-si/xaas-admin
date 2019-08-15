@@ -13,8 +13,10 @@
 <#
    BUT : Charge (si besoin) les modules PowerCli permettant de se connecter à vSphere
 #>
-function loadPowerCliModules
+function loadPowerCliModules([parameter(Mandatory=$false)] [bool]$displayOutput=$true)
 {
+   
+
    #Save the current value in the $p variable.
    $p = [Environment]::GetEnvironmentVariable("PSModulePath")
 
@@ -32,9 +34,15 @@ function loadPowerCliModules
    {
       try
       {
-         Write-Host "Loading module 'VMware.VimAutomation.Core'... " -NoNewline
+         if($displayOutput)
+         {
+            Write-Host "Loading module 'VMware.VimAutomation.Core'... " -NoNewline
+         }
          Import-Module VMware.VimAutomation.Core
-         Write-Host "done"
+         if($displayOutput)
+         {
+            Write-Host "done"
+         }
       }
       catch
       {
@@ -44,6 +52,9 @@ function loadPowerCliModules
    }
    else
    {
-      Write-Host "Module 'VMware.VimAutomation.Core' already loaded"
+      if($displayOutput)
+      {
+         Write-Host "Module 'VMware.VimAutomation.Core' already loaded"
+      }
    }
 }

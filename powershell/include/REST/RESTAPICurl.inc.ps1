@@ -108,22 +108,23 @@ class RESTAPICurl: RESTAPI
 
 		IN  : $uri		-> URL à appeler
 		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
-		IN  : $json 	-> Code JSON
+		IN  : $body 	-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
+						 	Si $null, on ne passe rien.
 
 		RET : Retour de l'appel
 	#>
-	hidden [Object] callAPI([string]$uri, [string]$method, [string]$json)
+	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
 
 		$args = "--insecure -s --request {0}" -f $method.ToUpper()
 
 		$tmpFile = $null
 
-		if($json -ne "")
+		if($null -ne $body)
 		{
 			# Génération d'un nom de fichier temporaire et ajout du JSON dans celui-ci
 			$tmpFile = $this.getTmpFilename()
-			$json | Out-File -FilePath $tmpFile -Encoding:default
+			(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:default
 
 			$args += ' --data "@{0}"' -f $tmpFile
 		}
