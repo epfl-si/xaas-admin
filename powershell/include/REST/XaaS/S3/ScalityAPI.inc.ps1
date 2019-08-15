@@ -21,9 +21,10 @@
    DATE   : Mai 2019    
 #>
 
-$global:XAAS_S3_STATEMENT_KEYWORD = "s3:Get*"
+# Chargement du module PowerShell
+Import-Module AWSPowerShell 
 
-Import-Module AWSPowerShell
+$global:XAAS_S3_STATEMENT_KEYWORD = "s3:Get*"
 
 class ScalityAPI: APIUtils
 {
@@ -35,17 +36,19 @@ class ScalityAPI: APIUtils
 	-------------------------------------------------------------------------------------
         BUT : Créer une instance de l'objet
         
-        IN  : $endpointUrl          -> URL du endpoint Scality
+        IN  : $server               -> Nom du serveur Scality. Sera utilisé pour créer l'URL du endpoint
         IN  : $credProfileName      -> Nom du profile à utiliser pour les credentials
                                         de connexion.
-        IN  : $scalityWebConsole    -> Objet de la classe ScalityWebConsoleAPI permettant d'accéder
-                                        aux informations de la console.
+        IN  : $s3WebConsoleUser     -> Nom d'utilisateur pour se connecter à la console Web
+        IN  : $s3WebConsolePassword -> Mot de passe pour se connecter à la console Web
 	#>
-	ScalityAPI([string]$endpointUrl, [string]$credProfileName, [ScalityWebConsoleAPI]$scalityWebConsole)
+	ScalityAPI([string]$server, [string]$credProfileName, [string]$s3WebConsoleUser, [string]$s3WebConsolePassword)
 	{
         
-        $this.s3EndpointUrl = $endpointUrl
-        $this.scalityWebConsole = $scalityWebConsole
+        $this.s3EndpointUrl = "https://{0}" -f $server
+
+        # Création de l'objet pour accéder à la console S3
+        $this.scalityWebConsole = [ScalityWebConsoleAPI]::new($server, $s3WebConsoleUser, $s3WebConsolePassword )
 
         # On tente de charger le profil pour voir s'il existe
         $this.credentials = Get-AWSCredential -ProfileName $credProfileName
