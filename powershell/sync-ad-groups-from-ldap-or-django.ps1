@@ -756,7 +756,7 @@ try
 	{
 		# On lance donc une synchro mais après quelques secondes d'attente histoire que les groupes créés soient répliqués sur les autres DC. Si on va trop vite,
 		# les groupes créés ne seront potentiellement pas synchronisés avec vRA... et ne pourront donc pas être utilisés pour les rôles des BG.
-		$sleepDurationSec = 60
+		$sleepDurationSec = 315
 		$logHistory.addLineAndDisplay( ("Sleeping for {0} seconds to let Active Directory DC synchro working..." -f $sleepDurationSec))
 		Start-Sleep -Seconds $sleepDurationSec
 		try {
