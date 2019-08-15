@@ -9,7 +9,7 @@
    AUTEUR : Lucien Chaboudez
    DATE   : Juillet 2019    
 #>
-class ScalityWebConsole: RESTAPI
+class ScalityWebConsoleAPI: RESTAPI
 {
 
     hidden [string]$server
@@ -22,7 +22,7 @@ class ScalityWebConsole: RESTAPI
         IN  : $username     -> Nom d'utilisateur pour la connexion. Attention à la casse !!!
         IN  : $password     -> Mot de passe pour la connexion
 	#>
-	ScalityWebConsole([string]$server, [string]$username, [string]$password) : base($server) # Ceci appelle le constructeur parent
+	ScalityWebConsoleAPI([string]$server, [string]$username, [string]$password) : base($server) # Ceci appelle le constructeur parent
 	{
         $this.server = $server
 

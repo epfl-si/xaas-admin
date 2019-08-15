@@ -23,7 +23,7 @@
 
 $global:XAAS_S3_STATEMENT_KEYWORD = "s3:Get*"
 
-class Scality: APIUtils
+class ScalityAPI: APIUtils
 {
 	hidden [string]$s3EndpointUrl
     hidden [PSObject]$credentials
@@ -39,7 +39,7 @@ class Scality: APIUtils
         IN  : $scalityWebConsole    -> Objet de la classe ScalityWebConsole permettant d'accéder
                                         aux informations de la console.
 	#>
-	Scality([string]$endpointUrl, [string]$credProfileName, [ScalityWebConsole]$scalityWebConsole)
+	ScalityAPI([string]$endpointUrl, [string]$credProfileName, [ScalityWebConsole]$scalityWebConsole)
 	{
         $this.s3EndpointUrl = $endpointUrl
         $this.scalityWebConsole = $scalityWebConsole
