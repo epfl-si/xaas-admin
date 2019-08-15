@@ -27,6 +27,8 @@
 
 #>
 
+
+
 # Nombre d'éléments max supportés par NetBackup pour la pagination 
 $global:NETBACKUP_API_PAGE_LIMIT_MAX = 99
 $global:NETBACKUP_BACKUP_SEARCH_DAYS_AGO = 365
@@ -150,7 +152,6 @@ class NetBackupAPI: RESTAPICurl
 		# Calcul de la date dans le passé en soustrayant les jours. Et on met celle-ci au format ISO8601 comme demandé par 
 		# NetBackup (et on ajoute un Z à la fin sinon ça ne passe pas...)
 		$dateAgo = "{0}Z" -f (get-date -date ((GET-Date).AddDays(-$global:NETBACKUP_BACKUP_SEARCH_DAYS_AGO)) -format "s")
-
 
 		$pagination =  [System.Net.WebUtility]::UrlEncode("page[offset]=0&page[limit]={0}&" -f $global:NETBACKUP_API_PAGE_LIMIT_MAX)
 
