@@ -38,7 +38,7 @@ class ScalityWebConsoleAPI: RESTAPI
         $uri = "https://{0}/_/console/authenticate" -f $this.server
 
         # Ajout du token pour les requêtes futures 
-        $this.headers.Add('x-access-token', ($this.callAPI($uri, "Post",  (ConvertTo-Json -InputObject $body -Depth 20))).token)
+        $this.headers.Add('x-access-token', ($this.callAPI($uri, "Post",  $body)).token)
     }
 
 
@@ -72,7 +72,7 @@ class ScalityWebConsoleAPI: RESTAPI
                 policyVersion = $policyVersion}
 
         
-        $result = $this.callAPI($uri, "POST", (ConvertTo-Json -InputObject $body -Depth 20))
+        $result = $this.callAPI($uri, "POST", $body)
 
         $this.handleError($result)
 

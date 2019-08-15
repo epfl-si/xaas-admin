@@ -23,11 +23,13 @@
 
 $global:XAAS_S3_STATEMENT_KEYWORD = "s3:Get*"
 
+Import-Module AWSPowerShell
+
 class ScalityAPI: APIUtils
 {
 	hidden [string]$s3EndpointUrl
     hidden [PSObject]$credentials
-    hidden [ScalityWebConsole]$scalityWebConsole
+    hidden [ScalityWebConsoleAPI]$scalityWebConsole
 
 	<#
 	-------------------------------------------------------------------------------------
@@ -36,11 +38,12 @@ class ScalityAPI: APIUtils
         IN  : $endpointUrl          -> URL du endpoint Scality
         IN  : $credProfileName      -> Nom du profile à utiliser pour les credentials
                                         de connexion.
-        IN  : $scalityWebConsole    -> Objet de la classe ScalityWebConsole permettant d'accéder
+        IN  : $scalityWebConsole    -> Objet de la classe ScalityWebConsoleAPI permettant d'accéder
                                         aux informations de la console.
 	#>
-	ScalityAPI([string]$endpointUrl, [string]$credProfileName, [ScalityWebConsole]$scalityWebConsole)
+	ScalityAPI([string]$endpointUrl, [string]$credProfileName, [ScalityWebConsoleAPI]$scalityWebConsole)
 	{
+        
         $this.s3EndpointUrl = $endpointUrl
         $this.scalityWebConsole = $scalityWebConsole
 
