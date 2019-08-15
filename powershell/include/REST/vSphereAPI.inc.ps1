@@ -77,18 +77,21 @@ class vSphereAPI: RESTAPICurl
 	}    
 
 
-    <#
+	<#
 		-------------------------------------------------------------------------------------
-        BUT : Extrait un ID de VM depuis l'ID complet d'une VM renvoyé par Get-VM
+        BUT : Renvoie une VM donnée par son nom.
         
-        IN  : $vmFullId -> Id complet de la VM
+		IN  : $vmName	-> Nom de la VM
+		
+		RET : Objet représentant la VM
+			  $null si pas trouvé
 
 	#>
-    hidden [string] extractVMId([string]$vmFullId)
-    {
-        # VirtualMachine-vm-7987 => vm-7987
-        return $vmFullId -replace "VirtualMachine-", ""
-    }
+	hidden [PSObject] getVM([string] $vmName)
+	{
+		$uri = "https://{0}/rest/vcenter/vm?filter.names={1}" -f $this.server, $vmName
+		return ($this.callAPI($uri, "Get", $null)).value[0]
+	}
 
 
 	<#
@@ -107,36 +110,68 @@ class vSphereAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie les infos d'un tag donné par son nom.
+		
+		IN  : $tagName		-> Le nom du tag que l'on cherche
+	#>
+	hidden [PSObject] getTag([string]$tagName)
+	{
+		# On récupère la liste des tags et pour chacun, on recherche les détails pour savoir si le nom correspon
+		# et dès qu'on a trouvé, on renvoie l'objet avec les détails.
+		return $this.getTagList() | Foreach-Object {
+			$details = $this.getTagById($_)
+			if($details.Name -eq $tagName)
+			{
+				return $details
+			}
+		}
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
         BUT : Ajoute ou supprime un tag à une VM
         
-		IN  : $vm		-> Objet représentant la VM
-		IN  : $tagId	-> Id du tag que l'on veut ajouter/supprimer
+		IN  : $vmName	-> Nom de la VM
+		IN  : $tagName	-> Nom du tag que l'on veut ajouter/supprimer
 		IN  : $action	-> "attach" ou "detach" suivant ce que l'on veut faire.
 	#>
-	hidden [void] attachDetachVMTag([PSObject]$vm,  [string]$tagId, [string]$action)
+	hidden [void] attachDetachVMTag([PSObject]$vmName,  [string]$tagName, [string]$action)
 	{
-		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag-association/id:{1}?~action={2}" -f $this.server, $tagId, $action
+		$vm = $this.getVM($vmName)
+		if($null -eq $vm)
+		{
+			Throw "VM '{}' not found in vSphere" -f $vmName
+		}
 
-		$replace = @{tagId = $tagId
+		$tag = $this.getTag($tagName)
+		if($null -eq $tag)
+		{
+			Throw "Tag '{}' not found in vSphere" -f $tagName
+		}
+
+
+		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag-association/id:{1}?~action={2}" -f $this.server, $tag.id, $action
+
+		$replace = @{tagId = $tag.id
 					objectType = "VirtualMachine"
-					objectId = $this.extractVMId($vm.id)}
+					objectId = $vm.vm}
 
 		$body = $this.createObjectFromJSON("vsphere-tag-operation.json", $replace)
 
 		$res = $this.callAPI($uri, "Post", $body)
 	}
 
-
 	<#
 		-------------------------------------------------------------------------------------
         BUT : Supprime un tag à d'une VM
         
-		IN  : $vm		-> Objet représentant la VM
-		IN  : $tagId	-> Id du tag que l'on veut supprimer
+		IN  : $vmName	-> Nom de la VM
+		IN  : $tagName	-> Nom du tag que l'on veut supprimer
 	#>
-	[void] detachVMTag([PSObject]$vm,  [string]$tagId)
+	[void] detachVMTag([string]$vmName,  [string]$tagName)
 	{
-		$this.attachDetachVMTag($vm, $tagId, "detach")
+		$this.attachDetachVMTag($vmName, $tagName, "detach")
 	}
 
 
@@ -144,12 +179,12 @@ class vSphereAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
         BUT : Ajoute un tag à une VM
         
-		IN  : $vm		-> Objet représentant la VM
-		IN  : $tagId	-> Id du tag que l'on veut ajouter
+		IN  : $vmName	-> Nom de la VM
+		IN  : $tagName	-> Nom du tag que l'on veut ajouter
 	#>
-	[void] attachVMTag([PSObject]$vm,  [string]$tagId)
+	[void] attachVMTag([string]$vmName,  [string]$tagName)
 	{
-		$this.attachDetachVMTag($vm, $tagId, "attach")
+		$this.attachDetachVMTag($vmName, $tagName, "attach")
 	}
 
 
@@ -158,16 +193,23 @@ class vSphereAPI: RESTAPICurl
 		BUT : Renvoie la liste des tags (détaillés) attachés à l'objet représentant une VM qui 
 				est passé en paramètre. Cet objet aura été obtenu via le CmdLet "Get-VM"
         
-        IN  : $vm		-> Objet représentant la VM dont on veut la liste de tags
+        IN  : $vmName	-> Nom de la VM
 
 		RET : Tableau avec les détails des tags 
 	#>
-    [Array] getVMTags([PSObject] $vm)
+    [Array] getVMTags([string] $vmName)
     {
+		$vm = $this.getVM($vmName)
+
+		if($null -eq $vm)
+		{
+			Throw "VM {} not found in vSphere" -f $vmName
+		}
+
 		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag-association?~action=list-attached-tags" -f $this.server
 
 		$replace = @{objectType = "VirtualMachine"
-					objectId = $this.extractVMId($vm.id)}
+					objectId = $vm.vm}
 
 		$body = $this.createObjectFromJSON("vsphere-object-infos.json", $replace)
 
@@ -196,23 +238,8 @@ class vSphereAPI: RESTAPICurl
 	}
 
 	
-	<#
-		-------------------------------------------------------------------------------------
-		BUT : Renvoie les infos d'un tag donné par son nom.
-		
-		IN  : $tagName		-> Le nom du tag que l'on cherche
-	#>
-	[PSObject] getTag([string]$tagName)
-	{
-		# On récupère la liste des tags et pour chacun, on recherche les détails pour savoir si le nom correspon
-		# et dès qu'on a trouvé, on renvoie l'objet avec les détails.
-		return $this.getTagList() | Foreach-Object {
-			$details = $this.getTagById($_)
-			if($details.Name -eq $tagName)
-			{
-				return $details
-			}
-		}
-	}
+	
+
+	
 
 }

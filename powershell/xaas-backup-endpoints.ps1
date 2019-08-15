@@ -250,24 +250,7 @@ try
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new('xaas-backup', (Join-Path $PSScriptRoot "logs"), 30)
-    
-    # Chargement des modules PowerCLI pour pouvoir accéder à vSphere.
-    loadPowerCliModules -displayOutput $false
-
-    # Pour éviter que le script parte en erreur si le certificat vCenter ne correspond pas au nom DNS primaire. On met le résultat dans une variable
-    # bidon sinon c'est affiché à l'écran.
-    $dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
-
-    
-	# On encrypte le mot de passe
-	$credSecurePwd = $global:XAAS_BACKUP_VCENTER_PASSWORD_LIST[$targetEnv] | ConvertTo-SecureString -AsPlainText -Force
-	$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $global:XAAS_BACKUP_VCENTER_USER_LIST[$targetEnv], $credSecurePwd
-
-    # Connexion au serveur vSphere.
-    # On passe par le paramètre -credential car sinon, on a des erreurs avec Get-AssignmentTag et Get-Tag, ou peut-être tout simplement avec les commandes dans
-    # lesquelles on faite un | pour passer à la suivante.
-    $vSphere = Connect-VIServer -Server $global:XAAS_BACKUP_VCENTER_SERVER_LIST[$targetEnv] -credential $credObject
-
+ 
     <# Connexion à l'API Rest de vSphere. On a besoin de cette connxion aussi (en plus de celle du dessus) parce que les opérations sur les tags ne fonctionnent
     pas via les CMDLet Get-TagAssignement et autre...  #>
     $vsphereApi = [vSphereAPI]::new($global:XAAS_BACKUP_VCENTER_SERVER_LIST[$targetEnv], $global:XAAS_BACKUP_VCENTER_USER_LIST[$targetEnv], $global:XAAS_BACKUP_VCENTER_PASSWORD_LIST[$targetEnv])
@@ -291,10 +274,8 @@ try
         # Récupération du tag d'une VM
         $ACTION_GET_BACKUP_TAG {
 
-            $vm = Get-VM -Server $vSphere -Name $vmName
-
             # Récupération du tag de backup existant
-            $tag = $vSphereApi.getVMTags($vm) | Where-Object { $_.Name -like ("{0}*" -f $NBU_TAG_PREFIX)}
+            $tag = $vSphereApi.getVMTags($vmName) | Where-Object { $_.Name -like ("{0}*" -f $NBU_TAG_PREFIX)}
             
             # Si un tag est trouvé,
             if($null -ne $tag)
@@ -309,38 +290,21 @@ try
         # Initialisation du tag d'une VM
         $ACTION_SET_BACKUP_TAG {
 
-            $vm = Get-VM -Server $vSphere -Name $vmName
-
             # Recherche du tag de backup existant sur la VM
-            $tag = $vSphereApi.getVMTags($vm) | Where-Object { $_.Name -like ("{0}*" -f $NBU_TAG_PREFIX)}
+            $tag = $vSphereApi.getVMTags($vmName) | Where-Object { $_.Name -like ("{0}*" -f $NBU_TAG_PREFIX)}
 
             # S'il y a un tag de backup,
             if($null -ne $tag)
             {
                 # On supprime le tag
-                $vsphereApi.detachVMTag($vm, $tag.id)
+                $vsphereApi.detachVMTag($vmName, $tag.name)
             }
 
             # Si on doit ajouter un tag
             if($backupTag -ne "")
             {
-                # Recherche du tag de backup à ajouter 
-                $tag = $vsphereApi.getTag($backupTag)
-
-                # Si le tag donné n'existe pas.
-                if($null -eq $tag)
-                {
-                    $output.error = ("Tag '{0}' doesn't exists in vSphere" -f $backupTag)
-                }
-                else # Le tag existe dans l'infra
-                {
-                    # Ajout du tag
-                    $vsphereApi.attachVMTag($vm, $tag.id)    
-                }
-
-                
+                $vsphereApi.attachVMTag($vmName, $backupTag)       
             }
-
         }
 
 
