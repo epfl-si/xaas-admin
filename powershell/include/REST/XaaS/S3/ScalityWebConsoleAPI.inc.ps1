@@ -9,6 +9,13 @@
    AUTEUR : Lucien Chaboudez
    DATE   : Juillet 2019    
 #>
+
+<# On fait ceci pour pouvoir "System.Web.HttpUtility" plus loin dans le code. 
+    Ce n'est pas nécessaire si on exécute le code manuellement mais dès que c'est exécuté
+    depuis vRO via le endpoint, il y a une erreur
+#>
+Add-Type -AssemblyName System.Web
+
 class ScalityWebConsoleAPI: RESTAPI
 {
 
@@ -77,7 +84,7 @@ class ScalityWebConsoleAPI: RESTAPI
         $this.handleError($result)
 
         # On décode le résultat pour avoir le JSON décrivant la policy, et on transforme celui-ci en objet
-        return [System.Web.HttpUtility]::UrlDecode($result.policyVersion.Document) | ConvertFrom-Json
+        return [System.Net.WebUtility]::UrlDecode($result.policyVersion.Document) | ConvertFrom-Json
     }
 
 

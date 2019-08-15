@@ -152,7 +152,7 @@ class NetBackupAPI: RESTAPICurl
 		$dateAgo = "{0}Z" -f (get-date -date ((GET-Date).AddDays(-$global:NETBACKUP_BACKUP_SEARCH_DAYS_AGO)) -format "s")
 
 
-		$pagination =  [System.Web.HttpUtility]::UrlEncode("page[offset]=0&page[limit]={0}&" -f $global:NETBACKUP_API_PAGE_LIMIT_MAX)
+		$pagination =  [System.Net.WebUtility]::UrlEncode("page[offset]=0&page[limit]={0}&" -f $global:NETBACKUP_API_PAGE_LIMIT_MAX)
 
 		$uri = "https://{0}/catalog/images?filter=clientName eq '{1}' and backupTime ge {2}&{3}" -f $this.server, $vmName, $dateAgo, $pagination
 
