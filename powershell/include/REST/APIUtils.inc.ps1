@@ -43,7 +43,7 @@ class APIUtils
 
 		RET : Objet créé depuis le code JSON
 	#>
-	hidden [Object] loadJSON([string] $file, [System.Collections.IDictionary] $valToReplace)
+	hidden [Object] createObjectFromJSON([string] $file, [System.Collections.IDictionary] $valToReplace)
 	{
 		# Chemin complet jusqu'au fichier à charger
 		$filepath = (Join-Path $global:JSON_TEMPLATE_FOLDER $file)

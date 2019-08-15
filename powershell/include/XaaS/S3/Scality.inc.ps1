@@ -333,7 +333,7 @@ class Scality: APIUtils
 
         $jsonFile = "xaas-s3-policy-{0}.json" -f $accessType
 
-        $body = $this.loadJSON($jsonFile, $replace)
+        $body = $this.createObjectFromJSON($jsonFile, $replace)
 
         # Ajout de la nouvelle policy
         $pol = New-IAMPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -PolicyName $policyName `
