@@ -266,7 +266,7 @@ try
     # Connexion au serveur vSphere.
     # On passe par le paramètre -credential car sinon, on a des erreurs avec Get-AssignmentTag et Get-Tag, ou peut-être tout simplement avec les commandes dans
     # lesquelles on faite un | pour passer à la suivante.
-    $connectedvCenter = Connect-VIServer -Server $global:XAAS_BACKUP_VCENTER_SERVER_LIST[$targetEnv] -credential $credObject
+    $vSphere = Connect-VIServer -Server $global:XAAS_BACKUP_VCENTER_SERVER_LIST[$targetEnv] -credential $credObject
 
     <# Connexion à l'API Rest de vSphere. On a besoin de cette connxion aussi (en plus de celle du dessus) parce que les opérations sur les tags ne fonctionnent
     pas via les CMDLet Get-TagAssignement et autre...  #>
@@ -411,9 +411,6 @@ catch
 	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
 }
 
-
-# Déconnexion du serveur vCenter
-Disconnect-VIServer  -Server $connectedvCenter -Confirm:$false 
 
 # Déconnexion de l'API de backup
 $nbu.disconnect()
