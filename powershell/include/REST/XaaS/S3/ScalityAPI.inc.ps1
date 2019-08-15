@@ -22,7 +22,7 @@
 #>
 
 # Chargement du module PowerShell
-Import-Module AWSPowerShell 
+Import-Module AWSPowerShell
 
 $global:XAAS_S3_STATEMENT_KEYWORD = "s3:Get*"
 
@@ -97,6 +97,7 @@ class ScalityAPI: APIUtils
 	#>
     [PSObject] addBucket([string]$bucketName)
     {
+        # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/New-S3Bucket.html
         return New-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                             -BucketName $bucketName 
     }
@@ -112,6 +113,7 @@ class ScalityAPI: APIUtils
 	#>
     [PSObject] getBucket([string]$bucketName)
     {
+        # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-S3Bucket.html
         return Get-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                              -BucketName $bucketName 
     }
@@ -125,6 +127,7 @@ class ScalityAPI: APIUtils
 	#>
     [void] deleteBucket([string]$bucketName)
     {
+        # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Remove-S3Bucket.html
         Remove-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                          -BucketName $bucketName -DeleteBucketContent:$false -Confirm:$false
     }
@@ -133,7 +136,6 @@ class ScalityAPI: APIUtils
     <#
 	-------------------------------------------------------------------------------------
         BUT : Active ou désactive le versioning sur un Bucket
-        https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Write-S3BucketVersioning.html
         
         IN  : $bucketName   -> Le nom du bucket        
         IN  : $enabled      -> $true|$false pour dire si activé ou pas
@@ -157,6 +159,7 @@ class ScalityAPI: APIUtils
             $status = "Suspended"
         }
 
+        # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Write-S3BucketVersioning.html
         Write-S3BucketVersioning -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                                     -BucketName $bucketName -VersioningConfig_Status $status
     }
@@ -166,12 +169,14 @@ class ScalityAPI: APIUtils
 	-------------------------------------------------------------------------------------
         BUT : Dit si le versioning est activé pour un bucket
         
+        
         IN  : $bucketName   -> Le nom du bucket 
         
         RET : $true|$false
 	#>
     [bool] bucketVersioningEnabled([string]$bucketName)
     {
+        # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-S3BucketVersioning.html
         $currentStatus = (Get-S3BucketVersioning -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -BucketName $bucketName).status
 
         return ($currentStatus -eq "Enabled")
@@ -618,18 +623,31 @@ class ScalityAPI: APIUtils
         IN  : $policyName   -> Nom de la policy
 
         RET : $true|$false
-
 	#>
-    [bool] lastBucketInPolicy([string]$policyName)
+    [bool] onlyOneBucketInPolicy([string]$policyName)
+    {
+        # Avec l'ARN et la version de la Policy, on peut récupérer le contenu de celle-ci.
+        # Celui-ci, si on le converti en JSON, est exactement le même que celui utilisé par la fonction 'addPolicy'
+        return ($this.getPolicyBucketList).Count -eq 1
+    }
+
+    
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des buckets qui se trouvent dans une policy
+        
+        IN  : $policyName   -> Nom de la policy
+
+        RET : Tableau avec la liste des noms des buckets
+	#>
+    [Array] getPolicyBucketList([string]$policyName)
     {
         # Récupération des informations de la policy
         $policy = $this.getPolicy($policyName)
 
-        # Avec l'ARN et la version de la Policy, on peut récupérer le contenu de celle-ci.
-        # Celui-ci, si on le converti en JSON, est exactement le même que celui utilisé par la fonction 'addPolicy'
-        return ($this.scalityWebConsole.getPolicyBuckets($policy.Arn, $policy.DefaultVersionId)).Count -eq 1
-
+        return $this.scalityWebConsole.getPolicyBuckets($policy.Arn, $policy.DefaultVersionId)
     }
+
 
     <#
 	-------------------------------------------------------------------------------------
