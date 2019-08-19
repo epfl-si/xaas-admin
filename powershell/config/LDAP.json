@@ -1,0 +1,22 @@
+{
+    "facultyUnits": {
+        "server": "ldap.epfl.ch",
+        "locations" : [
+            {
+                "rootDN": "o=epfl,c=ch",
+                "nbLevelsForSearch": 3,
+                "limitTo": [ "SV", "SI", "P" ]
+            },
+            {
+                "rootDN": "o=ehe,c=ch",
+                "nbLevelsForSearch": 2,
+                "limitTo": [ "-" ]
+            }
+        ]
+        
+    },
+    "members":  {
+        "server": "scoldap.epfl.ch",
+        "rootDN": "o=epfl,c=ch"
+    }
+}
