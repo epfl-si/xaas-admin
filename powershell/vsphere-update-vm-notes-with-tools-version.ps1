@@ -16,6 +16,7 @@
 
 
 # Inclusion des fichiers nécessaires (génériques)
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
@@ -24,8 +25,8 @@
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vsphere.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
+loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vsphere.inc.ps1"))
+loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-mail.inc.ps1"))
 
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
