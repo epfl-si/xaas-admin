@@ -10,6 +10,8 @@
 		$targetTenant -> nom du tenant cible. Défini par les valeurs $global:VRA_TENANT__* dans le fichier
 						"define.inc.ps1"
 
+	Documentation:
+		- Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976
 
 	ALTERATION DU FONCTIONNEMENT:
 	Les fichiers ci-dessous peuvent être créés (vides) au même niveau que le présent script afin de modifier

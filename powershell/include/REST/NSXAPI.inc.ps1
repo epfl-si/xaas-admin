@@ -1,7 +1,9 @@
 <#
    BUT : Contient les fonctions donnant accès à l'API vRA
 
-   Documentation: https://code.vmware.com/apis/222/nsx-t
+   Documentation: 
+    - API: https://code.vmware.com/apis/222/nsx-t
+    - Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976#Ressources-PRJ0011976-NSX
 
    AUTEUR : Lucien Chaboudez
    DATE   : Mai 2019
