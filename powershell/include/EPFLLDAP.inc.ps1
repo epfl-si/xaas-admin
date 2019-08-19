@@ -1,16 +1,19 @@
 <#
-   BUT : Contient une classe permetant de faire des requêtes dans LDAP
+   	BUT : Contient une classe permetant de faire des requêtes dans LDAP
 
-   AUTEUR : Lucien Chaboudez
-   DATE   : Mars 2018
+   	AUTEUR : Lucien Chaboudez
+   	DATE   : Mars 2018
 
-   ----------
-   HISTORIQUE DES VERSIONS
-   08.03.2018 - 1.0 - Version de base
-   09.04.2019 - 1.1 - Modifications pour pouvoir faire les requêtes de récupération de membres d'unités
+	Documentation:
+		- Fichier JSON de configuration: https://sico.epfl.ch:8443/display/SIAC/Configuration+-+PRJ0011976
+
+   	----------
+   	HISTORIQUE DES VERSIONS
+   	08.03.2018 - 1.0 - Version de base
+   	09.04.2019 - 1.1 - Modifications pour pouvoir faire les requêtes de récupération de membres d'unités
 					  dans scoldap.epfl.ch car bah... dans ldap.epfl.ch ne se trouvent que les personnes 
 					  accréditées dans l'unité MAIS dont ce n'est pas l'accréditation primaire.. WTF?
-   19.08.2019 - 1.2 - Ajout d'un fichier de configuration JSON pour spécifier où il faut aller chercher les
+   	19.08.2019 - 1.2 - Ajout d'un fichier de configuration JSON pour spécifier où il faut aller chercher les
 					  informations dans ldap.epfl.ch. On prenais uniquement dans 'o=epfl,c=ch' mais maintenant
 					  il faut aussi aller chercher dans 'o=ehe,c=ch' ...
 #>
