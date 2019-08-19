@@ -39,6 +39,9 @@
         -restoreTimestamp   -> Timestamp du backup à restaurer. A passer uniquement si $action == $ACTION_RESTORE_BACKUP
                                 On peut aussi passer l'id du backup (ci-dessus)
 
+    Confluence :
+    https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=99188910                                
+
 #>
 param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp)
 
@@ -57,8 +60,8 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "Backup", "NetBackupAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-xaas-backup.inc.ps1"))
+loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-mail.inc.ps1"))
+loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-xaas-backup.inc.ps1"))
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
