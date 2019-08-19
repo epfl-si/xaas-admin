@@ -159,7 +159,7 @@ class EPFLLDAP
 				$facName = $curFac.Properties['ou'][0]
 
 				# Si on a une liste avec des filtres,
-				if( (($ldapInfos.limitTo.Count -gt 0) -and ($ldapInfos.limitTo -contains $facName)) -or ($ldapInfos.limitTo.Count -eq 0))
+				if( (($ldapInfos.limitToFaculties.Count -gt 0) -and ($ldapInfos.limitToFaculties -contains $facName)) -or ($ldapInfos.limitToFaculties.Count -eq 0))
 				{
 
 					# Création de l'objet
