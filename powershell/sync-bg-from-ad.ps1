@@ -10,6 +10,8 @@
 		$targetTenant -> nom du tenant cible. Défini par les valeurs $global:VRA_TENANT__* dans le fichier
 						"define.inc.ps1"
 
+	Documentation:
+		- Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976
 
 	ALTERATION DU FONCTIONNEMENT:
 	Les fichiers ci-dessous peuvent être créés (vides) au même niveau que le présent script afin de modifier
@@ -65,10 +67,10 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vra.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vro.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-nsx.inc.ps1"))
+loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vra.inc.ps1"))
+loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vro.inc.ps1"))
+loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-mail.inc.ps1"))
+loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-nsx.inc.ps1"))
 
 
 

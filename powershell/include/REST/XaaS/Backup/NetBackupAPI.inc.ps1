@@ -7,9 +7,10 @@
     Des exemples d'utilsiation des API via Postman peuvent être trouvés dans le
     keepass Sanas-Backup
 
-	De la documentation sur l'API peut être trouvée ici :
-	https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/
-	https://sort.veritas.com/documents/doc_details/nbu/8.2/Windows%20and%20UNIX/Documentation/
+	Documentation:
+		- API : https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/
+				https://sort.veritas.com/documents/doc_details/nbu/8.2/Windows%20and%20UNIX/Documentation/
+		- Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976#Ressources-PRJ0011976-Backup
 
 	Des exemples de code peuvent être trouvés ici :
 	https://github.com/VeritasOS/netbackup-api-code-samples

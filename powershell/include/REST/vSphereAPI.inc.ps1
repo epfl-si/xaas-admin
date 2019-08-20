@@ -1,15 +1,17 @@
 <#
-   BUT : Contient les fonctions donnant accès à l'API vSphere.
+   	BUT : Contient les fonctions donnant accès à l'API vSphere.
 		Certaines opérations sur les tags ne peuvent pas être effectuées via les CmdLet
 		à cause d'une erreur renvoyée pour une histoire de Single-SignOn... et cette 
 		erreur ne survient que quand on exécute le script depuis vRO via le endpoint
 		PowerShell.
 
 
-   AUTEUR : Lucien Chaboudez
-   DATE   : Juillet 2019
+   	AUTEUR : Lucien Chaboudez
+   	DATE   : Juillet 2019
 
-	Documentation de l'API https://vsissp-vcsa-t-01.epfl.ch/apiexplorer/index.html#!/
+	Documentation:
+		- API: https://vsissp-vcsa-t-01.epfl.ch/apiexplorer/index.html#!/
+		- Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976#Ressources-PRJ0011976-vSphere
 
 
 	REMARQUES :

@@ -36,8 +36,8 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vra.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
+loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vra.inc.ps1"))
+loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-mail.inc.ps1"))
 
 <#
 -------------------------------------------------------------------------------------
@@ -232,7 +232,6 @@ $SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global
 # le script courant
 $TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__TEST_MODE)))
 $EPFL_TEST_NB_UNITS_MAX = 10
-$EPFL_LIMIT_TO_FAC = @("SV", "SI", "P")
 
 
 # CONFIGURATION
@@ -337,14 +336,6 @@ try
 		{
 			$counters.inc('epfl.facProcessed')
 			$logHistory.addLineAndDisplay(("[{0}/{1}] Faculty {2}..." -f $counters.get('epfl.facProcessed'), $facultyList.Count, $faculty['name']))
-
-			# Si on doit limiter à certaines facultés et que la faculté courante est de celles-ci
-			if(($EPFL_LIMIT_TO_FAC.Count -gt 0 ) -and ($EPFL_LIMIT_TO_FAC -notcontains $faculty['name']))
-			{
-				$counters.inc('epfl.facIgnored')
-				$logHistory.addLineAndDisplay(("Ignoring faculty {0} because not in defined list..." -f $faculty['name']))
-				continue
-			}
 			
 			# ----------------------------------------------------------------------------------
 			# --------------------------------- FACULTE
