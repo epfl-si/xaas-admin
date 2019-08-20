@@ -1,0 +1,53 @@
+{
+    /* == Environnement de développement == */
+    "dev": {
+        /* VMware NSX */
+        "nsx": {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+
+        /* VMware vRealize Automation */
+        "vra": {
+            "server": "",
+            "default": {
+                "user":"",
+                "password":""
+            },
+            "itservices": {
+                "user":"",
+                "password":""
+            },
+            "epfl": {
+                "user":"",
+                "password":""
+            }
+        },
+
+        /* VMware vSphere */
+        "vSphere": {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+
+        /* XaaS Backup */
+        "xaas-backup": {
+            "server": "",
+            "user": "",
+            "password": "",
+            "vSphereUser": "", // on va réutiliser le host défini dans la partie "vsphere"
+            "vSpherePassword": ""
+        }
+    },
+
+
+    /* == Configuration globale à tous les environnement == */
+    "global": {
+        "mail": {
+            "admin": "", // adresse mail de l'admin
+            "capacityAlert": "" // Adresse mail par défaut à laquelle envoyer les mails de "capacity alert"
+        }
+    }
+}
