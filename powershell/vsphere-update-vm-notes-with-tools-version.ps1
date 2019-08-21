@@ -13,6 +13,7 @@
 				  commande Set-ExecutionPolicy mais mettre la valeur "ByPass" en paramètre.
 #>
 
+param ( [string]$targetEnv)
 
 
 # Inclusion des fichiers nécessaires (génériques)
@@ -26,7 +27,7 @@
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vsphere.inc.ps1"))
+$configVSphere = [ConfigReader]::New("config-vsphere.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 
 
@@ -65,12 +66,36 @@ function getUpdatedNote()
 }
 
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Affiche comment utiliser le script
+#>
+function printUsage
+{
+   	$invoc = (Get-Variable MyInvocation -Scope 1).Value
+   	$scriptName = $invoc.MyCommand.Name
+
+	$envStr = $global:TARGET_ENV_LIST -join "|"
+
+   	Write-Host ""
+   	Write-Host ("Usage: $scriptName -targetEnv {0}" -f $envStr)
+   	Write-Host ""
+}
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+
+# Test des paramètres
+if(($targetEnv -eq "") -or (-not(targetEnvOK -targetEnv $targetEnv)))
+{
+   printUsage
+   exit
+}
+
 try
 {
 
@@ -96,10 +121,10 @@ try
 
     # Connexion au serveur vSphere
 
-    $credSecurePwd = $global:VSPHERE_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
-    $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $global:VSPHERE_USERNAME, $credSecurePwd	
+    $credSecurePwd = $configVSphere.getConfigValue($targetEnv, "password") | ConvertTo-SecureString -AsPlainText -Force
+    $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $configVSphere.getConfigValue($targetEnv, "user"), $credSecurePwd	
             
-    $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -Credential $credObject
+    $connectedvCenter = Connect-VIServer -Server $configVSphere.getConfigValue($targetEnv, "server") -Credential $credObject
 
     $logHistory.addLineAndDisplay("Getting VMs...")
 

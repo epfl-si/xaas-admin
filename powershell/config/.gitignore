@@ -1,4 +1,5 @@
 config-global.json
 config-nsx.json
 config-vra.json
+config-vsphere.json
 all-config.json

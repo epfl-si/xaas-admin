@@ -1,0 +1,22 @@
+{
+    /* == Environnement de développement == */
+    "dev": {
+        "server": "", 
+        "user": "",
+        "password": ""
+    },
+
+    /* == Environnement de test == */
+    "test": {
+        "server": "",
+        "user": "",
+        "password": ""
+    },
+
+    /* == Environnement de production == */
+    "prod": {
+        "server": "",
+        "user": "",
+        "password": ""
+    }
+}

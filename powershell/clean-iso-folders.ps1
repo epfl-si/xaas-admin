@@ -35,7 +35,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 # Chargement des fichiers de configuration
 $configVra = [ConfigReader]::New("config-vra.json")
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vsphere.inc.ps1"))
+$configVSphere = [ConfigReader]::New("config-vsphere.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 
 
@@ -137,10 +137,10 @@ try
 			# bidon sinon c'est affiché à l'écran.
 			$dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 
-			$credSecurePwd = $global:VSPHERE_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
-			$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $global:VSPHERE_USERNAME, $credSecurePwd	
+			$credSecurePwd = $configVSphere.getConfigValue($targetEnv, "password") | ConvertTo-SecureString -AsPlainText -Force
+			$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $configVSphere.getConfigValue($targetEnv, "user"), $credSecurePwd	
 
-			$vCenter = Connect-VIServer -Server $global:VSPHERE_HOST -Credential $credObject
+			$vCenter = Connect-VIServer -Server $configVSphere.getConfigValue($targetEnv, "server") -Credential $credObject
 		}
 		
 		# Recherche des infos du BG
