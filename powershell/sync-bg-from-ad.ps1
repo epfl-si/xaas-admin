@@ -69,7 +69,6 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 # Chargement des fichiers de configuration
 $configVra = [ConfigReader]::New("config-vra.json")
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vro.inc.ps1"))
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configNSX = [ConfigReader]::New("config-nsx.json")
 
