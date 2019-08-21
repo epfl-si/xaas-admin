@@ -35,7 +35,7 @@ class NSXAPI: RESTAPICurl
         $this.authInfos = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$password)))
 
         # Mise à jour des headers
-        $this.headers.Add('Authorization', ("Basic {0}" -f $this.authInfos))
+        $this.headers.Add('Authorization', ("Remote {0}" -f $this.authInfos))
         
     }
 
