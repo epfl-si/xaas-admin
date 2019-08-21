@@ -1,0 +1,48 @@
+{
+    "dev": {
+        "server": "",
+        "default": {
+            "user":"",
+            "password":""
+        },
+        "itservices": {
+            "user":"",
+            "password":"" 
+        },
+        "epfl": {
+            "user":"",
+            "password":""
+        }
+    },
+    "test": {
+        "server": "",
+        "default": {
+            "user":"",
+            "password":""
+        },
+        "itservices": {
+            "user":"",
+            "password":""
+        },
+        "epfl": {
+            "user":"",
+            "password":""
+        }
+    },
+    "vra": {
+        "server": "",
+        "default": {
+            "user":"",
+            "password":""
+        },
+        "itservices": {
+            "user":"",
+            "password":""
+        },
+        "epfl": {
+            "user":"",
+            "password":""
+        }
+    }
+}
+        

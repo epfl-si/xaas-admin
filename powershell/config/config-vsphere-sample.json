@@ -1,0 +1,17 @@
+{
+    "dev": {
+        "server": "", 
+        "user": "",
+        "password": ""
+    },
+    "test": {
+        "server": "",
+        "user": "",
+        "password": ""
+    },
+    "prod": {
+        "server": "",
+        "user": "",
+        "password": ""
+    }
+}

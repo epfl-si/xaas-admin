@@ -13,6 +13,7 @@
 				  commande Set-ExecutionPolicy mais mettre la valeur "ByPass" en paramètre.
 #>
 
+param ( [string]$targetEnv)
 
 
 # Inclusion des fichiers nécessaires (génériques)
@@ -20,13 +21,14 @@
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions-vsphere.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vsphere.inc.ps1"))
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-mail.inc.ps1"))
+$configVSphere = [ConfigReader]::New("config-vsphere.json")
+$configGlobal = [ConfigReader]::New("config-global.json")
 
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
@@ -64,12 +66,36 @@ function getUpdatedNote()
 }
 
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Affiche comment utiliser le script
+#>
+function printUsage
+{
+   	$invoc = (Get-Variable MyInvocation -Scope 1).Value
+   	$scriptName = $invoc.MyCommand.Name
+
+	$envStr = $global:TARGET_ENV_LIST -join "|"
+
+   	Write-Host ""
+   	Write-Host ("Usage: $scriptName -targetEnv {0}" -f $envStr)
+   	Write-Host ""
+}
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+
+# Test des paramètres
+if(($targetEnv -eq "") -or (-not(targetEnvOK -targetEnv $targetEnv)))
+{
+   printUsage
+   exit
+}
+
 try
 {
 
@@ -95,10 +121,10 @@ try
 
     # Connexion au serveur vSphere
 
-    $credSecurePwd = $global:VSPHERE_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
-    $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $global:VSPHERE_USERNAME, $credSecurePwd	
+    $credSecurePwd = $configVSphere.getConfigValue($targetEnv, "password") | ConvertTo-SecureString -AsPlainText -Force
+    $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $configVSphere.getConfigValue($targetEnv, "user"), $credSecurePwd	
             
-    $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -Credential $credObject
+    $connectedvCenter = Connect-VIServer -Server $configVSphere.getConfigValue($targetEnv, "server") -Credential $credObject
 
     $logHistory.addLineAndDisplay("Getting VMs...")
 
@@ -144,7 +170,7 @@ catch
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Web.HttpUtility]::HtmlEncode($errorTrace))
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
 }
 
 

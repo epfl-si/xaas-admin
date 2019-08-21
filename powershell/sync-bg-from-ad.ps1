@@ -53,10 +53,11 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "JSONUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NewItems.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
-
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
@@ -67,10 +68,9 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vra.inc.ps1"))
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vro.inc.ps1"))
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-mail.inc.ps1"))
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-nsx.inc.ps1"))
+$configVra = [ConfigReader]::New("config-vra.json")
+$configGlobal = [ConfigReader]::New("config-global.json")
+$configNSX = [ConfigReader]::New("config-nsx.json")
 
 
 
@@ -624,7 +624,7 @@ function sendErrorMail2ndDayActionFile
 	$message = getvRAMailContent -content ("Une erreur est survenue durant le chargement du fichier contenant la liste des '2nd day actions':<br>`
 	{0}<br><br>Veuillez faire le nécessaire à partir de la <a href='{1}'>documentation suivante</a>." -f $errorMsg, $docUrl)	
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
 }
 
 <#
@@ -645,7 +645,7 @@ function sendErrorMailNoResTemplateFound
 	Template à partir de la <a href='{1}'>documentation suivante</a>." -f $targetEnv, $docUrl)	
 
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
 }
 
 <#
@@ -1065,7 +1065,7 @@ Du coup, un nouveau dossier vide a été créé avec le bon nom et il faudra man
 			}
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
-			sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
+			sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
 
 		} # FIN S'il y a des notifications pour la catégorie courante
 	}# FIN BOUCLE de parcours des catégories de notifications
@@ -1345,11 +1345,14 @@ try
 {
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
-	$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
+	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+						 $targetTenant, 
+						 $configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
+						 $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
 
 	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
 	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
-	$nsx = [NSXAPI]::new($global:NSX_SERVER_LIST[$targetEnv], $global:NSX_ADMIN_USERNAME, $global:NSX_PASSWORD_LIST[$targetEnv])
+	$nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), $configNSX.getConfigValue($targetEnv, "user"), $configNSX.getConfigValue($targetEnv, "password"))
 
 
 	# Recherche de BG existants
@@ -1393,7 +1396,7 @@ try
 		# --------------------------------- Business Group
 
 		# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
-		$capacityAlertMails = @($global:CAPACITY_ALERT_DEFAULT_MAIL)
+		$capacityAlertMails = @($configGlobal.getConfigValue("mail", "capacityAlert"))
 		
 		# Si Tenant EPFL
 		if($targetTenant -eq $global:VRA_TENANT__EPFL)
@@ -1765,6 +1768,6 @@ catch # Dans le cas d'une erreur dans le script
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Web.HttpUtility]::HtmlEncode($errorTrace))
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
 	
 }
