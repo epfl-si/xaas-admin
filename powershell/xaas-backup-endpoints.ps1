@@ -63,7 +63,7 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-xaas-backup.inc.ps1"))
+$configXaaSBackup = [ConfigReader]::New("config-xaas-backup.json")
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
@@ -258,10 +258,14 @@ try
  
     <# Connexion à l'API Rest de vSphere. On a besoin de cette connxion aussi (en plus de celle du dessus) parce que les opérations sur les tags ne fonctionnent
     pas via les CMDLet Get-TagAssignement et autre...  #>
-    $vsphereApi = [vSphereAPI]::new($global:XAAS_BACKUP_VCENTER_SERVER_LIST[$targetEnv], $global:XAAS_BACKUP_VCENTER_USER_LIST[$targetEnv], $global:XAAS_BACKUP_VCENTER_PASSWORD_LIST[$targetEnv])
+    $vsphereApi = [vSphereAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "vsphere", "server"), 
+                                    $configXaaSBackup.getConfigValue($targetEnv, "vsphere", "user"), 
+                                    $configXaaSBackup.getConfigValue($targetEnv, "vsphere", "password"))
 
     # Connexion à l'API REST de NetBackup
-    $nbu = [NetBackupAPI]::new($global:XAAS_BACKUP_SERVER_LIST[$targetEnv], $global:XAAS_BACKUP_USER_LIST[$targetEnv], $global:XAAS_BACKUP_PASSWORD_LIST[$targetEnv])   
+    $nbu = [NetBackupAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "backup", "server"), 
+                               $configXaaSBackup.getConfigValue($targetEnv, "backup", "user"), 
+                               $configXaaSBackup.getConfigValue($targetEnv, "backup", "password"))   
 
     # Ajout d'informations dans le log
     $logHistory.addLine("Script executed with following parameters")

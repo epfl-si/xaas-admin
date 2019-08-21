@@ -1,0 +1,43 @@
+{
+    /* == Environnement de développement == */
+    "dev": {
+        "backup": {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "vSphere": {
+            "server": "",
+            "user": "", 
+            "password": ""
+        }
+    },
+
+    /* == Environnement de test == */
+    "test": {
+        "backup": {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "vsphere": {
+            "server": "",
+            "user": "",
+            "password": ""
+        }
+    },
+
+    /* == Environnement de production == */
+    "xaas-backup": {
+        "backup": {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "vsphere": {
+            "server": "",
+            "user": "", 
+            "password": ""
+        }
+    }
+}
