@@ -30,6 +30,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "DjangoMySQL.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
@@ -37,7 +38,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 # Chargement des fichiers de configuration
 loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vra.inc.ps1"))
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-mail.inc.ps1"))
+$configGlobal = [ConfigReader]::New("config-global.json")
 
 <#
 -------------------------------------------------------------------------------------
@@ -167,7 +168,7 @@ function handleNotifications
 			}
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
-			sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
+			sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
 
 		} # FIN S'il y a des notifications pour la catégorie courante
 	}# FIN BOUCLE de parcours des catégories de notifications
@@ -793,6 +794,6 @@ catch # Dans le cas d'une erreur dans le script
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Web.HttpUtility]::HtmlEncode($errorTrace))
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
 	
 }	

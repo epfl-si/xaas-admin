@@ -12,27 +12,44 @@
 class ConfigReader
 {
    hidden [PSObject]$config
+   hidden [string]$JSONfile
    
    <#
 	-------------------------------------------------------------------------------------
       BUT : Créer une instance de l'objet 
+
+      IN  : $filename   -> Nom du fichier JSON à charger
 	#>
-   ConfigReader()
+   ConfigReader([string]$filename)
    {
       # Chemin complet jusqu'au fichier à charger
-		$filepath = (Join-Path $global:CONFIG_FOLDER "all-config.json")
+		$this.JSONfile = (Join-Path $global:CONFIG_FOLDER $filename)
 
 		# Si le fichier n'existe pas
-		if(-not( Test-Path $filepath))
+		if(-not( Test-Path $this.JSONfile))
 		{
-			Throw ("ConfigReader: JSON config file not found ({0})" -f $filepath)
+			Throw ("Config file not found ! ({0})`nPlease create it from 'sample' file" -f $this.JSONfile)
       }
       
       # Lecture du fichier, suppression des commentaires et transformation en JSON 
-      $this.config = ((Get-Content -Path $filepath -raw) -replace '(?m)\s*//.*?$' -replace '(?ms)/\*.*?\*/') | ConvertFrom-Json
+      $this.config = ((Get-Content -Path $this.JSONfile -raw) -replace '(?m)\s*//.*?$' -replace '(?ms)/\*.*?\*/') | ConvertFrom-Json
 
    }
 
+
+   <#
+	-------------------------------------------------------------------------------------
+      BUT : Permet de savoir si une propriété d'objet existe
+      
+      IN  : $object     -> L'objet dans lequel il faut chercher
+      IN  : $property   -> Propriété de l'objet dont on veut savoir si elle existe
+
+      RET : $true|$false
+	#>
+   hidden [bool] propertyExists([PSObject]$object, [string]$property)
+   {
+      return $property -in $object.PSobject.Properties.name.split([Environment]::NewLine)
+   }
 
 
    <#
@@ -40,13 +57,25 @@ class ConfigReader
       BUT : Renvoie une valeur de configuration pour un élément donné
       
       IN  : $scope      -> Scope dans lequel on travaille.
-                           Test, Dev, Prod, Global
-      IN  : $category   -> Catégorie de la valeur
-      IN  : $valueName  -> Nom de la valeur que l'on veut récupérer
+                           peut être: Test, Dev, Prod, ...
+      IN  : $element    -> Nom de la valeur que l'on veut récupérer
 	#>
-   [String]getConfigValue([string]$scope, [string]$category, [string]$valueName)
+   [String]getConfigValue([string]$scope, [string]$element)
    {
-      return ""
+      # On commence par contrôler que le scope existe 
+      if(!($this.propertyExists($this.config, $scope)))
+      {
+         Throw "ConfigReader: Scope '{0}' doesn't exists in '{1}'" -f $scope, $this.JSONfile
+      }
+
+      # On regarde ensuite si l'élément demandé dans le scope exist aussi.
+      if(!($this.propertyExists($this.config.$scope, $element)))
+      {
+         Throw "ConfigReader: Element '{0}' for scope '{1}' doesn't exists in '{2}'" -f $element, $scope, $this.JSONfile
+      }
+
+      # Retour de ce qui est demandé
+      return $this.config.$scope.$element
    }
 
 }

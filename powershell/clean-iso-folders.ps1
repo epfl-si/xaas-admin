@@ -26,6 +26,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
@@ -35,7 +36,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 # Chargement des fichiers de configuration
 loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vra.inc.ps1"))
 loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vsphere.inc.ps1"))
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-mail.inc.ps1"))
+$configGlobal = [ConfigReader]::New("config-global.json")
 
 
 <#
@@ -228,6 +229,6 @@ catch # Dans le cas d'une erreur dans le script
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Web.HttpUtility]::HtmlEncode($errorTrace))
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
 	
 }

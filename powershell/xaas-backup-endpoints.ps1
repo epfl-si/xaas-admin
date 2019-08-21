@@ -50,6 +50,8 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions-vsphere.inc.ps1"))
 
@@ -60,7 +62,7 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "Backup", "NetBackupAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-mail.inc.ps1"))
+$configGlobal = [ConfigReader]::New("config-global.json")
 loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-xaas-backup.inc.ps1"))
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
@@ -375,7 +377,7 @@ catch
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Web.HttpUtility]::HtmlEncode($errorTrace))
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
 }
 
 
