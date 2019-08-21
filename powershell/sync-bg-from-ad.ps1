@@ -71,7 +71,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vra.inc.ps1"))
 loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vro.inc.ps1"))
 $configGlobal = [ConfigReader]::New("config-global.json")
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-nsx.inc.ps1"))
+$configNSX = [ConfigReader]::New("config-nsx.json")
 
 
 
@@ -1350,7 +1350,7 @@ try
 
 	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
 	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
-	$nsx = [NSXAPI]::new($global:NSX_SERVER_LIST[$targetEnv], $global:NSX_ADMIN_USERNAME, $global:NSX_PASSWORD_LIST[$targetEnv])
+	$nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), $configNSX.getConfigValue($targetEnv, "user"), $configNSX.getConfigValue($targetEnv, "password"))
 
 
 	# Recherche de BG existants
