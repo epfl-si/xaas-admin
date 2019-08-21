@@ -203,33 +203,6 @@ function getvRAMailContent
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Tente de charger un fichier de configuration. Si c'est impossible, une 
-		  erreur est affichée et on quitte.
-
-	IN  : $filename	-> chemin jusqu'au fichier à charger.
-#>
-function loadConfigFile([string]$filename)
-{
-	if(!(Test-Path -Path $filename))
-	{
-		Throw ("Config file not found ! ({0})`nPlease create it from 'sample' file" -f $filename)
-	}
-
-
-	try 
-	{
-		. $filename
-	}
-	catch 
-	{
-		Throw ("Error reading config file ! ({0})`n{1}`n`n{2}" -f $filename,  $_.Exception.Message, $_.ScriptStackTrace)
-		
-	}
-}
-
-
-<#
--------------------------------------------------------------------------------------
 	BUT : Retourne le hash de la chaîne de caractères passée 
 
 	IN  : $string	-> Chaine de caractères depuis laquelle créer le hash
