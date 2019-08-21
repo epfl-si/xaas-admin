@@ -258,9 +258,9 @@ try
  
     <# Connexion à l'API Rest de vSphere. On a besoin de cette connxion aussi (en plus de celle du dessus) parce que les opérations sur les tags ne fonctionnent
     pas via les CMDLet Get-TagAssignement et autre...  #>
-    $vsphereApi = [vSphereAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "vsphere", "server"), 
-                                    $configXaaSBackup.getConfigValue($targetEnv, "vsphere", "user"), 
-                                    $configXaaSBackup.getConfigValue($targetEnv, "vsphere", "password"))
+    $vsphereApi = [vSphereAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "vSphere", "server"), 
+                                    $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "user"), 
+                                    $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "password"))
 
     # Connexion à l'API REST de NetBackup
     $nbu = [NetBackupAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "backup", "server"), 
