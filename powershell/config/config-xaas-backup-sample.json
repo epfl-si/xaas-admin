@@ -1,5 +1,4 @@
 {
-    /* == Environnement de développement == */
     "dev": {
         "backup": {
             "server": "",
@@ -12,29 +11,25 @@
             "password": ""
         }
     },
-
-    /* == Environnement de test == */
     "test": {
         "backup": {
             "server": "",
             "user": "",
             "password": ""
         },
-        "vsphere": {
+        "vSphere": {
             "server": "",
             "user": "",
             "password": ""
         }
     },
-
-    /* == Environnement de production == */
     "xaas-backup": {
         "backup": {
             "server": "",
             "user": "",
             "password": ""
         },
-        "vsphere": {
+        "vSphere": {
             "server": "",
             "user": "", 
             "password": ""

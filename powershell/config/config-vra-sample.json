@@ -1,5 +1,4 @@
 {
-    /* == Environnement de développement == */
     "dev": {
         "server": "",
         "default": {
@@ -15,8 +14,6 @@
             "password":""
         }
     },
-
-    /* == Environnement de test == */
     "test": {
         "server": "",
         "default": {
@@ -32,8 +29,6 @@
             "password":""
         }
     },
-
-    /* == Environnement de production == */
     "vra": {
         "server": "",
         "default": {

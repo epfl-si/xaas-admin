@@ -1,4 +1,3 @@
-/* == Configuration globale à tous les environnement == */
 {
     "mail": {
         "admin": "", // adresse mail de l'admin
