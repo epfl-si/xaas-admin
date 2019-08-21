@@ -34,7 +34,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vra.inc.ps1"))
+$configVra = [ConfigReader]::New("config-vra.json")
 loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vsphere.inc.ps1"))
 $configGlobal = [ConfigReader]::New("config-global.json")
 
@@ -120,7 +120,10 @@ try
 		# Si on n'a pas encore de connexion à vRA, là, ça serait bien d'en ouvrir une histoire pouvoir continuer.
 		if($null -eq $vra)
 		{
-			$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
+			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+								 $targetTenant, 
+								 $configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
+								 $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
 		}	
 
 		# Si on n'a pas encore de connexin à vCenter, c'est aussi maintenant qu'on va l'établir. Enfin, on pourrait faire ça plus tard dans le code mais vu qu'on vient

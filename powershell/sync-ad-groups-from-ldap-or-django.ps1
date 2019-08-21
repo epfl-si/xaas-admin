@@ -37,7 +37,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vra.inc.ps1"))
+$configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 
 <#
@@ -753,7 +753,10 @@ try
 		Start-Sleep -Seconds $sleepDurationSec
 		try {
 			# Création d'une connexion au serveur
-			$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
+			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+								 $targetTenant, 
+								 $configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
+								 $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
 		}
 		catch {
 			Write-Error "Error connecting to vRA API !"

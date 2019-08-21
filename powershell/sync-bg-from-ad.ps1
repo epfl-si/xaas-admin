@@ -68,7 +68,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vra.inc.ps1"))
+$configVra = [ConfigReader]::New("config-vra.json")
 loadConfigFile([IO.Path]::Combine($global:CONFIG_FOLDER, "config-vro.inc.ps1"))
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configNSX = [ConfigReader]::New("config-nsx.json")
@@ -1346,7 +1346,10 @@ try
 {
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
-	$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
+	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+						 $targetTenant, 
+						 $configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
+						 $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
 
 	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
 	$logHistory.addLineAndDisplay("Connecting to NSX-T...")

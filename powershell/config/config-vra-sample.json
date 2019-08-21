@@ -1,0 +1,53 @@
+{
+    /* == Environnement de développement == */
+    "dev": {
+        "server": "",
+        "default": {
+            "user":"",
+            "password":""
+        },
+        "itservices": {
+            "user":"",
+            "password":"" 
+        },
+        "epfl": {
+            "user":"",
+            "password":""
+        }
+    },
+
+    /* == Environnement de test == */
+    "test": {
+        "server": "",
+        "default": {
+            "user":"",
+            "password":""
+        },
+        "itservices": {
+            "user":"",
+            "password":""
+        },
+        "epfl": {
+            "user":"",
+            "password":""
+        }
+    },
+
+    /* == Environnement de production == */
+    "vra": {
+        "server": "",
+        "default": {
+            "user":"",
+            "password":""
+        },
+        "itservices": {
+            "user":"",
+            "password":""
+        },
+        "epfl": {
+            "user":"",
+            "password":""
+        }
+    }
+}
+        
