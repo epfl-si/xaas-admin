@@ -29,7 +29,7 @@
             "password":""
         }
     },
-    "vra": {
+    "prod": {
         "server": "",
         "default": {
             "user":"",
