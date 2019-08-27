@@ -9,8 +9,9 @@
          commentaire multiligne (entre < # et # > , sans les espaces les espaces entre les 
          caractères) et il peut contenir plusieurs lignes de possibilités d'utilisation du 
          script. 
-         Ce bloc doit IMPÉRATIVEMENT être le premier bloc de commentaire multiligne du 
-         script à contrôler !! 
+         Ce bloc doit IMPÉRATIVEMENT commencer par "USAGES:" (qui est défini dans $global:USAGES_KEYWORD) 
+         sinon une erreur sera levée.
+
          S'il y a besoin d'autres informations dans un header, il faut 
          ajouter un 2e bloc de commentaire multiligne
 
@@ -44,6 +45,7 @@
    HISTORIQUE DES VERSIONS
    20.08.2019 - 1.0 - Version de base
 #>
+$global:USAGES_KEYWORD="USAGES:"
 class ArgsPrototypeChecker
 {
     hidden [Array]$allowedUsages    # Utilisations possibles du scripts avec les arguments 
@@ -60,6 +62,9 @@ class ArgsPrototypeChecker
     # TODO: Utiliser les données membres suivantes car pour le moment, ça a été laissé en suspend
     hidden [String]$currentArgGroupName
     hidden [int]$nbArgGroupFound
+
+    # Tableau avec les erreurs
+    hidden [Array]$errors
     
 
     <#
@@ -85,8 +90,10 @@ class ArgsPrototypeChecker
         
         $this.allowedUsages = @()
 
-        $this.currentArgGroupName = $null
+        $this.currentArgGroupName = ""
         $this.nbArgGroupFound = 0
+
+        $this.errors = @()
     }
 
 
@@ -248,11 +255,19 @@ class ArgsPrototypeChecker
                         ($callArg.Values[0].toLower() -eq $allowedValue))
                     {
                         return $true
-                        Break
                     }
 
                 }# FIN BOUCLE de parcours des valeurs autorisées
+
+                # Ajout de l'erreur à la liste si elle n'y est pas encore
+                $err = "Incorrect value ({0}) for argument {1}" -f $callArg.Values[0], $callArg.Name
+                if($this.errors -notcontains $err)
+                {
+                    $this.errors += $err
+                }
                 
+                # On peut sortir car on ne va pas tomber sur un autre argument avec le même nom...
+                break
             }# FIN SI on tombe sur l'arguement qui a le même nom 
 
         }# FIN BOUCLE de parcours des arguments utilisés pour l'appel du script
@@ -270,9 +285,16 @@ class ArgsPrototypeChecker
     [void] parseScriptHeader()
     {
         # Extraction de la liste des utilisations
-        $this.usages = ([Regex]::Matches((Get-content $this.scriptCallPath), "<#.*?#>"))[0]
+        $this.usages = ([Regex]::Matches((Get-content $this.scriptCallPath), ("<#\s*{0}\s*.*?#>" -f $global:USAGES_KEYWORD)))[0]
+
+        # Si rien n'a été trouvé... 
+        if($this.usages -eq "")
+        {
+            Throw ("Usages multi-lines comment not found! Needs to start with '{0}'" -f $global:USAGES_KEYWORD)
+        }
         # Nettoyage pour virer ce qui est avant/après
-        $this.usages = ([String]$this.usages).Trim(@("<", ">", "#", "`t"))
+        $this.usages = $this.usages -replace $global:USAGES_KEYWORD, ""
+        $this.usages = ([String]$this.usages).Trim(@("<", ">", "#", "`t", " "))
 
         # Lecture de l'entête du script et parcours des "usages"
         $this.usages -Split $this.scriptCallName | ForEach-Object {
@@ -342,7 +364,7 @@ class ArgsPrototypeChecker
 
         if(!$callOk)
         {
-            Throw ("Incorrect arguments given. Usage is: {0}" -f $this.usages)
+            Throw ("Incorrect arguments given. {0}`nUsage is:{1}" -f ($this.errors -join "\n"), ($this.usages -replace $this.scriptCallName, ("`n{0}" -f $this.scriptCallName)) )
         }
     }
 
