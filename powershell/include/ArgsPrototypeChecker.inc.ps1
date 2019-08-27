@@ -2,10 +2,19 @@
 <#
    BUT : Contient une classe permetant de contrôler que l'utilisation d'un script corresponde
          aux arguments passés pour l'exécuter. Ce fichier doit juste être inclus dans un script
-         à contrôler, juste après le header qui décrit les paramètres.
-         Ce header doit se trouver entre < # et # >  (sans les espaces les espaces entre les 
+         à contrôler, idéalement dans un "try...catch" histoire de pouvoir récupérer l'exception
+         levée en cas de problème
+         
+         Les différentes possibilité d'utilisation du script doivent se trouver dans un bloc de
+         commentaire multiligne (entre < # et # > , sans les espaces les espaces entre les 
          caractères) et il peut contenir plusieurs lignes de possibilités d'utilisation du 
-         script. Les règles pour noter les utilisations sont les suivantes :
+         script. 
+         Ce bloc doit IMPÉRATIVEMENT être le premier bloc de commentaire multiligne du 
+         script à contrôler !! 
+         S'il y a besoin d'autres informations dans un header, il faut 
+         ajouter un 2e bloc de commentaire multiligne
+
+         Les règles pour noter les utilisations sont les suivantes :
          - Chaque utilisation doit commencer par le nom du script seul (pas de ./ avant)
          - Il est possible de mettre une utilisation sur plusieurs lignes
          - Ne pas ajoute des espaces inutiles, même si ça augmente la lisibilité
@@ -21,6 +30,8 @@
          Ce qui n'est PAS SUPPORTÉ:
          - Les groupes "OR" d'arguments. Dans ce cas-là, il faut faire X ligne de possibilité d'utilisation
          ... (-arg1 <value1>|-arg2 <value2>)
+
+         Si on veut mettre d'autres informations en header
 
    AUTEUR : Lucien Chaboudez
    DATE   : Août 2019
