@@ -38,8 +38,8 @@
    AUTEUR : Lucien Chaboudez
    DATE   : Août 2019
 
-   TODO: 
-   - Stocker quelque part la dernière erreur rencontrée puis l'ajouter dans l'exception propagée
+   DOCUMENTATION:
+   https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=101909058
 
    ----------
    HISTORIQUE DES VERSIONS
