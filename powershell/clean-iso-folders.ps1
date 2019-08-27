@@ -1,4 +1,8 @@
 <#
+USAGES:
+	clean-iso-folders.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+#>
+<#
     BUT 		: Fait du nettoyage dans les dossiers où se trouvent les ISO privées des différents
                   Business Groups.
 
@@ -39,25 +43,6 @@ $configVSphere = [ConfigReader]::New("config-vsphere.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 
 
-<#
--------------------------------------------------------------------------------------
-	BUT : Affiche comment utiliser le script
-#>
-function printUsage
-{
-   	$invoc = (Get-Variable MyInvocation -Scope 1).Value
-   	$scriptName = $invoc.MyCommand.Name
-
-	$envStr = $global:TARGET_ENV_LIST -join "|"
-	$tenantStr = $global:TARGET_TENANT_LIST -join "|"
-
-   	Write-Host ""
-   	Write-Host ("Usage: $scriptName -targetEnv {0} -targetTenant {1}" -f $envStr, $tenantStr)
-   	Write-Host ""
-}
-
-
-
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -66,38 +51,30 @@ function printUsage
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-
-# Test des paramètres
-if(($targetEnv -eq "") -or (-not(targetEnvOK -targetEnv $targetEnv)))
-{
-   printUsage
-   exit
-}
-
-# Contrôle de la validité du nom du tenant
-if(($targetTenant -eq "") -or (-not (targetTenantOK -targetTenant $targetTenant)))
-{
-	printUsage
-	exit
-}
-
-# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
-$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
-
-# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-$counters = [Counters]::new()
-$counters.add('ISOFound', '# "old" ISO files found')
-$counters.add('ISODeleted', '# ISO files deleted')
-$counters.add('ISOUnmounted', '# ISO files unmounted to be deleted')
-
-# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-$logHistory =[LogHistory]::new('0.Clean-ISO-Folders', (Join-Path $PSScriptRoot "logs"), 30)
-
-$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
-
-$logHistory.addLineAndDisplay(("Looking for ISO files older than {0} days" -f $global:PRIVATE_ISO_LIFETIME_DAYS))
 try
 {
+	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$logHistory =[LogHistory]::new('0.Clean-ISO-Folders', (Join-Path $PSScriptRoot "logs"), 30)
+
+	# On contrôle le prototype d'appel du script
+	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+
+
+	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
+
+	$logHistory.addLineAndDisplay(("Looking for ISO files older than {0} days" -f $global:PRIVATE_ISO_LIFETIME_DAYS))
+
+
+	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
+	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
+
+	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$counters = [Counters]::new()
+	$counters.add('ISOFound', '# "old" ISO files found')
+	$counters.add('ISODeleted', '# ISO files deleted')
+	$counters.add('ISOUnmounted', '# ISO files unmounted to be deleted')
+
+
     # On n'ouvre pas de connexion à vRA tout de suite car si ça se trouve, il n'y a rien à supprimer donc ouvrir une connexion pour rien serait... inutile
     # (je me demande, est-ce quelqu'un d'autre que moi va lire ce commentaire un jour?...)
 	$vra = $null
