@@ -1,4 +1,11 @@
 <#
+xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupTag -vmName <vmName>
+xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action setBackupTag -vmName <vmName> -backupTag (<backupTag>|"")
+xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupList -vmName <vmName>
+xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreBackupId <restoreId>
+xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreTimestamp <restoreTimestamp>
+#>
+<#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
                   opérations en rapport avec le service de Backup en tant que XaaS.
                   Pour accéder à vSphere, on utilise 2 manières de faire: 
@@ -26,25 +33,11 @@
     error -> si pas d'erreur, chaîne vide. Si erreur, elle est ici.
     results -> liste avec un ou plusieurs éléments suivant ce qui est demandé.
 
-    PARAMETRES:
-        -targetEnv          -> Environnement cible pour l'exécution. Les valeurs possibles sont définies dans
-                                include/define.inc.ps1 => $global:TARGET_ENV__*
-        -action             -> l'action que l'on demande au script d'effectuer, elles sont définies plus bas, dans
-                                la partie qui traite des constantes.
-        -vmName             -> Nom de la VM concernée par l'action.
-        -backupTag          -> Tag de backup à affecter à une VM. A passer uniquement si $action == $ACTION_SET_BACKUP_TAG
-                                Si on désire désactiver le backup pour une VM, on doit passer un tag vide.
-        -restoreBackupId    -> ID du backup à restaurer. A passer uniquement si $action == $ACTION_RESTORE_BACKUP
-                                On peut aussi passer le timestamp (ci-dessous)
-        -restoreTimestamp   -> Timestamp du backup à restaurer. A passer uniquement si $action == $ACTION_RESTORE_BACKUP
-                                On peut aussi passer l'id du backup (ci-dessus)
-
     Confluence :
     https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=99188910                                
 
 #>
 param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp)
-
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -74,14 +67,6 @@ $ACTION_SET_BACKUP_TAG = "setBackupTag"
 # Récupérer la liste des backup ou dire à NetBackup d'en restaurer un
 $ACTION_GET_BACKUP_LIST = "getBackupList"
 $ACTION_RESTORE_BACKUP = "restoreBackup"
-
-# Liste de toutes les actions pour la validation des paramètres plus bas
-$ALL_ACTIONS = @(
-    $ACTION_GET_BACKUP_TAG
-    $ACTION_SET_BACKUP_TAG
-    $ACTION_GET_BACKUP_LIST
-    $ACTION_RESTORE_BACKUP
-)
 
 $NBU_TAG_PREFIX = "NBU-"
 
@@ -117,108 +102,6 @@ function displayJSONOutput
 }
 
 
-<#
--------------------------------------------------------------------------------------
-    BUT : Affiche comment utiliser le script
-    
-    IN  : $errorDetails     -> détails de l'erreur
-#>
-function printUsage
-{
-    param([string]$errorDetails)
-   	$invoc = (Get-Variable MyInvocation -Scope 1).Value
-   	$scriptName = $invoc.MyCommand.Name
-
-    $output = getObjectForOutput
-
-    $envStr = $global:TARGET_ENV_LIST -join "|"
-    
-    # Génération de l'erreur
-    $output.error = ("{6}`n`n `
-Possibles usages: `n `
-{0} -targetEnv {1} -action {2}|{3} -vmName <vmName>`n `
-{0} -targetEnv {1} -action {4} -vmName <vmName> -backupTag <backupTag> `n `
-{0} -targetEnv {1} -action {5} -vmName <vmName> (-restoreBackupId <backupId>| -restoreTimestamp <timestamp>)" -f `
-                        $scriptName, ` # 0 
-                        $envStr, ` # 1
-                        $ACTION_GET_BACKUP_TAG, ` # 2
-                        $ACTION_GET_BACKUP_LIST,` # 3
-                        $ACTION_SET_BACKUP_TAG, ` # 4
-                        $ACTION_RESTORE_BACKUP, ` # 5
-                        $errorDetails ) # 6
-    
-    # Affichage du résultat
-    displayJSONOutput -output $output
-    
-    # et on quitte le script
-    exit
-}
-
-
-<#
--------------------------------------------------------------------------------------
-    BUT: Défini si un paramètre est valide. Si ce n'est pas le cas, on affiche l'usage et on quitte
-
-    IN  : $value            -> la valeur du paramètre 
-    IN  : $allowEmpty       -> $true|$false pour dire si le paramètre peut être vide
-    IN  : $allowedValues    -> tableau avec la liste des valeurs autorisées pour le paramètre
-                                Si tableau vide passé, on ne prend pas en compte.   
-    IN  : $errorDetails     -> détails de l'erreur à afficher dans le cas où c'est une erreur    
-#>
-function checkParam
-{
-    param([string]$value, [bool]$allowEmpty, [Array]$allowedValues, [string]$errorDetails)
-
-    # Si on ne peut pas passer de paramètre vide et que le paramètre est vide, 
-    if((($allowEmpty -eq $false) -and ($value -eq "")) `
-        -or `
-        # Si on a une liste de valeurs autorisées et que ce n'est pas dans celle-ci
-        (($allowedValues.Count -gt 0) -and($allowedValues -notcontains $value))) 
-    {
-        printUsage -errorDetails $errorDetails
-        exit 1
-    }
-}
-
-<#
--------------------------------------------------------------------------------------
-    BUT: Défini si un groupe de paramètre est valide. Si ce n'est pas le cas, on affiche l'usage et on quitte
-         Par défaut, on admet qu'au moins une des valeurs doit être correcte
-
-    IN  : $valueList        -> tableau avec les valeurs possibles
-    IN  : $allowedValues    -> tableau avec la liste des valeurs autorisées pour le paramètre
-                                Si tableau vide passé, on ne prend pas en compte.   
-    IN  : $errorDetails     -> détails de l'erreur à afficher dans le cas où c'est une erreur    
-#>
-function checkParamGroup
-{
-    param([Array]$valueList, [Array]$allowedValues, [string]$errorDetails)
-
-    $ok = $false
-
-    ForEach($value in $valueList)
-    {
-        # Si on a une valeur et que celle-ci est autorisée (si liste définie)
-        if($value -ne "" `
-            -and `
-            # Si on a une liste de valeurs autorisées et que ce n'est pas dans celle-ci
-            ( (($allowedValues.Count -gt 0) -and ($allowedValues -notcontains $value)) -or $allowedValues.Count -eq 0 )  ) 
-        {
-            $ok = $true
-            break
-        }
-    }
-
-    # Si problème 
-    if(!($ok))
-    {
-        printUsage -errorDetails $errorDetails
-        exit 1
-    }
-
-}
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -227,31 +110,15 @@ function checkParamGroup
 
 try
 {
-    # Test des paramètres
-    if(($targetEnv -eq "") -or (-not(targetEnvOK -targetEnv $targetEnv)))
-    {
-        printUsage -errorDetails "Incorrect value for '-targetEnv'"
-        exit
-    }
+    # Création de l'objet pour l'affichage 
+    $output = getObjectForOutput
 
-    # Contrôle des autres paramètres 
-    checkParam -value $action -allowEmpty $false -allowedValues $ALL_ACTIONS -errorDetails "Incorrect value for '-action'"
-    checkParam -value $vmName -allowEmpty $false -allowedValues @() -errorDetails "Incorrect value for '-vmName'"
-
-    checkParam -value $backupTag -allowEmpty $true
-
-    if($action -eq $ACTION_RESTORE_BACKUP)
-    {
-        checkParamGroup -valueList @($restoreBackupId, $restoreTimestamp) -allowedValues @() -errorDetails "Incorrect value for '-restoreBackupId' or '-restoreTimestamp'"
-    }
-    
+    # On commence par contrôler le prototype d'appel du script
+    . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+   
 
     # -------------------------------------------------------------------------------------------
 
-
-
-    # Création de l'objet pour l'affichage 
-    $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new('xaas-backup', (Join-Path $PSScriptRoot "logs"), 30)
