@@ -33,7 +33,16 @@
          - Les groupes "OR" d'arguments. Dans ce cas-là, il faut faire X ligne de possibilité d'utilisation
          ... (-arg1 <value1>|-arg2 <value2>)
 
-         Si on veut mettre d'autres informations en header
+   ATTENTION !
+   Si le script doit être exécuté via une tâche planifiée, c'est plus simple de passer par un fichier *.BAT
+   intermédiaire pour faire le boulot. Dans le fichier en question, il faut utiliser la notation:
+   "powershell.exe C:\path\to\myscript.ps1 -arg1 value1  > C:\save\output\to\file.log"
+
+   Dans les options de PowerShell.exe, il est possible de spécifier le paramètre -File pour dire quel fichier 
+   exécuter. Il NE FAUT PAS utiliser ce paramètre car la classe de contrôle des paramètres devient incapable
+   de récupérer les paramètres d'exécution du script à contrôler.
+   Et il ne faut pas non plus se dire que la ligne de commande on va la mettre directement dans la tâche planifiée,
+   non. Là, on c'est la redirection vers le fichier log qui ne va plus fonctionner... 
 
    AUTEUR : Lucien Chaboudez
    DATE   : Août 2019
@@ -78,16 +87,30 @@ class ArgsPrototypeChecker
         # On extrait les informations depuis la ligne de commande 
         $scriptCall = (Get-Variable MyInvocation -Scope 0).Value.Line.TrimStart(@(".")).Trim()
 
-        # Extraction du nom du script (il se trouve entre ' dans la chaîne $scriptCall)
-        $this.scriptCallPath = [Regex]::Match($scriptCall, "'.*?'")
-        # Extraction des arguments avec lesquels le script a été appelé
-        $this.scriptCallArgs = ($scriptCall -Replace [Regex]::Escape($this.scriptCallPath), "").Trim()
-        # On nettoie le chemin jusqu'au script (car il contient toujours des ')
-        $this.scriptCallPath = $this.scriptCallPath.Trim(@("'"))
+        # On peut avoir les valeurs suivantes :
+        # ". 'd:\IDEVING\IaaS\git\xaas-admin\powershell\test.ps1' -targetEnv prod -targetTenant EPFL"
+        # C:\scripts\git\xaas-admin\powershell\vsphere-update-vm-notes-with-tools-version.ps1 -targetEnv prod > C:\scripts\vra\scheduled\logs\vsphere-update-vm-notes-with-tools-version.log
 
-        # Extraction du nom du script
-        $this.scriptCallName = Split-Path $this.scriptCallPath -leaf
+        # Recherche du chemin d'appel complet
+        $this.scriptCallPath = [Regex]::Matches($scriptCall, "'?[a-zA-Z]:(\\(.*?))*\.ps1'?")[0]
+
+        # Suppression début de la ligne avec le nom du script (et le chemin)
+        $scriptCall = $scriptCall.Substring(($scriptCall.IndexOf($this.scriptCallPath)+ $this.scriptCallPath.length)).Trim()
         
+        # Suppression de l'éventuelle redirection vers un fichier de sortie
+        $pipePos = $scriptCall.IndexOf(">")
+        if($pipePos -gt 0)
+        {
+            $scriptCall = $scriptCall.Substring(0, $pipePos).Trim()
+        }
+        
+        # Suppression des éventuels ' autour du nom du script
+        $this.scriptCallPath = $this.scriptCallPath -replace "'",""
+        $this.scriptCallName = Split-Path $this.scriptCallPath -leaf
+
+        # On récupère les arguments
+        $this.scriptCallArgs = $scriptCall
+
         $this.allowedUsages = @()
 
         $this.currentArgGroupName = ""
