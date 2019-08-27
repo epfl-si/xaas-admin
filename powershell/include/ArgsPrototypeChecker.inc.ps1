@@ -25,6 +25,9 @@
    AUTEUR : Lucien Chaboudez
    DATE   : Août 2019
 
+   TODO: 
+   - Stocker quelque part la dernière erreur rencontrée puis l'ajouter dans l'exception propagée
+
    ----------
    HISTORIQUE DES VERSIONS
    20.08.2019 - 1.0 - Version de base
@@ -42,8 +45,10 @@ class ArgsPrototypeChecker
 
     # Pour le nom du groupe d'argument courant. Cela permet de gérer un argument qui est un "ou". Ex:
     # (-arg1 <value1>|-arg2 <value2>)
+    # TODO: Utiliser les données membres suivantes car pour le moment, ça a été laissé en suspend
     hidden [String]$currentArgGroupName
     hidden [int]$nbArgGroupFound
+    
 
     <#
 	-------------------------------------------------------------------------------------
