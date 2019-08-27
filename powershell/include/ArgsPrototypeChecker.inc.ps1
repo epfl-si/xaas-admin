@@ -18,6 +18,7 @@
          - Chaque utilisation doit commencer par le nom du script seul (pas de ./ avant)
          - Il est possible de mettre une utilisation sur plusieurs lignes
          - Ne pas ajoute des espaces inutiles, même si ça augmente la lisibilité
+         - Pour les arguments avec X valeurs possibles, le contrôle est insensible à la casse
          
          Exemple:
 
@@ -184,7 +185,7 @@ class ArgsPrototypeChecker
                     if(!($_.StartsWith("<")))
                     {
                         # Initialisation de la valeur autorisée
-                        $allowedValue = $_
+                        $allowedValue = $_.ToLower()
                     }
                     else
                     {
@@ -244,7 +245,7 @@ class ArgsPrototypeChecker
                     # OU 
                     # Si la valeur de l'appel correspond à une autorisée
                     if( (($null -eq $allowedValue) -and ($callArg.Values[0] -ne "")) -or 
-                        ($callArg.Values[0] -eq $allowedValue))
+                        ($callArg.Values[0].toLower() -eq $allowedValue))
                     {
                         return $true
                         Break
@@ -268,14 +269,16 @@ class ArgsPrototypeChecker
 	#>
     [void] parseScriptHeader()
     {
-        # Extraction du header
+        # Extraction de la liste des utilisations
         $this.usages = ([Regex]::Matches((Get-content $this.scriptCallPath), "<#.*?#>"))[0]
+        # Nettoyage pour virer ce qui est avant/après
+        $this.usages = ([String]$this.usages).Trim(@("<", ">", "#", "`t"))
 
         # Lecture de l'entête du script et parcours des "usages"
         $this.usages -Split $this.scriptCallName | ForEach-Object {
             
             # Nettoyage de la ligne du usage courant
-            $cleanedUsage = ([String]$_).Trim(@("<", ">", "#", " ", "`t"))
+            $cleanedUsage = $_.Trim(@(" ", "`t"))
 
             # Si après nettoyage il reste quelque chose du Usage... 
             if($cleanedUsage -ne "" )
