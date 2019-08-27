@@ -78,6 +78,10 @@ function getUpdatedNote()
 
 try
 {
+
+    # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+    $logHistory = [LogHistory]::new('vsphere-update-VM-notes-with-Tools-version', (Join-Path $PSScriptRoot "logs"), 30)
+    
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
@@ -88,9 +92,6 @@ try
     $counters.add('VMNotesUpdated', '# VM notes updated')
     $counters.add('VMNotesOK', '# VM notes OK')
 
-    # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new('vsphere-update-VM-notes-with-Tools-version', (Join-Path $PSScriptRoot "logs"), 30)
-    
     # Chargement des modules PowerCLI pour pouvoir accéder à vSphere.
     loadPowerCliModules
 
