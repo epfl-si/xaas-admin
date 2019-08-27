@@ -8,6 +8,7 @@
          script. Les règles pour noter les utilisations sont les suivantes :
          - Chaque utilisation doit commencer par le nom du script seul (pas de ./ avant)
          - Il est possible de mettre une utilisation sur plusieurs lignes
+         - Ne pas ajoute des espaces inutiles, même si ça augmente la lisibilité
          
          Exemple:
 
@@ -17,6 +18,10 @@
          test.ps1 -action list
          test.ps1 -action get -name <name>
 
+         Ce qui n'est PAS SUPPORTÉ:
+         - Les groupes "OR" d'arguments. Dans ce cas-là, il faut faire X ligne de possibilité d'utilisation
+         ... (-arg1 <value1>|-arg2 <value2>)
+
    AUTEUR : Lucien Chaboudez
    DATE   : Août 2019
 
@@ -24,7 +29,7 @@
    HISTORIQUE DES VERSIONS
    20.08.2019 - 1.0 - Version de base
 #>
-class ArgsChecker
+class ArgsPrototypeChecker
 {
     hidden [Array]$allowedUsages    # Utilisations possibles du scripts avec les arguments 
     hidden [String]$usages          # Chaine de caractères des "usages" telle que présente dans le header
@@ -35,13 +40,18 @@ class ArgsChecker
     hidden [String]$scriptCallPath  # Chemin jusqu'au script
     hidden [String]$scriptCallArgs  # Arugments passés pour l'appel
 
+    # Pour le nom du groupe d'argument courant. Cela permet de gérer un argument qui est un "ou". Ex:
+    # (-arg1 <value1>|-arg2 <value2>)
+    hidden [String]$currentArgGroupName
+    hidden [int]$nbArgGroupFound
+
     <#
 	-------------------------------------------------------------------------------------
       BUT : Créer une instance de l'objet.
             On n'a pas besoin d'informations explicites sur le script à contrôler car
             elles sont toutes trouvables en regardant l'appel qui a été fait.
 	#>
-    ArgsChecker()
+    ArgsPrototypeChecker()
     {
         # On extrait les informations depuis la ligne de commande 
         $scriptCall = (Get-Variable MyInvocation -Scope 0).Value.Line.TrimStart(@(".")).Trim()
@@ -56,8 +66,10 @@ class ArgsChecker
         # Extraction du nom du script
         $this.scriptCallName = Split-Path $this.scriptCallPath -leaf
         
-        
         $this.allowedUsages = @()
+
+        $this.currentArgGroupName = $null
+        $this.nbArgGroupFound = 0
     }
 
 
@@ -85,33 +97,57 @@ class ArgsChecker
             $argInfos = @{Name = ""               # Nom de l'argument 
                           Values = @()          # Tableau avec valeurs possibles, si harcodée: "-arg value"  ou alors "-arg value1|value2"
                                                 # $null = n'importe quelle valeur sauf chaine vide.
-                          isSwitch = $false       # Pour dire si c'est un switch
-                          Mandatory = $true}       # Pour dire si obligatoire
+                                                # Si ce tableau est vide, c'est que c'est un switch
+                          Mandatory = $true       # Pour dire si obligatoire
+                          groupName = $null}      # Nom du groupe de paramètre 
                           
             
             $arg = $usageArgs[$argIndex].Trim(@(" ", "`t"))
 
             # Si c'est un argument optionnel
+            # Ex [-targetEnv
             if($arg.StartsWith("["))
             {
                 $argInfos.Mandatory = $false
 
                 # On nettoie l'argument pour enlever les [ ]
+                # [-targetEnv] -> -targetEnv
+                # [-targetEnv  -> -targetEnv  (si pas Switch)
                 $arg = $arg.trim(@("[", "]"))
-
-                # Si c'est optionnel, ça peut être un switch, donc on regarde s'il y a un espace dans la chaine
-                $argInfos.isSwitch = $arg -notlike "* *"
             }
             
+            # TODO: Code volontairement commenté car on ne gère pas encore ceci pour le moment, c'est un peu trop complexe
+            # à mettre en place à première vue
+            # Si on tombe sur groupe d'arguments,
+            # Ex: (-targetEnv 
+            # if($arg.StartsWith("(-"))
+            # {
+            #     # Si on est déjà dans un groupe d'arguments, on propage une exception
+            #     if($this.currentArgGroupName -ne "")
+            #     {
+            #         Throw ("Nested argument groups not supported ({0})" -f $arg)
+            #     }
+            #     # Initialisation du nom du groupe 
+            #     $this.currentArgGroupName = "argGroup{0}" -f $this.nbArgGroupFound
+            #     $this.nbArgGroupFound +=1
+
+            #     # Nettoyage
+            #     # (-targetEnv  -> -targetEnv
+            #     $arg = $arg.trim(@("("))
+            # }
+
             # Si c'est un argument (et pas une valeur )
+            # Ex: -targetEnv
             if($arg.StartsWith("-"))
             {
                 $argInfos.Name = $arg
+                # Mise à jour du groupe potentiel dans lequel se trouve l'argument
+                $argInfos.groupName = $this.currentArgGroupName             
 
                 $usageArgsInfos.args += $argInfos
 
-                # Si c'est un argument obligatoire
-                if($argInfos.Mandatory)
+                # Si c'est un argument obligatoire et qu'on n'est pas dans un groupe d'arguments
+                if($argInfos.Mandatory -and ($this.currentArgGroupName -eq ""))
                 {
                     $usageArgsInfos.nbMandatoryArgs += 1   
                 }
@@ -147,9 +183,65 @@ class ArgsChecker
 
             }# FIN SI c'est une valeur
 
+
         }# FIN BOUCLE de parcours des arguments du Usage courant
 
+        # Mise à jour du nombre d'arguments obligatoires en additionnant le nombre de groupes rencontrés aux arguments obligatoires rencontrés
+        $usageArgsInfos.nbMandatoryArgs += $this.nbArgGroupFound
+
         return $usageArgsInfos
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+      BUT : Détermine si l'argument d'utilisation passé (pour une utilisation donnée) 
+            est OK par rapport aux arguments passés au script pour son exécution
+
+      IN  : $allowedUsageArgInfos  -> Informations sur l'argument (d'une utilisation donnée) 
+                                        que l'on veut contrôler
+
+      RET : $true|$false pour dire si c'est OK ou pas.
+	#>
+    hidden [bool] callArgIsCorrect($allowedUsageArgInfos)
+    {
+        # Parcours des arguments utilisés pour appeler le script
+        ForEach($callArg in $this.scriptCallUsage.Args)
+        {
+            # Si on tombe sur un argument d'une utilisation du script qui correspond 
+            if($callArg.Name -eq $allowedUsageArgInfos.Name)
+            {
+                # Si l'argument est un switch, pas besoin de faire plus de check, on est bon
+                if($allowedUsageArgInfos.Values.Count -eq 0)
+                {
+                    return $true
+                }
+
+                # Arrivé ici, c'est que l'argument n'est pas un switch, il faut donc
+                # contrôler les valeurs autorisées pour celui-ci s'il y en a
+
+                # Parcours des valeurs autorisées 
+                ForEach($allowedValue in $allowedUsageArgInfos.Values)
+                {
+                    # Si on peut mettre n'importe quelle valeur sauf "" et que
+                    # la valeur de l'argument (index 0 de .Values) n'est pas ""
+                    # OU 
+                    # Si la valeur de l'appel correspond à une autorisée
+                    if( (($null -eq $allowedValue) -and ($callArg.Values[0] -ne "")) -or 
+                        ($callArg.Values[0] -eq $allowedValue))
+                    {
+                        return $true
+                        Break
+                    }
+
+                }# FIN BOUCLE de parcours des valeurs autorisées
+                
+            }# FIN SI on tombe sur l'arguement qui a le même nom 
+
+        }# FIN BOUCLE de parcours des arguments utilisés pour l'appel du script
+
+        # Si on arrive ici, c'est qu'on n'a pas trouvé l'argument de l'appel dans ceux autorisé pour l'utilisation possible donnée
+        return $false
     }
 
 
@@ -191,48 +283,6 @@ class ArgsChecker
     [void] parseScriptCall()
     {
         $this.scriptCallUsage = $this.parseUsageArgs($this.scriptCallArgs)
-    }
-
-
-    hidden [bool] callArgIsCorrect($allowedUsageArgInfos)
-    {
-        # Parcours des arguments utilisés pour appeler le script
-        ForEach($callArg in $this.scriptCallUsage.Args)
-        {
-            # Si on tombe sur un argument d'une utilisation du script qui correspond 
-            if($callArg.Name -eq $allowedUsageArgInfos.Name)
-            {
-                # Si l'argument est un switch, pas besoin de faire plus de check, on est bon
-                if($allowedUsageArgInfos.isSwitch)
-                {
-                    return $true
-                }
-
-                # Arrivé ici, c'est que l'argument n'est pas un switch, il faut donc
-                # contrôler les valeurs autorisées pour celui-ci s'il y en a
-
-                # Parcours des valeurs autorisées 
-                ForEach($allowedValue in $allowedUsageArgInfos.Values)
-                {
-                    # Si on peut mettre n'importe quelle valeur sauf "" et que
-                    # la valeur de l'argument (index 0 de .Values) n'est pas ""
-                    # OU 
-                    # Si la valeur de l'appel correspond à une autorisée
-                    if( (($null -eq $allowedValue) -and ($callArg.Values[0] -ne "")) -or 
-                        ($callArg.Values[0] -eq $allowedValue))
-                    {
-                        return $true
-                        Break
-                    }
-
-                }# FIN BOUCLE de parcours des valeurs autorisées
-                
-            }# FIN SI on tombe sur l'arguement qui a le même nom 
-
-        }# FIN BOUCLE de parcours des arguments utilisés pour l'appel du script
-
-        # Si on arrive ici, c'est qu'on n'a pas trouvé l'argument de l'appel dans ceux autorisé pour l'utilisation possible donnée
-        return $false
     }
 
 
@@ -279,7 +329,7 @@ class ArgsChecker
 
 }
 
-$argsChecker = [ArgsChecker]::New()
+$argsChecker = [ArgsPrototypeChecker]::New()
 $argsChecker.parseScriptHeader()
 
 
