@@ -1,4 +1,8 @@
 <#
+USAGES:
+	sync-ad-groups-from-ldap-or-django.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+#>
+<#
 	BUT 		: Crée/met à jour les groupes AD pour l'environnement donné et le tenant EPFL.
 				  Pour la gestion du contenu des groupes, il a été fait en sorte d'optimiser le
 				  nombre de requêtes faites dans AD
@@ -39,23 +43,6 @@ param ( [string]$targetEnv, [string]$targetTenant)
 # Chargement des fichiers de configuration
 $configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Affiche comment utiliser le script
-#>
-function printUsage
-{
-   	$invoc = (Get-Variable MyInvocation -Scope 1).Value
-   	$scriptName = $invoc.MyCommand.Name
-
-	$envStr = $global:TARGET_ENV_LIST -join "|"
-	$tenantStr = $global:TARGET_TENANT_LIST -join "|"
-
-	Write-Host ""
-	Write-Host ("Usage: $scriptName -targetEnv {0} -targetTenant {1}" -f $envStr, $tenantStr)
-   	Write-Host ""
-}
 
 <#
 -------------------------------------------------------------------------------------
@@ -239,32 +226,20 @@ $EPFL_TEST_NB_UNITS_MAX = 10
 # ******************************************
 
 
-# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-$logHistory = [LogHistory]::new('1.sync-AD-from-LDAP', (Join-Path $PSScriptRoot "logs"), 30)
-
-$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
-
-# Création de l'objet qui permettra de générer les noms des groupes AD et "groups" ainsi que d'autre choses...
-$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
- 
-Import-Module ActiveDirectory
-
-# Test des paramètres
-if(($targetEnv -eq "") -or (-not(targetEnvOK -targetEnv $targetEnv)))
-{
-   printUsage
-   exit
-}
-
-# Contrôle de la validité du nom du tenant
-if(($targetTenant -eq "") -or (-not (targetTenantOK -targetTenant $targetTenant)))
-{
-	printUsage
-	exit
-}
-
 try
 {
+	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$logHistory = [LogHistory]::new('1.sync-AD-from-LDAP', (Join-Path $PSScriptRoot "logs"), 30)
+
+	# On contrôle le prototype d'appel du script
+	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+
+	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
+
+	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups" ainsi que d'autre choses...
+	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
+	
+	Import-Module ActiveDirectory
 
 	if($SIMULATION_MODE)
 	{

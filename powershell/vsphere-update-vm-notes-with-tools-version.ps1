@@ -1,4 +1,8 @@
 <#
+USAGES:
+    vsphere-update-vm-notes-with-tools-version.ps1 -targetEnv prod|test|dev
+#>
+<#
 	BUT 		: Met à jour les notes des VM en fonction de l'état des VM Tools
 
 	DATE 		: Mai 2019
@@ -66,38 +70,16 @@ function getUpdatedNote()
 }
 
 
-<#
--------------------------------------------------------------------------------------
-	BUT : Affiche comment utiliser le script
-#>
-function printUsage
-{
-   	$invoc = (Get-Variable MyInvocation -Scope 1).Value
-   	$scriptName = $invoc.MyCommand.Name
-
-	$envStr = $global:TARGET_ENV_LIST -join "|"
-
-   	Write-Host ""
-   	Write-Host ("Usage: $scriptName -targetEnv {0}" -f $envStr)
-   	Write-Host ""
-}
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-# Test des paramètres
-if(($targetEnv -eq "") -or (-not(targetEnvOK -targetEnv $targetEnv)))
-{
-   printUsage
-   exit
-}
-
 try
 {
+    # On commence par contrôler le prototype d'appel du script
+    . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()

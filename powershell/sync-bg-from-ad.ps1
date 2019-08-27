@@ -1,4 +1,8 @@
 <#
+USAGES:
+	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+#>
+<#
 	BUT 		: Crée/met à jour les Business groupes en fonction des groupes AD existant
 
 	DATE 		: Février 2018
@@ -81,23 +85,6 @@ $configNSX = [ConfigReader]::New("config-nsx.json")
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 #>
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Affiche comment utiliser le script
-#>
-function printUsage
-{
-   	$invoc = (Get-Variable MyInvocation -Scope 1).Value
-   	$scriptName = $invoc.MyCommand.Name
-
-	$envStr = $global:TARGET_ENV_LIST -join "|"
-	$tenantStr = $global:TARGET_TENANT_LIST -join "|"
-
-   	Write-Host ""
-   	Write-Host ("Usage: $scriptName -targetEnv {0} -targetTenant {1}" -f $envStr, $tenantStr)
-   	Write-Host ""
-}
 
 
 <#
@@ -1258,91 +1245,80 @@ function createFirewallSectionRulesIfNotExists
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 #>
-
-Import-Module ActiveDirectory
-
-# Test des paramètres
-if(($targetEnv -eq "") -or (-not(targetEnvOK -targetEnv $targetEnv)))
-{
-   printUsage
-   exit
-}
-
-# Contrôle de la validité du nom du tenant
-if(($targetTenant -eq "") -or (-not (targetTenantOK -targetTenant $targetTenant)))
-{
-	printUsage
-	exit
-}
-
-# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
-$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
-
-$doneBGList = @()
-
-# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-$counters = [Counters]::new()
-$counters.add('ADGroups', '# AD group processed')
-$counters.add('BGCreated', '# Business Group created')
-$counters.add('BGUpdated', '# Business Group updated')
-$counters.add('BGNotCreated', '# Business Group not created')
-$counters.add('BGNotRenamed', '# Business Group not renamed')
-$counters.add('BGDeleted', '# Business Group deleted')
-$counters.add('BGGhost',	'# Business Group set as "ghost"')
-# Entitlements
-$counters.add('EntCreated', '# Entitlements created')
-$counters.add('EntUpdated', '# Entitlements updated')
-# Services
-$counters.add('EntServices', '# Existing Entitlements Services')
-$counters.add('EntServicesAdded', '# Entitlements Services added')
-# Reservations
-$counters.add('ResCreated', '# Reservations created')
-$counters.add('ResUpdated', '# Reservations updated')
-$counters.add('ResDeleted', '# Reservations deleted')
-# Machine prefixes
-$counters.add('MachinePrefNotFound', '# machines prefixes not found')
-# Approval policies 
-$counters.add('AppPolCreated', '# Approval Policies created')
-$counters.add('AppPolExisting', '# Approval Policies already existing')
-# NSX - NS Group
-$counters.add('NSXNSGroupCreated', '# NSX NS Group created')
-$counters.add('NSXNSGroupExisting', '# NSX NS Group existing')
-# NSX - Firewall section
-$counters.add('NSXFWSectionCreated', '# NSX Firewall Section created')
-$counters.add('NSXFWSectionExisting', '# NSX Firewall Section existing')
-# NSX - Firewall section rules
-$counters.add('NSXFWSectionRulesCreated', '# NSX Firewall Section Rules created')
-$counters.add('NSXFWSectionRulesExisting', '# NSX Firewall Section Rules existing')
-
-
-<# Pour enregistrer la liste des IDs des approval policies qui ont été traitées. Ceci permettra de désactiver les autres à la fin. #>
-$processedApprovalPoliciesIDs = @()
-
-<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
-aux administrateurs du service
-!! Attention !!
-A chaque fois qu'un élément est ajouté dans le IDictionnary ci-dessous, il faut aussi penser à compléter la
-fonction 'handleNotifications()'
-
-(cette liste sera accédée en variable globale même si c'est pas propre XD)
-#>
-$notifications=@{newBGMachinePrefixNotFound = @()
-				facRenameMachinePrefixNotFound = @()
-				bgWithoutCustomPropStatus = @()
-				bgWithoutCustomPropType = @()
-				bgSetAsGhost = @()
-				bgDeleted = @()
-				emptyADGroups = @()
-				adGroupsNotFound = @()
-				ISOFolderNotRenamed = @()}
-
-# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-$logHistory =[LogHistory]::new('2.sync-BG-from-AD', (Join-Path $PSScriptRoot "logs"), 30)
-
-$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
-
 try
 {
+	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$logHistory =[LogHistory]::new('2.sync-BG-from-AD', (Join-Path $PSScriptRoot "logs"), 30)
+
+	# On contrôle le prototype d'appel du script
+	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+
+	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
+	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
+
+	$doneBGList = @()
+
+	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$counters = [Counters]::new()
+	$counters.add('ADGroups', '# AD group processed')
+	$counters.add('BGCreated', '# Business Group created')
+	$counters.add('BGUpdated', '# Business Group updated')
+	$counters.add('BGNotCreated', '# Business Group not created')
+	$counters.add('BGNotRenamed', '# Business Group not renamed')
+	$counters.add('BGDeleted', '# Business Group deleted')
+	$counters.add('BGGhost',	'# Business Group set as "ghost"')
+	# Entitlements
+	$counters.add('EntCreated', '# Entitlements created')
+	$counters.add('EntUpdated', '# Entitlements updated')
+	# Services
+	$counters.add('EntServices', '# Existing Entitlements Services')
+	$counters.add('EntServicesAdded', '# Entitlements Services added')
+	# Reservations
+	$counters.add('ResCreated', '# Reservations created')
+	$counters.add('ResUpdated', '# Reservations updated')
+	$counters.add('ResDeleted', '# Reservations deleted')
+	# Machine prefixes
+	$counters.add('MachinePrefNotFound', '# machines prefixes not found')
+	# Approval policies 
+	$counters.add('AppPolCreated', '# Approval Policies created')
+	$counters.add('AppPolExisting', '# Approval Policies already existing')
+	# NSX - NS Group
+	$counters.add('NSXNSGroupCreated', '# NSX NS Group created')
+	$counters.add('NSXNSGroupExisting', '# NSX NS Group existing')
+	# NSX - Firewall section
+	$counters.add('NSXFWSectionCreated', '# NSX Firewall Section created')
+	$counters.add('NSXFWSectionExisting', '# NSX Firewall Section existing')
+	# NSX - Firewall section rules
+	$counters.add('NSXFWSectionRulesCreated', '# NSX Firewall Section Rules created')
+	$counters.add('NSXFWSectionRulesExisting', '# NSX Firewall Section Rules existing')
+
+
+	<# Pour enregistrer la liste des IDs des approval policies qui ont été traitées. Ceci permettra de désactiver les autres à la fin. #>
+	$processedApprovalPoliciesIDs = @()
+
+	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
+	aux administrateurs du service
+	!! Attention !!
+	A chaque fois qu'un élément est ajouté dans le IDictionnary ci-dessous, il faut aussi penser à compléter la
+	fonction 'handleNotifications()'
+
+	(cette liste sera accédée en variable globale même si c'est pas propre XD)
+	#>
+	$notifications=@{newBGMachinePrefixNotFound = @()
+					facRenameMachinePrefixNotFound = @()
+					bgWithoutCustomPropStatus = @()
+					bgWithoutCustomPropType = @()
+					bgSetAsGhost = @()
+					bgDeleted = @()
+					emptyADGroups = @()
+					adGroupsNotFound = @()
+					ISOFolderNotRenamed = @()}
+
+
+	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
+
+
+	
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
 	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 

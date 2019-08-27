@@ -14,52 +14,6 @@
 
 <#
 	-------------------------------------------------------------------------------------
-	BUT : Permet de dire si un nom d'environnement est correct ou pas
-
-	IN  : $targetEnv -> Nom de l'environnement à contrôler
-
-	RET : $true|$false
-#>
-function targetEnvOK
-{
-	param([string] $targetEnv)
-	return $global:TARGET_ENV_LIST -contains $targetEnv
-}
-
-<#
-	-------------------------------------------------------------------------------------
-	BUT : Permet de dire si un nom de Tenant est correct ou pas
-
-	IN  : $targetEnv -> Nom du Tenant à contrôler
-
-	RET : $true|$false
-#>
-function targetTenantOK
-{
-	param([string] $targetTenant)
-	return $global:TARGET_TENANT_LIST -ccontains $targetTenant
-}
-
-<#
-	-------------------------------------------------------------------------------------
-	BUT : Renvoie l'adresse mail des managers d'une faculté donnée
-
-	IN  : $faculty -> La faculté
-
-	RET : Adresse mail
-#>
-function getManagerEmail
-{
-	param([string] $faculty)
-
-	Write-Warning "!!!! getManagerEmail !!!! --> TODO"
-
-	return "facadm-{0}@epfl.ch" -f $faculty
-}
-
-
-<#
-	-------------------------------------------------------------------------------------
 	BUT : Renvoie la valeur d'une "Custom Property" donnée pour le Business Group passé
 
 	IN  : $bg				-> Objet représentant le Business Group
