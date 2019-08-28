@@ -1,4 +1,8 @@
 <#
+USAGES:
+	clean-iso-folders.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+#>
+<#
     BUT 		: Fait du nettoyage dans les dossiers où se trouvent les ISO privées des différents
                   Business Groups.
 
@@ -26,6 +30,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -34,28 +39,9 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vra.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vsphere.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
-
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Affiche comment utiliser le script
-#>
-function printUsage
-{
-   	$invoc = (Get-Variable MyInvocation -Scope 1).Value
-   	$scriptName = $invoc.MyCommand.Name
-
-	$envStr = $global:TARGET_ENV_LIST -join "|"
-	$tenantStr = $global:TARGET_TENANT_LIST -join "|"
-
-   	Write-Host ""
-   	Write-Host ("Usage: $scriptName -targetEnv {0} -targetTenant {1}" -f $envStr, $tenantStr)
-   	Write-Host ""
-}
-
+$configVra = [ConfigReader]::New("config-vra.json")
+$configVSphere = [ConfigReader]::New("config-vsphere.json")
+$configGlobal = [ConfigReader]::New("config-global.json")
 
 
 
@@ -66,38 +52,30 @@ function printUsage
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-
-# Test des paramètres
-if(($targetEnv -eq "") -or (-not(targetEnvOK -targetEnv $targetEnv)))
-{
-   printUsage
-   exit
-}
-
-# Contrôle de la validité du nom du tenant
-if(($targetTenant -eq "") -or (-not (targetTenantOK -targetTenant $targetTenant)))
-{
-	printUsage
-	exit
-}
-
-# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
-$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
-
-# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-$counters = [Counters]::new()
-$counters.add('ISOFound', '# "old" ISO files found')
-$counters.add('ISODeleted', '# ISO files deleted')
-$counters.add('ISOUnmounted', '# ISO files unmounted to be deleted')
-
-# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-$logHistory =[LogHistory]::new('0.Clean-ISO-Folders', (Join-Path $PSScriptRoot "logs"), 30)
-
-$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
-
-$logHistory.addLineAndDisplay(("Looking for ISO files older than {0} days" -f $global:PRIVATE_ISO_LIFETIME_DAYS))
 try
 {
+	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$logHistory =[LogHistory]::new('0.Clean-ISO-Folders', (Join-Path $PSScriptRoot "logs"), 30)
+
+	# On contrôle le prototype d'appel du script
+	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+
+
+	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
+
+	$logHistory.addLineAndDisplay(("Looking for ISO files older than {0} days" -f $global:PRIVATE_ISO_LIFETIME_DAYS))
+
+
+	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
+	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
+
+	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$counters = [Counters]::new()
+	$counters.add('ISOFound', '# "old" ISO files found')
+	$counters.add('ISODeleted', '# ISO files deleted')
+	$counters.add('ISOUnmounted', '# ISO files unmounted to be deleted')
+
+
     # On n'ouvre pas de connexion à vRA tout de suite car si ça se trouve, il n'y a rien à supprimer donc ouvrir une connexion pour rien serait... inutile
     # (je me demande, est-ce quelqu'un d'autre que moi va lire ce commentaire un jour?...)
 	$vra = $null
@@ -120,7 +98,10 @@ try
 		# Si on n'a pas encore de connexion à vRA, là, ça serait bien d'en ouvrir une histoire pouvoir continuer.
 		if($null -eq $vra)
 		{
-			$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
+			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+								$targetTenant, 
+								$configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
+								$configVra.getConfigValue($targetEnv, $targetTenant, "password"))
 		}	
 
 		# Si on n'a pas encore de connexin à vCenter, c'est aussi maintenant qu'on va l'établir. Enfin, on pourrait faire ça plus tard dans le code mais vu qu'on vient
@@ -134,10 +115,10 @@ try
 			# bidon sinon c'est affiché à l'écran.
 			$dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 
-			$credSecurePwd = $global:VSPHERE_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
-			$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $global:VSPHERE_USERNAME, $credSecurePwd	
+			$credSecurePwd = $configVSphere.getConfigValue($targetEnv, "password") | ConvertTo-SecureString -AsPlainText -Force
+			$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $configVSphere.getConfigValue($targetEnv, "user"), $credSecurePwd	
 
-			$vCenter = Connect-VIServer -Server $global:VSPHERE_HOST -Credential $credObject
+			$vCenter = Connect-VIServer -Server $configVSphere.getConfigValue($targetEnv, "server") -Credential $credObject
 		}
 		
 		# Recherche des infos du BG
@@ -229,6 +210,6 @@ catch # Dans le cas d'une erreur dans le script
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace))
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
 	
 }

@@ -1,4 +1,8 @@
 <#
+USAGES:
+	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+#>
+<#
 	BUT 		: Crée/met à jour les Business groupes en fonction des groupes AD existant
 
 	DATE 		: Février 2018
@@ -10,6 +14,8 @@
 		$targetTenant -> nom du tenant cible. Défini par les valeurs $global:VRA_TENANT__* dans le fichier
 						"define.inc.ps1"
 
+	Documentation:
+		- Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976
 
 	ALTERATION DU FONCTIONNEMENT:
 	Les fichiers ci-dessous peuvent être créés (vides) au même niveau que le présent script afin de modifier
@@ -51,10 +57,11 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "JSONUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NewItems.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
-
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
@@ -66,10 +73,9 @@ param ( [string]$targetEnv, [string]$targetTenant)
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vra.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vro.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-nsx.inc.ps1"))
+$configVra = [ConfigReader]::New("config-vra.json")
+$configGlobal = [ConfigReader]::New("config-global.json")
+$configNSX = [ConfigReader]::New("config-nsx.json")
 
 
 
@@ -80,23 +86,6 @@ loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-nsx.inc.ps1
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 #>
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Affiche comment utiliser le script
-#>
-function printUsage
-{
-   	$invoc = (Get-Variable MyInvocation -Scope 1).Value
-   	$scriptName = $invoc.MyCommand.Name
-
-	$envStr = $global:TARGET_ENV_LIST -join "|"
-	$tenantStr = $global:TARGET_TENANT_LIST -join "|"
-
-   	Write-Host ""
-   	Write-Host ("Usage: $scriptName -targetEnv {0} -targetTenant {1}" -f $envStr, $tenantStr)
-   	Write-Host ""
-}
 
 
 <#
@@ -623,7 +612,7 @@ function sendErrorMail2ndDayActionFile
 	$message = getvRAMailContent -content ("Une erreur est survenue durant le chargement du fichier contenant la liste des '2nd day actions':<br>`
 	{0}<br><br>Veuillez faire le nécessaire à partir de la <a href='{1}'>documentation suivante</a>." -f $errorMsg, $docUrl)	
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
 }
 
 <#
@@ -644,7 +633,7 @@ function sendErrorMailNoResTemplateFound
 	Template à partir de la <a href='{1}'>documentation suivante</a>." -f $targetEnv, $docUrl)	
 
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
 }
 
 <#
@@ -1064,7 +1053,7 @@ Du coup, un nouveau dossier vide a été créé avec le bon nom et il faudra man
 			}
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
-			sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
+			sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
 
 		} # FIN S'il y a des notifications pour la catégorie courante
 	}# FIN BOUCLE de parcours des catégories de notifications
@@ -1257,98 +1246,90 @@ function createFirewallSectionRulesIfNotExists
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 #>
-
-Import-Module ActiveDirectory
-
-# Test des paramètres
-if(($targetEnv -eq "") -or (-not(targetEnvOK -targetEnv $targetEnv)))
-{
-   printUsage
-   exit
-}
-
-# Contrôle de la validité du nom du tenant
-if(($targetTenant -eq "") -or (-not (targetTenantOK -targetTenant $targetTenant)))
-{
-	printUsage
-	exit
-}
-
-# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
-$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
-
-$doneBGList = @()
-
-# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-$counters = [Counters]::new()
-$counters.add('ADGroups', '# AD group processed')
-$counters.add('BGCreated', '# Business Group created')
-$counters.add('BGUpdated', '# Business Group updated')
-$counters.add('BGNotCreated', '# Business Group not created')
-$counters.add('BGNotRenamed', '# Business Group not renamed')
-$counters.add('BGDeleted', '# Business Group deleted')
-$counters.add('BGGhost',	'# Business Group set as "ghost"')
-# Entitlements
-$counters.add('EntCreated', '# Entitlements created')
-$counters.add('EntUpdated', '# Entitlements updated')
-# Services
-$counters.add('EntServices', '# Existing Entitlements Services')
-$counters.add('EntServicesAdded', '# Entitlements Services added')
-# Reservations
-$counters.add('ResCreated', '# Reservations created')
-$counters.add('ResUpdated', '# Reservations updated')
-$counters.add('ResDeleted', '# Reservations deleted')
-# Machine prefixes
-$counters.add('MachinePrefNotFound', '# machines prefixes not found')
-# Approval policies 
-$counters.add('AppPolCreated', '# Approval Policies created')
-$counters.add('AppPolExisting', '# Approval Policies already existing')
-# NSX - NS Group
-$counters.add('NSXNSGroupCreated', '# NSX NS Group created')
-$counters.add('NSXNSGroupExisting', '# NSX NS Group existing')
-# NSX - Firewall section
-$counters.add('NSXFWSectionCreated', '# NSX Firewall Section created')
-$counters.add('NSXFWSectionExisting', '# NSX Firewall Section existing')
-# NSX - Firewall section rules
-$counters.add('NSXFWSectionRulesCreated', '# NSX Firewall Section Rules created')
-$counters.add('NSXFWSectionRulesExisting', '# NSX Firewall Section Rules existing')
-
-
-<# Pour enregistrer la liste des IDs des approval policies qui ont été traitées. Ceci permettra de désactiver les autres à la fin. #>
-$processedApprovalPoliciesIDs = @()
-
-<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
-aux administrateurs du service
-!! Attention !!
-A chaque fois qu'un élément est ajouté dans le IDictionnary ci-dessous, il faut aussi penser à compléter la
-fonction 'handleNotifications()'
-
-(cette liste sera accédée en variable globale même si c'est pas propre XD)
-#>
-$notifications=@{newBGMachinePrefixNotFound = @()
-				facRenameMachinePrefixNotFound = @()
-				bgWithoutCustomPropStatus = @()
-				bgWithoutCustomPropType = @()
-				bgSetAsGhost = @()
-				bgDeleted = @()
-				emptyADGroups = @()
-				adGroupsNotFound = @()
-				ISOFolderNotRenamed = @()}
-
-# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-$logHistory =[LogHistory]::new('2.sync-BG-from-AD', (Join-Path $PSScriptRoot "logs"), 30)
-
-$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
-
 try
 {
+	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$logHistory =[LogHistory]::new('2.sync-BG-from-AD', (Join-Path $PSScriptRoot "logs"), 30)
+
+	# On contrôle le prototype d'appel du script
+	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+
+	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
+	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
+
+	$doneBGList = @()
+
+	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$counters = [Counters]::new()
+	$counters.add('ADGroups', '# AD group processed')
+	$counters.add('BGCreated', '# Business Group created')
+	$counters.add('BGUpdated', '# Business Group updated')
+	$counters.add('BGNotCreated', '# Business Group not created')
+	$counters.add('BGNotRenamed', '# Business Group not renamed')
+	$counters.add('BGDeleted', '# Business Group deleted')
+	$counters.add('BGGhost',	'# Business Group set as "ghost"')
+	# Entitlements
+	$counters.add('EntCreated', '# Entitlements created')
+	$counters.add('EntUpdated', '# Entitlements updated')
+	# Services
+	$counters.add('EntServices', '# Existing Entitlements Services')
+	$counters.add('EntServicesAdded', '# Entitlements Services added')
+	# Reservations
+	$counters.add('ResCreated', '# Reservations created')
+	$counters.add('ResUpdated', '# Reservations updated')
+	$counters.add('ResDeleted', '# Reservations deleted')
+	# Machine prefixes
+	$counters.add('MachinePrefNotFound', '# machines prefixes not found')
+	# Approval policies 
+	$counters.add('AppPolCreated', '# Approval Policies created')
+	$counters.add('AppPolExisting', '# Approval Policies already existing')
+	# NSX - NS Group
+	$counters.add('NSXNSGroupCreated', '# NSX NS Group created')
+	$counters.add('NSXNSGroupExisting', '# NSX NS Group existing')
+	# NSX - Firewall section
+	$counters.add('NSXFWSectionCreated', '# NSX Firewall Section created')
+	$counters.add('NSXFWSectionExisting', '# NSX Firewall Section existing')
+	# NSX - Firewall section rules
+	$counters.add('NSXFWSectionRulesCreated', '# NSX Firewall Section Rules created')
+	$counters.add('NSXFWSectionRulesExisting', '# NSX Firewall Section Rules existing')
+
+
+	<# Pour enregistrer la liste des IDs des approval policies qui ont été traitées. Ceci permettra de désactiver les autres à la fin. #>
+	$processedApprovalPoliciesIDs = @()
+
+	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
+	aux administrateurs du service
+	!! Attention !!
+	A chaque fois qu'un élément est ajouté dans le IDictionnary ci-dessous, il faut aussi penser à compléter la
+	fonction 'handleNotifications()'
+
+	(cette liste sera accédée en variable globale même si c'est pas propre XD)
+	#>
+	$notifications=@{newBGMachinePrefixNotFound = @()
+					facRenameMachinePrefixNotFound = @()
+					bgWithoutCustomPropStatus = @()
+					bgWithoutCustomPropType = @()
+					bgSetAsGhost = @()
+					bgDeleted = @()
+					emptyADGroups = @()
+					adGroupsNotFound = @()
+					ISOFolderNotRenamed = @()}
+
+
+	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
+
+
+	
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
-	$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
+	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+						 $targetTenant, 
+						 $configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
+						 $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
 
 	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
 	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
-	$nsx = [NSXAPI]::new($global:NSX_SERVER_LIST[$targetEnv], $global:NSX_ADMIN_USERNAME, $global:NSX_PASSWORD_LIST[$targetEnv])
+	$nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), $configNSX.getConfigValue($targetEnv, "user"), $configNSX.getConfigValue($targetEnv, "password"))
 
 
 	# Recherche de BG existants
@@ -1392,7 +1373,7 @@ try
 		# --------------------------------- Business Group
 
 		# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
-		$capacityAlertMails = @($global:CAPACITY_ALERT_DEFAULT_MAIL)
+		$capacityAlertMails = @($configGlobal.getConfigValue("mail", "capacityAlert"))
 		
 		# Si Tenant EPFL
 		if($targetTenant -eq $global:VRA_TENANT__EPFL)
@@ -1764,6 +1745,6 @@ catch # Dans le cas d'une erreur dans le script
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace))
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
 	
 }

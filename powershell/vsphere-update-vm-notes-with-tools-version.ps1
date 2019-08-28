@@ -1,4 +1,8 @@
 <#
+USAGES:
+    vsphere-update-vm-notes-with-tools-version.ps1 -targetEnv prod|test|dev
+#>
+<#
 	BUT 		: Met à jour les notes des VM en fonction de l'état des VM Tools
 
 	DATE 		: Mai 2019
@@ -13,19 +17,22 @@
 				  commande Set-ExecutionPolicy mais mettre la valeur "ByPass" en paramètre.
 #>
 
+param ( [string]$targetEnv)
 
 
 # Inclusion des fichiers nécessaires (génériques)
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions-vsphere.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vsphere.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
+$configVSphere = [ConfigReader]::New("config-vsphere.json")
+$configGlobal = [ConfigReader]::New("config-global.json")
 
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
@@ -63,14 +70,20 @@ function getUpdatedNote()
 }
 
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+
 try
 {
+
+    # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+    $logHistory = [LogHistory]::new('vsphere-update-VM-notes-with-Tools-version', (Join-Path $PSScriptRoot "logs"), 30)
+    
+    # On commence par contrôler le prototype d'appel du script
+    . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
@@ -79,9 +92,6 @@ try
     $counters.add('VMNotesUpdated', '# VM notes updated')
     $counters.add('VMNotesOK', '# VM notes OK')
 
-    # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new('vsphere-update-VM-notes-with-Tools-version', (Join-Path $PSScriptRoot "logs"), 30)
-    
     # Chargement des modules PowerCLI pour pouvoir accéder à vSphere.
     loadPowerCliModules
 
@@ -94,10 +104,10 @@ try
 
     # Connexion au serveur vSphere
 
-    $credSecurePwd = $global:VSPHERE_PASSWORD | ConvertTo-SecureString -AsPlainText -Force
-    $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $global:VSPHERE_USERNAME, $credSecurePwd	
+    $credSecurePwd = $configVSphere.getConfigValue($targetEnv, "password") | ConvertTo-SecureString -AsPlainText -Force
+    $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $configVSphere.getConfigValue($targetEnv, "user"), $credSecurePwd	
             
-    $connectedvCenter = Connect-VIServer -Server $global:VSPHERE_HOST -Credential $credObject
+    $connectedvCenter = Connect-VIServer -Server $configVSphere.getConfigValue($targetEnv, "server") -Credential $credObject
 
     $logHistory.addLineAndDisplay("Getting VMs...")
 
@@ -143,7 +153,7 @@ catch
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace))
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
 }
 
 

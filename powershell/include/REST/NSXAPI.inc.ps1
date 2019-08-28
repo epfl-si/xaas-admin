@@ -1,7 +1,9 @@
 <#
    BUT : Contient les fonctions donnant accès à l'API vRA
 
-   Documentation: https://code.vmware.com/apis/222/nsx-t
+   Documentation: 
+    - API: https://code.vmware.com/apis/222/nsx-t
+    - Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976#Ressources-PRJ0011976-NSX
 
    AUTEUR : Lucien Chaboudez
    DATE   : Mai 2019
@@ -33,7 +35,7 @@ class NSXAPI: RESTAPICurl
         $this.authInfos = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$password)))
 
         # Mise à jour des headers
-        $this.headers.Add('Authorization', ("Basic {0}" -f $this.authInfos))
+        $this.headers.Add('Authorization', ("Remote {0}" -f $this.authInfos))
         
     }
 

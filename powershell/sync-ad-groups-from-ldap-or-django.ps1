@@ -1,4 +1,8 @@
 <#
+USAGES:
+	sync-ad-groups-from-ldap-or-django.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+#>
+<#
 	BUT 		: Crée/met à jour les groupes AD pour l'environnement donné et le tenant EPFL.
 				  Pour la gestion du contenu des groupes, il a été fait en sorte d'optimiser le
 				  nombre de requêtes faites dans AD
@@ -30,6 +34,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "DjangoMySQL.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -37,25 +42,8 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-vra.inc.ps1"))
-loadConfigFile([IO.Path]::Combine("$PSScriptRoot", "config", "config-mail.inc.ps1"))
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Affiche comment utiliser le script
-#>
-function printUsage
-{
-   	$invoc = (Get-Variable MyInvocation -Scope 1).Value
-   	$scriptName = $invoc.MyCommand.Name
-
-	$envStr = $global:TARGET_ENV_LIST -join "|"
-	$tenantStr = $global:TARGET_TENANT_LIST -join "|"
-
-	Write-Host ""
-	Write-Host ("Usage: $scriptName -targetEnv {0} -targetTenant {1}" -f $envStr, $tenantStr)
-   	Write-Host ""
-}
+$configVra = [ConfigReader]::New("config-vra.json")
+$configGlobal = [ConfigReader]::New("config-global.json")
 
 <#
 -------------------------------------------------------------------------------------
@@ -168,7 +156,7 @@ function handleNotifications
 			}
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
-			sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $message
+			sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
 
 		} # FIN S'il y a des notifications pour la catégorie courante
 	}# FIN BOUCLE de parcours des catégories de notifications
@@ -233,39 +221,26 @@ $SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global
 # le script courant
 $TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__TEST_MODE)))
 $EPFL_TEST_NB_UNITS_MAX = 10
-$EPFL_LIMIT_TO_FAC = @("SV", "SI", "P")
 
 
 # CONFIGURATION
 # ******************************************
 
 
-# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-$logHistory = [LogHistory]::new('1.sync-AD-from-LDAP', (Join-Path $PSScriptRoot "logs"), 30)
-
-$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
-
-# Création de l'objet qui permettra de générer les noms des groupes AD et "groups" ainsi que d'autre choses...
-$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
- 
-Import-Module ActiveDirectory
-
-# Test des paramètres
-if(($targetEnv -eq "") -or (-not(targetEnvOK -targetEnv $targetEnv)))
-{
-   printUsage
-   exit
-}
-
-# Contrôle de la validité du nom du tenant
-if(($targetTenant -eq "") -or (-not (targetTenantOK -targetTenant $targetTenant)))
-{
-	printUsage
-	exit
-}
-
 try
 {
+	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$logHistory = [LogHistory]::new('1.sync-AD-from-LDAP', (Join-Path $PSScriptRoot "logs"), 30)
+
+	# On contrôle le prototype d'appel du script
+	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+
+	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
+
+	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups" ainsi que d'autre choses...
+	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
+	
+	Import-Module ActiveDirectory
 
 	if($SIMULATION_MODE)
 	{
@@ -338,14 +313,6 @@ try
 		{
 			$counters.inc('epfl.facProcessed')
 			$logHistory.addLineAndDisplay(("[{0}/{1}] Faculty {2}..." -f $counters.get('epfl.facProcessed'), $facultyList.Count, $faculty['name']))
-
-			# Si on doit limiter à certaines facultés et que la faculté courante est de celles-ci
-			if(($EPFL_LIMIT_TO_FAC.Count -gt 0 ) -and ($EPFL_LIMIT_TO_FAC -notcontains $faculty['name']))
-			{
-				$counters.inc('epfl.facIgnored')
-				$logHistory.addLineAndDisplay(("Ignoring faculty {0} because not in defined list..." -f $faculty['name']))
-				continue
-			}
 			
 			# ----------------------------------------------------------------------------------
 			# --------------------------------- FACULTE
@@ -762,7 +729,10 @@ try
 		Start-Sleep -Seconds $sleepDurationSec
 		try {
 			# Création d'une connexion au serveur
-			$vra = [vRAAPI]::new($nameGenerator.getvRAServerName(), $targetTenant, $global:VRA_USER_LIST[$targetTenant], $global:VRA_PASSWORD_LIST[$targetEnv][$targetTenant])
+			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+								 $targetTenant, 
+								 $configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
+								 $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
 		}
 		catch {
 			Write-Error "Error connecting to vRA API !"
@@ -803,6 +773,6 @@ catch # Dans le cas d'une erreur dans le script
 	$mailMessage = getvRAMailContent -content ("<b>Script:</b> {0}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
 	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace))
 
-	sendMailTo -mailAddress $global:ADMIN_MAIL_ADDRESS -mailSubject $mailSubject -mailMessage $mailMessage
+	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
 	
 }	

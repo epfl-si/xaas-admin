@@ -1,0 +1,38 @@
+{
+    "dev": {
+        "backup": {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "vSphere": {
+            "server": "",
+            "user": "", 
+            "password": ""
+        }
+    },
+    "test": {
+        "backup": {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "vSphere": {
+            "server": "",
+            "user": "",
+            "password": ""
+        }
+    },
+    "xaas-backup": {
+        "backup": {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "vSphere": {
+            "server": "",
+            "user": "", 
+            "password": ""
+        }
+    }
+}

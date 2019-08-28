@@ -14,48 +14,6 @@
 
 <#
 	-------------------------------------------------------------------------------------
-	BUT : Permet de dire si un nom d'environnement est correct ou pas
-
-	IN  : $targetEnv -> Nom de l'environnement à contrôler
-
-	RET : $true|$false
-#>
-function targetEnvOK([string] $targetEnv)
-{
-	return $global:TARGET_ENV_LIST -contains $targetEnv
-}
-
-<#
-	-------------------------------------------------------------------------------------
-	BUT : Permet de dire si un nom de Tenant est correct ou pas
-
-	IN  : $targetEnv -> Nom du Tenant à contrôler
-
-	RET : $true|$false
-#>
-function targetTenantOK([string] $targetTenant)
-{
-	return $global:TARGET_TENANT_LIST -ccontains $targetTenant
-}
-
-<#
-	-------------------------------------------------------------------------------------
-	BUT : Renvoie l'adresse mail des managers d'une faculté donnée
-
-	IN  : $faculty -> La faculté
-
-	RET : Adresse mail
-#>
-function getManagerEmail([string] $faculty)
-{
-	Write-Warning "!!!! getManagerEmail !!!! --> TODO"
-
-	return "facadm-{0}@epfl.ch" -f $faculty
-}
-
-
-<#
-	-------------------------------------------------------------------------------------
 	BUT : Renvoie la valeur d'une "Custom Property" donnée pour le Business Group passé
 
 	IN  : $bg				-> Objet représentant le Business Group
@@ -180,33 +138,6 @@ function getvRAMailContent([string] $content)
 {
 
 	return "Bonjour,<br><br>{0}<br><br>Salutations,<br>L'équipe vRA.<br> Paix et prospérité \\//" -f $content
-}
-
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Tente de charger un fichier de configuration. Si c'est impossible, une 
-		  erreur est affichée et on quitte.
-
-	IN  : $filename	-> chemin jusqu'au fichier à charger.
-#>
-function loadConfigFile([string]$filename)
-{
-	if(!(Test-Path -Path $filename))
-	{
-		Throw ("Config file not found ! ({0})`nPlease create it from 'sample' file" -f $filename)
-	}
-
-
-	try 
-	{
-		. $filename
-	}
-	catch 
-	{
-		Throw ("Error reading config file ! ({0})`n{1}`n`n{2}" -f $filename,  $_.Exception.Message, $_.ScriptStackTrace)
-		
-	}
 }
 
 

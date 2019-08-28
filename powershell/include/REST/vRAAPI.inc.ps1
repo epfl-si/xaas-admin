@@ -13,6 +13,10 @@
 	mette un verrouillage sur l'élément... donc avant de faire un update, il faut
 	regarder si ce qu'on va changer est bien différent ou pas.
 
+	Documentation:
+	Une description des fichiers JSON utilisés peut être trouvée sur Confluence.
+	https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976#Ressources-PRJ0011976-vRA
+
    ----------
    HISTORIQUE DES VERSIONS
    0.1 - Version de base
