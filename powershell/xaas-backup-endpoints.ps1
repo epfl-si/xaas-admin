@@ -48,6 +48,7 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions-vsphere.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -75,34 +76,6 @@ $NBU_TAG_PREFIX = "NBU-"
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
 
 
-<#
--------------------------------------------------------------------------------------
-    BUT : Renvoie l'objet à utiliser pour effectuer l'affichage du résultat d'exécution 
-            du script
-#>
-function getObjectForOutput
-{
-    return @{
-            error = ""
-            results = @()
-        }
-}
-
-
-<#
--------------------------------------------------------------------------------------
-    BUT : Affiche le résultat de l'exécution en JSON
-    
-    IN  : $output -> objet (créé à la base avec getObjectForOutput) contenant le 
-                        résultat à afficher
-#>
-function displayJSONOutput
-{
-    param([psobject]$output)
-
-    Write-Host ($output | ConvertTo-Json -Depth 100)
-}
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -115,16 +88,15 @@ try
     # Création de l'objet pour l'affichage 
     $output = getObjectForOutput
 
+    # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+    $logHistory = [LogHistory]::new('xaas-backup', (Join-Path $PSScriptRoot "logs"), 30)
+
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
    
 
     # -------------------------------------------------------------------------------------------
 
-
-    # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new('xaas-backup', (Join-Path $PSScriptRoot "logs"), 30)
- 
     <# Connexion à l'API Rest de vSphere. On a besoin de cette connxion aussi (en plus de celle du dessus) parce que les opérations sur les tags ne fonctionnent
     pas via les CMDLet Get-TagAssignement et autre...  #>
     $vsphereApi = [vSphereAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "vSphere", "server"), 
@@ -137,12 +109,7 @@ try
                                $configXaaSBackup.getConfigValue($targetEnv, "backup", "password"))   
 
     # Ajout d'informations dans le log
-    $logHistory.addLine("Script executed with following parameters")
-    $logHistory.addLine("-action = {0}" -f $action)
-    $logHistory.addLine("-vmName = {0}" -f $vmName)
-    $logHistory.addLine("-backupTag = {0}" -f $backupTag)
-    $logHistory.addLine("-restoreBackupId = {0}" -f $restoreBackupId)
-    $logHistory.addLine("-restoreTimestamp = {0}" -f $restoreTimestamp)
+    $logHistory.addLine("Script executed with following parameters: `n{0}" -f ($PsBoundParameters | ConvertTo-Json))
 
     # En fonction de l'action demandée
     switch ($action)

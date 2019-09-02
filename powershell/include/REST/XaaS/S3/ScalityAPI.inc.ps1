@@ -127,9 +127,13 @@ class ScalityAPI: APIUtils
 	#>
     [void] deleteBucket([string]$bucketName)
     {
-        # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Remove-S3Bucket.html
-        Remove-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
-                         -BucketName $bucketName -DeleteBucketContent:$false -Confirm:$false
+        # On n'efface que si le bucket existe, bien évidemment.
+        if($null -ne $this.getBucket($bucketName))
+        {
+            # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Remove-S3Bucket.html
+            Remove-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                            -BucketName $bucketName -DeleteBucketContent:$false -Confirm:$false
+        }
     }
 
 
@@ -180,6 +184,21 @@ class ScalityAPI: APIUtils
         $currentStatus = (Get-S3BucketVersioning -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -BucketName $bucketName).status
 
         return ($currentStatus -eq "Enabled")
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des policies dans lequel le bucket se trouve
+        
+        IN  : $bucketName   -> Le nom du bucket 
+        
+        RET : Liste des policies. Ce sont des objets complets S3 qui sont renvoyés, pas juste les noms.
+	#>
+    [Array] getBucketPolicyList([string]$bucketName)
+    {
+        # Récupération de la liste des policies et filtre si le bucket est contenu dedans
+        return Get-IAMPolicyList -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | Where-Object { $this.getPolicyBucketList($_.PolicyName) -contains $bucketName }
     }
 
 
@@ -249,6 +268,7 @@ class ScalityAPI: APIUtils
         
         IN  : $policyName     -> Nom de la policy
 
+        RET : Tableau avec la liste des utilisateurs (objet venant de Scality, avec plusieurs infos dedans.)
 	#>
     [Array] getPolicyUserList([string]$policyName)
     {
@@ -259,7 +279,8 @@ class ScalityAPI: APIUtils
 
             # Recherche si l'utilisateur courant est attaché à la policy recherchée 
             # https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-IAMAttachedUserPolicyList.html
-            if($null -ne (Get-IAMAttachedUserPolicyList -EndpointUrl $this.s3EndpointUrl -UserName $_.UserName | Where-Object { $_.PolicyName -eq $policyName}  ))
+            if($null -ne (Get-IAMAttachedUserPolicyList -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                          -UserName $_.UserName | Where-Object { $_.PolicyName -eq $policyName}  ))
             {
                 $userList += $_
             }
@@ -268,6 +289,20 @@ class ScalityAPI: APIUtils
         return $userList
     }
 
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Permet de savoir si un utilisateur est présent dans une policy 
+        
+        IN  : $username     -> Nom de l'utilisateur  
+        IN  : $policyName   -> Nom de la policy
+
+        RET : $true|$false
+	#>
+    hidden [bool] userIsInPolicy([string]$username, [string]$policyName)
+    {
+        return  ($this.getPolicyUserList($policyName) | Where-Object {$_.UserName -eq $username} ).Count -gt 0
+    }
 
     <#
     -------------------------------------------------------------------------------------
@@ -418,7 +453,7 @@ class ScalityAPI: APIUtils
             bucketName = $bucketName
         }
 
-        $jsonFile = "xaas-s3-policy-{0}.json" -f $accessType
+        $jsonFile = "xaas-s3-policy-{0}.json" -f $accessType.ToLower()
 
         $body = $this.createObjectFromJSON($jsonFile, $replace)
 
@@ -471,6 +506,10 @@ class ScalityAPI: APIUtils
         {
             Throw "Policy '{}' doesn't exists" -f $policyName
         }
+
+        # Selon la documentation, il faut supprimer les anciennes versions de la policy avant de pouvoir
+        # effacer celle-ci: https://docs.aws.amazon.com/IAM/latest/APIReference/API_DeletePolicy.html
+        $this.cleanOldPolicyVersions($polArn)
 
         Remove-IAMPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                             -PolicyArn $polArn -Confirm:$false
@@ -658,12 +697,16 @@ class ScalityAPI: APIUtils
 	#>
     [void] addUserToPolicy([string]$policyName, [string]$username)
     {
-        # Récupération des informations de la policy
-        $policy = $this.getPolicy($policyName)
+        # Si l'utilisateur n'est pas encore dans la policy, 
+        if(!($this.userIsInPolicy($username, $policyName)))
+        {
+            # Récupération des informations de la policy
+            $policy = $this.getPolicy($policyName)
 
-        # Documentation : https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Register-IAMUserPolicy.html
-        Register-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
-                                -UserName $username -PolicyArn $policy.Arn 
+            # Documentation : https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Register-IAMUserPolicy.html
+            Register-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                                    -UserName $username -PolicyArn $policy.Arn 
+        }
     }
 
 
@@ -676,15 +719,16 @@ class ScalityAPI: APIUtils
 	#>
     [void] removeUserFromPolicy([string]$policyName, [string]$username)
     {
+        # Si l'utilisateur est effectivement dans la policy 
+        if($this.userIsInPolicy($username, $policyName))
+        {
+            # Récupération des informations de la policy
+            $policy = $this.getPolicy($policyName)
 
-        # Récupération des informations de la policy
-        $policy = $this.getPolicy($policyName)
-
-        # Documentation : https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Unregister-IAMUserPolicy.html
-        Unregister-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
-                                    -UserName $username -PolicyArn $policy.Arn 
+            # Documentation : https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Unregister-IAMUserPolicy.html
+            Unregister-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                                        -UserName $username -PolicyArn $policy.Arn 
+        }
     }    
-
-
 
 }
