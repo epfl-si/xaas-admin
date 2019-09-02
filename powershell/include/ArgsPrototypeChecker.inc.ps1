@@ -283,7 +283,9 @@ class ArgsPrototypeChecker
                 }# FIN BOUCLE de parcours des valeurs autorisées
 
                 # Ajout de l'erreur à la liste si elle n'y est pas encore
-                $err = "Incorrect value ({0}) for argument {1}" -f $callArg.Values[0], $callArg.Name
+                # FIXME: Dans le cas où un argument peut prendre plusieurs valeurs (une par utilisation entrée), on va générer une erreur
+                # fausse qui dira que la valeur du paramètre est incorrecte
+                $err = "(this error may be false) Incorrect value ({0}) for argument {1}" -f $callArg.Values[0], $callArg.Name
                 if($this.errors -notcontains $err)
                 {
                     $this.errors += $err
