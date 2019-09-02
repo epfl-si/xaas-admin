@@ -1,0 +1,20 @@
+{
+    "dev": {
+        "server": "",
+        "credentialProfile": "",
+        "webConsoleUser": "",
+        "webConsolePassword": ""
+    },
+    "test": {
+        "server": "",
+        "credentialProfile": "",
+        "webConsoleUser": "",
+        "webConsolePassword": ""
+    },
+    "prod": {
+        "server": "",
+        "credentialProfile": "",
+        "webConsoleUser": "",
+        "webConsolePassword": ""
+    }
+}
