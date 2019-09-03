@@ -350,6 +350,7 @@ try
     # Affichage du résultat
     displayJSONOutput -output $output
 
+    $logging.addLine("Script exection done!")
 }
 catch
 {
