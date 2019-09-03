@@ -306,7 +306,20 @@ try
 
         # -- Renvoi des buckets liés
         $ACTION_LINKED_BUCKETS {
+            # Recherche de la policy RW du Bucket (on pourrait aussi prendre l'autre)
+            $s3Policy = $scality.getBucketPolicyForAccess($bucketName, "rw")
+            $logHistory.addLine("Looking for linked Buckets in Policy '{0}'..." -f $s3Policy.PolicyName)
 
+            # Recherche des buckets dans la policy
+            ForEach($s3BucketName in $scality.getPolicyBucketList($s3Policy.PolicyName))
+            {
+                # on fait en sorte de ne pas remettre dans la liste le bucket pour lequel on recherche
+                if($s3BucketName -ne $bucketName)
+                {
+                    $output.results += @{bucketName = $s3BucketName}
+                }
+            }
+            
         }
 
 
