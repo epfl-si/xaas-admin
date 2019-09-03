@@ -123,62 +123,74 @@ try
         # -- Création d'un nouveau bucket 
         $ACTION_CREATE {
 
-            # Pour stocker les infos du nouveau bucket
-            $bucketInfos = @{}
-
-            $nameGeneratorS3 = [NameGeneratorS3]::new($unitOrSvcID,  $friendlyName)
-
-            $bucketInfos.bucketName = $nameGeneratorS3.getBucketName()
-
-            $logHistory.addLine("Creating bucket {0}..." -f $bucketInfos.bucketName)
-
-            # Création du bucket
-            $s3Bucket = $scality.addBucket($bucketInfos.bucketName)
-
-            # Si le nouveau bucket doit être "standalone"
-            if($linkedTo -eq "")
+            # S'il faut lier à un bucket, on contrôle qu'il existe bien
+            if(($linkedTo -ne "") -and (!($scality.bucketExists($linkedTo))))
             {
-                $bucketInfos.access = @{}
+                $output.error = "Bucket to link to ({0}) doesn't exists" -f $linkedTo
+            }
+            else
+            {
 
-                # Parcours des types d'accès
-                ForEach($accessType in $global:XAAS_S3_ACCESS_TYPES)
+                # Pour stocker les infos du nouveau bucket
+                $bucketInfos = @{}
+
+                $nameGeneratorS3 = [NameGeneratorS3]::new($unitOrSvcID,  $friendlyName)
+
+                $bucketInfos.bucketName = $nameGeneratorS3.getBucketName()
+
+                $logHistory.addLine("Creating bucket {0}..." -f $bucketInfos.bucketName)
+
+                # Création du bucket
+                $s3Bucket = $scality.addBucket($bucketInfos.bucketName)
+
+                # Si le nouveau bucket doit être "standalone"
+                if($linkedTo -eq "")
                 {
-                    $bucketInfos.access.$accessType = @{}
+                    $bucketInfos.access = @{}
 
-                    $logHistory.addLine("Creating element for {0} access... " -f $accessType)
+                    # Parcours des types d'accès
+                    ForEach($accessType in $global:XAAS_S3_ACCESS_TYPES)
+                    {
+                        $bucketInfos.access.$accessType = @{}
 
-                    # Génération des noms et stockage dans la structure
-                    $bucketInfos.access.$accessType.userName = $nameGeneratorS3.getUserOrPolicyName($accessType, 'usr')
-                    $bucketInfos.access.$accessType.policyName = $nameGeneratorS3.getUserOrPolicyName($accessType, 'pol')
+                        $logHistory.addLine("Creating element for {0} access... " -f $accessType)
 
-                    # Création des éléments, user et policy
-                    $logHistory.addLine("- User {0}" -f $bucketInfos.access.$accessType.userName)
-                    $s3User = $scality.addUser($bucketInfos.access.$accessType.userName)
+                        # Génération des noms et stockage dans la structure
+                        $bucketInfos.access.$accessType.userName = $nameGeneratorS3.getUserOrPolicyName($accessType, 'usr')
+                        $bucketInfos.access.$accessType.policyName = $nameGeneratorS3.getUserOrPolicyName($accessType, 'pol')
 
-                    $logHistory.addLine("- Policy {0}" -f $bucketInfos.access.$accessType.policyName)
-                    $s3Policy = $scality.addPolicy($bucketInfos.access.$accessType.policyName, $bucketName, $accessType)
+                        # Création des éléments, user et policy
+                        $logHistory.addLine("- User {0}" -f $bucketInfos.access.$accessType.userName)
+                        $s3User = $scality.addUser($bucketInfos.access.$accessType.userName)
 
-                    # Enregistrement des infos sur les éléments créés afin de les ajouter au résultat renvoyé
-                    $bucketInfos.access.$accessType.userArn = $s3User.Arn
-                    $bucketInfos.access.$accessType.policyArn = $s3Policy.Arn
+                        $logHistory.addLine("- Policy {0}" -f $bucketInfos.access.$accessType.policyName)
+                        $s3Policy = $scality.addPolicy($bucketInfos.access.$accessType.policyName, $bucketInfos.bucketName, $accessType)
 
-                    # Ajout de l'utilisateur à la policy 
-                    $logHistory.addLine("- Adding User to Policy... ")
-                    $scality.addUserToPolicy($bucketInfos.access.$accessType.policyName, $bucketInfos.access.$accessType.userName)
+                        # Enregistrement des infos sur les éléments créés afin de les ajouter au résultat renvoyé
+                        $bucketInfos.access.$accessType.userArn = $s3User.Arn
+                        $bucketInfos.access.$accessType.policyArn = $s3Policy.Arn
 
-                    # Ajout du bucket à la policy 
-                    $logHistory.addLine("- Adding Bucket to Policy...")
-                    $s3Policy = $scality.addBucketToPolicy($bucketInfos.access.$accessType.policyName, $bucketInfos.bucketName)
+                        # Ajout de l'utilisateur à la policy 
+                        $logHistory.addLine("- Adding User to Policy... ")
+                        $scality.addUserToPolicy($bucketInfos.access.$accessType.policyName, $bucketInfos.access.$accessType.userName)
 
-                }# FIN BOUCLE de parcours des types d'accès 
+                    }# FIN BOUCLE de parcours des types d'accès 
 
+                }
+                else # Le Bucket doit être link à un autre
+                {
+
+                    # Recherche de la liste des policies pour le bucket auquel il faut link le nouveau 
+                    ForEach($s3Policy in $scality.getBucketPolicyList($linkedTo))
+                    {
+                        # Ajout du bucket à la policy 
+                        $logHistory.addLine("Adding Bucket to Policy {0}..." -f $s3Policy.PolicyName)
+                        $s3Policy = $scality.addBucketToPolicy($s3Policy.policyName, $bucketInfos.bucketName)
+                    }
+                }
+
+                $output.results +=  $bucketInfos
             }
-            else # Le Bucket doit être link à un autre
-            {
-                
-            }
-
-            $output.results +=  $bucketInfos
         }
 
 

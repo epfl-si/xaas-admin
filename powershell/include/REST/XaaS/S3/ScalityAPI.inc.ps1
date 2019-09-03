@@ -121,6 +121,20 @@ class ScalityAPI: APIUtils
 
     <#
 	-------------------------------------------------------------------------------------
+        BUT : Permet de savoir si un bucket existe
+        
+        IN  : $bucketName   -> Le nom du bucket        
+
+        RET : $true|$false
+	#>
+    [bool] bucketExists([string]$bucketName)
+    {
+        return ($null -ne $this.getBucket($bucketName))
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
         BUT : Supprime un bucket. 
         
         IN  : $bucketName   -> Le nom du bucket        
@@ -128,7 +142,7 @@ class ScalityAPI: APIUtils
     [void] deleteBucket([string]$bucketName)
     {
         # On n'efface que si le bucket existe, bien évidemment.
-        if($null -ne $this.getBucket($bucketName))
+        if($this.bucketExists($bucketName))
         {
             # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Remove-S3Bucket.html
             Remove-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
@@ -595,7 +609,7 @@ class ScalityAPI: APIUtils
         <# Si c'est le dernier bucket de la policy, on génère une erreur parce qu'on ne peut pas le supprimer, 
             il faut virer la policy à la place. Normalement, on ne devrait pas arriver dans ce cas de figure si 
             on code correctement mais ça fait garde fou au moins #> 
-        if($this.lastBucketInPolicy($policyName))
+        if($this.onlyOneBucketInPolicy($policyName))
         {
             Throw "Cannot remove last Bucket from Policy '{0}', delete policy instead!" -f $policyName
         }
@@ -667,7 +681,7 @@ class ScalityAPI: APIUtils
     {
         # Avec l'ARN et la version de la Policy, on peut récupérer le contenu de celle-ci.
         # Celui-ci, si on le converti en JSON, est exactement le même que celui utilisé par la fonction 'addPolicy'
-        return ($this.getPolicyBucketList).Count -eq 1
+        return ($this.getPolicyBucketList($policyName)).Count -eq 1
     }
 
     
