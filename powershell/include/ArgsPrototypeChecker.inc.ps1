@@ -88,24 +88,28 @@ class ArgsPrototypeChecker
         $scriptCall = (Get-Variable MyInvocation -Scope 0).Value.Line.TrimStart(@(".")).Trim()
 
         # On peut avoir les valeurs suivantes :
-        # ". 'd:\IDEVING\IaaS\git\xaas-admin\powershell\test.ps1' -targetEnv prod -targetTenant EPFL"
+        # . 'd:\IDEVING\IaaS\git\xaas-admin\powershell\test.ps1' -targetEnv prod -targetTenant EPFL
         # C:\scripts\git\xaas-admin\powershell\vsphere-update-vm-notes-with-tools-version.ps1 -targetEnv prod > C:\scripts\vra\scheduled\logs\vsphere-update-vm-notes-with-tools-version.log
+        # \xaas-s3-endpoint.ps1 -targetEnv prod -targetTenant test -action versioning -bucketName chaboude-bucket -status
 
         # Recherche du chemin d'appel complet
-        $this.scriptCallPath = [Regex]::Matches($scriptCall, "'?[a-zA-Z]:(\\(.*?))*\.ps1'?")[0]
+        $this.scriptCallPath = [Regex]::Matches($scriptCall, "'?([a-zA-Z]:\\)?((.*?)\\)*(.*?)\.ps1'?")[0]
 
         # Suppression début de la ligne avec le nom du script (et le chemin)
         $scriptCall = $scriptCall.Substring(($scriptCall.IndexOf($this.scriptCallPath)+ $this.scriptCallPath.length)).Trim()
         
+
         # Suppression de l'éventuelle redirection vers un fichier de sortie
         $pipePos = $scriptCall.IndexOf(">")
         if($pipePos -gt 0)
         {
             $scriptCall = $scriptCall.Substring(0, $pipePos).Trim()
         }
+
         
+
         # Suppression des éventuels ' autour du nom du script
-        $this.scriptCallPath = $this.scriptCallPath -replace "'",""
+        $this.scriptCallPath = ($this.scriptCallPath -replace "'","").Trim(@(" ", "\"))
         $this.scriptCallName = Split-Path $this.scriptCallPath -leaf
 
         # On récupère les arguments
