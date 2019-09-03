@@ -325,7 +325,24 @@ try
 
         # Renvoi des utilisateurs 
         $ACTION_GET_USERS {
-
+            <# Parcours des policies dans lesquelles le bucket est défini. En théorie, il ne devrait y avoir que 2 policies :
+            - pour l'accès RO
+            - pour l'accès RW
+            #>
+            ForEach($s3Policy in $scality.getBucketPolicyList($bucketName))
+            {
+                <# Parcours des utilisateurs qui sont référencés dans la policy. En théorie, il ne devrait 
+                    y avoir que 2 utilisateurs: 
+                    - un pour l'accès RO
+                    - un pour l'accès RW
+                #>
+                ForEach($s3User in $scality.getPolicyUserList($s3Policy.policyName))
+                {
+                    # Ajout des infos de l'utilisateur
+                    $output.results += @{userName = $s3User.UserName
+                                         userArn = $s3User.Arn}
+                }
+            }
         }
     }
 
