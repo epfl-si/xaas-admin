@@ -347,10 +347,11 @@ try
         }
     }
 
+    $logHistory.addLine("Script execution done!")
+    
     # Affichage du résultat
     displayJSONOutput -output $output
 
-    $logging.addLine("Script execution done!")
 }
 catch
 {
