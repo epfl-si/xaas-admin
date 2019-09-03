@@ -159,15 +159,20 @@ try
                         $bucketInfos.access.$accessType.userName = $nameGeneratorS3.getUserOrPolicyName($accessType, 'usr')
                         $bucketInfos.access.$accessType.policyName = $nameGeneratorS3.getUserOrPolicyName($accessType, 'pol')
 
-                        # Création des éléments, user et policy
+                        # Création de l'utilisateur
                         $logHistory.addLine("- User {0}" -f $bucketInfos.access.$accessType.userName)
                         $s3User = $scality.addUser($bucketInfos.access.$accessType.userName)
+                        $bucketInfos.access.$accessType.userArn = $s3User.Arn
 
+                        # Génération des clefs d'accès
+                        $logHistory.addLine("- User keys for {0}" -f $bucketInfos.access.$accessType.userName)
+                        $userKey = $scality.regenerateUserAccessKey($bucketInfos.access.$accessType.userName)
+                        $bucketInfos.access.$accessType.accessKeyId = $userKey.AccessKeyId
+                        $bucketInfos.access.$accessType.secretAccessKey = $userKey.SecretAccessKey
+
+                        # Création de la policy
                         $logHistory.addLine("- Policy {0}" -f $bucketInfos.access.$accessType.policyName)
                         $s3Policy = $scality.addPolicy($bucketInfos.access.$accessType.policyName, $bucketInfos.bucketName, $accessType)
-
-                        # Enregistrement des infos sur les éléments créés afin de les ajouter au résultat renvoyé
-                        $bucketInfos.access.$accessType.userArn = $s3User.Arn
                         $bucketInfos.access.$accessType.policyArn = $s3Policy.Arn
 
                         # Ajout de l'utilisateur à la policy 
@@ -248,6 +253,40 @@ try
         # -- Génération de nouvelles clefs
         $ACTION_REGEN_KEYS {
 
+            # Recherche de la policy qui gère le type d'accès demandé
+            $s3Policy = $scality.getBucketPolicyForAccess($bucketName, $userType)
+            $logHistory.addLine(("'{0}' Policy for Bucket is: {1}" -f $userType, $s3Policy.PolicyName))
+
+            # Recherche de l'utilisateur dans la Policy
+            $s3User = $scality.getPolicyUserList($s3Policy.PolicyName)
+            
+
+            # Si aucun utilisateur remonté
+            if($s3User.Count -eq 0)
+            {
+                $output.error = "No user found in '{0}' Policy '{1}'" -f $userName, $s3Policy.PolicyName
+
+                $logHistory.addLine($output.error)
+            }
+            # Trop d'utilisateurs remontés !
+            elseif ($s3User.Count -gt 1)
+            {
+                $output.error = "Too many '{0}' users found ({1}) in Policy '{2}'" -f $userType, $s3User.Count, $s3Policy.PolicyName
+                $logHistory.addLine($output.error)
+            }
+            else 
+            {
+                $logHistory.addLine("Regenerating keys for user {0}... " -f $s3User[0].UserName)
+                # On lance la regénération des clefs pour l'utilisateur
+                $newKeys = $scality.regenerateUserAccessKey($s3User[0].UserName)
+
+                $output.results +=  @{userName = $s3User[0].UserName
+                                     userArn = $s3User[0].Arn
+                                     accessKeyId = $newKeys.AccessKeyId
+                                     secretAccessKey = $newKeys.SecretAccessKey}
+            }
+
+            
         }
 
 
@@ -260,7 +299,7 @@ try
             }
 
             # Dans tous les cas, on retourne l'état du versioning
-            $output.results += $scality.bucketVersioningEnabled($bucketName)
+            $output.results += @{enabled =$scality.bucketVersioningEnabled($bucketName)}
 
         }
 

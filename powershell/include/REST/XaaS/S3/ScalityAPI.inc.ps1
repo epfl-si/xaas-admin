@@ -217,6 +217,28 @@ class ScalityAPI: APIUtils
 
 
     <#
+	-------------------------------------------------------------------------------------
+        BUT : Renvoie la policy RO ou RW d'un bucket donné
+        
+        IN  : $bucketName   -> Le nom du bucket 
+        IN  : $accessType   -> Le type d'accès géré par la policy que l'on veut: $global:XAAS_S3_ACCESS_TYPES
+        
+        RET : Objet avec la policy
+	#>
+    [PSObject] getBucketPolicyForAccess([string]$bucketName, [string]$accessType)
+    {
+        $policy = $this.getBucketPolicyList($bucketName)  | Where-Object { $_.PolicyName -like ("*-{0}" -f $accessType) }
+
+        # Si on a plus d'un objet, c'est qu'il y a une erreur quelque part
+        if($policy.Count -gt 1)
+        {
+            Throw "More than one '{0}' policy defined for bucket '{1}':`n{2}" -f $accessType, $bucketName, ($policy | ConvertTo-Json)
+        }
+         return $policy[0]
+    }
+
+
+    <#
     -------------------------------------------------------------------------------------
     -------------------------------------------------------------------------------------
                                         USERS 
