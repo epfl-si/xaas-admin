@@ -54,7 +54,7 @@ class ScalityAPI: APIUtils
         $this.credentials = Get-AWSCredential -ProfileName $credProfileName
         if($null -eq $this.credentials)
         {
-            Throw "AWS Credential profile not found ({0})" -f $credProfileName
+            Throw "AWS Credential profile not found ({0}), see https://docs.aws.amazon.com/powershell/latest/userguide/specifying-your-aws-credentials.html" -f $credProfileName
         }
     }
     
