@@ -1,0 +1,28 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid":  "AllowListAllBuckets",
+            "Action":  "s3:ListAllMyBuckets",
+            "Effect":  "Allow",
+            "Resource":  [
+                            "arn:aws:s3:::*"
+                        ]
+        },
+        {
+            "Sid": "AllObjectActions",
+            "Effect": "Allow",
+            "Action":  [
+                        "s3:Get*",
+                        "s3:Put*",
+                        "s3:AbortMultipartUpload",
+                        "s3:List*",
+                        "s3:Delete*"
+                ],
+            "Resource":  [
+                        "arn:aws:s3:::{{bucketName}}",
+                        "arn:aws:s3:::{{bucketName}}/*"
+            ]
+        }
+    ]
+}

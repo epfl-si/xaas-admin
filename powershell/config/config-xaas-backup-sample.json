@@ -23,7 +23,7 @@
             "password": ""
         }
     },
-    "xaas-backup": {
+    "prod": {
         "backup": {
             "server": "",
             "user": "",
