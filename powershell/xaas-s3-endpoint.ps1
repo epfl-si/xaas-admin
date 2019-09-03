@@ -331,6 +331,7 @@ try
             #>
             ForEach($s3Policy in $scality.getBucketPolicyList($bucketName))
             {
+                $logHistory.addLine("Looking for users in Policy '{0}'..." -f $s3Policy.PolicyName)
                 <# Parcours des utilisateurs qui sont référencés dans la policy. En théorie, il ne devrait 
                     y avoir que 2 utilisateurs: 
                     - un pour l'accès RO
