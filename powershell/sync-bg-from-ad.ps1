@@ -1634,7 +1634,7 @@ try
 			$acl = Get-Acl $bgISOFolder
 			ForEach($sharedGrp in $sharedGrpList)
 			{
-				$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($sharedGrp,"Modify","Allow")
+				$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($sharedGrp, "Modify", "ContainerInherit,ObjectInherit", "None","Allow")
 				$acl.SetAccessRule($ar)
 			}
 			Set-Acl $bgISOFolder $acl
