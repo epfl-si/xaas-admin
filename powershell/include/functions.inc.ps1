@@ -172,3 +172,14 @@ function getUnixTimestamp()
 {
 	return [int][double]::Parse((Get-Date -UFormat %s))
 }
+
+function formatParameters($parameters)
+{
+	$s = ""
+	Foreach($param in $parameters.Keys)
+	{
+		$s = "{0}<br>{1}: {2}" -f $s, $param, $parameters[$param]
+	}
+
+	return $s
+}
