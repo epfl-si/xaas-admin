@@ -173,6 +173,13 @@ function getUnixTimestamp()
 	return [int][double]::Parse((Get-Date -UFormat %s))
 }
 
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Formate le dictionnaire passé en une une chaîne de caractère HTML
+
+	IN  : $parameters	-> dictionnaire avec les paramètres.
+#>
 function formatParameters($parameters)
 {
 	$s = ""
