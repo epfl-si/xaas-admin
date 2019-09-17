@@ -41,6 +41,7 @@ USAGES:
 param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp)
 
 
+
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
@@ -57,6 +58,7 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vSphereAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "Backup", "NetBackupAPI.inc.ps1"))
+
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
@@ -216,7 +218,7 @@ catch
 	# Envoi d'un message d'erreur aux admins 
 	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant ""
 	$mailMessage = getvRAMailContent -content ("<b>Computer:</b> {3}<br><b>Script:</b> {0}<br><b>Parameters:</b>{4}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
-	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace), $env:computername, ($PsBoundParameters | out-string ))
+	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace), $env:computername, (formatParameters -parameters $PsBoundParameters))
 
 	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
 }
