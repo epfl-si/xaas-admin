@@ -202,9 +202,8 @@ class NetBackupAPI: RESTAPICurl
 
 			$backupId = $backup.id
 		}
-
-		$replace = @{vmName = $vmName
-					backupId = $backupId}
+		
+		$replace = @{ backupId = $backupId }
 
 		$body = $this.createObjectFromJSON("xaas-backup-restore-vm.json", $replace)
 
