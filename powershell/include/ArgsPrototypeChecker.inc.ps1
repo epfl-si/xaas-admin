@@ -99,18 +99,21 @@ class ArgsPrototypeChecker
                 # 4: broker_serialize '& "C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1"  -targetEnv test -action getBackupTag -vmName itstxaas0436 '
                 # 5: broker_serialize 'C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1  -targetEnv test -action getBackupTag -vmName itstxaas0436 '
                 $scriptCall = (Get-Variable MyInvocation -Scope $scope).Value.Line.TrimStart(@(".")).Trim()
+
+                # INFO: Au besoin, la ligne suivante peut être décommentée et initialisée avec une des valeurs ci-dessus pour faire des tests
+                #$scriptCall = ". 'd:\IDEVING\IaaS\git\xaas-admin\powershell\test.ps1' -targetEnv prod -targetTenant EPFL"
                 $scope += 1
 
                 # Si ce n'est pas la ligne de commande qui inclus le fichier courant pour les check, 
                 if($scriptCall -notlike "*ArgsPrototypeChecker*")
                 {
                     # Recherche du chemin d'appel complet, ce qui donnerait:
-                    # 1: d:\IDEVING\IaaS\git\xaas-admin\powershell\test.ps1
+                    # 1: 'd:\IDEVING\IaaS\git\xaas-admin\powershell\test.ps1'
                     # 2: C:\scripts\git\xaas-admin\powershell\vsphere-update-vm-notes-with-tools-version.ps1
                     # 3: \xaas-s3-endpoint.ps1
-                    # 4: C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1
-                    # 5: C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1
-                    $this.scriptCallPath = [Regex]::Matches($scriptCall, "'?([a-zA-Z]:\\)?(([^\\:])*?\\)*([^\\])*?\.ps1'?")[0]
+                    # 4: "C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1"
+                    # 5: 'C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1'
+                    $this.scriptCallPath = [Regex]::Matches($scriptCall, "(`"|')?([a-zA-Z]:\\)?(([^\\:])*?\\)*([^\\])*?\.ps1(`"|')?")[0]
                     
                     if($this.scriptCallPath -ne "")
                     {
@@ -125,9 +128,6 @@ class ArgsPrototypeChecker
             Throw "ArgsPrototypeChecker: Cannot find script call info"
         }
 
-        
-        
-
         # Suppression de l'éventuelle redirection vers un fichier de sortie
         $pipePos = $scriptCall.IndexOf(">")
         if($pipePos -gt 0)
@@ -135,42 +135,19 @@ class ArgsPrototypeChecker
             $scriptCall = $scriptCall.Substring(0, $pipePos).Trim()
         }
 
-        # Extraction des paramètres
-        $this.scriptCallArgs = ($scriptCall.Substring($this.scriptCallPath.length)).Trim()
-        # Suppression des éventuels ' autour du nom du script
-        $this.scriptCallPath = ($this.scriptCallPath -replace "'","").Trim(@(" ", "\"))
-        
+        # Extraction des paramètres et suppression d'un éventuel " '" à la fin de la chaîne, suivant comment le script a été appelé
+        $this.scriptCallArgs = ($scriptCall.Substring($scriptCall.IndexOf($this.scriptCallPath)+$this.scriptCallPath.length) -replace " '$","").Trim()
+        # Suppression des éventuels ' et " autour du nom du script et trim pour virer ce qui n'est plus nécessaire
+        $this.scriptCallPath = $this.scriptCallPath -replace "'",""
+        $this.scriptCallPath = $this.scriptCallPath -replace "`"",""
+        $this.scriptCallPath = $this.scriptCallPath.Trim(@(" ", "\"))
+        # Récupération du nom du script
         $this.scriptCallName = Split-Path $this.scriptCallPath -leaf
 
-        
-
-        # $brokerStr = "broker_serialize"
-        # if($scriptCall.StartsWith($brokerStr))
-        # {
-        #     # Suppression du début de la chaine et un peu de nettoyage pour arriver à  :
-        #     # C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1  -targetEnv test -action getBackupTag -vmName itstxaas0436
-        #     $scriptCall = ($scriptCall.Substring($brokerStr.length).Trim(@(" ", "'", "&"))) -replace ".ps1`"", ".ps1"
-
-        #     # On doit aussi nettoyer cette variable car elle ressemble à l'une d'elle:
-        #     # broker_serialize '& "C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1
-        #     # broker_serialize 'C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1
-        #     $this.scriptCallPath = ($this.scriptCallPath.Substring($brokerStr.length)).Trim(@(" ", "'", "&"))
-        # }
-        
-        # # Suppression début de la ligne avec le nom du script (et le chemin). Reste donc que les paramètres 
-        # $scriptCall = $scriptCall.Substring(($scriptCall.IndexOf($this.scriptCallPath)+ $this.scriptCallPath.length)).Trim()
-
-        
-
-        # # Suppression des éventuels ' autour du nom du script
-        # $this.scriptCallPath = ($this.scriptCallPath -replace "'","").Trim(@(" ", "\"))
-        
-
-        # # On récupère les arguments
-        # $this.scriptCallArgs = $scriptCall
-
+        # Pour stocker les différentes informations 
         $this.allowedUsages = @()
 
+        # TODO: Pour le moment, les 2 variables suivantes ne sont pas utilisées, c'est un peu complexe de mettre en place la chose... et pas forcément nécessaire
         $this.currentArgGroupName = ""
         $this.nbArgGroupFound = 0
 
