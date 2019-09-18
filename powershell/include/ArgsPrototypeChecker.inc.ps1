@@ -318,6 +318,8 @@ class ArgsPrototypeChecker
                     if( (($null -eq $allowedValue) -and ($callArg.Values[0] -ne "")) -or 
                         ($callArg.Values[0].toLower() -eq $allowedValue))
                     {
+                        # On supprime les erreurs précédemment ajoutées s'il y en avait
+                        $this.errors = @()
                         return $true
                     }
 
