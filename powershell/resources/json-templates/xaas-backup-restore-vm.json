@@ -3,7 +3,6 @@
       "type" : "recoveryRequest",
       "attributes" : {
         "recoveryPoint" : {
-          "client" : "{{vmName}}",
           "backupId": "{{backupId}}"
         }
       }
