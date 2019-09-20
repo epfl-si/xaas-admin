@@ -153,6 +153,8 @@ try
             {
                 $vsphereApi.attachVMTag($vmName, $backupTag)       
             }
+
+            $output.results += $backupTag
         }
 
 
