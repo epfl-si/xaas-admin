@@ -75,6 +75,8 @@ $ACTION_GET_BACKUP_LIST = "getBackupList"
 $ACTION_RESTORE_BACKUP = "restoreBackup"
 
 $NBU_TAG_PREFIX = "NBU-"
+$NBU_TAG_PREFIX_DONT_TOUCH = "SNBU-"
+$NBU_CATEGORY = "NBU"
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
 
@@ -123,7 +125,7 @@ try
         $ACTION_GET_BACKUP_TAG {
 
             # Récupération du tag de backup existant
-            $tag = $vSphereApi.getVMTags($vmName) | Where-Object { $_.Name -like ("{0}*" -f $NBU_TAG_PREFIX)}
+            $tag = $vSphereApi.getVMTags($vmName, $NBU_CATEGORY) 
             
             # Si un tag est trouvé,
             if($null -ne $tag)
@@ -139,22 +141,37 @@ try
         $ACTION_SET_BACKUP_TAG {
 
             # Recherche du tag de backup existant sur la VM
-            $tag = $vSphereApi.getVMTags($vmName) | Where-Object { $_.Name -like ("{0}*" -f $NBU_TAG_PREFIX)}
+            $tag = $vSphereApi.getVMTags($vmName, $NBU_CATEGORY) 
 
-            # S'il y a un tag de backup,
+            $canAddNewTag = $true
+
+            # S'il y a un tag de backup 
             if($null -ne $tag)
             {
-                # On supprime le tag
-                $vsphereApi.detachVMTag($vmName, $tag.name)
+                # Si on a le droit de toucher au tag présent
+                if($tag.Name -notlike ("{0}*" -f $NBU_TAG_PREFIX_DONT_TOUCH))
+                {
+                    # On supprime le tag
+                    $vsphereApi.detachVMTag($vmName, $tag.name)
+                }
+                else # On ne peut pas toucher au tag présent
+                {
+                    # Donc on fait en sorte de ne pas en ajouter un autre (car ça provoquerait une erreur)
+                    $canAddNewTag = $false
+                    # Pour renvoyer le tag actuellement présent
+                    $output.results += $tag.name
+                }
             }
 
             # Si on doit ajouter un tag
-            if($backupTag -ne "")
+            if(($backupTag -ne "") -and ($canAddNewTag))
             {
                 $vsphereApi.attachVMTag($vmName, $backupTag)       
+
+                $output.results += $backupTag
             }
 
-            $output.results += $backupTag
+            
         }
 
 

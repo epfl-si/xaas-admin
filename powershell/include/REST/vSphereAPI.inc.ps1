@@ -108,6 +108,20 @@ class vSphereAPI: RESTAPICurl
 		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag/id:{1}" -f $this.server, $tagId
 		return ($this.callAPI($uri, "Get", $null)).value
 	}
+	
+
+	<#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie les détails d'une catégorie.
+        
+        IN  : $categoryId	-> ID de la catégorie dont on veut les détails
+
+	#>
+	hidden [PSObject] getCategoryById([string] $categoryId)
+	{
+		$uri = "https://{0}/rest/com/vmware/cis/tagging/category/id:{1}" -f $this.server, $categoryId
+		return ($this.callAPI($uri, "Get", $null)).value
+	}
 
 
 	<#
@@ -163,6 +177,27 @@ class vSphereAPI: RESTAPICurl
 
 		$res = $this.callAPI($uri, "Post", $body)
 	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie une catégorie
+        
+		IN  : $categoryName	-> Nom de la catégorie
+	#>
+	hidden [PSObject] getCategory([string]$categoryName)
+	{
+		# On récupère la liste des catégories et pour chacun, on recherche les détails pour savoir si le nom correspon
+		# et dès qu'on a trouvé, on renvoie l'objet avec les détails.
+		return $this.getCategoryList() | Foreach-Object {
+			$details = $this.getCategoryById($_)
+			if($details.Name -eq $categoryName)
+			{
+				return $details
+			}
+		}
+	}
+
 
 	<#
 		-------------------------------------------------------------------------------------
@@ -226,6 +261,26 @@ class vSphereAPI: RESTAPICurl
 
 		return $tagList
 	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des tags (détaillés) attachés à l'objet représentant une VM qui 
+				est passé en paramètre. Cet objet aura été obtenu via le CmdLet "Get-VM"
+				Seuls les tags faisant partie de la catégorie donnée sont remontés
+        
+		IN  : $vmName		-> Nom de la VM
+		IN  : $categoryName	-> Nom de la catégorie à laquelle les tags doivent appartenir.
+
+		RET : Tableau avec les détails des tags 
+	#>
+	[Array] getVMTags([string]$vmName, [string]$categoryName)
+	{
+		# Recherche des infos de la catégorie 
+		$category = $this.getCategory($categoryName)
+		# Récupération de tous les tags de la VM et filtre sur la catégorie de ceux-ci 
+		return $this.getVMTags($vmName) | Where-Object { $_.category_id -eq $category.id}
+	}
 	
 
 	<#
@@ -233,6 +288,28 @@ class vSphereAPI: RESTAPICurl
         BUT : Renvoie la liste des tags du système
 	#>
 	[Array] getTagList()
+	{
+		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag" -f $this.server
+
+		return $this.callAPI($uri, "Get", $null).value
+	}
+
+	<#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des catégories du système
+	#>
+	[Array] getCategoryList()
+	{
+		$uri = "https://{0}/rest/com/vmware/cis/tagging/category" -f $this.server
+
+		return $this.callAPI($uri, "Get", $null).value
+	}
+
+	<#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des tags d'une catégorie donnée
+	#>
+	[Array] getTagList([string]$categoryName)
 	{
 		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag" -f $this.server
 
