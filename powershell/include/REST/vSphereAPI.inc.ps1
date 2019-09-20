@@ -187,7 +187,7 @@ class vSphereAPI: RESTAPICurl
 	#>
 	hidden [PSObject] getCategory([string]$categoryName)
 	{
-		# On récupère la liste des catégories et pour chacun, on recherche les détails pour savoir si le nom correspon
+		# On récupère la liste des catégories et pour chacun, on recherche les détails pour savoir si le nom correspond
 		# et dès qu'on a trouvé, on renvoie l'objet avec les détails.
 		return $this.getCategoryList() | Foreach-Object {
 			$details = $this.getCategoryById($_)
