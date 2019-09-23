@@ -141,7 +141,7 @@ class vRAAPI: RESTAPI
 	#>
 	[Array] getBGListMatch([string]$str)
 	{
-		return $this.getBGListQuery("`$filter=substringof('{0}', name)" -f $str)
+		return $this.getBGListQuery(("`$filter=substringof('{0}', name)" -f $str))
 	}
 
 	<#
@@ -155,7 +155,7 @@ class vRAAPI: RESTAPI
 	#>
 	[PSCustomObject] getBG([string] $name)
 	{
-		$list = $this.getBGListQuery("`$filter=name eq '{0}'" -f $name)
+		$list = $this.getBGListQuery(("`$filter=name eq '{0}'" -f $name))
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
@@ -565,7 +565,7 @@ class vRAAPI: RESTAPI
 	#>
 	[Array] getEntListMatch([string]$str)
 	{
-		return $this.getEntListQuery("`$filter=substringof('{0}', name)" -f $str)
+		return $this.getEntListQuery(("`$filter=substringof('{0}', name)" -f $str))
 	}
 
 	<#
@@ -592,7 +592,7 @@ class vRAAPI: RESTAPI
 	#>
 	[PSCustomObject] getEnt([string]$name)
 	{
-		$list = $this.getEntListQuery("`$filter=name eq '{0}'" -f $name)
+		$list = $this.getEntListQuery(("`$filter=name eq '{0}'" -f $name))
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
@@ -915,7 +915,7 @@ class vRAAPI: RESTAPI
 	#>
 	[Array] getResListMatch([string] $str)
 	{
-		return $this.getResListQuery("`$filter=substringof('{0}', name)" -f $str)
+		return $this.getResListQuery(("`$filter=substringof('{0}', name)" -f $str))
 	}
 
 
@@ -930,7 +930,7 @@ class vRAAPI: RESTAPI
 	#>
 	[PSCustomObject] getRes([string] $name)
 	{
-		$list = $this.getResListQuery("`$filter=name eq '{0}'" -f $name)
+		$list = $this.getResListQuery(("`$filter=name eq '{0}'" -f $name))
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
@@ -947,7 +947,7 @@ class vRAAPI: RESTAPI
 	#>
 	[PSCustomObject] getBGResList([string] $bgID)
 	{
-		return $this.getResListQuery("`$filter=subTenantId eq '{0}'" -f $bgID)
+		return $this.getResListQuery(("`$filter=subTenantId eq '{0}'" -f $bgID))
 	}
 
 
@@ -1235,7 +1235,7 @@ class vRAAPI: RESTAPI
 	#>
 	[PSCustomObject] getMachinePrefix([string] $name)
 	{
-		$list = $this.getMachinePrefixListQuery("`$filter=name eq '{0}'" -f $name)
+		$list = $this.getMachinePrefixListQuery(("`$filter=name eq '{0}'" -f $name))
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
@@ -1284,7 +1284,7 @@ class vRAAPI: RESTAPI
 	#>
 	[Array] getBGItemList([PSObject] $bg)
 	{
-		return $this.getBGItemListQuery("`$filter=organization/subTenant/id eq '{0}'" -f $bg.id)
+		return $this.getBGItemListQuery(("`$filter=organization/subTenant/id eq '{0}'" -f $bg.id))
 	}
 
 
@@ -1299,7 +1299,7 @@ class vRAAPI: RESTAPI
 	#>
 	[Array] getBGItemList([PSObject] $bg, [string]$itemType)
 	{
-		return $this.getBGItemListQuery("`$filter=organization/subTenant/id eq '{0}' and resourceType/name eq '{1}'" -f $bg.id, $itemType)
+		return $this.getBGItemListQuery(("`$filter=organization/subTenant/id eq '{0}' and resourceType/name eq '{1}'" -f $bg.id, $itemType))
 
 	}
 
@@ -1372,7 +1372,7 @@ class vRAAPI: RESTAPI
 	#>
 	[PSCustomObject] getApprovalPolicy([string] $name)
 	{
-		$list = $this.getApprovePolicyListQuery("`$filter=name eq '{0}'" -f $name)
+		$list = $this.getApprovePolicyListQuery(("`$filter=name eq '{0}'" -f $name))
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
