@@ -45,7 +45,7 @@ class NameGeneratorS3
 	#>
    [string] getBucketName()
    {
-      return "{0}-{1}" -f $this.unitOrSvcID, $this.hash
+      return ("{0}-{1}" -f $this.unitOrSvcID, $this.hash).ToLower()
    }
 
    
