@@ -21,8 +21,14 @@
    DATE   : Mai 2019    
 #>
 
-# Chargement du module PowerShell
-Import-Module AWSPowerShell
+<# On regarde si le module PowerShell est chargé. S'il ne l'est pas, on propage une erreur. 
+Le module doit être chargé dans le script principal et pas dans ce fichier. Si on le fait ailleurs, le
+contenu de la variable $PSScriptRoot est modifiée avec le chemin jusqu'au dossier où on a fait le 
+Import-Module... ce qui peut avoir des effets de bords indésirables... #>
+if( $null -eq (Get-Module | Where-Object {$_.Name -eq "AWSPowerShell"}) )
+{
+    Throw "Please load AWSPowerShell module (Import-Module) in main script before including this file."
+}
 
 $global:XAAS_S3_STATEMENT_KEYWORD = "s3:Get*"
 
