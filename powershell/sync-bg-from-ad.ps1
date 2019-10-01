@@ -51,24 +51,28 @@ USAGES:
 #>
 param ( [string]$targetEnv, [string]$targetTenant)
 
+<# On enregistrer l'endroit où le script courant se trouve pour pouvoir effectuer l'import des autres fichiers.
+On fait ceci au lieu d'utiliser $PSScriptRoot car la valeur de ce dernier peut changer si on importe un module (Import-Module) dans
+un des fichiers inclus via ". <pathToFile>" #>
+$SCRIPT_PATH = $PSScriptRoot
 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "JSONUtils.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "NewItems.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "define.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "JSONUtils.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "NewItems.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "SecondDayActions.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "Counters.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "LogHistory.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "NameGenerator.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "ConfigReader.inc.ps1"))
 
 # Chargement des fichiers pour API REST
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vROAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "NSXAPI.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "APIUtils.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "RESTAPI.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "RESTAPICurl.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "vROAPI.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "NSXAPI.inc.ps1"))
 
 
 
@@ -167,7 +171,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 	# Si l'approval policy existe, qu'elle n'a pas encore été traitée et qu'il est demandé de les recréer 
 	if(($null -ne $approvePolicy) -and `
 		($processedApprovalPoliciesIDs.value -notcontains $approvePolicy.id) -and `
-		(Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))))
+		(Test-Path -Path ([IO.Path]::Combine("$SCRIPT_PATH", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))))
 	{
 		$logHistory.addLineAndDisplay(("-> Approval Policy '{0}' already exists but recreation asked. Deleting it..." -f $fullName))
 
@@ -1249,10 +1253,10 @@ function createFirewallSectionRulesIfNotExists
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-	$logHistory =[LogHistory]::new('2.sync-BG-from-AD', (Join-Path $PSScriptRoot "logs"), 30)
+	$logHistory =[LogHistory]::new('2.sync-BG-from-AD', (Join-Path $SCRIPT_PATH "logs"), 30)
 
 	# On contrôle le prototype d'appel du script
-	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+	. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "ArgsPrototypeChecker.inc.ps1"))
 
 	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
@@ -1725,7 +1729,7 @@ try
 
 	# Si le fichier qui demandait à ce que l'on force la recréation des policies existe, on le supprime, afin d'éviter 
 	# que le script ne s'exécute à nouveau en recréant les approval policies, ce qui ne serait pas très bien...
-	$recreatePoliciesFile = ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))
+	$recreatePoliciesFile = ([IO.Path]::Combine("$SCRIPT_PATH", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))
 	if(Test-Path -Path $recreatePoliciesFile)
 	{
 		Remove-Item -Path $recreatePoliciesFile

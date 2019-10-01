@@ -24,22 +24,27 @@ USAGES:
 #>
 param ( [string]$targetEnv, [string]$targetTenant)
 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "define-mysql.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "DjangoMySQL.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+<# On enregistrer l'endroit où le script courant se trouve pour pouvoir effectuer l'import des autres fichiers.
+On fait ceci au lieu d'utiliser $PSScriptRoot car la valeur de ce dernier peut changer si on importe un module (Import-Module) dans
+un des fichiers inclus via ". <pathToFile>" #>
+$SCRIPT_PATH = $PSScriptRoot
+
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "define.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "define-mysql.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "EPFLLDAP.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "Counters.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "LogHistory.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "NameGenerator.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "SecondDayActions.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "MySQL.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "DjangoMySQL.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "ConfigReader.inc.ps1"))
 
 # Chargement des fichiers pour API REST
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "APIUtils.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "RESTAPI.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "vRAAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configVra = [ConfigReader]::New("config-vra.json")
@@ -213,13 +218,13 @@ $EPFL_FAC_UNIT_NB_LEVEL = 3
 # aucune écriture. 
 # Pour passer en mode simulation, il suffit de créer un fichier "SIMULATION_MODE" au même niveau que
 # le script courant
-$SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__SIMULATION_MODE)))
+$SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$SCRIPT_PATH", $global:SCRIPT_ACTION_FILE__SIMULATION_MODE)))
 
 # Pour dire si on est en mode test. Si c'est le cas, on ne traitera qu'un nombre limité d'unités, nombre qui est
 # spécifié par $EPFL_TEST_NB_UNITS_MAX ci-dessous (si Tenant EPFL).
 # Pour passer en mode simulation, il suffit de créer un fichier "TEST_MODE" au même niveau que
 # le script courant
-$TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__TEST_MODE)))
+$TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$SCRIPT_PATH", $global:SCRIPT_ACTION_FILE__TEST_MODE)))
 $EPFL_TEST_NB_UNITS_MAX = 10
 
 
@@ -230,10 +235,10 @@ $EPFL_TEST_NB_UNITS_MAX = 10
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-	$logHistory = [LogHistory]::new('1.sync-AD-from-LDAP', (Join-Path $PSScriptRoot "logs"), 30)
+	$logHistory = [LogHistory]::new('1.sync-AD-from-LDAP', (Join-Path $SCRIPT_PATH "logs"), 30)
 
 	# On contrôle le prototype d'appel du script
-	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+	. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "ArgsPrototypeChecker.inc.ps1"))
 
 	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
 

@@ -19,15 +19,19 @@ USAGES:
 
 param ( [string]$targetEnv)
 
+<# On enregistrer l'endroit où le script courant se trouve pour pouvoir effectuer l'import des autres fichiers.
+On fait ceci au lieu d'utiliser $PSScriptRoot car la valeur de ce dernier peut changer si on importe un module (Import-Module) dans
+un des fichiers inclus via ". <pathToFile>" #>
+$SCRIPT_PATH = $PSScriptRoot
 
 # Inclusion des fichiers nécessaires (génériques)
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "define.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "Counters.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "LogHistory.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "ConfigReader.inc.ps1"))
 # Fichiers propres au script courant 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "functions-vsphere.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "functions-vsphere.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
@@ -80,10 +84,10 @@ try
 {
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new('vsphere-update-VM-notes-with-Tools-version', (Join-Path $PSScriptRoot "logs"), 30)
+    $logHistory = [LogHistory]::new('vsphere-update-VM-notes-with-Tools-version', (Join-Path $SCRIPT_PATH "logs"), 30)
     
     # On commence par contrôler le prototype d'appel du script
-    . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+    . ([IO.Path]::Combine("$SCRIPT_PATH", "include", "ArgsPrototypeChecker.inc.ps1"))
 
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()

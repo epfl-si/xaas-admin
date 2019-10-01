@@ -22,20 +22,24 @@ USAGES:
 #>
 param ( [string]$targetEnv, [string]$targetTenant)
 
+<# On enregistrer l'endroit où le script courant se trouve pour pouvoir effectuer l'import des autres fichiers.
+On fait ceci au lieu d'utiliser $PSScriptRoot car la valeur de ce dernier peut changer si on importe un module (Import-Module) dans
+un des fichiers inclus via ". <pathToFile>" #>
+$SCRIPT_PATH = $PSScriptRoot
 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "functions-vsphere.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "define.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "functions-vsphere.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "SecondDayActions.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "Counters.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "LogHistory.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "NameGenerator.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "ConfigReader.inc.ps1"))
 
 # Chargement des fichiers pour API REST
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "APIUtils.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "RESTAPI.inc.ps1"))
+. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "REST", "vRAAPI.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
@@ -55,10 +59,10 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-	$logHistory =[LogHistory]::new('0.Clean-ISO-Folders', (Join-Path $PSScriptRoot "logs"), 30)
+	$logHistory =[LogHistory]::new('0.Clean-ISO-Folders', (Join-Path $SCRIPT_PATH "logs"), 30)
 
 	# On contrôle le prototype d'appel du script
-	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+	. ([IO.Path]::Combine("$SCRIPT_PATH", "include", "ArgsPrototypeChecker.inc.ps1"))
 
 
 	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
