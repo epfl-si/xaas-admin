@@ -111,8 +111,8 @@ class ArgsPrototypeChecker
                     # 1: 'd:\IDEVING\IaaS\git\xaas-admin\powershell\test.ps1'
                     # 2: C:\scripts\git\xaas-admin\powershell\vsphere-update-vm-notes-with-tools-version.ps1
                     # 3: \xaas-s3-endpoint.ps1
-                    # 4: "C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1"
-                    # 5: 'C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1'
+                    # 4: "C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1
+                    # 5: 'C:\Scripts\git\xaas-admin\powershell\xaas-backup-endpoints.ps1
                     $this.scriptCallPath = [Regex]::Matches($scriptCall, "(`"|')?([a-zA-Z]:\\)?(([^\\:])*?\\)*([^\\])*?\.ps1(`"|')?")[0]
                     
                     if($this.scriptCallPath -ne "")
@@ -136,7 +136,7 @@ class ArgsPrototypeChecker
         }
 
         # Extraction des paramètres et suppression d'un éventuel " '" à la fin de la chaîne, suivant comment le script a été appelé
-        $this.scriptCallArgs = ($scriptCall.Substring($scriptCall.IndexOf($this.scriptCallPath)+$this.scriptCallPath.length) -replace " '$","").Trim()
+        $this.scriptCallArgs = ($scriptCall.Substring($scriptCall.IndexOf($this.scriptCallPath)+$this.scriptCallPath.length) -replace "'$","").Trim()
         # Suppression des éventuels ' et " autour du nom du script et trim pour virer ce qui n'est plus nécessaire
         $this.scriptCallPath = $this.scriptCallPath -replace "'",""
         $this.scriptCallPath = $this.scriptCallPath -replace "`"",""
@@ -426,7 +426,7 @@ class ArgsPrototypeChecker
 
         if(!$callOk)
         {
-            Throw ("Incorrect arguments given. {0}`nUsage is:{1}" -f ($this.errors -join "\n"), ($this.usages -replace $this.scriptCallName, ("`n{0}" -f $this.scriptCallName)) )
+            Throw ("Incorrect arguments given: {0}`nError: {1}`nUsage is:{2}" -f $this.scriptCallArgs, ($this.errors -join "\n"), ($this.usages -replace $this.scriptCallName, ("`n{0}" -f $this.scriptCallName)) )
         }
     }
 
