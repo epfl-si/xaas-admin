@@ -7,6 +7,9 @@ USAGES:
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action versioning -bucketName <bucketName> -status
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action linkedBuckets -bucketName <bucketName>
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getUsers -bucketName <bucketName>
+    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action bucketExists -bucketName <bucketName>
+    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action bucketIsEmpty -bucketName <bucketName>
+    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getBuckets 
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -78,12 +81,15 @@ $configXaaSS3 = [ConfigReader]::New("config-xaas-s3.json")
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
 # Liste des actions possibles
-$ACTION_CREATE = "create"
-$ACTION_DELETE = "delete"
-$ACTION_REGEN_KEYS = "regenKeys"
-$ACTION_VERSIONING = "versioning"
-$ACTION_LINKED_BUCKETS = "linkedBuckets"
-$ACTION_GET_USERS = "getUsers"
+$ACTION_CREATE          = "create"
+$ACTION_DELETE          = "delete"
+$ACTION_REGEN_KEYS      = "regenKeys"
+$ACTION_VERSIONING      = "versioning"
+$ACTION_LINKED_BUCKETS  = "linkedBuckets"
+$ACTION_GET_USERS       = "getUsers"
+$ACTION_BUCKET_EXISTS   = "bucketExists"
+$ACTION_BUCKET_IS_EMPTY = "bucketIsEmpty"
+$ACTION_GET_BUCKETS     = "getBuckets"
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -327,7 +333,7 @@ try
         }
 
 
-        # Renvoi des utilisateurs 
+        # -- Renvoi des utilisateurs 
         $ACTION_GET_USERS {
             <# Parcours des policies dans lesquelles le bucket est défini. En théorie, il ne devrait y avoir que 2 policies :
             - pour l'accès RO
@@ -347,6 +353,30 @@ try
                     $output.results += @{userName = $s3User.UserName
                                          userArn = $s3User.Arn}
                 }
+            }
+        }
+
+
+        # -- Savoir si un bucket existe
+        $ACTION_BUCKET_EXISTS {
+            # On essaie de chercher le bucket pour voir s'il existe
+            $output.results += ($null -ne $scality.getBucket($bucketName))
+        }
+
+
+        # -- Savoir si un bucket est vide
+        $ACTION_BUCKET_IS_EMPTY {
+            # Si la liste des objets ne contient rien, c'est que le bucket est vide.
+            $output.results += ($scality.getBucketObjectList($bucketName).Count -eq 0)
+        }
+
+
+        # -- Liste des buckets
+        $ACTION_GET_BUCKETS {
+
+            # Récupération de la list des buckets et on ne prend ensuite que le nom du bucket
+            $scality.getBucketList() | ForEach-Object {
+                $output.results += $_.BucketName
             }
         }
     }

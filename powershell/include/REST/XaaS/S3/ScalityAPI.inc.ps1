@@ -127,6 +127,19 @@ class ScalityAPI: APIUtils
 
     <#
 	-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des buckets
+
+        RET : la liste des buckets
+	#>
+    [PSObject] getBucketList()
+    {
+        # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-S3Bucket.html
+        return Get-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials 
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
         BUT : Permet de savoir si un bucket existe
         
         IN  : $bucketName   -> Le nom du bucket        
@@ -771,6 +784,31 @@ class ScalityAPI: APIUtils
             Unregister-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                                         -UserName $username -PolicyArn $policy.Arn 
         }
-    }    
+    } 
+    
+    
+    <#
+    -------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------
+                                        OBJECTS 
+    -------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------
+    #>
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des objets d'un bucket
+        
+        IN  : $bucketName   -> Le nom du bucket        
+
+        RET : Liste des objets
+	#>
+    [PSObject] getBucketObjectList([string]$bucketName)
+    {
+        # https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-S3Object.html
+        return Get-S3Object -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                             -BucketName $bucketName
+    }
 
 }
