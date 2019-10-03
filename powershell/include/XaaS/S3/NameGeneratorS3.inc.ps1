@@ -64,7 +64,7 @@ class NameGeneratorS3
          Throw "Unknown access type ({0})" -f $accessType
       }
 
-      return "{0}-{1}-{2}-{3}" -f $this.unitOrSvcID, $this.hash, $userOrPol.ToLower(), $accessType.ToLower()
+      return ("{0}-{1}-{2}-{3}" -f $this.unitOrSvcID, $this.hash, $userOrPol, $accessType).ToLower()
    }
 
 
