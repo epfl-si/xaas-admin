@@ -1740,6 +1740,9 @@ catch # Dans le cas d'une erreur dans le script
 
 	$logHistory.addErrorAndDisplay(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
 	
+	# On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
+	$errorMessage = $errorMessage -replace "`n", "<br>"
+	
 	# Envoi d'un message d'erreur aux admins 
 	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant $targetTenant
 	$mailMessage = getvRAMailContent -content ("<b>Computer:</b> {3}<br><b>Script:</b> {0}<br><b>Parameters:</b>{4}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
