@@ -1,0 +1,101 @@
+#set( $component_size = "#valueOf('resource-ResourceNos') " )
+#set( $Integer = 0 )
+
+#if( "$!component_size" == "" || "$!component_size.trim()" == "" )
+	#break
+#end
+
+#set( $componentSize = $Integer.parseInt($component_size.trim()) )
+#if( $componentSize <= 0 )
+	#break
+#end	
+
+<h2>#msg("notification.email.extensions.deployment.information")</h2>
+<br/>
+##BEGIN - Show Deployment
+<table class="sectionGrid">
+
+    #set( $resource1_lease = "#valueOf('resource1-Lease')" )
+    #if("$!resource1_lease" == "" || "$!resource1_lease.trim()" == "" )  
+      #set( $resource1_lease = "#msg('notification.email.extensions.request.unlimited')" )
+    #end
+
+    #renderRow("notification.email.extensions.name", "<b>#valueOf('resource1-Name')</b>")
+    #renderRow("notification.email.extensions.description", "#valueOf('resource1-Description')")
+    #renderRow("notification.email.extensions.created.on", "#valueOf('resource1-DateCreated')") 
+    #renderRow("notification.email.extensions.component.lease", $resource1_lease)  
+    #renderRow("notification.email.extensions.archive.days", "#valueOf('resource1-ArchiveDays')")
+
+</table> <br/>
+##END -Show Deployment
+
+<h2>#msg("notification.email.extensions.component.componentInfo")</h2>
+
+## BEGIN - Show components
+#foreach($index in [2..$componentSize] )  
+  ## Component general info
+  #set( $curKey = "resource${index}-Name" )
+  #set( $resource_Name = "#valueOf($curKey)" )
+
+  #set( $curKey = "resource${index}-Description" )
+  #set( $resource_Description = "#valueOf($curKey)" )
+
+  #set( $curKey = "resource${index}-Type" )
+  #set( $resource_Type = "#valueOf($curKey)" )
+
+  #set( $curKey = "resource${index}-Parent" )
+  #set( $resource_Parent = "#valueOf($curKey)" )
+
+  ## Software specified
+  #set( $curKey = "resource${index}-Software-Install-Path" )
+  #set( $resource_Software-Install-Path = "#valueOf($curKey)" )
+
+  #set( $curKey = "resource${index}-Software-Group-License" )
+  #set( $resource_Software-Group-License = "#valueOf($curKey)" )
+
+  #set( $curKey = "resource${index}-MachineInterfaceDisplayName" )
+  #set( $resource_MachineInterfaceDisplayName = "#valueOf($curKey)" )
+ 
+  ## VM specified
+  #set( $curKey = "resource${index}-MachineCPU" )
+  #set( $resource_MachineCPU = "#valueOf($curKey)" )
+
+  #set( $curKey = "resource${index}-MachineMemory" )
+  #set( $resource_MachineMemory = "#valueOf($curKey)" )
+
+  #set( $curKey = "resource${index}-MachineStorage" )
+  #set( $resource_MachineStorage = "#valueOf($curKey)" )
+
+  <table class="sectionGrid">
+
+    #renderRow("notification.email.extensions.name", "<b>$resource_Name</b>")
+    #renderRow("notification.email.extensions.type", "$resource_Type")
+    #renderRow("notification.email.extensions.description", "$resource_Description")
+    #renderRow("notification.email.extensions.component.parentComponent", "$resource_Parent")
+
+    ## Software fields
+    #renderRow("notification.email.extensions.component.installPath", "$resource_Software-Install-Path")
+    #renderRow("notification.email.extensions.component.groupLicense", "$resource_Software-Group-License")
+  
+    ## VM fields
+    #renderRow("notification.email.extensions.interface.type", "$resource_MachineInterfaceDisplayName")
+    #renderRow("notification.email.extensions.cpus", "$resource_MachineCPU")
+    #renderRow("notification.email.extensions.memory", "$resource_MachineMemory", "MB")
+    #renderRow("notification.email.extensions.storage", "$resource_MachineStorage", "GB") 
+    
+    <br/>
+    ## Disk info
+    #set( $curKey = "provider-resource${index}-DISK_VOLUMES" )
+    #set( $disks = $formData.get("$curKey") )
+    #parse( 'extensions/resource_disks.vm' )
+ 
+    ## Network info
+    #set( $curKey = "provider-resource${index}-NETWORK_LIST" )
+    #set( $networks = $formData.get("$curKey") )
+    #parse( 'extensions/resource_networks.vm' )
+  
+  </table>
+   
+#end ##For loop
+## END - Show components
+#parse ( 'extensions/url_details.vm' )

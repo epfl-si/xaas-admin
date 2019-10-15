@@ -1,0 +1,18 @@
+#if( !$keyPrefix )
+	#set ($keyPrefix = "")
+#end
+
+#set ($resourceAction_Name = "#valueOf('resourceAction')" )
+#set( $curKey = "${keyPrefix}resourceAction" )
+#set ($resourceAction = $formData.get($curKey) )
+
+##Render RA requests
+#parse( 'extensions/request_resourceAction_reconfigure.vm' )
+#parse( 'extensions/request_resourceAction_changeLease.vm' )
+#parse( 'extensions/request_resourceAction.vm' )
+
+##Render CI requests
+#parse( 'extensions/request_generalInfo.vm' )
+</table><br/>
+#parse( 'extensions/request_components.vm' )
+#parse ( 'extensions/url_details.vm' )

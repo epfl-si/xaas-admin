@@ -1,0 +1,76 @@
+<div>
+    <table>
+        <tr class="layoutRow">
+            <td class="layoutField layoutCell">#msg("notification.email.extensions.action.operation")</td>
+            <td class="layoutField layoutCell"><b>$resourceAction_Name</b></td>
+        </tr>
+        <tr class="layoutRow">
+            <td class="layoutField layoutCell">#msg("notification.email.extensions.request.target")</td>
+            <td class="layoutField layoutCell"><b>#valueOf("resource-Name")</b></td>
+        </tr>
+    </table>
+</div>
+<br/>
+<div class="horizontalTable">
+    <table>
+        <thead>
+        <tr><th>#msg("notification.email.extensions.component.name")</th>
+            <th>#msg("notification.email.extensions.component.parentComponent")</th>
+            <th>#msg("notification.email.extensions.action.scaleout.cluster")</th></tr>
+        </thead>
+        <tbody>
+            #set($machineCount = [])
+            #set($data = $formData)
+            #set($nodes = $formData.keySet() )
+            #set( $nodeList = [] )
+
+            #foreach( $key in $nodes )
+                #set( $keyValues = false )
+                #if($data.get($key).getValue())
+                    #set( $temp = $nodeList.add($data.get($key)) )
+                #end
+            #end
+
+            #foreach ( $i in [0..100000] )
+            ##Loop breaks if queue gets empty
+                #if($nodeList.isEmpty())
+                    #break($foreach)
+                #else
+                    #set ( $node = $nodeList.remove(0) )
+                #end
+                #if($node.getValue())
+                    #foreach( $n in $node.getValue().keySet() )
+                        #set( $temp = $nodeList.add($node.getValue().get($n)) )
+                    #end
+                #end
+                #set( $cluster = false )
+                #set( $cluster = $node.getValue().get("_cluster") )
+                #if( $cluster )
+                    #if($node.typeFilter.indexOf("~") < 0 )
+                        #set( $machines = $node.typeFilter.split("[*]") )
+                        #set( $child = $machines.get(1) )
+                        #set( $parent = $machines.get(0) )
+                    #else
+                        #set( $allNodes = $node.typeFilter.split("~") )
+                        #set( $length   = $allNodes.size() )
+                        #set( $index    = $length - 1 )
+                        #set( $child    = $allNodes[$index] )
+                        #set( $index    = $length - 2 )
+                        #set( $parent   = $allNodes[$index] )
+                    #end
+                    #set($tmp = $machineCount.add($node.typeFilter))
+                <tr>
+                    <td>$child</td>
+                    <td>$parent</td>
+                    <td>$cluster</td>
+                </tr>
+                #end
+            #end
+        </tbody>
+    </table>
+</div>
+<br/>
+<div>
+    #msg("notification.email.extensions.action.scaleout.message") : <b>$machineCount.size()</b>
+</div>
+<br/>

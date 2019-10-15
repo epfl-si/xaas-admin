@@ -1,0 +1,60 @@
+## Main template used for generating an HTML email
+##include message source for localization
+#parse( '../i18n.vm' )
+
+<html>
+
+<head>
+#parse( 'core/styles.vm' )
+</head>
+
+<body>
+
+## Include the header
+#parse( 'core/header.vm' )
+
+<div class="main">
+
+## Render the body
+$body
+
+</div>
+
+## Render any links associated with this email
+#parse( 'core/links.vm' )
+
+## Include the footer
+#parse( 'core/footer.vm' )
+#showData()
+
+</body>
+
+</html>
+
+#macro (renderRow $label $val $val2)
+	#if (!$val2)
+		#set ( $val2 = "" )
+	#end
+
+   #notEmpty($val)
+	   <tr class="layoutRow">
+	     <td class="layoutField  layoutCell">
+	        <div class="label">#msg($label)</div>
+	     </td>
+	     <td class="layoutField layoutCell">
+	        <div class="value">$val $val2</div>
+	     </td>
+	   </tr>
+   #end
+#end
+
+#macro (showData)
+	<table border=1>
+		#foreach( $key in $formData.keySet() )
+			<tr>
+				<td>$key</td> 
+				<td>$formData.get($key)</td>
+		 	</tr>
+		#end
+	</table>
+#end

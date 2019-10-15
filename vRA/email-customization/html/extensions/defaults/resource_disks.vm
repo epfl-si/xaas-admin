@@ -1,0 +1,17 @@
+#if( $disks && $disks.getValue() && $disks.getValue().size() > 0 )
+  
+  #foreach( $disk in $disks.getValue() )
+      #if( $disk && $disk.getValue() )
+         <tr class="layoutRow">
+           <td class="layoutField  layoutCell"  colspan="2">
+             <div class="label">Disk Volume #if ($disks.getValue().size()>1) - $velocityCount #end</div>
+           </td>
+         </tr>
+         #renderRow("notification.email.extensions.disk.label", $!disk.getValue().get('DISK_LABEL'))
+         #renderRow("notification.email.extensions.disk.inputId", $!disk.getValue().get('DISK_INPUT_ID'))
+         #renderRow("notification.email.extensions.disk.drive", $!disk.getValue().get('DISK_DRIVE'))
+         #renderRow("notification.email.extensions.disk.capacity", $!disk.getValue().get('DISK_CAPACITY'), "GB")
+      #end
+  #end
+#end
+#set( $disks = "" )

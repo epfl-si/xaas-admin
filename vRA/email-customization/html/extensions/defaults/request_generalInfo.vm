@@ -1,0 +1,35 @@
+## General request info
+
+#if( !$resourceAction || "$!resourceAction" == "" )
+  #set( $request_leasePeriod = "#valueOf('requestLeasePeriod')" )
+  #if( "$!request_leasePeriod" == "" || "$!request_leasePeriod.trim()" == "" )  
+    #set( $requestIsQuoteProvided = $formData.get("${keyPrefix}requestIsQuoteProvided") ) 
+    #if( "$!requestIsQuoteProvided" != "" && $requestIsQuoteProvided )  
+      #set( $request_leasePeriod = "#msg('notification.email.extensions.request.unlimited')" )
+    #end
+  #end
+#end
+
+<h2>#msg("notification.email.extensions.request.info") </h2>
+<br/>
+
+##This is special case handling for scale-out/In emails, they have different template than regualar action emails.
+#if( $resourceAction == "{com.vmware.csp.component.cafe.composition@resource.action.deployment.scaleout.name}")
+    #parse( 'extensions/request_scaleOutAction.vm' )
+#end
+
+#if( $resourceAction == "{com.vmware.csp.component.cafe.composition@resource.action.deployment.scalein.name}")
+    #parse( 'extensions/request_scaleInAction.vm' )
+#end
+
+<table class="sectionGrid">
+  #renderRow("notification.email.extensions.deployment", "#valueOf('catalogItem-Name')")
+  #renderRow("notification.email.extensions.action", $resourceAction_Name)
+  #renderRow("notification.email.extensions.request.requestedBy", "#valueOf('requestedBy')")
+  #renderRow("notification.email.extensions.request.requestDate", "#valueOf('requestedDate')")
+  #renderRow("notification.email.extensions.description", "#valueOf('description')")
+  #renderRow("notification.email.extensions.request.reason", "#valueOf('reasons')")
+  #renderRow("notification.email.extensions.request.numberOfInstances", "#valueOf('_number_of_instances')")
+  #renderRow("notification.email.extensions.request.estimatedLeasePrice", "#valueOf('requestLeaseCost')")
+  #renderRow("notification.email.extensions.request.leasePeriod", $request_leasePeriod)
+  #renderRow("notification.email.extensions.request.totalPrice", "#valueOf('requestTotalLeaseCost')")

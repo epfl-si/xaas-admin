@@ -1,0 +1,10 @@
+<div class="footer">
+
+#notEmpty( $branding.disclaimer )
+<div class="disclaimer">
+<h3>#msg("notification.email.core.footer.disclamer")</h3>
+$branding.disclaimer
+</div>
+#end
+
+</div>

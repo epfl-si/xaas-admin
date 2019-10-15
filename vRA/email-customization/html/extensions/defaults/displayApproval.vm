@@ -1,0 +1,87 @@
+#set( $approval_size = "#valueOf('approval-ApprovalNos') " )
+#set( $Integer = 0 )
+
+#if( "$!approval_size" != "" && "$!approval_size.trim()" != "" )
+   #set( $approvalSize = $Integer.parseInt($approval_size.trim()) )
+   #if( $approvalSize != 0 )
+      #set( $approval_approvers = "" )
+      #set( $approval_rejector = "" )
+
+      #foreach($index in [1..$approvalSize] )
+
+         #set( $curKey = "approval${index}-ApprovedBy" )
+         #set( $curApprover = "#valueOf($curKey)" )
+
+         #set( $curKey = "approval${index}-ApprovalStatus" )
+         #set( $curStatus = "#valueOf($curKey)" )
+
+         #if( "$!curStatus" != "" ) 
+            #if( "REJECT" == $curStatus.trim() )
+               #*
+                  For rejected approval, show the approver who rejected the approval
+                  along with the associated justification
+               *#
+               #set( $curKey = "approval${index}-ApprovalPhase" )
+               #set( $approval_Phase = "#valueOf($curKey)" )
+               
+               #set( $curKey = "approval${index}-ApprovalJustification" )
+               #set( $approval_justification = "#valueOf($curKey)" )
+
+               #set( $approval_rejector = $curApprover )
+               #break
+            #elseif ( "APPROVE" == $curStatus.trim() ) 
+               ## For approved approval, show all the approvers who approve it
+               #if( !$approval_approvers.contains($curApprover) ) 
+                  #if( $approval_approvers != "" )
+                     #set( $approval_approvers = "${approval_approvers}; " )
+                  #end
+                  #set( $approval_approvers = "$approval_approvers$curApprover" )
+               #end
+               #set( $curKey = "approval${index}-ApprovalPhase" )
+               #set( $approval_Phase = "#valueOf($curKey)" )
+            #end
+         #end
+      ## end for for loop
+      #end
+
+      #set( $approval_status = "#valueOf('requestedState')" )
+      #set( $approval_state = $formData.get('requestedState') )
+      #if( "$!approval_state" == "" )
+         #set( $approval_state = $formData.get('source-source-requestedState') )
+      #end
+
+      <table class="sectionGrid">
+         #renderRow("notification.email.extensions.approval.approvalPhase", $approval_Phase)
+
+         #if( "REJECTED" == $approval_state )
+            #renderRow("notification.email.extensions.approval.approver", $approval_rejector)
+         #else
+            #renderRow("notification.email.extensions.approval.approver", $approval_approvers)
+         #end
+
+         #notEmpty($approval_status)
+         <tr class="layoutRow">
+            <td class="layoutField  layoutCell">
+               <div class="label">#msg("notification.email.extensions.status")</div>
+            </td>
+            <td class="layoutField layoutCell">
+               #if( "REJECTED" == $approval_state )
+                  <div class="value failedText">$approval_status</div>
+               #elseif ("PENDING" == $approval_state) 
+                 <div class="value">$approval_status</div>
+               #else
+                  <div class="value successText">$approval_status</div>
+               #end
+            </td>
+         </tr>
+         #end
+
+         #renderRow("notification.email.extensions.approval.justification", $approval_justification)
+      </table>
+      <br/>
+
+   ## end for if( $approvalSize != 0 )
+   #end
+
+## end for #if( "$!approval_size" != "" )
+#end

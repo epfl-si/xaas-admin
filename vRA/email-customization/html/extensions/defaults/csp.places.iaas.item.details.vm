@@ -1,0 +1,275 @@
+#set ($name = "#valueOf('MachineName')")
+#set ($description = "#valueOf('provider-resource1-description')")
+#set ($type = "#valueOf('MachineType')")
+#set ($interfaceType = "#valueOf('MachineInterfaceType')")
+#set ($status = "#valueOf('MachineStatus')")
+#set ($blueprint = "#valueOf('MachineBlueprintName')")
+#set ($cpu = "#valueOf('MachineCPU')")
+#set ($mem = "#valueOf('MachineMemory')")
+#set ($storage = "#valueOf('MachineStorage')")
+#set ($expirationDate = "#valueOf('MachineExpirationDate')")
+#set ($destructionDate = "#valueOf('MachineDestructionDate')")
+#set ($dailyCost = "#valueOf('MachineDailyCost')")
+#set( $networks = $formData.get("provider-NETWORK_LIST") )
+#set( $disks = $formData.get("provider-DISK_VOLUMES") )
+
+<div class="layoutSection">
+   <h2>#msg("notification.email.extensions.machine.info")</h2>
+   <table class="sectionGrid">
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.name")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$name</div>
+         </td>
+      </tr>
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.description")</div>
+         </td>
+         <td class="layoutField layoutCell">
+             <div class="value">$description</div>
+         </td>
+      </tr>
+      #notEmpty($type)
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.type")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$type</div>
+         </td>
+      </tr>
+      #end
+      #notEmpty($interfaceType)
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.interface.type")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$interfaceType</div>
+         </td>
+      </tr>
+      #end
+      #notEmpty($status)
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.status")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$status</div>
+         </td>
+      </tr>
+      #end
+      #notEmpty($blueprint)
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.blueprint")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$blueprint</div>
+         </td>
+      </tr>
+      #end
+      #notEmpty($cpu)
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.cpus")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$cpu</div>
+         </td>
+      </tr>
+      #end
+      #notEmpty($mem)
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.memory")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$mem MB </div>
+         </td>
+      </tr>
+      #end
+      #notEmpty($storage)
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.storage")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$storage GB</div>
+         </td>
+      </tr>
+      #end
+      #notEmpty($expirationDate)
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.expiration.date")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$expirationDate</div>
+         </td>
+      </tr>
+      #end
+      #notEmpty($destructionDate)
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.destruction.date")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$destructionDate</div>
+         </td>
+      </tr>
+      #end
+      #notEmpty($dailyCost)
+      <tr class="layoutRow">
+         <td class="layoutField  layoutCell">
+            <div class="label">#msg("notification.email.extensions.daily.cost")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">
+               #if ($dailyCost != "0")
+                  $dailyCost
+               #else
+                  #msg("notification.email.extensions.daily.cost.na")
+               #end
+           </div>
+         </td>
+      </tr>
+      #end
+   </table>
+   <br/>
+
+   #if ($networks && $networks.getValue() && $networks.getValue().size()>0)
+   <h2>#msg('notification.email.extensions.network.info')</h2>
+      <table class="sectionGrid">
+        #foreach( $network in $networks.getValue() )
+            #if($network && $network.getValue())   
+                 #set( $network_name = $network.getValue().get("NETWORK_NAME"))
+                 #set( $network_mac = $network.getValue().get("NETWORK_MAC_ADDRESS") )
+                 #set( $network_ip  = $network.getValue().get("NETWORK_ADDRESS") )          
+               
+                 #if($networks.getValue().size() > 1)
+                    #if($velocityCount > 1)
+                       <tr class="layoutRow">
+                         <td class="layoutField  layoutCell">
+                           <div class="label" colspan="2">&nbsp;</div>
+                         </td>
+                       </tr>     
+                    #end
+                     
+                     <tr class="layoutRow">
+                      <td class="layoutField  layoutCell">
+                        <div class="label" colspan="2">Network-$velocityCount</div>
+                      </td>
+                    </tr>         
+                 #end   
+                 
+                 #notEmpty($network_name)
+                 <tr class="layoutRow">
+                   <td class="layoutField  layoutCell">
+                     <div class="label">#msg('notification.email.extensions.network.name')</div>
+                   </td>
+                   <td class="layoutField layoutCell">
+                     <div class="value">$network_name</div>
+                   </td>
+                 </tr>
+                 #end
+                 #notEmpty($network_mac)
+                 <tr class="layoutRow">
+                   <td class="layoutField  layoutCell">
+                     <div class="label">#msg('notification.email.extensions.network.mac')</div>
+                   </td>
+                   <td class="layoutField layoutCell">
+                     <div class="value">$network_mac</div>
+                   </td>
+                 </tr>
+                 #end
+                 #notEmpty($network_ip)
+                 <tr class="layoutRow">
+                   <td class="layoutField  layoutCell">
+                     <div class="label">#msg('notification.email.extensions.network.ip')</div>
+                   </td>
+                   <td class="layoutField layoutCell">
+                     <div class="value">$network_ip</div>
+                   </td>
+                 </tr>
+                 #end
+            #end    
+        #end     
+      </table> 
+   #end
+<br/>
+
+   #if ($disks && $disks.getValue() && $disks.getValue().size()>1)
+   <h2>#msg('notification.email.extensions.disk.info')</h2>
+      <table class="sectionGrid">
+        #foreach( $disk in $disks.getValue() )
+            #if($disk && $disk.getValue())
+                 #set( $disk_label = $disk.getValue().get("DISK_LABEL"))
+                 #set( $disk_input_id = $disk.getValue().get("DISK_INPUT_ID") )
+                 #set( $disk_drive = $disk.getValue().get("DISK_DRIVE") )
+                 #set( $disk_capacity = $disk.getValue().get("DISK_CAPACITY") )          
+                 
+                 #if($disks.getValue().size() > 1)
+                     #if($velocityCount > 1)
+                        <tr class="layoutRow">
+                         <td class="layoutField  layoutCell">
+                           <div class="label" colspan="2">&nbsp;</div>
+                         </td>
+                       </tr>     
+                     #end
+                        
+                        <tr class="layoutRow">
+                         <td class="layoutField  layoutCell">
+                           <div class="label" colspan="2">Disk Volume-$velocityCount</div>
+                         </td>
+                       </tr>         
+                 #end   
+                 
+                 #notEmpty($disk_label)
+                 <tr class="layoutRow">
+                   <td class="layoutField  layoutCell">
+                     <div class="label">#msg('notification.email.extensions.disk.label')</div>
+                   </td>
+                   <td class="layoutField layoutCell">
+                     <div class="value">$disk_label</div>
+                   </td>
+                 </tr>
+                 #end
+                 #notEmpty($disk_input_id)
+                 <tr class="layoutRow">
+                   <td class="layoutField  layoutCell">
+                     <div class="label">#msg('notification.email.extensions.disk.inputId')</div>
+                   </td>
+                   <td class="layoutField layoutCell">
+                     <div class="value">$disk_input_id</div>
+                   </td>
+                 </tr>
+                 #end
+                 #notEmpty($disk_drive)
+                 <tr class="layoutRow">
+                   <td class="layoutField  layoutCell">
+                     <div class="label">#msg('notification.email.extensions.disk.drive')</div>
+                   </td>
+                   <td class="layoutField layoutCell">
+                     <div class="value">$disk_drive</div>
+                   </td>
+                 </tr>
+                 #end
+                 #notEmpty($disk_capacity)
+                 <tr class="layoutRow">
+                   <td class="layoutField  layoutCell">
+                     <div class="label">#msg('notification.email.extensions.disk.capacity')</div>
+                   </td>
+                   <td class="layoutField layoutCell">
+                     <div class="value">$disk_capacity</div>
+                   </td>
+                 </tr>
+                 #end
+            #end    
+        #end     
+      </table> 
+   #end
+</div>

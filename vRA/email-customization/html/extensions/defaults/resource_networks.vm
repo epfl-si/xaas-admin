@@ -1,0 +1,16 @@
+#if( $networks && $networks.getValue() && $networks.getValue().size() > 0 )
+  
+   #foreach( $network in $networks.getValue() )
+      #if( $network && $network.getValue() )
+         <tr class="layoutRow">
+           <td class="layoutField  layoutCell" colspan="2">
+             <div class="label">Network #if ($networks.getValue().size()>1) - $velocityCount #end </div>
+           </td>
+         </tr>
+         #renderRow("notification.email.extensions.network.name", $!network.getValue().get("NETWORK_NAME"))
+         #renderRow("notification.email.extensions.network.mac", $!network.getValue().get("NETWORK_MAC_ADDRESS"))
+         #renderRow("notification.email.extensions.network.ip", $!network.getValue().get("NETWORK_ADDRESS"))
+      #end
+  #end
+#end
+#set( $networks = "" )

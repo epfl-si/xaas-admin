@@ -1,0 +1,40 @@
+  <h2>#msg('notification.email.extensions.resource.information')</h2> 
+
+  #set( $resource_lease = "#valueOf('resource-Lease')" )
+  #if("$!resource_lease" == "" || "$!resource_lease.trim()" == "" )  
+    #set( $resource_lease = "#msg('notification.email.extensions.request.unlimited')" )
+  #end
+
+  <table class="sectionGrid">
+
+    #renderRow("notification.email.extensions.name", "<b>#valueOf('resource-Name')</b>")
+    #renderRow("notification.email.extensions.type", "#valueOf('resource-Type')")
+    #renderRow("notification.email.extensions.description", "#valueOf('resource-Description')")
+    #renderRow("notification.email.extensions.component.parentComponent",  "#valueOf('resource-Parent')")
+
+    ## Software fields
+    #renderRow("notification.email.extensions.component.installPath", "#valueOf('resource-Software-Install-Path')")
+    #renderRow("notification.email.extensions.component.groupLicense", "#valueOf('resource-Software-Group-License')")
+  
+    ## VM fields
+    #renderRow("notification.email.extensions.interface.type", "#valueOf('resource-MachineInterfaceDisplayName')")
+    #renderRow("notification.email.extensions.cpus", "#valueOf('resource-MachineCPU')")
+    #renderRow("notification.email.extensions.memory", "#valueOf('resource-MachineMemory')", "MB")
+    #renderRow("notification.email.extensions.storage", "#valueOf('resource-MachineStorage')", "GB") 
+    #renderRow("notification.email.extensions.created.on", "#valueOf('resource-DateCreated')") 
+    #renderRow("notification.email.extensions.component.lease", "$resource_lease")  
+    #renderRow("notification.email.extensions.archive.days", "#valueOf('resource-ArchiveDays')") 
+    
+    <br/>
+    ## Disk info
+    #set( $curKey = "${keyPrefix}provider-resource-DISK_VOLUMES" )
+    #set( $disks = $formData.get("$curKey") )
+    #parse( 'extensions/resource_disks.vm' )
+ 
+    ## Network info
+    #set( $curKey = "${keyPrefix}provider-resource-NETWORK_LIST" )
+    #set( $networks = $formData.get("$curKey") )
+    #parse( 'extensions/resource_networks.vm' )
+  
+  </table>
+  <br/>

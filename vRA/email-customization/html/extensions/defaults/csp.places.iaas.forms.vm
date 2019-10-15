@@ -1,0 +1,202 @@
+## Basic machine properties
+#set( $cpu = "#valueOf('VirtualMachine.CPU.Count')" )
+#set( $memory = "#valueOf('VirtualMachine.Memory.Size')" )
+#set( $leaseDays = "#valueOf('VirtualMachine.LeaseDays')" )
+
+## Amazon Properties
+#set ( $instanceType = "#valueOf('__amazon.instanceType')" )
+#set ( $location = "#valueOf('Vrm.DataCenter.Location')" )
+
+## Cost properties
+#set( $minCost = "#valueOf('Cafe.Shim.VirtualMachine.MinCost')" )
+#set( $maxCost = "#valueOf('Cafe.Shim.VirtualMachine.MaxCost')" )
+
+#set( $isMulti = "#valueOf('__MultiMachine.Provision.NumberOfInstances')" )
+
+<div class="layoutSection">
+   <h2>#msg("notification.email.extensions.request.info")</h2>
+   <table class="sectionGrid">
+      <tr class="layoutRow">
+         <td class="layoutField layoutCell">
+            <div class="label">#msg("notification.email.extensions.description")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">#valueOf("Cafe.Shim.VirtualMachine.Description")</div>
+         </td>
+      </tr>
+      <tr class="layoutRow">
+         <td class="layoutField layoutCell">
+            <div class="label">#msg("notification.email.extensions.reasons") </div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">#valueOf("Cafe.Shim.VirtualMachine.Reason")</div>
+         </td>
+      </tr>
+      #if( $minCost > 0 && $maxCost > 0 )
+      <tr class="layoutRow">
+         <td class="layoutField layoutCell">
+            <div class="label">#msg("notification.email.extensions.cost")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$minCost - $maxCost</div>
+         </td>
+      </tr>
+      #end
+   </table>
+</div>
+
+<div class="layoutSection">
+   <h2>#msg("notification.email.extensions.machine.details")</h2>
+   <table class="sectionGrid">
+      #notEmpty ($leaseDays)
+      <tr class="layoutRow">
+         <td class="layoutField layoutCell">
+            <div class="label">#msg("notification.email.extensions.lease.duration")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">
+               #if( $leaseDays != "0" )
+                  $leaseDays #msg("notification.email.extensions.lease.unit")
+               #else
+                  #msg("notification.email.extensions.lease.indefinite")
+               #end
+            </div>
+         </td>
+      </tr>
+      #end
+      #notEmpty ($cpu)
+      <tr class="layoutRow">
+         <td class="layoutField layoutCell">
+            <div class="label">#msg("notification.email.extensions.cpus")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$cpu</div>
+         </td>
+      </tr>
+      #end
+      #notEmpty ($memory)
+      <tr class="layoutRow">
+         <td class="layoutField layoutCell">
+            <div class="label">#msg("notification.email.extensions.memory")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$memory MB</div>
+         </td>
+      </tr>
+      #end
+      #foreach($i in [0..9])
+         #set( $key = "VirtualMachine.Disk${i}.Size" )
+         #set( $diskSize = "#valueOf($key)" )
+         #notEmpty ($diskSize)
+         <tr class="layoutRow">
+            <td class="layoutField layoutCell">
+               <div class="label">#msg("notification.email.extensions.disk.size", [$1])</div>
+            </td>
+            <td class="layoutField layoutCell">
+               <div class="value">$diskSize GB</div>
+            </td>
+         </tr>
+         #end
+      #end
+   </table>
+</div>
+
+#notEmpty ($instanceType)
+<div class="layoutSection">
+   <h2>#msg("notification.email.extensions.amazon.ec2.info")</h2>
+   <table class="sectionGrid">
+      <tr class="layoutRow">
+         <td class="layoutField layoutCell">
+            <div class="label">#msg("notification.email.extensions.instance.type")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$instanceType</div>
+         </td>
+      </tr>
+   </table>
+   <table class="sectionGrid">
+      <col class="layoutColumn" />
+      <tr class="layoutRow">
+         <td class="layoutField layoutCell">
+            <div class="label">#msg("notification.email.extensions.location")</div>
+         </td>
+         <td class="layoutField layoutCell">
+            <div class="value">$location</div>
+         </td>
+      </tr>
+   </table>
+</div>
+#end
+
+#notEmpty ($isMulti)
+   <h1>#msg("notification.email.extensions.multimachine.details")</h1>
+   #foreach ($m in [0..9])
+      #set( $cpuKey = "ASCT-${m}.VirtualMachine.CPU.Count" )
+      #set( $memKey = "ASCT-${m}.VirtualMachine.Memory.Size" )
+      #set( $locationKey = "ASCT-${m}.Vrm.DataCenter.Location" )
+      #set( $instanceTypeKey = "ASCT-${m}.__amazon.instanceType" )
+      #set( $descKey = "ASCT-${m}.__Notes")
+
+      #set( $mmCpu = "#valueOf($cpuKey)" )
+      #set( $mmMem = "#valueOf($memKey)" )
+      #set( $mmLocation = "#valueOf($locationKey)" )
+      #set( $mmInstanceType = "#valueOf($instanceTypeKey)" )
+      #set( $mmDesc = "#valueOf($descKey)" )
+
+      #notEmpty ($mmCpu)
+      <div class="layoutSection">
+         <h2>#msg("notification.email.extensions.components.details", [$m])</h2>
+         <table class="sectionGrid">
+            #notEmpty ($mmDesc)
+            <tr class="layoutRow">
+               <td class="layoutField layoutCell">
+                  <div class="label">#msg("notification.email.extensions.description")</div>
+               </td>
+               <td class="layoutField layoutCell">
+                  <div class="value">$mmDesc</div>
+               </td>
+            </tr>
+            #end
+            #notEmpty ($mmCpu)
+            <tr class="layoutRow">
+               <td class="layoutField layoutCell">
+                  <div class="label">#msg("notification.email.extensions.cpus")</div>
+               </td>
+               <td class="layoutField layoutCell">
+                  <div class="value">$mmCpu</div>
+               </td>
+            </tr>
+            #end
+            #notEmpty ($mmMem)
+            <tr class="layoutRow">
+               <td class="layoutField layoutCell">
+                  <div class="label">#msg("notification.email.extensions.memory")</div>
+               </td>
+               <td class="layoutField layoutCell">
+                  <div class="value">$mmMem MB</div>
+               </td>
+            </tr>
+            #end
+            #notEmpty ($mmLocation)
+            <tr class="layoutRow">
+               <td class="layoutField layoutCell">
+                  <div class="label">#msg("notification.email.extensions.instance.type")</div>
+               </td>
+               <td class="layoutField layoutCell">
+                  <div class="value">$mmInstanceType</div>
+               </td>
+            </tr>
+            <tr class="layoutRow">
+               <td class="layoutField layoutCell">
+                  <div class="label">#msg("notification.email.extensions.location")</div>
+               </td>
+               <td class="layoutField layoutCell">
+                  <div class="value">$mmLocation</div>
+               </td>
+            </tr>
+            #end
+         </table>
+      </div>
+      #end
+   #end
+#end

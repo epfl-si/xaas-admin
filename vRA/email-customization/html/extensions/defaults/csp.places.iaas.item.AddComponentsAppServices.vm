@@ -1,0 +1,74 @@
+<h1>#msg("notification.email.extensions.add.component.request")</h1>
+<div class="layoutSection">
+   <h2>#msg("notification.email.extensions.request.info")</h2>
+   <table class="sectionGrid">
+      <col class="layoutColumn" />
+      <tr class="layoutRow">
+         <td class="layoutField">
+            <div class="label">#msg("notification.email.extensions.reason")</div>
+            <div class="value">#valueOf("Cafe.Shim.VirtualMachine.Reason")</div>
+         </td>
+      </tr>
+   </table>
+</div>
+
+#foreach ($m in [0..9])
+   #set( $cpuKey = "ASCT-${m}.VirtualMachine.CPU.Count" )
+   #set( $memKey = "ASCT-${m}.VirtualMachine.Memory.Size" )
+   #set( $locationKey = "ASCT-${m}.Vrm.DataCenter.Location" )
+   #set( $instanceTypeKey = "ASCT-${m}.__amazon.instanceType" )
+   #set( $descKey = "ASCT-${m}.__Notes" )
+
+   #set( $mmCpu = "#valueOf($cpuKey)" )
+   #set( $mmMem = "#valueOf($memKey)" )
+   #set( $mmLocation = "#valueOf($locationKey)" )
+   #set( $mmInstanceType = "#valueOf($instanceTypeKey)" )
+   #set( $mmDesc = "#valueOf($descKey)" )
+
+   #notEmpty($mmCpu)
+   <div class="layoutSection">
+      <h2>#msg("notification.email.extensions.components.details", [$m])</h2>
+      <table class="sectionGrid">
+         <col class="layoutColumn" />
+         #notEmpty($mmDesc)
+         <tr class="layoutRow">
+            <td class="layoutField">
+               <div class="label">#msg("notification.email.extensions.description")</div>
+               <div class="value">$mmDesc</div>
+            </td>
+         </tr>
+         #end
+         #notEmpty($mmCpu)
+         <tr class="layoutRow">
+            <td class="layoutField">
+               <div class="label">#msg("notification.email.extensions.cpus")</div>
+               <div class="value">$mmCpu</div>
+            </td>
+         </tr>
+         #end
+         #notEmpty($mmMem)
+         <tr class="layoutRow">
+            <td class="layoutField">
+               <div class="label">#msg("notification.email.extensions.memory")</div>
+               <div class="value">$mmMem MB</div>
+            </td>
+         </tr>
+         #end
+         #notEmpty($mmLocation)
+         <tr class="layoutRow">
+            <td class="layoutField">
+               <div class="label">#msg("notification.email.extensions.instance.type")</div>
+               <div class="value">$mmInstanceType</div>
+            </td>
+         </tr>
+         <tr class="layoutRow">
+            <td class="layoutField">
+               <div class="label">#msg("notification.email.extensions.location")</div>
+               <div class="value">$mmLocation</div>
+            </td>
+         </tr>
+         #end
+      </table>
+   </div>
+   #end
+#end

@@ -1,0 +1,239 @@
+## requestInfo BEGIN
+#set( $request_applicationDevelopment = "#valueOf('catalogItem-Name')" )
+#set( $request_requestedBy = "#valueOf('requestedBy')" )
+#set( $request_requestDate = "#valueOf('requestedDate')" )
+#set( $request_description = "#valueOf('description')" )
+#set( $request_reason = "#valueOf('reasons')" )
+#set( $request_new_leaseCost = "#valueOf('requestLeaseCost')" )
+#set( $request_new_leasePeriod = "#valueOf('requestLeasePeriod')" )
+#set( $request_new_totalCost = "#valueOf('requestTotalLeaseCost')" )
+
+<h2>#msg("notification.email.extensions.request.info")</h2>
+<table class="sectionGrid">
+  #notEmpty($request_applicationDevelopment)
+  <tr class="layoutRow">
+     <td class="layoutField  layoutCell">
+        <div class="label">#msg("notification.email.extensions.request.applicationDevelopment")</div>
+     </td>
+     <td class="layoutField layoutCell">
+        <div class="value">$request_applicationDevelopment</div>
+     </td>
+  </tr>
+  #end
+  #notEmpty($request_requestedBy)
+  <tr class="layoutRow">
+     <td class="layoutField  layoutCell">
+        <div class="label">#msg("notification.email.extensions.request.requestedBy")</div>
+     </td>
+     <td class="layoutField layoutCell">
+        <div class="value">$request_requestedBy</div>
+     </td>
+  </tr>
+  #end
+  #notEmpty($request_requestDate)
+    #set( $request_requestDateLabel = "#msg('notification.email.extensions.request.requestDate')" )
+    <tr class="layoutRow">
+       <td class="layoutField  layoutCell">
+          <div class="label">$request_requestDateLabel</div>
+       </td>
+       <td class="layoutField layoutCell">
+          <div class="value">$request_requestDate</div>
+       </td>
+    </tr>
+  #end
+  #notEmpty($request_description)
+  <tr class="layoutRow">
+     <td class="layoutField  layoutCell">
+        <div class="label">#msg("notification.email.extensions.description")</div>
+     </td>
+     <td class="layoutField layoutCell">
+        <div class="value">$request_description</div>
+     </td>
+  </tr>
+  #end
+  #notEmpty($request_reason)
+  <tr class="layoutRow">
+     <td class="layoutField  layoutCell">
+        <div class="label">#msg("notification.email.extensions.request.reason")</div>
+     </td>
+     <td class="layoutField layoutCell">
+        <div class="value">$request_reason</div>
+     </td>
+  </tr>
+  #end
+  #notEmpty($request_leaseCost)
+  <tr class="layoutRow">
+     <td class="layoutField  layoutCell">
+        <div class="label">#msg("notification.email.extensions.request.estimatedLeasePrice")</div>
+     </td>
+     <td class="layoutField layoutCell">
+        <div class="value">$request_leaseCost</div>
+     </td>
+  </tr>
+  #end
+  #notEmpty($request_leasePeriod)
+  <tr class="layoutRow">
+     <td class="layoutField  layoutCell">
+        <div class="label">#msg("notification.email.extensions.request.leasePeriod")</div>
+     </td>
+      <td class="layoutField layoutCell">
+        <div class="value">$request_leasePeriod</div>
+     </td>
+
+  </tr>
+  #end
+  #notEmpty($request_totalCost)
+  <tr class="layoutRow">
+     <td class="layoutField  layoutCell">
+        <div class="label">#msg("notification.email.extensions.request.totalPrice")</div>
+     </td>
+     <td class="layoutField layoutCell">
+        <div class="value">$request_totalCost</div>
+     </td>
+  </tr>
+  #end
+</table>
+<br/>
+## requestInfo END
+
+
+## Action Details
+#set( $action_name = "#valueOf('resourceAction')" )
+#set( $component_componentName = "#valueOf('resource-Name')" )
+#set( $component_componentType = "#valueOf('resource-Type')" )
+#set ( $new_lease = "#valueOf('Cafe.Shim.VirtualMachine.Reconfigure.Lease')" )
+#set( $new_expirationDate = "#valueOf('ExpirationDate')" )
+#set( $new_destructionDate = "#valueOf('resource-MachineDestructionDate')" )
+
+#set ( $new_cpu = "#valueOf('Cafe.Shim.VirtualMachine.Reconfigure.CpuCount')" )
+#set ( $old_cpu = "#valueOf('VirtualMachine.CPU.Count')" )
+
+#set ( $new_mem = "#valueOf('Cafe.Shim.VirtualMachine.Reconfigure.MemorySize')" )
+#set ( $old_mem = "#valueOf('VirtualMachine.Memory.Size')" )
+
+#set ( $new_storage = "#valueOf('Cafe.Shim.VirtualMachine.Reconfigure.UpdatedTotalStorageSize')" )
+#set ( $old_storage = "#valueOf('resource-Cafe.Shim.VirtualMachine.TotalStorageSize')" )
+
+#if( "$!new_storage" == "" || "$!new_storage.trim()" == "" )
+  #set ( $new_storage = $old_storage )
+#end
+
+#fromJson('Cafe.Shim.VirtualMachine.Reconfigure.PropertyBag', 'oldValues')
+#set( $oldValues = $formData.get("oldValues") )
+#foreach($oldValue in $oldValues)
+   #if( $oldValue.get("PropertyName") == "VirtualMachine.CPU.Count" )
+      #set( $old_cpu = $oldValue.get("PropertyValue") )
+   #end
+   #if( $oldValue.get("PropertyName") == "VirtualMachine.Memory.Size" )
+      #set( $old_mem = $oldValue.get("PropertyValue") )
+   #end
+#end
+
+<h2>#msg("notification.email.extensions.action.details")</h2>
+<table class="sectionGrid">
+   #notEmpty($action_name)
+   <tr class="layoutRow">
+      <td class="layoutField  layoutCell">
+         <div class="label">#msg("notification.email.extensions.action.name")</div>
+      </td>
+      <td class="layoutField layoutCell">
+         <div class="value" colspan="2">$action_name</div>
+      </td>
+   </tr>
+   #end
+
+   ## Component general info begin
+   #notEmpty($component_componentName)
+   <tr class="layoutRow">
+      <td class="layoutField  layoutCell">
+         <div class="label">#msg("notification.email.extensions.component.name")</div>
+      </td>
+      <td class="layoutField layoutCell">
+         <div class="value">$component_componentName</div>
+      </td>
+   </tr>
+   #end
+   #notEmpty($component_componentType)
+   <tr class="layoutRow">
+      <td class="layoutField  layoutCell">
+         <div class="label">#msg("notification.email.extensions.component.type")</div>
+      </td>
+      <td class="layoutField layoutCell">
+         <div class="value">$component_componentType</div>
+      </td>
+   </tr>
+   #end
+   #notEmpty($new_lease)
+   <tr class="layoutRow">
+      <td class="layoutField">
+         <div class="label">#msg("notification.email.extensions.component.lease")</div>
+      </td>
+      <td class="layoutField">
+         <div class="value">$new_lease</div>
+      </td>
+   </tr>
+   #end
+   #notEmpty($new_expirationDate)
+     #set( $expirationDateLabel = "#msg('notification.email.extensions.expiration.date')" )
+     <tr class="layoutRow">
+        <td class="layoutField">
+           <div class="label">$expirationDateLabel</div>
+        </td>
+        <td class="layoutField">
+           <div class="value">$new_expirationDate</div>
+        </td>
+     </tr>
+   #end
+   #notEmpty($new_destructionDate)
+     #set( $destructionDateLabel = "#msg('notification.email.extensions.destruction.date')" )
+     <tr class="layoutRow">
+        <td class="layoutField">
+           <div class="label">$destructionDateLabel</div>
+        </td>
+        <td class="layoutField">
+           <div class="value">$new_destructionDate</div>
+        </td>
+     </tr>
+   #end
+
+   #notEmpty($old_cpu)
+   <tr class="layoutRow">
+      <td class="layoutField">
+         <div class="label">#msg("notification.email.extensions.cpus")</div>
+      </td>
+      <td class="layoutField">
+         <div class="value">$old_cpu</div>
+      </td>
+      <td class="layoutField">
+         <div class="value">$new_cpu</div>
+      </td>
+   </tr>
+   #end
+   #notEmpty($old_mem)
+   <tr class="layoutRow">
+      <td class="layoutField">
+         <div class="label">#msg("notification.email.extensions.memory")</div>
+      </td>
+      <td class="layoutField">
+         <div class="value">$old_mem MB</div>
+      </td>
+      <td class="layoutField">
+         <div class="value">$new_mem MB</div>
+      </td>
+   </tr>
+   #end
+   #notEmpty($old_storage)
+   <tr class="layoutRow">
+      <td class="layoutField">
+         <div class="label">#msg("notification.email.extensions.storage")</div>
+      </td>
+      <td class="layoutField">
+         <div class="value">$old_storage GB</div>
+      </td>
+      <td class="layoutField">
+         <div class="value">$new_storage GB</div>
+      </td>
+   </tr>
+   #end
+
+</table>

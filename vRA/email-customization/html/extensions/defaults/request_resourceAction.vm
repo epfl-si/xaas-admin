@@ -1,0 +1,9 @@
+#if( !$resourceAction || "$!resourceAction" == "" )
+	#break
+#end
+
+#parse( 'extensions/request_generalInfo.vm' )
+</table><br/>
+#parse( 'extensions/request_resourceAction_resource.vm' )
+#parse ( 'extensions/url_details.vm' )
+#stop

@@ -1,0 +1,68 @@
+#set( $component_size = "#valueOf('component-ComponentNos') " )
+#set( $Integer = 0 )
+
+#if( "$!component_size" != "" && "$!component_size.trim()" != "" )
+  #set( $componentSize = $Integer.parseInt($component_size.trim()) )
+
+  #if( $componentSize != 0 )
+
+    <h2>#msg("notification.email.extensions.component.componentInfo")</h2><br/>
+
+    #foreach($index in [1..$componentSize] )
+
+      ## Component general info
+      #set( $curKey = "component${index}-Name" )
+      #set( $component_componentName = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-Type" )
+      #set( $component_componentType = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-Parent" )
+      #set( $component_parentComponent = "#valueOf($curKey)" )
+
+      ## Software specified
+      #set( $curKey = "component${index}-Software-Install-Path" )
+      #set( $component_installPath = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-Software-Group-License" )
+      #set( $component_groupLicense = "#valueOf($curKey)" )
+
+      ## VM specified
+      #set( $curKey = "component${index}-cpu" )
+      #set( $component_cpu = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-memory" )
+      #set( $component_memory = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-storage" )
+      #set( $component_storage = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-DestructionDate" )
+      #set( $component_destructionDate = "#valueOf($curKey)" )
+      
+      <table class="sectionGrid">
+
+          #renderRow("notification.email.extensions.component.name", "$component_componentName")
+          #renderRow("notification.email.extensions.component.type", "$component_componentType")
+          #renderRow("notification.email.extensions.component.parentComponent", "$component_parentComponent")
+
+          ## Software fields
+          #renderRow("notification.email.extensions.component.installPath", "$component_installPath")
+          #renderRow("notification.email.extensions.component.groupLicense", "$component_groupLicense")
+        
+          ## VM fields
+          #renderRow("notification.email.extensions.cpus", "$component_cpu")
+          #renderRow("notification.email.extensions.memory", "$component_memory", "MB")
+          #renderRow("notification.email.extensions.storage", "$component_storage", "GB")       
+          #renderRow("notification.email.extensions.destruction.date", "$component_destructionDate")       
+       
+      </table>
+      <br/>
+
+    ##For loop
+    #end
+
+  ##end for if ($componentSize != 0)
+  #end
+## end for #if( "$!component_size" != "" )
+#end

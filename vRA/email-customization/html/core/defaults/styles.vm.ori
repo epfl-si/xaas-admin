@@ -1,0 +1,66 @@
+<style type="text/css">
+
+body { font-family: Calibri, Helvetica, Sans-serif }
+
+h1, h2 { margin: 0; color: #333333 }
+
+.layoutPage { margin-top: 12; border-bottom: solid 1 black }
+
+.layoutSection { margin-top: 6; margin-left: 4; border-bottom: solid 1 gray }
+
+.layoutRow { overflow:auto }
+
+.layoutRow:after { clear: both }
+
+.layoutColumn, .layoutText, .layoutField, .layoutPlaceholder, .layoutFlow { min-width: 20em }
+
+.label { white-space:nowrap; font-weight: bold; overflow:hidden; text-overflow: ellipsis }
+
+.layoutField, .layoutText, .layoutPlaceholder, .layoutFlow {   }
+
+.layoutField .label { text-align: right; padding-right: 0.5em; float: left; width: 11em }
+
+.layoutField .value { text-align: left; padding-right: 0.5em; float: left }
+
+.layoutCell { min-width: 5em }
+
+.layoutDataTable table { border-collapse: collapse; width: 100% }
+
+.layoutDataTable table thead { border-style:solid; border-width:1px; background-color: #DDDDDD }
+
+.layoutDataTable table thead th { font-size: 0.8em; text-align:left; padding: 2px }
+
+.layoutDataTable table tbody { border-style:solid; border-width:1px }
+
+.layoutDataTable table tbody td { text-align:left; padding: 2px }
+
+.horizontalTable table, th td {
+    border: 1px solid grey;
+    border-collapse: collapse; width: 100%;
+}
+
+.horizontalTable thead {
+    border-style:solid; border-width:1px; background-color: #DDDDDD
+}
+
+.horizontalTable table thead th {
+    font-size: 0.8em; text-align:left; padding: 2px;
+}
+
+.horizontalTable table tbody {
+    border-style:solid; border-width:1px
+}
+
+.horizontalTable table tbody td {
+    text-align:left; padding: 2px;
+}
+
+.links { margin-top: 2em }
+
+.links ul { list-style-type: square; font-weight: bold }
+
+.failedText { color: #ff0000 }
+
+.successText { color: #00ff00 }
+
+</style>
