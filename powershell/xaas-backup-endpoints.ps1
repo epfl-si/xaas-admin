@@ -2,7 +2,8 @@
 USAGES:
     xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupTag -vmName <vmName>
     xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action setBackupTag -vmName <vmName> -backupTag (<backupTag>|"")
-    xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupList -vmName <vmName>
+    xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupList -vmName <vmName
+    xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupList -vmName <vmName> -nbBackups <nbBackups>
     xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreBackupId <restoreId>
     xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreTimestamp <restoreTimestamp>
 #>
@@ -15,7 +16,9 @@ USAGES:
                     à l'aide de commandes REST.
 
 	DATE 		: Juin 2019
-	AUTEUR 	: Lucien Chaboudez
+    AUTEUR 	: Lucien Chaboudez
+    
+    VERSION : 1.01
 
 	REMARQUE : Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy
 				  via Set-ExecutionPolicy. Normalement, si on met la valeur "Unrestricted",
@@ -38,7 +41,7 @@ USAGES:
     https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=99188910                                
 
 #>
-param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp)
+param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp, [int]$nbBackups)
 
 
 
@@ -186,7 +189,7 @@ try
             $nbu.getVMBackupList($vmName) | Where-Object {
                 $_.attributes.backupStatus -eq 0 `
                 -and `
-                (Get-Date) -lt [DateTime]($_.attributes.expiration -replace "Z", "")} | ForEach-Object {
+                (Get-Date) -lt [DateTime]::Parse(($_.attributes.expiration -replace "Z", ""))} | ForEach-Object {
 
                 # Création d'un objet avec la liste des infos que l'on veut renvoyer 
                 $backup = @{ 
@@ -199,6 +202,13 @@ try
 
                 # Ajout de l'objet à la liste
                 $output.results += $backup
+
+                # Si on doit limiter le nombre de résultats et qu'on est à la limite
+                if(($null -ne $nbBackups) -and ($output.results.count -eq $nbBackups))
+                {
+                    # on sort
+                    break
+                }
             }
         }
 
