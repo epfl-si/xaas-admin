@@ -1,3 +1,7 @@
+#if ($resourceAction != "{com.vmware.csp.component.cafe.composition@resource.action.deployment.scaleout.name}")
+    #break
+#end    
+
 <div>
     <table>
         <tr>
@@ -71,6 +75,6 @@
 </div>
 <br/>
 <div>
-    #msg("notification.email.extensions.action.scaleout.message") : <b>$machineCount.size()</b>
+    <b>$machineCount.size()</b> #msg("notification.email.extensions.action.scaleout.message")
 </div>
 <br/>

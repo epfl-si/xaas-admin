@@ -1,6 +1,6 @@
 <style type="text/css">
     body {
-        font-family: Calibri, Helvetica, Sans-serif;
+        font-family: Arial, Helvetica, sans-serif;
     }
     h1,
     h2 {
@@ -38,6 +38,7 @@
         overflow: hidden;
         text-overflow: ellipsis
     }
+    
     .layoutField,
     .layoutText,
     .layoutPlaceholder,
@@ -47,6 +48,7 @@
         float: left;
         width: 11em
     }
+    
     .layoutField .value {
         text-align: left;
         padding-right: 0.5em;
@@ -55,6 +57,8 @@
     .layoutCell {
         min-width: 5em
     }
+
+        
     .layoutDataTable table {
         border-collapse: collapse;
         width: 100%
@@ -114,7 +118,7 @@
         color: #00ff00
     }
     /* main_heading - begins */
-     
+    
     .main_heading1 {
         font-family: 'Brush Script MT', cursive;
         font-size: 30px;
@@ -127,7 +131,7 @@
         font-weight: 500;
     }
     /* main_heading - ends */
-     
+    
     .components * {
         margin: 0 auto;
         padding: 0;
@@ -138,7 +142,7 @@
         box-sizing: border-box;
     }
     /* components - begins */
-     
+    
     .components {
         font-family: Papyrus, fantasy;
         margin: 10px auto;
@@ -166,7 +170,7 @@
     }
     /* components - eneds */
     /* component - begins */
-     
+    
     .component {
         border-top-color: #FFFFFF;
         min-width: 210px;
@@ -202,7 +206,7 @@
     }
     /* component - end */
     /* component_name,ip,fields - begins */
-     
+    
     .component_name {
         margin-bottom: 0.625rem;
         font-size: 1.3rem;
@@ -231,5 +235,44 @@
     .details_url {
         clear: both;
     }
+    .layoutExtension h2 {
+        background-color:#ae0010;
+        color: #FFF;
+        text-align:center;
+        width:100%;
+        font-size:18px;
+        margin-bottom: -18px;
+    }
+    .layoutExtension {
+        width:450px;
+    }
+
     /* component_name,ip,fields - ends */
+
+    table.InfoTab-table, .sectionGrid {
+       border-spacing: 1px;
+       border-collapse: separate; 
+       width:450px;
+    }
+    
+    td.InfoTab-row-header{
+       background-color: #ae0010; 
+       color : #FFFFFF; 
+       font-size:12px;
+       font-weight:bold;
+       vertical-align:top;
+       padding-left:4px;
+       padding-right:4px;
+       padding-top : 1px;
+       padding-bottom: 1px;
+    }
+
+    
+    td.InfoTab-row-value, tr.InfoTab-row-value {
+       background-color : #ebeceb;
+       color: #454545;
+       font-size:12px;
+       padding-left:4px;
+       padding-right:4px;   
+    }
 </style>

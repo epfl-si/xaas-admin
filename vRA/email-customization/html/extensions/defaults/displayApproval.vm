@@ -60,19 +60,10 @@
          #end
 
          #notEmpty($approval_status)
-         <tr class="layoutRow">
-            <td class="layoutField  layoutCell">
-               <div class="label">#msg("notification.email.extensions.status")</div>
-            </td>
-            <td class="layoutField layoutCell">
-               #if( "REJECTED" == $approval_state )
-                  <div class="value failedText">$approval_status</div>
-               #elseif ("PENDING" == $approval_state) 
-                 <div class="value">$approval_status</div>
-               #else
-                  <div class="value successText">$approval_status</div>
-               #end
-            </td>
+         <tr>
+            <td class="InfoTab-row-header " width="150" valign="top">#msg("notification.email.extensions.status")</td>
+            
+            <td class="InfoTab-row-value ">$approval_status</td>
          </tr>
          #end
 

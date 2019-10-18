@@ -11,85 +11,53 @@
 <h2>#msg("notification.email.extensions.request.info")</h2>
 <table class="sectionGrid">
   #notEmpty($request_applicationDevelopment)
-  <tr class="layoutRow">
-     <td class="layoutField  layoutCell">
-        <div class="label">#msg("notification.email.extensions.request.applicationDevelopment")</div>
-     </td>
-     <td class="layoutField layoutCell">
-        <div class="value">$request_applicationDevelopment</div>
-     </td>
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.applicationDevelopment")</td>
+		<td class="InfoTab-row-value">$request_applicationDevelopment</td>
   </tr>
   #end
   #notEmpty($request_requestedBy)
-  <tr class="layoutRow">
-     <td class="layoutField  layoutCell">
-        <div class="label">#msg("notification.email.extensions.request.requestedBy")</div>
-     </td>
-     <td class="layoutField layoutCell">
-        <div class="value">$request_requestedBy</div>
-     </td>
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.requestedBy")</td>
+		<td class="InfoTab-row-value">$request_requestedBy</td>
   </tr>
   #end
   #notEmpty($request_requestDate)
     #set( $request_requestDateLabel = "#msg('notification.email.extensions.request.requestDate')" )
-    <tr class="layoutRow">
-       <td class="layoutField  layoutCell">
-          <div class="label">$request_requestDateLabel</div>
-       </td>
-       <td class="layoutField layoutCell">
-          <div class="value">$request_requestDate</div>
-       </td>
+    <tr>
+       <td class="InfoTab-row-header" valign="top">$request_requestDateLabel</td>
+       <td class="InfoTab-row-value" valign="top">$request_requestDate</td>
     </tr>
   #end
   #notEmpty($request_description)
-  <tr class="layoutRow">
-     <td class="layoutField  layoutCell">
-        <div class="label">#msg("notification.email.extensions.description")</div>
-     </td>
-     <td class="layoutField layoutCell">
-        <div class="value">$request_description</div>
-     </td>
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.description")</td>
+		<td class="InfoTab-row-value">$request_description</td>
   </tr>
   #end
   #notEmpty($request_reason)
-  <tr class="layoutRow">
-     <td class="layoutField  layoutCell">
-        <div class="label">#msg("notification.email.extensions.request.reason")</div>
-     </td>
-     <td class="layoutField layoutCell">
-        <div class="value">$request_reason</div>
-     </td>
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.reason")</td>
+		<td class="InfoTab-row-value">$request_reason</td>
   </tr>
   #end
   #notEmpty($request_leaseCost)
-  <tr class="layoutRow">
-     <td class="layoutField  layoutCell">
-        <div class="label">#msg("notification.email.extensions.request.estimatedLeasePrice")</div>
-     </td>
-     <td class="layoutField layoutCell">
-        <div class="value">$request_leaseCost</div>
-     </td>
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.estimatedLeasePrice")</td>
+		<td class="InfoTab-row-value">$request_leaseCost</td>
   </tr>
   #end
   #notEmpty($request_leasePeriod)
-  <tr class="layoutRow">
-     <td class="layoutField  layoutCell">
-        <div class="label">#msg("notification.email.extensions.request.leasePeriod")</div>
-     </td>
-      <td class="layoutField layoutCell">
-        <div class="value">$request_leasePeriod</div>
-     </td>
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.leasePeriod")</td>
+      <td class="InfoTab-row-value">$request_leasePeriod</td>
 
   </tr>
   #end
   #notEmpty($request_totalCost)
-  <tr class="layoutRow">
-     <td class="layoutField  layoutCell">
-        <div class="label">#msg("notification.email.extensions.request.totalPrice")</div>
-     </td>
-     <td class="layoutField layoutCell">
-        <div class="value">$request_totalCost</div>
-     </td>
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.totalPrice")</td>
+		<td class="InfoTab-row-value">$request_totalCost</td>
   </tr>
   #end
 </table>
@@ -132,107 +100,66 @@
 <h2>#msg("notification.email.extensions.action.details")</h2>
 <table class="sectionGrid">
    #notEmpty($action_name)
-   <tr class="layoutRow">
-      <td class="layoutField  layoutCell">
-         <div class="label">#msg("notification.email.extensions.action.name")</div>
-      </td>
-      <td class="layoutField layoutCell">
-         <div class="value" colspan="2">$action_name</div>
-      </td>
+   <tr>
+   <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.action.name")</td>
+      <td class="InfoTab-row-value">$action_name</td>
    </tr>
    #end
 
    ## Component general info begin
    #notEmpty($component_componentName)
-   <tr class="layoutRow">
-      <td class="layoutField  layoutCell">
-         <div class="label">#msg("notification.email.extensions.component.name")</div>
-      </td>
-      <td class="layoutField layoutCell">
-         <div class="value">$component_componentName</div>
-      </td>
+   <tr>
+   <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.component.name")</td>
+      <td class="InfoTab-row-header" valign="top">
+      <td class="InfoTab-row-value">$component_componentName</td>
    </tr>
    #end
    #notEmpty($component_componentType)
-   <tr class="layoutRow">
-      <td class="layoutField  layoutCell">
-         <div class="label">#msg("notification.email.extensions.component.type")</div>
-      </td>
-      <td class="layoutField layoutCell">
-         <div class="value">$component_componentType</div>
-      </td>
+   <tr>
+   <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.component.type")</td>
+      <td class="InfoTab-row-value">$component_componentType</td>
    </tr>
    #end
    #notEmpty($new_lease)
-   <tr class="layoutRow">
-      <td class="layoutField">
-         <div class="label">#msg("notification.email.extensions.component.lease")</div>
-      </td>
-      <td class="layoutField">
-         <div class="value">$new_lease</div>
-      </td>
+   <tr>
+      <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.component.lease")</td>
+      <td class="InfoTab-row-value">$new_lease</td>
    </tr>
    #end
    #notEmpty($new_expirationDate)
      #set( $expirationDateLabel = "#msg('notification.email.extensions.expiration.date')" )
-     <tr class="layoutRow">
-        <td class="layoutField">
-           <div class="label">$expirationDateLabel</div>
-        </td>
-        <td class="layoutField">
-           <div class="value">$new_expirationDate</div>
-        </td>
+     <tr>
+      <td class="InfoTab-row-header" valign="top">$expirationDateLabel</td>
+      <td class="InfoTab-row-value">$new_expirationDate</td>
      </tr>
    #end
    #notEmpty($new_destructionDate)
      #set( $destructionDateLabel = "#msg('notification.email.extensions.destruction.date')" )
-     <tr class="layoutRow">
-        <td class="layoutField">
-           <div class="label">$destructionDateLabel</div>
-        </td>
-        <td class="layoutField">
-           <div class="value">$new_destructionDate</div>
-        </td>
+     <tr>
+      <td class="InfoTab-row-header" valign="top">$destructionDateLabel</td>
+      <td class="InfoTab-row-value">$new_destructionDate</td>
      </tr>
    #end
 
    #notEmpty($old_cpu)
-   <tr class="layoutRow">
-      <td class="layoutField">
-         <div class="label">#msg("notification.email.extensions.cpus")</div>
-      </td>
-      <td class="layoutField">
-         <div class="value">$old_cpu</div>
-      </td>
-      <td class="layoutField">
-         <div class="value">$new_cpu</div>
-      </td>
+   <tr>
+      <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.cpus")</td>
+      <td class="InfoTab-row-value">$old_cpu</td>
+      <td class="InfoTab-row-value">$new_cpu</td>
    </tr>
    #end
    #notEmpty($old_mem)
-   <tr class="layoutRow">
-      <td class="layoutField">
-         <div class="label">#msg("notification.email.extensions.memory")</div>
-      </td>
-      <td class="layoutField">
-         <div class="value">$old_mem MB</div>
-      </td>
-      <td class="layoutField">
-         <div class="value">$new_mem MB</div>
-      </td>
+   <tr>
+      <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.memory")</td>
+      <td class="InfoTab-row-value">$old_mem MB</td>
+      <td class="InfoTab-row-value">$new_mem MB</td>
    </tr>
    #end
    #notEmpty($old_storage)
-   <tr class="layoutRow">
-      <td class="layoutField">
-         <div class="label">#msg("notification.email.extensions.storage")</div>
-      </td>
-      <td class="layoutField">
-         <div class="value">$old_storage GB</div>
-      </td>
-      <td class="layoutField">
-         <div class="value">$new_storage GB</div>
-      </td>
+   <tr>
+      <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.storage")</td>
+      <td class="InfoTab-row-value">$old_storage GB</td>
+      <td class="InfoTab-row-value">$new_storage GB</td>
    </tr>
    #end
 

@@ -1,3 +1,7 @@
+#if ($resourceAction != "{com.vmware.csp.component.cafe.composition@resource.action.deployment.scalein.name}")
+    #break
+#end    
+
 <div>
     <table>
         <tr>
@@ -16,7 +20,7 @@
         <thead>
         <tr><th>#msg("notification.email.extensions.component.name")</th>
             <th>#msg("notification.email.extensions.component.parentComponent")</th>
-            <th>#msg("notification.email.extensions.action.scaleout.cluster")</th></tr>
+            <th>#msg("notification.email.extensions.action.scalein.cluster")</th></tr>
         </thead>
         <tbody>
             #set($machineCount = [])
@@ -71,6 +75,6 @@
 </div>
 <br/>
 <div>
-    #msg("notification.email.extensions.action.scaleout.message") : <b>$machineCount.size()</b>
+    <b>$machineCount.size()</b> #msg("notification.email.extensions.action.scalein.message")
 </div>
 <br/>

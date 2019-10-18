@@ -25,7 +25,7 @@ $body
 
 ## Include the footer
 #parse( 'core/footer.vm' )
-#showData()
+##showData()
 
 </body>
 
@@ -37,14 +37,10 @@ $body
 	#end
 
    #notEmpty($val)
-	   <tr class="layoutRow">
-	     <td class="layoutField  layoutCell">
-	        <div class="label">#msg($label)</div>
-	     </td>
-	     <td class="layoutField layoutCell">
-	        <div class="value">$val $val2</div>
-	     </td>
-	   </tr>
+   	<tr>
+    	<td class="InfoTab-row-header" valign="top">#msg($label)</td>
+		<td class="InfoTab-row-value">$val $val2</td>
+    </tr>
    #end
 #end
 

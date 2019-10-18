@@ -16,30 +16,18 @@
 <div class="layoutSection">
    <h2>#msg("notification.email.extensions.request.info")</h2>
    <table class="sectionGrid">
-      <tr class="layoutRow">
-         <td class="layoutField layoutCell">
-            <div class="label">#msg("notification.email.extensions.description")</div>
-         </td>
-         <td class="layoutField layoutCell">
-            <div class="value">#valueOf("Cafe.Shim.VirtualMachine.Description")</div>
-         </td>
+      <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.description")</td>
+		<td class="InfoTab-row-value">#valueOf("Cafe.Shim.VirtualMachine.Description")</td>
       </tr>
-      <tr class="layoutRow">
-         <td class="layoutField layoutCell">
-            <div class="label">#msg("notification.email.extensions.reasons") </div>
-         </td>
-         <td class="layoutField layoutCell">
-            <div class="value">#valueOf("Cafe.Shim.VirtualMachine.Reason")</div>
-         </td>
+      <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.reasons") </td>
+		<td class="InfoTab-row-value">#valueOf("Cafe.Shim.VirtualMachine.Reason")</td>
       </tr>
       #if( $minCost > 0 && $maxCost > 0 )
-      <tr class="layoutRow">
-         <td class="layoutField layoutCell">
-            <div class="label">#msg("notification.email.extensions.cost")</div>
-         </td>
-         <td class="layoutField layoutCell">
-            <div class="value">$minCost - $maxCost</div>
-         </td>
+      <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.cost")</td>
+		<td class="InfoTab-row-value">$minCost - $maxCost</td>
       </tr>
       #end
    </table>
@@ -49,52 +37,36 @@
    <h2>#msg("notification.email.extensions.machine.details")</h2>
    <table class="sectionGrid">
       #notEmpty ($leaseDays)
-      <tr class="layoutRow">
-         <td class="layoutField layoutCell">
-            <div class="label">#msg("notification.email.extensions.lease.duration")</div>
-         </td>
-         <td class="layoutField layoutCell">
-            <div class="value">
+      <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.lease.duration")</td>
+		<td class="InfoTab-row-value">
                #if( $leaseDays != "0" )
                   $leaseDays #msg("notification.email.extensions.lease.unit")
                #else
                   #msg("notification.email.extensions.lease.indefinite")
                #end
-            </div>
-         </td>
+            </td>
       </tr>
       #end
       #notEmpty ($cpu)
-      <tr class="layoutRow">
-         <td class="layoutField layoutCell">
-            <div class="label">#msg("notification.email.extensions.cpus")</div>
-         </td>
-         <td class="layoutField layoutCell">
-            <div class="value">$cpu</div>
-         </td>
+      <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.cpus")</td>
+		<td class="InfoTab-row-value">$cpu</td>
       </tr>
       #end
       #notEmpty ($memory)
-      <tr class="layoutRow">
-         <td class="layoutField layoutCell">
-            <div class="label">#msg("notification.email.extensions.memory")</div>
-         </td>
-         <td class="layoutField layoutCell">
-            <div class="value">$memory MB</div>
-         </td>
+      <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.memory")</td>
+		<td class="InfoTab-row-value">$memory MB</td>
       </tr>
       #end
       #foreach($i in [0..9])
          #set( $key = "VirtualMachine.Disk${i}.Size" )
          #set( $diskSize = "#valueOf($key)" )
          #notEmpty ($diskSize)
-         <tr class="layoutRow">
-            <td class="layoutField layoutCell">
-               <div class="label">#msg("notification.email.extensions.disk.size", [$1])</div>
-            </td>
-            <td class="layoutField layoutCell">
-               <div class="value">$diskSize GB</div>
-            </td>
+         <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.disk.size", [$1])</td>
+		<td class="InfoTab-row-value">$diskSize GB</td>
          </tr>
          #end
       #end
@@ -105,24 +77,16 @@
 <div class="layoutSection">
    <h2>#msg("notification.email.extensions.amazon.ec2.info")</h2>
    <table class="sectionGrid">
-      <tr class="layoutRow">
-         <td class="layoutField layoutCell">
-            <div class="label">#msg("notification.email.extensions.instance.type")</div>
-         </td>
-         <td class="layoutField layoutCell">
-            <div class="value">$instanceType</div>
-         </td>
+      <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.instance.type")</td>
+		<td class="InfoTab-row-value">$instanceType</td>
       </tr>
    </table>
    <table class="sectionGrid">
       <col class="layoutColumn" />
-      <tr class="layoutRow">
-         <td class="layoutField layoutCell">
-            <div class="label">#msg("notification.email.extensions.location")</div>
-         </td>
-         <td class="layoutField layoutCell">
-            <div class="value">$location</div>
-         </td>
+      <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.location")</td>
+		<td class="InfoTab-row-value">$location</td>
       </tr>
    </table>
 </div>
@@ -148,50 +112,35 @@
          <h2>#msg("notification.email.extensions.components.details", [$m])</h2>
          <table class="sectionGrid">
             #notEmpty ($mmDesc)
-            <tr class="layoutRow">
-               <td class="layoutField layoutCell">
-                  <div class="label">#msg("notification.email.extensions.description")</div>
-               </td>
-               <td class="layoutField layoutCell">
-                  <div class="value">$mmDesc</div>
+            <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.description")</td>
+		<td class="InfoTab-row-value">$mmDesc</div>
                </td>
             </tr>
             #end
             #notEmpty ($mmCpu)
-            <tr class="layoutRow">
-               <td class="layoutField layoutCell">
-                  <div class="label">#msg("notification.email.extensions.cpus")</div>
-               </td>
-               <td class="layoutField layoutCell">
-                  <div class="value">$mmCpu</div>
+            <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.cpus")</td>
+		<td class="InfoTab-row-value">$mmCpu</div>
                </td>
             </tr>
             #end
             #notEmpty ($mmMem)
-            <tr class="layoutRow">
-               <td class="layoutField layoutCell">
-                  <div class="label">#msg("notification.email.extensions.memory")</div>
-               </td>
-               <td class="layoutField layoutCell">
-                  <div class="value">$mmMem MB</div>
+            <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.memory")</td>
+		<td class="InfoTab-row-value">$mmMem MB</div>
                </td>
             </tr>
             #end
             #notEmpty ($mmLocation)
-            <tr class="layoutRow">
-               <td class="layoutField layoutCell">
-                  <div class="label">#msg("notification.email.extensions.instance.type")</div>
-               </td>
-               <td class="layoutField layoutCell">
-                  <div class="value">$mmInstanceType</div>
+            <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.instance.type")</td>
+		<td class="InfoTab-row-value">$mmInstanceType</div>
                </td>
             </tr>
-            <tr class="layoutRow">
-               <td class="layoutField layoutCell">
-                  <div class="label">#msg("notification.email.extensions.location")</div>
-               </td>
-               <td class="layoutField layoutCell">
-                  <div class="value">$mmLocation</div>
+            <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.location")</td>
+		<td class="InfoTab-row-value">$mmLocation</div>
                </td>
             </tr>
             #end

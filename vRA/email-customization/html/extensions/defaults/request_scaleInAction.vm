@@ -1,12 +1,12 @@
 <div>
     <table>
-        <tr class="layoutRow">
-            <td class="layoutField layoutCell">#msg("notification.email.extensions.action.operation")</td>
-            <td class="layoutField layoutCell"><b>$resourceAction_Name</b></td>
+        <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.action.operation")</td>
+            <td class="InfoTab-row-value"><b>$resourceAction_Name</b></td>
         </tr>
-        <tr class="layoutRow">
-            <td class="layoutField layoutCell">#msg("notification.email.extensions.request.target")</td>
-            <td class="layoutField layoutCell"><b>#valueOf("resource-Name")</b></td>
+        <tr>
+    	<td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.target")</td>
+            <td class="InfoTab-row-value"><b>#valueOf("resource-Name")</b></td>
         </tr>
     </table>
 </div>
