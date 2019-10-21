@@ -1,6 +1,9 @@
 <#
    BUT : Contient une classe permetant de faire des faire certaines requêtes dans Scality
          de manière simple.
+         A la base, c'est uniquement pour faire des requêtes dans Scality que cette classe a été créée
+         mais il se peut qu'à l'avenir on doive aussi interagir avec Amazon S3 par exemple. Dans ce 
+         cas-là, il faudra un peu adapter la classe pour qu'elle fonctionne aussi avec Amazon S3.
 
          La classe parente est APIUtils et celle-ci fourni juste une méthode, celle pour
          charger le nécessaire depuis des fichiers JSON.
@@ -19,6 +22,8 @@
 
    AUTEUR : Lucien Chaboudez
    DATE   : Mai 2019    
+
+   VERSION : 1.0.1
 #>
 
 <# On regarde si le module PowerShell est chargé. S'il ne l'est pas, on propage une erreur. 
@@ -36,6 +41,7 @@ class ScalityAPI: APIUtils
 {
 	hidden [string]$s3EndpointUrl
     hidden [PSObject]$credentials
+    # Utilisée uniquement dans le cas où le backend est effectivement Scality
     hidden [ScalityWebConsoleAPI]$scalityWebConsole
 
 	<#
@@ -47,14 +53,26 @@ class ScalityAPI: APIUtils
                                         de connexion.
         IN  : $s3WebConsoleUser     -> Nom d'utilisateur pour se connecter à la console Web
         IN  : $s3WebConsolePassword -> Mot de passe pour se connecter à la console Web
+        IN  : $isScality            -> Pour dire si on est sur une infra Scality ou pas.
 	#>
-	ScalityAPI([string]$server, [string]$credProfileName, [string]$s3WebConsoleUser, [string]$s3WebConsolePassword)
+	ScalityAPI([string]$server, [string]$credProfileName, [string]$s3WebConsoleUser, [string]$s3WebConsolePassword, [bool]$isScality)
 	{
         
         $this.s3EndpointUrl = "https://{0}" -f $server
 
-        # Création de l'objet pour accéder à la console S3
-        $this.scalityWebConsole = [ScalityWebConsoleAPI]::new($server, $s3WebConsoleUser, $s3WebConsolePassword )
+        if($isScality)
+        {
+            # Création de l'objet pour accéder à la console S3
+            <# FIXME: Faire en sorte de rendre ceci paramétrable car la console doit être utilisée (à priori) uniquement 
+                    si on est à l'EPFL et pas avec Amazon. Est-ce qu'on peut aussi utiliser une console ou est-ce que
+                    certaines opérations devront être effectuées d'une autre manière car implémentées dans l'API Amazon
+                    (contrairement à l'absence d'implémentation dans l'API Scality) ?!? #>
+            $this.scalityWebConsole = [ScalityWebConsoleAPI]::new($server, $s3WebConsoleUser, $s3WebConsolePassword )
+        }
+        else # ce n'est pas une infra Scality
+        {
+            $this.scalityWebConsole = $null    
+        }
 
         # On tente de charger le profil pour voir s'il existe
         $this.credentials = Get-AWSCredential -ProfileName $credProfileName
@@ -589,9 +607,17 @@ class ScalityAPI: APIUtils
         # Récupération des informations de la policy
         $policy = $this.getPolicy($policyName)
 
-        # Avec l'ARN et la version de la Policy, on peut récupérer le contenu de celle-ci.
-        # Celui-ci, si on le converti en JSON, est exactement le même que celui utilisé par la fonction 'addPolicy'
-        $polContent = $this.scalityWebConsole.getPolicyContent($policy.Arn, $policy.DefaultVersionId)
+        # Si on a une Infra Scality, on récupère les infos d'une certaine manière
+        if($null -ne $this.scalityWebConsole)
+        {
+            # Avec l'ARN et la version de la Policy, on peut récupérer le contenu de celle-ci.
+            # Celui-ci, si on le converti en JSON, est exactement le même que celui utilisé par la fonction 'addPolicy'
+            $polContent = $this.scalityWebConsole.getPolicyContent($policy.Arn, $policy.DefaultVersionId)
+        }
+        else # Ce n'est pas une infra Scality
+        {
+            Throw "Other infrastructure than Scality must be implemented"    
+        }
 
         $updateNeeded = $false
 
@@ -658,9 +684,17 @@ class ScalityAPI: APIUtils
         # Récupération des informations de la policy
         $policy = $this.getPolicy($policyName)
 
-        # Avec l'ARN et la version de la Policy, on peut récupérer le contenu de celle-ci.
-        # Celui-ci, si on le converti en JSON, est exactement le même que celui utilisé par la fonction 'addPolicy'
-        $polContent = $this.scalityWebConsole.getPolicyContent($policy.Arn, $policy.DefaultVersionId)
+        # Si on a une Infra Scality, on récupère les infos d'une certaine manière
+        if($null -ne $this.scalityWebConsole)
+        {
+            # Avec l'ARN et la version de la Policy, on peut récupérer le contenu de celle-ci.
+            # Celui-ci, si on le converti en JSON, est exactement le même que celui utilisé par la fonction 'addPolicy'
+            $polContent = $this.scalityWebConsole.getPolicyContent($policy.Arn, $policy.DefaultVersionId)
+        }
+        else # Ce n'est pas une infra Scality
+        {
+            Throw "Other infrastructure than Scality must be implemented"    
+        }
 
         # Liste des ressources à ajouter 
         $resourceList = $this.getPolicyResourcesNames($bucketName)
@@ -739,7 +773,15 @@ class ScalityAPI: APIUtils
         # Récupération des informations de la policy
         $policy = $this.getPolicy($policyName)
 
-        return $this.scalityWebConsole.getPolicyBuckets($policy.Arn, $policy.DefaultVersionId)
+        # Si on a une Infra Scality, on récupère les infos d'une certaine manière
+        if($null -ne $this.scalityWebConsole)
+        {
+            return $this.scalityWebConsole.getPolicyBuckets($policy.Arn, $policy.DefaultVersionId)
+        }
+        else # Ce n'est pas une infra Scality
+        {
+            Throw "Other infrastructure than Scality must be implemented"    
+        }
     }
 
 

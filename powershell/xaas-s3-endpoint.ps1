@@ -1,6 +1,6 @@
 <#
 USAGES:
-    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -unitOrSvcID <unitOrSvcID> -friendlyName <friendlyName> [-linkedTo <linkedTo>]
+    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -unitOrSvcID <unitOrSvcID> -friendlyName <friendlyName> [-linkedTo <linkedTo>] [-bucketTag <bucketTag>]
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action delete -bucketName <bucketName>
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action regenKeys -bucketName <bucketName> -userType (ro|rw)
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action versioning -bucketName <bucketName> -enabled (true|false)
@@ -20,7 +20,9 @@ USAGES:
                     (encore) implémentés dans Scality
 
 	DATE 	: Août 2019
-	AUTEUR 	: Lucien Chaboudez
+    AUTEUR 	: Lucien Chaboudez
+    
+    VERSION : 1.01
 
     REMARQUES : 
     - Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy via Set-ExecutionPolicy. 
@@ -48,7 +50,17 @@ USAGES:
         Documentation - https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=99188910                                
 
 #>
-param([string]$targetEnv, [string]$targetTenant, [string]$action, [string]$unitOrSvcID, [string]$friendlyName, [string]$linkedTo, [string]$bucketName, [string]$userType, [string]$enabled, [switch]$status)
+param([string]$targetEnv, 
+      [string]$targetTenant, 
+      [string]$action, 
+      [string]$unitOrSvcID, 
+      [string]$friendlyName, 
+      [string]$linkedTo, 
+      [string]$bucketName, 
+      [string]$userType, 
+      [string]$enabled, 
+      [string]$bucketTag,       # Présent mais pas utilisé pour le moment et pas non plus dans la roadmap Scality 7.5
+      [switch]$status)
 
 # Chargement du module PowerShell
 Import-Module AWSPowerShell
@@ -120,7 +132,8 @@ try
     $scality = [ScalityAPI]::new($configXaaSS3.getConfigValue($targetEnv, "server"), 
                                  $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "credentialProfile"), 
                                  $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "webConsoleUser"), 
-                                 $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "webConsolePassword"))
+                                 $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "webConsolePassword"),
+                                 $configXaaSS3.getConfigValue($targetEnv, "isScality"))
 
 
     
@@ -147,6 +160,7 @@ try
                 $nameGeneratorS3 = [NameGeneratorS3]::new($unitOrSvcID,  $friendlyName)
 
                 $bucketInfos.bucketName = $nameGeneratorS3.getBucketName()
+                $bucketInfos.serverName = $configXaaSS3.getConfigValue($targetEnv, "server")
 
                 $logHistory.addLine("Creating bucket {0}..." -f $bucketInfos.bucketName)
 
