@@ -12,6 +12,7 @@
    ----------
    HISTORIQUE DES VERSIONS
    0.1 - Version de base
+   0.2 - Ajout d'un filtre dans la récupération des NSGroups
 
 #>
 class NSXAPI: RESTAPICurl
@@ -79,7 +80,8 @@ class NSXAPI: RESTAPICurl
     #>
     [PSObject] getNSGroupByName([string]$name)
     {
-        $uri = "https://{0}/api/v1/ns-groups/?populate_references=false" -f $this.server
+        # Note: On filtre exprès avec 'member_types=VirtualMachine' car sinon tous les NSGroup attendus ne sont pas renvoyés... 
+        $uri = "https://{0}/api/v1/ns-groups/?populate_references=false&member_types=VirtualMachine" -f $this.server
 
         $id =  ($this.callAPI($uri, "Get", $null).results | Where-Object {$_.display_name -eq $name}).id
      
@@ -87,6 +89,11 @@ class NSXAPI: RESTAPICurl
         {
             return $null
         }
+        # On check si on a plusieurs résultats
+        # elseif($id -is [Array])
+        # {
+        #     Throw ("Multiple results ({0}) found for NSGroup '{1}'. Only one expected" -f $id.Count, $name)
+        # }
 
         # Recherche par ID
         return $this.getNSGroupById($id)
