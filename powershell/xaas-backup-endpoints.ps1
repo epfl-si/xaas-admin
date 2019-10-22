@@ -2,8 +2,7 @@
 USAGES:
     xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupTag -vmName <vmName>
     xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action setBackupTag -vmName <vmName> -backupTag (<backupTag>|"")
-    xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupList -vmName <vmName
-    xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupList -vmName <vmName> -nbBackups <nbBackups>
+    xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupList -vmName <vmName> [-nbBackups <nbBackups>]
     xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreBackupId <restoreId>
     xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreTimestamp <restoreTimestamp>
 #>
