@@ -90,10 +90,10 @@ class NSXAPI: RESTAPICurl
             return $null
         }
         # On check si on a plusieurs résultats
-        # elseif($id -is [Array])
-        # {
-        #     Throw ("Multiple results ({0}) found for NSGroup '{1}'. Only one expected" -f $id.Count, $name)
-        # }
+        elseif($id -is [Array])
+        {
+            Throw ("Multiple results ({0}) found for NSGroup '{1}'. Only one expected" -f $id.Count, $name)
+        }
 
         # Recherche par ID
         return $this.getNSGroupById($id)
