@@ -1094,17 +1094,30 @@ class NameGenerator
         IN  : $serviceShortName  -> Nom court du service
         
         RET : Tableau avec :
-                - Nom de la Rule "in"
-                - Nom de la Rule "intra"¨
-                - Nom de la Rule "out"
+                - Tableau associatif pour la Rule "in"
+                - Tableau associatif pour la Rule "intra"¨
+                - Tableau associatif pour la Rule "out"
+                - Tableau associatif pour la Rule "deny"
     #>
     [System.Collections.ArrayList] getITSFirewallRuleNames([string]$serviceShortName)
     {
-        $in = "allow-{0}-in" -f $serviceShortName
-        $intra = "allow-intra-{0}-communication" -f $serviceShortName
-        $out = "allow-{0}-out" -f $serviceShortName
+        $ruleName = "allow-{0}-in" -f $serviceShortName
+        $ruleIn = @{name   = $ruleName
+                    tag    = truncateString($ruleName, 32)}
 
-        return @($in, $intra, $out )
+        $ruleName = "allow-intra-{0}-comm" -f $serviceShortName          
+        $ruleComm = @{name  = $ruleName
+                      tag   = truncateString($ruleName, 32)}
+
+        $ruleName = "allow-{0}-out" -f $serviceShortName
+        $ruleOut = @{name   = $ruleName
+                     tag    = truncateString($ruleName, 32)}
+
+        $ruleName = "deny-{0}-all" -f $serviceShortName
+        $ruleDeny = @{name   = $ruleName
+                      tag    = truncateString($ruleName, 32)}
+
+        return @($ruleIn, $ruleComm, $ruleOut, $ruleDeny )
     }    
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
