@@ -208,10 +208,11 @@ class NSXAPI: RESTAPICurl
         IN  : $name	        -> Le nom de la section de firewall
         IN  : $desc         -> Description de la section
         IN  : $beforeId     -> (optionnel) ID de la section avant laquelle il faut insérer
+        IN  : $nsGroup      -> NS Group créé auquel la section doit être liée
 
 		RET : la section créée
     #>
-    [PSObject] addFirewallSection([string]$name, [string]$desc, [string]$beforeId)
+    [PSObject] addFirewallSection([string]$name, [string]$desc, [string]$beforeId, [PSObject]$nsGroup)
     {
         
         $uri = "https://{0}/api/v1/firewall/sections" -f $this.server
@@ -224,7 +225,9 @@ class NSXAPI: RESTAPICurl
 
 		# Valeur à mettre pour la configuration de la section de firewall
 		$replace = @{name = $name
-					desc = $desc}
+                    desc = $desc
+                    nsGroupId = $nsGroup.id
+                    nsGroupName = $nsGroup.display_name}
 
         $body = $this.createObjectFromJSON("nsx-firewall-section.json", $replace)
         
@@ -317,19 +320,29 @@ class NSXAPI: RESTAPICurl
         BUT : Ajoute les règles dans une section de firewall
         
         IN  : $firewallSectionId    -> ID de la section de firewall
-        IN  : $nameIn               -> Nom pour la règle "in"
-        IN  : $nameCommunication    -> Nom pour la règle "communication"
-        IN  : $nameOut              -> Nom pour la règle "out"
+        IN  : $ruleIn               -> Tableau associatif pour la règle "in"
+        IN  : $ruleComm             -> Tableau associatif pour la règle "communication"
+        IN  : $ruleOut              -> Tableau associatif pour la règle "out"
+        IN  : $ruleDeny             -> Tableau associatif pour la règle "deny"
         IN  : $nsGroup              -> Objet représentant le NS Group lié aux règles
+
+        Tableau associatif pour les règles :
+        - name
+        - tag
     #>
-    [void] addFirewallSectionRules([string]$firewallSectionId, [string]$nameIn, [string]$nameCommunication, [string]$nameOut, [PSObject]$nsGroup)
+    [void] addFirewallSectionRules([string]$firewallSectionId, [Hashtable]$ruleIn, [Hashtable]$ruleComm, [Hashtable]$ruleOut, [hashtable]$ruleDeny, [PSObject]$nsGroup)
     {
         $uri = "https://{0}/api/v1/firewall/sections/{1}/rules?action=create_multiple" -f $this.server, $firewallSectionId
 
 		# Valeur à mettre pour la configuration des règles
-		$replace = @{ruleNameIn             = $nameIn
-                     ruleNameCommunication  = $nameCommunication
-                     ruleNameOut            = $nameOut
+        $replace = @{ruleNameIn             = $ruleIn.name
+                     ruleTagIn              = $ruleIn.tag
+                     ruleNameCommunication  = $ruleComm.name
+                     ruleTagCommunication   = $ruleComm.tag
+                     ruleNameOut            = $ruleOut.name
+                     ruleTagOut             = $ruleOut.tag
+                     ruleNameDeny           = $ruleDeny.name
+                     ruleTagDeny            = $ruleDeny.tag
                      nsGroupName            = $nsGroup.display_name
                      nsGroupId              = $nsGroup.id}
 
