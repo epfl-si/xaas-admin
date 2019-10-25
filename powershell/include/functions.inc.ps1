@@ -190,3 +190,20 @@ function formatParameters($parameters)
 
 	return $s
 }
+
+<#
+	-------------------------------------------------------------------------------------
+	BUT : Renvoie la valeur d'une "Custom Property" donnée pour la VM passée
+
+	IN  : $vm				-> Objet représentant le Business Group
+	IN  : $customPropName	-> Nom de la Custom property à chercher
+	
+	RET : Valeur de la custom property
+			$null si pas trouvé
+#>
+function getVMCustomPropValue([object]$vm, [string]$customPropName)
+{
+	# Recherche de la valeur de la "Custom Property" en PowerShell "optmisé"
+	return (($vm.resourceData.entries | Where-Object {$_.key -eq $customPropName}).value.values.entries | Where-Object {$_.key -eq "value"}).value.value
+
+}
