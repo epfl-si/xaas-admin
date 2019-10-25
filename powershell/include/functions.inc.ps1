@@ -204,6 +204,6 @@ function formatParameters($parameters)
 function getVMCustomPropValue([object]$vm, [string]$customPropName)
 {
 	# Recherche de la valeur de la "Custom Property" en PowerShell "optmisé"
-	return (($vm.resourceData.entries | Where-Object {$_.key -eq $customPropName}).value.values.entries | Where-Object {$_.key -eq "value"}).value.value
+	return ($vm.resourceData.entries | Where-Object {$_.key -eq $customPropName}).value.value 
 
 }
