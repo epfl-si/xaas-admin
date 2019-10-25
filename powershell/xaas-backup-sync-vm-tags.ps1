@@ -31,6 +31,9 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "JSONUtils.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NewItems.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
@@ -95,7 +98,24 @@ try
 						 $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
 
 
-    # On commence par récupérer la liste des VM dans vRA
+    # Parcours des Business Groups
+    $vra.getBGList() | ForEach-Object {
+
+        # Parcours des VM se trouvant dans le Business Group
+        $vra.getBGItemList($_, "Virtual Machine") | ForEach-Object {
+
+
+            $_.name
+            getVMCustomPropValue -vm $_ -customPropName $VRA_CUSTOM_PROPERTY_BACKUP_TAG
+
+        }
+
+        
+    }
+
+
+
+    
 
 }
 catch
