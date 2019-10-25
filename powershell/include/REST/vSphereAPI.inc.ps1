@@ -157,13 +157,13 @@ class vSphereAPI: RESTAPICurl
 		$vm = $this.getVM($vmName)
 		if($null -eq $vm)
 		{
-			Throw "VM '{}' not found in vSphere" -f $vmName
+			Throw "VM '{0}' not found in vSphere" -f $vmName
 		}
 
 		$tag = $this.getTag($tagName)
 		if($null -eq $tag)
 		{
-			Throw "Tag '{}' not found in vSphere" -f $tagName
+			Throw "Tag '{0}' not found in vSphere" -f $tagName
 		}
 
 
@@ -240,7 +240,7 @@ class vSphereAPI: RESTAPICurl
 
 		if($null -eq $vm)
 		{
-			Throw "VM {} not found in vSphere" -f $vmName
+			Throw ("VM {0} not found in vSphere" -f $vmName)
 		}
 
 		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag-association?~action=list-attached-tags" -f $this.server

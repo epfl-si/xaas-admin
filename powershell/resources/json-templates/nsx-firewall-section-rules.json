@@ -6,6 +6,7 @@
         "action":"ALLOW",
         "direction":"IN",
         "logged": true,
+        "rule_tag": "{{ruleTagIn}}",
         "destinations": [
           {
             "target_display_name": "{{nsGroupName}}",
@@ -21,6 +22,7 @@
         "action":"ALLOW",
         "direction":"IN_OUT",
         "logged": true,
+        "rule_tag": "{{ruleTagCommunication}}",
         "sources": [
           {
             "target_display_name": "{{nsGroupName}}",
@@ -44,6 +46,7 @@
         "action":"ALLOW",
         "direction":"OUT",
         "logged": true,
+        "rule_tag": "{{ruleTagOut}}",
         "sources": [
           {
             "target_display_name": "{{nsGroupName}}",
@@ -52,6 +55,15 @@
             "target_id": "{{nsGroupId}}"
           }
         ]
+      },
+      {
+        "_revision": 0,
+        "display_name":"{{ruleNameDeny}}",
+        "action":"ALLOW",
+        "direction":"IN_OUT",
+        "logged": true,
+        "rule_tag": "{{ruleTagDeny}}"
       }
+
     ]
   }

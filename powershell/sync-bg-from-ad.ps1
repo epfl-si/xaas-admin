@@ -1144,12 +1144,13 @@ function createNSGroupIfNotExists
 	IN  : $nsx				-> Objet permettant d'accéder à l'API NSX
 	IN  : $nsxFWSectionName	-> Nom du groupe
 	IN  : $nsxFWSectionDesc	-> Description du groupe
+	IN  : $nsxNSGroup		-> Objet réprésentant le NSGroup auquel lier la section
 	
 	RET : Objet représentant la section de firewall
 #>
 function createFirewallSectionIfNotExists
 {
-	param([NSXAPI]$nsx, [string]$nsxFWSectionName, [string]$nsxFWSectionDesc)
+	param([NSXAPI]$nsx, [string]$nsxFWSectionName, [string]$nsxFWSectionDesc, [psobject]$nsxNSGroup)
 
 	$fwSection = $nsx.getFirewallSectionByName($nsxFWSectionName)
 
@@ -1168,7 +1169,7 @@ function createFirewallSectionIfNotExists
 		$logHistory.addLineAndDisplay(("-> Creating NSX Firewall section '{0}'... " -f $nsxFWSectionName))
 
 		# Création de la section
-		$fwSection = $nsx.addFirewallSection($nsxFWSectionName, $nsxFWSectionDesc, $insertBeforeSection.id)
+		$fwSection = $nsx.addFirewallSection($nsxFWSectionName, $nsxFWSectionDesc, $insertBeforeSection.id, $nsxNSGroup)
 
 		$counters.inc('NSXFWSectionCreated')
 
@@ -1199,17 +1200,17 @@ function createFirewallSectionRulesIfNotExists
 {
 	param([NSXAPI]$nsx, [PSObject]$nsxFWSection, [PSObject]$nsxNSGroup, [Array]$nsxFWRuleNames)
 
-	# On met dans des variables pour que ça soit plus clair
-	$ruleIn, $ruleComm, $ruleOut = $nsxFWRuleNames
-	# Représentation "string" pour les règles 
-	$allRules = $nsxFWRuleNames -join "::"
-
-	$nbExpectedRules = 3
+	$nbExpectedRules = 4
 	# On commence par check le nombre de noms qu'on a pour les règles
 	if($nsxFWRuleNames.Count -ne $nbExpectedRules)
 	{
 		Throw ("# of rules for NSX Section incorrect! {0} expected, {1} given " -f $nbExpectedRules, $nsxFWRuleNames.Count)
 	}
+
+	# On met dans des variables pour que ça soit plus clair
+	$ruleIn, $ruleComm, $ruleOut, $ruleDeny = $nsxFWRuleNames
+	# Représentation "string" pour les règles, utilisée pour gérer les doublons pour le compteur de règles existantes
+	$allRules = $nsxFWRuleNames | ConvertTo-Json
 
 	# Recherche des règles existantes 
 	$rules = $nsx.getFirewallSectionRules($nsxFWSection.id)
@@ -1218,16 +1219,16 @@ function createFirewallSectionRulesIfNotExists
 	if($rules.Count -eq 0)
 	{
 		
-		$logHistory.addLineAndDisplay(("-> Creating NSX Firewall section rules '{0}', '{1}', '{2}'... " -f $ruleIn, $ruleComm, $ruleOut))
+		$logHistory.addLineAndDisplay(("-> Creating NSX Firewall section rules '{0}', '{1}', '{2}', '{3}'... " -f $ruleIn.name, $ruleComm.name, $ruleOut.name, $ruleDeny.name))
 
 		# Création des règles 
-		$rules = $nsx.addFirewallSectionRules($nsxFWSection.id, $ruleIn, $ruleComm, $ruleOut, $nsxNSGroup)
+		$rules = $nsx.addFirewallSectionRules($nsxFWSection.id, $ruleIn, $ruleComm, $ruleOut, $ruleDeny, $nsxNSGroup)
 
 		$counters.inc('NSXFWSectionRulesCreated')
 	}
 	else # Les règles existent déjà 
 	{
-		$logHistory.addLineAndDisplay(("-> NSX Firewall section rules '{0}', '{1}', '{2}' already exists!" -f  $ruleIn, $ruleComm, $ruleOut))
+		$logHistory.addLineAndDisplay(("-> NSX Firewall section rules '{0}', '{1}', '{2}', '{3}' already exists!" -f  $ruleIn.name, $ruleComm.name, $ruleOut.name, $ruleDeny.name))
 
 		# Incrément du compteur avec gestion des doublons
 		$counters.inc('NSXFWSectionRulesExisting', $allRules)
@@ -1651,7 +1652,7 @@ try
 		$nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
 
 		# Création de la section de Firewall si besoin
-		$nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc
+		$nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc -nsxNSGroup $nsxNSGroup
 
 		# Création des règles dans la section de firewall
 		createFirewallSectionRulesIfNotExists -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames

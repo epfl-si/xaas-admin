@@ -3,5 +3,13 @@
     "display_name": "{{name}}",
     "section_type": "LAYER3",
     "stateful": true,
-    "enforced_on": "VIF"
+    "enforced_on": "VIF",
+    "applied_tos": [
+    {
+      "target_id": "{{nsGroupId}}",
+      "target_display_name": "{{nsGroupName}}",
+      "target_type": "NSGroup",
+      "is_valid": true
+    }
+  ]
 }

@@ -10,7 +10,8 @@ USAGES:
 	AUTEUR 	    : Lucien Chaboudez
 
 	Prérequis:
-    -
+	-
+	
     
 	REMARQUE : Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy
 				  via Set-ExecutionPolicy. Normalement, si on met la valeur "Unrestricted",
