@@ -1271,7 +1271,15 @@ class vRAAPI: RESTAPI
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
 
-		return ($this.callAPI($uri, "Get", $null)).content
+		# Retour de la liste mais on ne prend que les éléments qui existent encore.
+		$res = ($this.callAPI($uri, "Get", $null)).content | Where-Object { $null -eq $_.destroyDate}
+
+		# S'il n'y a aucun élément, on retourne un tableau vide
+		if ($null -eq $res)
+		{
+			return @()
+		}
+		return $res
 	}
 
 	<#
