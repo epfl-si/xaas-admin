@@ -80,7 +80,8 @@ try
 {
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new('vsphere-update-VM-notes-with-Tools-version', (Join-Path $PSScriptRoot "logs"), 30)
+    $logName = 'vsphere-update-VM-notes-with-Tools-version-{0}' -f $targetEnv.ToLower()
+    $logHistory = [LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
     
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))

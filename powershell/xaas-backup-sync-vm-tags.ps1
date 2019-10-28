@@ -13,7 +13,7 @@ USAGES:
 	DATE 	: Octobre 2019
     AUTEUR 	: Lucien Chaboudez
     
-    VERSION : 1.00
+    VERSION : 1.01
 
     REMARQUES : 
     - Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy via Set-ExecutionPolicy. 
@@ -87,9 +87,9 @@ function backupTagRepresentation([string]$backupTag)
 
 try
 {
-    
+    $logName = 'xaas-backup-sync-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new('xaas-backup-sync', (Join-Path $PSScriptRoot "logs"), 30)
+    $logHistory = [LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
 
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
