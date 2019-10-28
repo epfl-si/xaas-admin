@@ -1271,7 +1271,8 @@ class vRAAPI: RESTAPI
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
 
-		return ($this.callAPI($uri, "Get", $null)).content
+		# Retour de la liste mais on ne prend que les éléments qui existent encore.
+		return  ($this.callAPI($uri, "Get", $null)).content 
 	}
 
 	<#
