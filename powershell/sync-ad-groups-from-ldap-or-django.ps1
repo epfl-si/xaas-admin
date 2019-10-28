@@ -230,7 +230,8 @@ $EPFL_TEST_NB_UNITS_MAX = 10
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-	$logHistory = [LogHistory]::new('1.sync-AD-from-LDAP', (Join-Path $PSScriptRoot "logs"), 30)
+	$logName = 'vra-sync-AD-from-LDAP-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
+	$logHistory = [LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
 
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
