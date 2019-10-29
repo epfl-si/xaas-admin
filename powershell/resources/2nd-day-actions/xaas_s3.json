@@ -1,6 +1,6 @@
 [
     {
-        "appliesTo": "S3_Bucket",
+        "appliesTo": "ITServices!::!9edcd196-8a70-4d8c-92c1-6192ceb30691",
         "_comment": "S3_Bucket",
         "actions": [
             {
