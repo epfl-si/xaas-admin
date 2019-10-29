@@ -98,6 +98,7 @@ try
 	$counters = [Counters]::new()
     $counters.add('UpdatedTags', '# VM Updated tags')
     $counters.add('CorrectTags', '# VM Correct tags')
+    $counters.add('ProcessedVM', '# VM Processed')
 
     # -------------------------------------------------------------------------------------------
 
@@ -128,6 +129,8 @@ try
         $vra.getBGItemList($_, "Virtual Machine") | ForEach-Object {
 
             $vmName = $_.Name
+
+            $counters.inc('ProcessedVM')
 
             $logHistory.addLineAndDisplay("-> vRA VM {0} ..." -f $vmName)
             
@@ -180,6 +183,8 @@ try
             {
                 $logHistory.addLineAndDisplay("--> No backup tag")
             }
+
+
 
         } # FIN BOUCLE parcours des VM dans le Business Group
    
