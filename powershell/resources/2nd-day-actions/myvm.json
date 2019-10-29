@@ -144,5 +144,15 @@
                 "approvals": []
             }
         ]
+    },
+        {
+            "appliesTo": "S3_Bucket",
+            "_comment": "S3_Bucket",
+            "actions": [
+                {
+                    "name": "Request support (s3)",
+                    "approvals": []
+                }
+            ]
     }
 ]
