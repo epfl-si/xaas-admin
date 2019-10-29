@@ -1,0 +1,29 @@
+[
+    {
+        "appliesTo": "ITServices!::!9edcd196-8a70-4d8c-92c1-6192ceb30691",
+        "_comment": "S3_Bucket",
+        "actions": [
+            {
+                "name": "Request support (s3)",
+                "approvals": []
+            },
+            {
+                "name": "Regenerate Keys",
+                "approvals": [] 
+            },
+            {
+                "name": "Modify the Bucket",
+                "approvals": [] 
+            },
+            {
+                "name": "Change Owner",
+                "approvals": [] 
+            },
+
+            {
+                "name": "Delete Bucket",
+                "approvals": []
+            }
+        ]
+    }
+]
