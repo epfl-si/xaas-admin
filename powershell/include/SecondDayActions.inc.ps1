@@ -54,25 +54,25 @@ class SecondDayActions
     
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie l'objet qui représente un élément cible (dont le nom est donné) sur lequel
-                des actions sont appliquées
+        BUT : Renvoie la liste des objets qui représentent un élément cible (dont le nom est donné) sur lequel
+                des actions sont appliquées. On a une liste car ces éléments (en particulier les actions EPFL)
+                peuvent être présents dans plusieurs fichiers JSON.
 
         IN  : $elementName      -> Le nom de l'élément pour lequel on veut les détails
 
-        RET : Objet représentant l'élément
-            $null si pas trouvé
+        RET : Liste des objets représentant l'élément
     #>
-    hidden [PSCustomObject]getTargetElementInfos([string]$elementName)
+    hidden [Array]getTargetElementList([string]$elementName)
     {
-        ForEach($targetElement in $this.JSONData)
+        # Recherche des éléments
+        $elementList = $this.JSONData | Where-Object { $_.appliesTo -eq $elementName}
+
+        if($elementList.Count -eq 0 )
         {
-            if($targetElement.appliesTo -eq $elementName)
-            {
-                return $targetElement
-            }
+            # Si l'élément n'est pas trouvé, exception
+            Throw ("2nd day action target element '{0}' not found" -f $elementName)
         }
-        # Si l'élément n'est pas trouvé, exception
-        Throw ("2nd day action target element '{0}' not found" -f $elementName)
+        return $elementList
     }
 
 
@@ -89,13 +89,18 @@ class SecondDayActions
     #>
     hidden [PSCustomObject]getActionInfos([string]$elementName, [string]$actionName)
     {
-        $targetElement = $this.getTargetElementInfos($elementName)
+        $targetElementList = $this.getTargetElementList($elementName)
 
-        ForEach($actionInfos in $targetElement.actions)
+        # Parcours des éléments cibles renvoyés (VM, XaaS, ...)
+        ForEach($targetElement in $targetElementList)
         {
-            if($actionInfos.name -eq $actionName)
+            # Parcours des actions pour 
+            ForEach($actionInfos in $targetElement.actions)
             {
-                return $actionInfos
+                if($actionInfos.name -eq $actionName)
+                {
+                    return $actionInfos
+                }
             }
         }
 
@@ -228,17 +233,9 @@ class SecondDayActions
     #>
     [Array]getTargetElementList()
     {
-        $elementList = @()
-        ForEach($appliesToInfos in $this.JSONData)
-        {
-            if( $elementList -notcontains $appliesToInfos.appliesTo)
-            {
-                $elementList += $appliesToInfos.appliesTo
-            }
-            
-        }
+        # Retour du champs (unique) 'appliesTo' de tous les éléments présents dans $this.JSONData
+        return ($this.JSONData | Select-Object -Property "appliesTo" -Unique ).appliesTo
 
-        return $elementList
     }
 
 
@@ -250,15 +247,17 @@ class SecondDayActions
     #>
     [Array]getElementActionList([string]$elementName)
     {
-        $targetElement = $this.getTargetElementInfos($elementName)
+        $targetElementList = $this.getTargetElementList($elementName)
 
-        
         # Récupération de la liste des actions. 
         $actionList = @()
 
-        ForEach($actionInfos in $targetElement.actions)
+        ForEach($targetElement in $targetElementList)
         {
-            $actionList += $actionInfos.name
+            ForEach($actionInfos in $targetElement.actions)
+            {
+                $actionList += $actionInfos.name
+            }
         }
 
         return $actionList
