@@ -18,6 +18,22 @@
             {
                 "name": "Request support (VM)",
                 "approvals": []
+            },
+            {
+                "name": "Request support (s3)",
+                "approvals": []
+            },
+            {
+                "name": "Regenerate Keys",
+                "approvals": [] 
+            },
+            {
+                "name": "Modify the Bucket",
+                "approvals": [] 
+            },
+            {
+                "name": "Delete Bucket",
+                "approvals": []
             }
         ]
     },
