@@ -231,7 +231,11 @@ class SecondDayActions
         $elementList = @()
         ForEach($appliesToInfos in $this.JSONData)
         {
-            $elementList += $appliesToInfos.appliesTo
+            if( $elementList -notcontains $appliesToInfos.appliesTo)
+            {
+                $elementList += $appliesToInfos.appliesTo
+            }
+            
         }
 
         return $elementList
