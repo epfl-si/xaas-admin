@@ -1096,8 +1096,9 @@ class vRAAPI: RESTAPI
 		# Si c'est une action développée en interne
 		if($appliesTo -eq "")
 		{
-			# Pas de filtre
-			$appliesToFilter = ""
+			# On filtre sur les éléments étant définis comme XaaS car il peut y avoir un même nom d'action
+			# valable pour un élément XaaS et pour un élément défini par le système (BluePrint)
+			$appliesToFilter = "providerType eq 'com.vmware.csp.core.designer.service' and"
 		}
 		else # Action prédéfinie
 		{
