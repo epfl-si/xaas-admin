@@ -195,7 +195,7 @@ function formatParameters($parameters)
 	-------------------------------------------------------------------------------------
 	BUT : Renvoie la valeur d'une "Custom Property" donnée pour la VM passée
 
-	IN  : $vm				-> Objet représentant le Business Group
+	IN  : $vm				-> Objet représentant la VM
 	IN  : $customPropName	-> Nom de la Custom property à chercher
 	
 	RET : Valeur de la custom property
@@ -205,6 +205,42 @@ function getVMCustomPropValue([object]$vm, [string]$customPropName)
 {
 	# Recherche de la valeur de la "Custom Property" en PowerShell "optmisé"
 	return ($vm.resourceData.entries | Where-Object {$_.key -eq $customPropName}).value.value 
+}
+
+
+<#
+	-------------------------------------------------------------------------------------
+	BUT : Met à jour la valeur d'une "Custom Property" donnée pour la VM passée
+
+	IN  : $vm				-> Objet représentant la VM
+	IN  : $customPropName	-> Nom de la Custom property à mettre à jour
+	IN  : $customPropValue  -> Valeur à mettre pour la custom property
+	
+	RET : Objet représentant la VM avec la valeur modifiée
+#>
+function updateVMCustomPropValue([object]$vm, [string]$customPropName, [string]$customPropValue)
+{
+	# Si la custom prop existe, 
+	if(getVMCustomPropValue -vm $vm -customPropName $customPropName)
+	{
+
+		# Recherche de la valeur de la "Custom Property" en PowerShell "optmisé"
+		($vm.resourceData.entries | Where-Object {$_.key -eq $customPropName}).value.value = $customPropValue
+	}
+	else # La custom prop n'existe pas
+	{
+		# Création de l'objet contenant la nouvelle custom property
+		$newKey = New-Object -TypeName psobject
+		$newKey | Add-Member -NotePropertyName "key" -NotePropertyValue $customPropName
+		
+		$newKey | Add-Member -NotePropertyName "value" -NotePropertyValue (New-Object -TypeName psobject)
+		$newKey.value | Add-Member -NotePropertyName "type" -NotePropertyValue "string"
+		$newKey.value | Add-Member -NotePropertyName "value" -NotePropertyValue $customPropValue
+		
+		$vm.resourceData.entries += $newKey
+	}
+
+	return $vm
 }
 
 <#
