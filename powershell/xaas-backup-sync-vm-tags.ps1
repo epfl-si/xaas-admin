@@ -99,6 +99,7 @@ try
     $counters.add('UpdatedTags', '# VM Updated tags')
     $counters.add('CorrectTags', '# VM Correct tags')
     $counters.add('ProcessedVM', '# VM Processed')
+    $counters.add('VMNotInvSphere', '# VM not in vSphere')
 
     # -------------------------------------------------------------------------------------------
 
@@ -140,6 +141,14 @@ try
             if($null -ne $vRATag)
             {
                 $logHistory.addLineAndDisplay("--> Backup tag found! -> {0}" -f (backupTagRepresentation -backupTag $vRATag))
+
+                # Si on ne trouve pas la VM dans vSphere, 
+                if(! $vsphereApi.VMExists($vmName))
+                {
+                    $logHistory.addLineAndDisplay("--> VM doesn't exists in vSphere !!")
+                    $counters.inc('VMNotInvSphere')
+                    continue
+                }
 
                 # Recherche du tag attribué à la VM 
                 $vmTag = $vsphereApi.getVMTags($vmName, $NBU_TAG_CATEGORY)
