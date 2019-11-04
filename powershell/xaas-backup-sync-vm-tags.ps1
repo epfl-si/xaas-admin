@@ -1,6 +1,6 @@
 <#
 USAGES:
-    xaas-backup-sync-vm-tags.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl 
+    xaas-backup-sync-vm-tags.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl [-importFromvSphere]
 #>
 <#
     BUT 		: Script lancé par une tâche planifiée, afin de synchroniser, de manière unidirectionnelle,
@@ -25,7 +25,8 @@ USAGES:
     
 #>
 param([string]$targetEnv, 
-      [string]$targetTenant)
+      [string]$targetTenant,
+      [switch]$importFromvSphere)
 
 
 # Inclusion des fichiers nécessaires (génériques)
@@ -120,6 +121,10 @@ try
 						 $configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
 						 $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
 
+    if($importFromvSphere)                         
+    {
+        $logHistory.addLineAndDisplay("!!! Synchronizing from vSphere to vRA !!!")
+    }
 
     # Parcours des Business Groups
     $vra.getBGList() | ForEach-Object {
@@ -137,11 +142,18 @@ try
             
             $vRATag = getVMCustomPropValue -vm $_ -customPropName $VRA_CUSTOM_PROPERTY_BACKUP_TAG
 
-            # Si la propriété existe
-            if($null -ne $vRATag)
-            {
-                $logHistory.addLineAndDisplay("--> Backup tag found! -> {0}" -f (backupTagRepresentation -backupTag $vRATag))
+            $vSphereTag = $null
 
+            # Si la propriété existe
+            # OU
+            # Si on doit synchro depuis vSphere
+            if(($null -ne $vRATag) -or $importFromvSphere)
+            {
+                if($null -ne $vRATag)
+                {
+                    $logHistory.addLineAndDisplay("--> vRA Backup tag found! -> {0}" -f (backupTagRepresentation -backupTag $vRATag))
+                }
+                
                 # Si on ne trouve pas la VM dans vSphere, 
                 if(! $vsphereApi.VMExists($vmName))
                 {
@@ -151,25 +163,46 @@ try
                 }
 
                 # Recherche du tag attribué à la VM 
-                $vmTag = $vsphereApi.getVMTags($vmName, $NBU_TAG_CATEGORY)
+                $vSphereTag = $vsphereApi.getVMTags($vmName, $NBU_TAG_CATEGORY)
+            } 
 
-                # Si on a trouvé un tag, on récupère son nom.
-                if($null -ne $vmTag)
+            # Si on a trouvé un tag, on récupère son nom.
+            if($null -ne $vSphereTag)
+            {
+                $vSphereTag = $vSphereTag.Name
+            }
+            else
+            {
+                # On met chaine vide au lieu de $null car plus pratique pour après
+                $vSphereTag = ""
+            }
+            
+            # Si on n'a pas trouvé de tag de backup pour vRA
+            if($null -eq $vRATag)
+            {
+                $logHistory.addLineAndDisplay("--> No vRA backup tag")
+                $vRATag = ""
+            }
+
+            # Si les tags sont différents 
+            if($vSphereTag -ne $vRATag)
+            {
+                $logHistory.addLineAndDisplay(("--> Tags are different (vRA={0}, vSphere={1}), updating..." -f (backupTagRepresentation -backupTag $vRATag), 
+                                                                                                                (backupTagRepresentation -backupTag $vSphereTag)))
+
+                # Si on doit updater vRA depuis vSphere
+                if($importFromvSphere)
                 {
-                    $vmTag = $vmTag.Name
+                    # Mise à jour de la custom property sur la VM dans vRA
+                    $vra.updateVMCustomProp($_, $VRA_CUSTOM_PROPERTY_BACKUP_TAG, $vSphereTag)
                 }
-
-                # Si les tags sont différents 
-                if($vmTag -ne $vRATag)
+                else # On doit updater vSphere depuis vRA
                 {
-                    $logHistory.addLineAndDisplay(("--> Tags are different (vRA={0}, vSphere={1}), updating..." -f (backupTagRepresentation -backupTag $vRATag), 
-                                                                                                                   (backupTagRepresentation -backupTag $vmTag)))
-
                     # S'il y a effectivement un Tag sur la VM
-                    if($null -ne $vmTag)
+                    if($vSphereTag -ne "")
                     {
                         # Suppression du tag existant dans vSphere
-                        $vsphereApi.detachVMTag($vmName, $vmTag)
+                        $vsphereApi.detachVMTag($vmName, $vSphereTag)
                     }
 
                     # Si le tag dans vRA n'est pas vide, 
@@ -177,23 +210,16 @@ try
                     {
                         $vsphereApi.attachVMTag($vmName, $vRATag)
                     }
-
-                    $counters.inc('UpdatedTags')
                 }
-                else # Le tag dans vRA et dans vSphere est identique
-                {
-                    $logHistory.addLineAndDisplay("--> vSphere tag up-to-date ({0})" -f (backupTagRepresentation -backupTag $vmTag))
-
-                    $counters.inc('CorrectTags')
-                }
-
+                
+                $counters.inc('UpdatedTags')
             }
-            else # La propriété n'existe pas
+            else # Le tag dans vRA et dans vSphere est identique
             {
-                $logHistory.addLineAndDisplay("--> No backup tag")
+                $logHistory.addLineAndDisplay("--> vSphere tag up-to-date ({0})" -f (backupTagRepresentation -backupTag $vSphereTag))
+
+                $counters.inc('CorrectTags')
             }
-
-
 
         } # FIN BOUCLE parcours des VM dans le Business Group
    
