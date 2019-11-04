@@ -164,17 +164,18 @@ try
 
                 # Recherche du tag attribué à la VM 
                 $vSphereTag = $vsphereApi.getVMTags($vmName, $NBU_TAG_CATEGORY)
-
-                # Si on a trouvé un tag, on récupère son nom.
-                if($null -ne $vSphereTag)
-                {
-                    $vSphereTag = $vSphereTag.Name
-                }
-                else
-                {
-                    $vSphereTag = ""
-                }
             } 
+
+            # Si on a trouvé un tag, on récupère son nom.
+            if($null -ne $vSphereTag)
+            {
+                $vSphereTag = $vSphereTag.Name
+            }
+            else
+            {
+                # On met chaine vide au lieu de $null car plus pratique pour après
+                $vSphereTag = ""
+            }
             
             # Si on n'a pas trouvé de tag de backup pour vRA
             if($null -eq $vRATag)
