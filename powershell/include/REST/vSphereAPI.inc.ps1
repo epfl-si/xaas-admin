@@ -163,7 +163,7 @@ class vSphereAPI: RESTAPICurl
 		$tag = $this.getTag($tagName)
 		if($null -eq $tag)
 		{
-			Throw "Tag '{0}' not found in vSphere" -f $tagName
+			Throw ("Tag '{0}' to {1} to/from VM {2} not found in vSphere" -f $tagName, $action, $vmName)
 		}
 
 
