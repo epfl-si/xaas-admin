@@ -1,10 +1,10 @@
 <#
 USAGES:
-    xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupTag -vmName <vmName>
-    xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action setBackupTag -vmName <vmName> -backupTag (<backupTag>|"")
-    xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action getBackupList -vmName <vmName> [-nbBackups <nbBackups>]
-    xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreBackupId <restoreId>
-    xaas-backup-endpoints.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreTimestamp <restoreTimestamp>
+    xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action getBackupTag -vmName <vmName>
+    xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action setBackupTag -vmName <vmName> -backupTag (<backupTag>|"")
+    xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action getBackupList -vmName <vmName>
+    xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreBackupId <restoreId>
+    xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreTimestamp <restoreTimestamp>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -15,9 +15,7 @@ USAGES:
                     à l'aide de commandes REST.
 
 	DATE 		: Juin 2019
-    AUTEUR 	: Lucien Chaboudez
-    
-    VERSION : 1.01
+	AUTEUR 	: Lucien Chaboudez
 
 	REMARQUE : Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy
 				  via Set-ExecutionPolicy. Normalement, si on met la valeur "Unrestricted",
@@ -40,7 +38,7 @@ USAGES:
     https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=99188910                                
 
 #>
-param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp, [int]$nbBackups)
+param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp)
 
 
 
@@ -188,7 +186,7 @@ try
             $nbu.getVMBackupList($vmName) | Where-Object {
                 $_.attributes.backupStatus -eq 0 `
                 -and `
-                (Get-Date) -lt [DateTime]::Parse(($_.attributes.expiration -replace "Z", ""))} | ForEach-Object {
+                (Get-Date) -lt [DateTime]($_.attributes.expiration -replace "Z", "")} | ForEach-Object {
 
                 # Création d'un objet avec la liste des infos que l'on veut renvoyer 
                 $backup = @{ 
@@ -201,13 +199,6 @@ try
 
                 # Ajout de l'objet à la liste
                 $output.results += $backup
-
-                # Si on doit limiter le nombre de résultats et qu'on est à la limite
-                if(($null -ne $nbBackups) -and ($output.results.count -eq $nbBackups))
-                {
-                    # on sort
-                    break
-                }
             }
         }
 
@@ -242,10 +233,7 @@ catch
     displayJSONOutput -output $output
 
 	$logHistory.addError(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
-    
-    # On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
-    $errorMessage = $errorMessage -replace "`n", "<br>"
-
+	
 	# Envoi d'un message d'erreur aux admins 
 	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant ""
 	$mailMessage = getvRAMailContent -content ("<b>Computer:</b> {3}<br><b>Script:</b> {0}<br><b>Parameters:</b>{4}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
