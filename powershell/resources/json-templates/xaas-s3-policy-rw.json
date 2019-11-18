@@ -17,7 +17,7 @@
                         "s3:Put*",
                         "s3:AbortMultipartUpload",
                         "s3:List*",
-                        "s3:Delete*"
+                        "s3:DeleteObject*"
                 ],
             "Resource":  [
                         "arn:aws:s3:::{{bucketName}}",
