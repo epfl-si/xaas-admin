@@ -5,12 +5,12 @@
             {
                 "rootDN": "o=epfl,c=ch",
                 "nbLevelsForSearch": 3,
-                "limitToFaculties": [ "SV", "SI", "P" ]
+                "limitToFaculties": [ "SV", "SI", "P", "STI", "ENAC", "IC", "SB" ]
             },
             {
                 "rootDN": "o=ehe,c=ch",
                 "nbLevelsForSearch": 2,
-                "limitToFaculties": [ "-" ]
+                "limitToFaculties": [ ]
             }
         ]
         
