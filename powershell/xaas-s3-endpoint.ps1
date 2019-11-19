@@ -167,11 +167,12 @@ try
                 # Création du bucket
                 $s3Bucket = $scality.addBucket($bucketInfos.bucketName)
 
+                $bucketInfos.access = @{}
+
                 # Si le nouveau bucket doit être "standalone"
                 if($linkedTo -eq "")
                 {
-                    $bucketInfos.access = @{}
-
+                    
                     # Parcours des types d'accès
                     ForEach($accessType in $global:XAAS_S3_ACCESS_TYPES)
                     {
@@ -198,6 +199,7 @@ try
                         $logHistory.addLine("- Policy {0}" -f $bucketInfos.access.$accessType.policyName)
                         $s3Policy = $scality.addPolicy($bucketInfos.access.$accessType.policyName, $bucketInfos.bucketName, $accessType)
                         $bucketInfos.access.$accessType.policyArn = $s3Policy.Arn
+                        $bucketInfos.access.$accessType.policyName = $s3Policy.PolicyName
 
                         # Ajout de l'utilisateur à la policy 
                         $logHistory.addLine("- Adding User to Policy... ")
@@ -209,18 +211,30 @@ try
                 else # Le Bucket doit être link à un autre
                 {
 
-                    # Recherche de la liste des policies pour le bucket auquel il faut link le nouveau 
-                    ForEach($s3Policy in $scality.getBucketPolicyList($linkedTo))
+                    # Parcours des types d'accès
+                    ForEach($accessType in $global:XAAS_S3_ACCESS_TYPES)
                     {
+                        $bucketInfos.access.$accessType = @{}
+
+                        # Recherche de la policy pour le type d'accès courant
+                        $s3Policy = $scality.getBucketPolicyForAccess($linkedTo, $accessType)
+
                         # Ajout du bucket à la policy 
                         $logHistory.addLine("Adding Bucket to Policy {0}..." -f $s3Policy.PolicyName)
                         $s3Policy = $scality.addBucketToPolicy($s3Policy.policyName, $bucketInfos.bucketName)
+
+                        $bucketInfos.access.$accessType.PolicyArn = $s3Policy.Arn
+                        $bucketInfos.access.$accessType.policyName = $s3Policy.PolicyName
+                        
+
                     }
-                }
+                    
+                }# FIN SI Le bucket doit être link à un autre
 
                 $output.results +=  $bucketInfos
-            }
-        }
+            }# FIN SI l'éventuel bucket auquel on doit lié existe bel et bien
+
+        }# FIN Action Create
 
 
         # -- Effacement d'un bucket
