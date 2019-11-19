@@ -2,7 +2,7 @@
 USAGES:
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -unitOrSvcID <unitOrSvcID> -friendlyName <friendlyName> [-linkedTo <linkedTo>] [-bucketTag <bucketTag>]
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action delete -bucketName <bucketName>
-    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action regenKeys -bucketName <bucketName> -userType (ro|rw)
+    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action regenKeys -bucketName <bucketName> -userType (ro|rw|all)
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action versioning -bucketName <bucketName> -enabled (true|false)
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action versioning -bucketName <bucketName> -status
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action linkedBuckets -bucketName <bucketName>
@@ -22,7 +22,7 @@ USAGES:
 	DATE 	: Août 2019
     AUTEUR 	: Lucien Chaboudez
     
-    VERSION : 1.01
+    VERSION : 1.02
 
     REMARQUES : 
     - Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy via Set-ExecutionPolicy. 
@@ -290,40 +290,54 @@ try
         # -- Génération de nouvelles clefs
         $ACTION_REGEN_KEYS {
 
-            # Recherche de la policy qui gère le type d'accès demandé
-            $s3Policy = $scality.getBucketPolicyForAccess($bucketName, $userType)
-            $logHistory.addLine(("'{0}' Policy for Bucket is: {1}" -f $userType, $s3Policy.PolicyName))
-
-            # Recherche de l'utilisateur dans la Policy
-            $s3User = $scality.getPolicyUserList($s3Policy.PolicyName)
-            
-
-            # Si aucun utilisateur remonté
-            if($s3User.Count -eq 0)
+            # On détermine pour quels types d'accès il faut regénérer les clefs
+            if($userType -eq 'all')
             {
-                $output.error = "No user found in '{0}' Policy '{1}'" -f $userName, $s3Policy.PolicyName
-
-                $logHistory.addLine($output.error)
+                $toRegen = @('ro', 'rw')
             }
-            # Trop d'utilisateurs remontés !
-            elseif ($s3User.Count -gt 1)
+            else
             {
-                $output.error = "Too many '{0}' users found ({1}) in Policy '{2}'" -f $userType, $s3User.Count, $s3Policy.PolicyName
-                $logHistory.addLine($output.error)
-            }
-            else 
-            {
-                $logHistory.addLine("Regenerating keys for user {0}... " -f $s3User[0].UserName)
-                # On lance la regénération des clefs pour l'utilisateur
-                $newKeys = $scality.regenerateUserAccessKey($s3User[0].UserName)
-
-                $output.results +=  @{userName = $s3User[0].UserName
-                                     userArn = $s3User[0].Arn
-                                     accessKeyId = $newKeys.AccessKeyId
-                                     secretAccessKey = $newKeys.SecretAccessKey}
+                $toRegen = @($userType)
             }
 
-            
+            # Parcours des types d'utilisateurs pour lesquels regénérer les clefs
+            ForEach($userAccessType in $toRegen)
+            {
+
+                # Recherche de la policy qui gère le type d'accès demandé
+                $s3Policy = $scality.getBucketPolicyForAccess($bucketName, $userAccessType)
+                $logHistory.addLine(("'{0}' Policy for Bucket is: {1}" -f $userAccessType, $s3Policy.PolicyName))
+
+                # Recherche de l'utilisateur dans la Policy
+                $s3User = $scality.getPolicyUserList($s3Policy.PolicyName)
+                
+
+                # Si aucun utilisateur remonté
+                if($s3User.Count -eq 0)
+                {
+                    $output.error = "No user found in '{0}' Policy '{1}'" -f $userName, $s3Policy.PolicyName
+
+                    $logHistory.addLine($output.error)
+                }
+                # Trop d'utilisateurs remontés !
+                elseif ($s3User.Count -gt 1)
+                {
+                    $output.error = "Too many '{0}' users found ({1}) in Policy '{2}'" -f $userType, $s3User.Count, $s3Policy.PolicyName
+                    $logHistory.addLine($output.error)
+                }
+                else 
+                {
+                    $logHistory.addLine("Regenerating keys for user {0}... " -f $s3User[0].UserName)
+                    # On lance la regénération des clefs pour l'utilisateur
+                    $newKeys = $scality.regenerateUserAccessKey($s3User[0].UserName)
+
+                    $output.results +=  @{userName = $s3User[0].UserName
+                                        userArn = $s3User[0].Arn
+                                        accessKeyId = $newKeys.AccessKeyId
+                                        secretAccessKey = $newKeys.SecretAccessKey}
+                }
+
+            }# FIN Boucle de parcours des types d'accès utilisateurs à regénérer
         }
 
 
