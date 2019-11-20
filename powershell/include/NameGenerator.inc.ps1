@@ -1234,6 +1234,8 @@ class NameGenerator
     #>
     [string] getVMMachinePrefix([string]$facultyNameOrServiceShortName)
     {
+        # On raccourci à 6 caractères pour ne pas avoir des préfixes trop longs
+        $facultyNameOrServiceShortName = $facultyNameOrServiceShortName.Substring(0, 6);
 
         # Pour l'ID court de l'environnement 
         $envId = ""
