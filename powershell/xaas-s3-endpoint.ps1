@@ -182,7 +182,8 @@ try
 
                         # Génération des noms et stockage dans la structure
                         $bucketInfos.access.$accessType.userName = $nameGeneratorS3.getUserOrPolicyName($accessType, 'usr')
-                        
+                        $bucketInfos.access.$accessType.policyName = $nameGeneratorS3.getUserOrPolicyName($accessType, 'pol')
+
                         # Création de l'utilisateur
                         $logHistory.addLine("- User {0}" -f $bucketInfos.access.$accessType.userName)
                         $s3User = $scality.addUser($bucketInfos.access.$accessType.userName)
@@ -198,7 +199,7 @@ try
                         $logHistory.addLine("- Policy {0}" -f $bucketInfos.access.$accessType.policyName)
                         $s3Policy = $scality.addPolicy($bucketInfos.access.$accessType.policyName, $bucketInfos.bucketName, $accessType)
                         $bucketInfos.access.$accessType.policyArn = $s3Policy.Arn
-                        $bucketInfos.access.$accessType.policyName = $s3Policy.PolicyName
+                        
 
                         # Ajout de l'utilisateur à la policy 
                         $logHistory.addLine("- Adding User to Policy... ")
