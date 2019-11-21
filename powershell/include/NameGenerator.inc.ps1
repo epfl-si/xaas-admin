@@ -1234,6 +1234,10 @@ class NameGenerator
     #>
     [string] getVMMachinePrefix([string]$facultyNameOrServiceShortName)
     {
+
+        # Suppression de tous les caractères non alpha numériques
+        $facultyNameOrServiceShortName = $facultyNameOrServiceShortName -replace '[^a-z0-9]', ''
+
         # On raccourci à 6 caractères pour ne pas avoir des préfixes trop longs
         $facultyNameOrServiceShortName = $facultyNameOrServiceShortName.Substring(0, [System.Math]::Min(6, $facultyNameOrServiceShortName.length))
 
