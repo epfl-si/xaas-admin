@@ -16,7 +16,7 @@
         
     },
     "members":  {
-        "server": "scoldap.epfl.ch",
+        "server": "scoldap.epfl.ch:636",
         "rootDN": "o=epfl,c=ch"
     }
 }
