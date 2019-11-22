@@ -61,7 +61,7 @@ class EPFLLDAP
 	#>
 	hidden [Array] LDAPSearch([string]$ldapServer, [string]$baseDN, [string]$scope, [string]$filter, [Array]$properties)
 	{
-		$searchDN = "LDAP://{0}:389/{1}" -f $ldapServer, $baseDN
+		$searchDN = "LDAP://{0}/{1}" -f $ldapServer, $baseDN
 
 		# On ne fait pas de LDAPS car seul ldap.epfl.ch le supporte... visiblement, scoldap.epfl.ch pas car ça pète ensuite
 		# sur l'appel à $ds.findAll()...

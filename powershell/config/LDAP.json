@@ -1,6 +1,6 @@
 {
     "facultyUnits": {
-        "server": "ldap.epfl.ch",
+        "server": "ldap.epfl.ch:636",
         "locations" : [
             {
                 "rootDN": "o=epfl,c=ch",
