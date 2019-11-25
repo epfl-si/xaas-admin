@@ -1,5 +1,7 @@
 <#
    BUT : Contient une classe permetant de gérer des logs pour un script donné.
+        On fait en sorte de créer un fichiers LOG différent à chaque appel du script. 
+        Les fichiers sont regroupés dans un dossier avec la date d'exécution.
 
    AUTEUR : Lucien Chaboudez
    DATE   : Avril 2018
@@ -7,6 +9,7 @@
    ----------
    HISTORIQUE DES VERSIONS
    10.04.2018 - 1.0 - Version de base
+   25.11.2019 - 1.1 - Création d'un dossier par jour avec les fichiers logs
 #>
 class LogHistory
 {
@@ -25,8 +28,9 @@ class LogHistory
 	#>
 	LogHistory([string]$logName, [string]$rootFolderPath, [int]$nbDaysToKeep)
 	{
-        $this.logFolderPath = (Join-Path $rootFolderPath $logName)
-        $this.logFilename = ("{0}.log" -f (Get-Date -format "yyyy-MM-dd"))
+        # On créé un dossier avec la date du jour pour le log
+        $this.logFolderPath = [IO.Path]::Combine($rootFolderPath, $logName, (Get-Date -format "yyyy-MM-dd"))
+        $this.logFilename = ("{0}.log" -f (Get-Date -Format "HH-mm-ss.fff"))
 
         # Si le dossier pour les logs n'existe pas encore,
         if(!(test-path $this.logFolderPath))
