@@ -74,8 +74,6 @@ $ACTION_SET_BACKUP_TAG = "setBackupTag"
 $ACTION_GET_BACKUP_LIST = "getBackupList"
 $ACTION_RESTORE_BACKUP = "restoreBackup"
 
-$NBU_TAG_PREFIX = "NBU-"
-$NBU_TAG_PREFIX_DONT_TOUCH = "SNBU-"
 $NBU_CATEGORY = "NBU"
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
@@ -143,28 +141,15 @@ try
             # Recherche du tag de backup existant sur la VM
             $tag = $vSphereApi.getVMTags($vmName, $NBU_CATEGORY) 
 
-            $canAddNewTag = $true
-
             # S'il y a un tag de backup 
             if($null -ne $tag)
             {
-                # Si on a le droit de toucher au tag présent
-                if($tag.Name -notlike ("{0}*" -f $NBU_TAG_PREFIX_DONT_TOUCH))
-                {
-                    # On supprime le tag
-                    $vsphereApi.detachVMTag($vmName, $tag.name)
-                }
-                else # On ne peut pas toucher au tag présent
-                {
-                    # Donc on fait en sorte de ne pas en ajouter un autre (car ça provoquerait une erreur)
-                    $canAddNewTag = $false
-                    # Pour renvoyer le tag actuellement présent
-                    $output.results += $tag.name
-                }
+                # On supprime le tag
+                $vsphereApi.detachVMTag($vmName, $tag.name)
             }
 
             # Si on doit ajouter un tag
-            if(($backupTag -ne "") -and ($canAddNewTag))
+            if(($backupTag -ne ""))
             {
                 $vsphereApi.attachVMTag($vmName, $backupTag)       
 
