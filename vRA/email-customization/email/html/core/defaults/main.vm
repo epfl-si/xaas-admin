@@ -125,14 +125,13 @@ $body
         #if( $componentSize != 0 )
 
             #foreach($index in [1..$componentSize] )
-				#customDebug("Looking in : ${key_prefix}component${index}-${component_name}")
-				#*
+				
                 #set( $value = $formData.get("${key_prefix}component${index}-${component_name}") )
 
                 #notEmpty($value)
                     #renderRowNoLabelMapping($label, $value)
                 #end
-				*#
+				
             #end
         #end
     #end
