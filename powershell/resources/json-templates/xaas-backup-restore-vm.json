@@ -1,11 +1,27 @@
 {
-    "data" : {
-      "type" : "recoveryRequest",
-      "attributes" : {
-        "recoveryPoint" : {
-          "backupId": "{{backupId}}"
-        }
+  "data" : 
+  {
+    "type" : "recoveryRequest",
+    "attributes" : 
+    {
+      "recoveryPoint" : 
+      {
+        "backupId": "{{backupId}}"
+      },
+      "recoveryOptions" :
+      {
+        "defaultVmDiskProvisioning": "thin",
+        "overwriteExistingVm": true,
+        "powerOnAfterRecovery": true,
+        "recoverToVmxDatastore": true,
+        "removeBackingInformation": true,
+        "removeNetworkInterfaces": false,
+        "removeTagAssociations": false,
+        "retainHardwareVersion": true,
+        "retainInstanceUuid": true,
+        "retainBiosUuid": true
       }
     }
   }
+}
   
