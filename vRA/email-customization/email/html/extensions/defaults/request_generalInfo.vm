@@ -1,4 +1,5 @@
 ## General request info
+## This is displayed in "Request information" part of the email.
 
 #if( !$resourceAction || "$!resourceAction" == "" )
   #set( $request_leasePeriod = "#valueOf('requestLeasePeriod')" )
@@ -8,6 +9,15 @@
       #set( $request_leasePeriod = "#msg('notification.email.extensions.request.unlimited')" )
     #end
   #end
+#end
+
+
+## Recovering data
+#set( $bg_type = $formData.get("${keyPrefix}provider-ch.epfl.vra.bg.type") )
+#if ( $bg_type == "unit" )
+  #set( $tenant_name = "EPFL" )
+#else
+  #set( $tenant_name = "ITServices" )
 #end
 
 <h2>#msg("notification.email.extensions.request.info") </h2>
@@ -23,6 +33,7 @@
 #end
 
 <table class="sectionGrid">
+  #renderRowNoLabel("Tenant", $tenant_name)
   #renderRow("notification.email.extensions.deployment", "#valueOf('catalogItem-Name')")
   #renderRow("notification.email.extensions.action", $resourceAction_Name)
   #renderRow("notification.email.extensions.request.requestedBy", "#valueOf('requestedBy')")

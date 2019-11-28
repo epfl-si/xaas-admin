@@ -1,6 +1,7 @@
 ## Main template used for generating an HTML email
 ##include message source for localization
 #parse( '../i18n.vm' )
+##parse( '../macros.vm' )
 
 <html>
 
@@ -31,6 +32,7 @@ $body
 
 </html>
 
+
 #macro (renderRow $label $val $val2)
 	#if (!$val2)
 		#set ( $val2 = "" )
@@ -39,6 +41,19 @@ $body
    #notEmpty($val)
    	<tr>
     	<td class="InfoTab-row-header" valign="top">#msg($label)</td>
+		<td class="InfoTab-row-value">$val $val2</td>
+    </tr>
+   #end
+#end
+
+#macro (renderRowNoLabel $val_name $val $val2)
+	#if (!$val2)
+		#set ( $val2 = "" )
+	#end
+
+   #notEmpty($val)
+   	<tr>
+    	<td class="InfoTab-row-header" valign="top">$val_name</td>
 		<td class="InfoTab-row-value">$val $val2</td>
     </tr>
    #end
