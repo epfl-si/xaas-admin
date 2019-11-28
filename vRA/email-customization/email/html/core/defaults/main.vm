@@ -118,6 +118,8 @@ $body
 
 	## We have to declare this var just to call 'parseInt' on it later... 
 	#set( $Integer = 0 )
+	## We have to initialize var here otherwise, the second time we call the macro, it will take result of first call and display it...
+	#set( $value = "" )
 
     #if( "$!component_size" != "" && "$!component_size.trim()" != "" )
 
@@ -126,7 +128,6 @@ $body
         #if( $componentSize != 0 )
 
             #foreach($index in [1..$componentSize] )
-				
                 #set( $value = $formData.get("${key_prefix}component${index}-${component_name}") )
 
                 #notEmpty($value)
