@@ -28,13 +28,31 @@ $body
 
 ## Include the footer
 #parse( 'core/footer.vm' )
-##showData()
+#showData()
 
 </body>
 
 </html>
 
+## Macros used in all files
 
+#*
+	Use to display some debug messages
+
+	@param String $msg 		Debug message to display
+*#
+#macro (customDebug $msg)
+	<pre>$msg</pre>
+#end
+
+#*
+	Displays a row with a given label and one or 2 values. The label is in fact a tag identifying
+	text to display and it is recovered using #msg function.
+
+	@param String $label	Label to identify text to display
+	@param String $val		First value to display
+	@param String $val2		(optional) Second value to display 
+*#
 #macro (renderRow $label $val $val2)
 	#if (!$val2)
 		#set ( $val2 = "" )
@@ -48,20 +66,32 @@ $body
    #end
 #end
 
-#macro (renderRowNoLabel $val_name $val $val2)
+#*
+	Displays a row with a given label and one or 2 values. But difference with "renderRow" is that here
+	we take label as it is to be displayed
+
+	@param String $label	Label to identify text
+	@param String $val		First value to display
+	@param String $val2		(optional) Second value to display 
+*#
+#macro (renderRowNoLabelMapping $label $val $val2)
 	#if (!$val2)
 		#set ( $val2 = "" )
 	#end
 
    #notEmpty($val)
    	<tr>
-    	<td class="InfoTab-row-header" valign="top">$val_name</td>
+    	<td class="InfoTab-row-header" valign="top">$label</td>
 		<td class="InfoTab-row-value">$val $val2</td>
     </tr>
    #end
 #end
 
+#*
+	Displays data coming from form
+*#
 #macro (showData)
+	##$request.getServerName()
 	<table border=1>
 		#foreach( $key in $formData.keySet() )
 			<tr>
@@ -70,4 +100,40 @@ $body
 		 	</tr>
 		#end
 	</table>
+#end
+
+#*
+	Render a row with a component value. Macro looks into existing components to find the requested value.
+	When value is found, it is displayed in table
+
+	@param String $label			Label to use for table display
+	@param String $key_prefix		Prefix to put before var name used to recover amount of components
+	@param String $component_name	Component name
+*#
+#macro (renderRowComponent $label $key_prefix $component_name)
+
+	#set( $component_size_key = "${key_prefix}component-ComponentNos" )
+    #set( $component_size = "#valueOf(${component_size_key})" )
+
+	## We have to declare this var just to call 'parseInt' on it later... 
+	#set( $Integer = 0 )
+
+    #if( "$!component_size" != "" && "$!component_size.trim()" != "" )
+
+        #set( $componentSize = $Integer.parseInt($component_size) )
+
+        #if( $componentSize != 0 )
+
+            #foreach($index in [1..$componentSize] )
+				#customDebug("Looking in : ${key_prefix}component${index}-${component_name}")
+				#*
+                #set( $value = $formData.get("${key_prefix}component${index}-${component_name}") )
+
+                #notEmpty($value)
+                    #renderRowNoLabelMapping($label, $value)
+                #end
+				*#
+            #end
+        #end
+    #end
 #end
