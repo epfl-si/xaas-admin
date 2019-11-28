@@ -6,7 +6,9 @@
 <html>
 
 <head>
+<style type="text/css">
 #parse( 'core/styles.vm' )
+</style>
 </head>
 
 <body>
