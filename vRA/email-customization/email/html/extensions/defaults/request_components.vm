@@ -8,7 +8,8 @@
 
     <h2>#msg("notification.email.extensions.component.componentInfo")</h2><br/>
 
-    #foreach($index in [1..$componentSize] )
+    ## We loop in "reverse" because for VMs, component with intersting details (CPU, RAM, etc...) are at the end.
+    #foreach($index in [$componentSize..1] )
 
       ## Component general info
       #set( $curKey = "component${index}-Name" )

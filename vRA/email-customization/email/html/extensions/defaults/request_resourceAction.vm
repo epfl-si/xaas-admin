@@ -1,3 +1,5 @@
+## This file will only be processed if $resourceAction is not empty and then it will stop processing
+
 #if( !$resourceAction || "$!resourceAction" == "" )
 	#break
 #end
@@ -6,5 +8,4 @@
 </table><br/>
 #parse( 'extensions/request_resourceAction_resource.vm' )
 #parse ( 'extensions/url_details.vm' )
-## Don't know why there's a "stop" here... maybe to avoid to handle data twice
 #stop
