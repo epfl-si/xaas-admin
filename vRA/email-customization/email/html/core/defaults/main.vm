@@ -102,6 +102,7 @@ $body
 	</table>
 #end
 
+
 #*
 	Render a row with a component value. Macro looks into existing components to find the requested value.
 	When value is found, it is displayed in table
@@ -130,6 +131,7 @@ $body
 
                 #notEmpty($value)
                     #renderRowNoLabelMapping($label, $value)
+					#break
                 #end
 				
             #end
