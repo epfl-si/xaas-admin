@@ -39,6 +39,8 @@
   
   #if ( $tenant_name == "EPFL" )
     #renderRowComponent("Unit ID", $keyPrefix, "ch.epfl.unit.id" )
+  #else
+    #renderRowComponent("ServiceNow svc ID", $keyPrefix, "ch.epfl.snow.svc.id" )
   #end
   
   #renderRow("notification.email.extensions.deployment", "#valueOf('catalogItem-Name')")
