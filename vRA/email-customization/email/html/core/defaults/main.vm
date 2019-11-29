@@ -1,14 +1,11 @@
 ## Main template used for generating an HTML email
 ##include message source for localization
 #parse( '../i18n.vm' )
-##parse( '../macros.vm' )
 
 <html>
 
 <head>
-<style type="text/css">
-#parse( 'core/styles.vm' )
-</style>
+#parse('core/styles.vm' )
 </head>
 
 <body>
@@ -28,7 +25,7 @@ $body
 
 ## Include the footer
 #parse( 'core/footer.vm' )
-#showData()
+##showData()
 
 </body>
 
@@ -91,7 +88,7 @@ $body
 	Displays data coming from form
 *#
 #macro (showData)
-	##$request.getServerName()
+	
 	<table border=1>
 		#foreach( $key in $formData.keySet() )
 			<tr>
