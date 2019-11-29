@@ -34,6 +34,9 @@
     #parse( 'extensions/request_scaleInAction.vm' )
 #end
 
+## Adding Scenario ID in email, just to help to develop things
+<!-- Scenario: $scenario -->
+
 <table class="sectionGrid">
   #renderRowNoLabelMapping("Tenant", $tenant_name)
   
