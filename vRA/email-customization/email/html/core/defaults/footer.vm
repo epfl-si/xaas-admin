@@ -1,7 +1,7 @@
 <div class="footer">
 
 <div class="header" align="left">
-   <img  src="https://myvm.epfl.ch/images/signature-mail2010.jpg"/><br><br>
+   
 </div>
 
 #notEmpty( $branding.disclaimer )
