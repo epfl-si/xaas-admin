@@ -11,6 +11,7 @@
 <body>
 
 ## Include the header
+## NOTE: hostname for images will be updated with right value when running deploy.sh script
 #parse( 'core/header.vm' )
 
 <div class="main">
