@@ -1,2 +1,3 @@
+# It seems that this scenario is for all built-in element (Virtual Machines) and XaaS elements
 #set ( $keyPrefix = "source-source-" )
 #parse( 'extensions/displayRequest.vm' )
