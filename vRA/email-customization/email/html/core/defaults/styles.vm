@@ -1,12 +1,12 @@
 <style type="text/css">
-/* Release date: 2019-11-29 15:32:47 */
+/* Release date: 2019-11-29 18:30:55 */
 body {
         font-family: Arial, Helvetica, sans-serif;
 }
 h1,
 h2 {
     margin: 0;
-    color: #333333
+    color: #333333;
 }
 a {
     color: #000;
@@ -15,15 +15,16 @@ a {
 a:hover {
     color: #f00;
     text-decoration: underline #000;
+    font-size:12px;
 }
 .layoutPage {
     margin-top: 12;
-    border-bottom: solid 1 black
+    border-bottom: solid 1 black;
 }
 .layoutSection {
     margin-top: 6;
     margin-left: 4;
-    border-bottom: solid 1 gray
+    border-bottom: solid 1 gray;
 }
 .layoutRow {
     overflow: auto
@@ -42,7 +43,7 @@ a:hover {
     white-space: nowrap;
     font-weight: bold;
     overflow: hidden;
-    text-overflow: ellipsis
+    text-overflow: ellipsis;
 }
 
 .layoutField,
@@ -58,34 +59,34 @@ a:hover {
 .layoutField .value {
     text-align: left;
     padding-right: 0.5em;
-    float: left
+    float: left;
 }
 .layoutCell {
-    min-width: 5em
+    min-width: 5em;
 }
 
     
 .layoutDataTable table {
     border-collapse: collapse;
-    width: 100%
+    width: 100%;
 }
 .layoutDataTable table thead {
     border-style: solid;
     border-width: 1px;
-    background-color: #DDDDDD
+    background-color: #DDDDDD;
 }
 .layoutDataTable table thead th {
     font-size: 0.8em;
     text-align: left;
-    padding: 2px
+    padding: 2px;
 }
 .layoutDataTable table tbody {
     border-style: solid;
-    border-width: 1px
+    border-width: 1px;
 }
 .layoutDataTable table tbody td {
     text-align: left;
-    padding: 2px
+    padding: 2px;
 }
 .horizontalTable table,
 th td {
@@ -96,7 +97,7 @@ th td {
 .horizontalTable thead {
     border-style: solid;
     border-width: 1px;
-    background-color: #DDDDDD
+    background-color: #DDDDDD;
 }
 .horizontalTable table thead th {
     font-size: 0.8em;
@@ -105,23 +106,23 @@ th td {
 }
 .horizontalTable table tbody {
     border-style: solid;
-    border-width: 1px
+    border-width: 1px;
 }
 .horizontalTable table tbody td {
     text-align: left;
     padding: 2px;
 }
 .links {
-    margin-top: 2em
+    margin-top: 2em;
 }
 .links ul {
     list-style-type: square;
 }
 .failedText {
-    color: #ff0000
+    color: #ff0000;
 }
 .successText {
-    color: #00ff00
+    color: #00ff00;
 }
 /* main_heading - begins */
 
@@ -249,7 +250,7 @@ th td {
     margin-bottom: -10px;
 }
 .layoutExtension {
-    width:450px;
+    width:550px;
 }
 
 /* component_name,ip,fields - ends */
@@ -257,7 +258,7 @@ th td {
 table.InfoTab-table, .sectionGrid {
     border-spacing: 1px;
     border-collapse: separate; 
-    width:450px;
+    width:550px;
 }
 
 td.InfoTab-row-header{
@@ -270,10 +271,10 @@ td.InfoTab-row-header{
     padding-right:4px;
     padding-top : 1px;
     padding-bottom: 1px;
+    white-space:nowrap;
 }
 
-    
-    td.InfoTab-row-value, tr.InfoTab-row-value {
+td.InfoTab-row-value, tr.InfoTab-row-value {
     border: 1px solid #000;
     color: #000;
     font-size:12px;
@@ -283,6 +284,5 @@ td.InfoTab-row-header{
 
 div.header img {
     margin-bottom:20px;
-    margin-left:75px;
 }
 </style>
