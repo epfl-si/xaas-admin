@@ -296,7 +296,6 @@ function createOrUpdateBG
 		{
 			# Ajout des customs properties en vue de sa création
 			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__UNIT
-			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS__ALIVE
 		}
 
 		# Tentative de recherche du préfix de machine
@@ -338,7 +337,7 @@ function createOrUpdateBG
 		{
 			# Création des propriété custom
 			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__SERVICE
-			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS__ALIVE
+			
 		}
 		# Pas d'ID de machine pour ce Tenant
 		$machinePrefixId = $null
@@ -356,6 +355,9 @@ function createOrUpdateBG
 	#>
 	if($null -eq $bg)
 	{
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS__ALIVE
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
 
 		$logHistory.addLineAndDisplay("-> BG doesn't exists, creating...")
 		# Création du BG
@@ -367,13 +369,13 @@ function createOrUpdateBG
 	else
 	{
 
-		# Si le BG n'a pas la custom property $global:getBGCustomPropValue, on l'ajoute
+		# Si le BG n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
 		# les BG existants avec la nouvelle "Custom Property"
-		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE))
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE))
 		{
 			# Ajout de la custom Property avec la valeur par défaut 
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE" = $global:VRA_BG_RES_MANAGE__AUTO})
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE" = $global:VRA_BG_RES_MANAGE__AUTO})
 		}
 
 		# Si le nom du BG est incorrect, (par exemple si le nom de l'unité ou celle de la faculté a changé)
@@ -467,8 +469,17 @@ function createOrUpdateBGRoles
 	if($supportGrpList.Count -gt 0)
 	{
 		$logHistory.addLineAndDisplay("--> Updating 'Support role'...")
-		$vra.deleteBGRoleContent($bg.id, "CSP_SUPPORT")
-		$supportGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_SUPPORT", $_) }
+
+		# Si le role est géré de manière manuelle pour le BG
+		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
+		{
+			$logHistory.addLineAndDisplay("---> Role manually managed, skipping it...")	
+		}
+		else # Le rôle est géré de manière automatique
+		{
+			$vra.deleteBGRoleContent($bg.id, "CSP_SUPPORT")
+			$supportGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_SUPPORT", $_) }
+		}
 	}
 
 	# S'il faut faire des modifs

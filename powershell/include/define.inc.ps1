@@ -52,6 +52,7 @@ $global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID = "ch.epfl.snow.svc.id"
 $global:VRA_CUSTOM_PROP_VRA_BG_TYPE = "ch.epfl.vra.bg.type"
 $global:VRA_CUSTOM_PROP_VRA_BG_STATUS = "ch.epfl.vra.bg.status"
 $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE = "ch.epfl.vra.bg.res.manage"
+$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE = "ch.epfl.vra.bg.roles.support.manage"
 
 # Types de Business Group possibles
 $global:VRA_BG_TYPE__ADMIN 	 = "admin"
