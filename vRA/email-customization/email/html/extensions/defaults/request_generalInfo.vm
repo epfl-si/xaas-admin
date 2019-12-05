@@ -14,33 +14,20 @@
 
 ## Looking for data we need to build mail
 
-## This var is created with the same name as Java library so we can use it with methods defined here:
-## https://velocity.apache.org/engine/1.7/apidocs/org/apache/velocity/util/StringUtils.html
-#set($String = "")
-
-## If it's not a XaaS request, info is in "Details"
+## We try to look for URL in "Details"
 #set( $form_url = $formData.get("Details") )
-#if ( "$form_url" == "")
-  #customDebug("Looking in workItemShellUrl")
-  ## Info is not in "Details" so it's a XaaS request so we look into "workItemShellUrl"
+#if ( "$!form_url" == "")
+  ## Info is not in "Details", we look into "workItemShellUrl"
   #set( $form_url = $formData.get("workItemShellUrl") )
 #end
-
-#customDebug("Form URL: ${form_url}")
 
 ## $form_url will now contains something like this:
 ## https://vsissp-vra-test.epfl.ch/vcac/org/EPFL/#csp.cs.ui.deployment.detail%5BrouteParams:=27e3f681-61c0-41dd-8c80-27f2d7e8123e
 
-#set($parts = $String.split($form_url, "/") )
-#customDebug("Index 1: ${parts[5]}")
-##set($form_url = $form_url.substring($index + 10) )
-##customDebug("Form URL 2: ${form_url}")
-##set($index = $form_url.indexOf("/") )
-##customDebug("Index 2: ${index}")
-##set($tenant_name = $form_url.substring(0, $index) )
-##customDebug("Tenant : ${tenant_name}")
-
-#set($tenant_name = "EPFL" )
+## We have to transform it into a "real" String before calling "split". If we don't do this, we won't have any error and the function call will just... not work... #facepalm
+## In fact $form_url is class of StringLiteral....
+#set($parts = $form_url.toString().split("/") )
+#set($tenant_name = $parts[5])
 
 <h2>#msg("notification.email.extensions.request.info") </h2>
 <br/>
