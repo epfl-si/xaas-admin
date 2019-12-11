@@ -288,6 +288,7 @@ function createOrUpdateBG
 	# Si on doit gérer le tenant contenant toutes les Unités,
 	if(($bgUnitID -ne "") -and ($bgSnowSvcID -eq ""))
 	{
+		$tenantName = $global:VRA_TENANT__EPFL
 		# Recherche du BG par son no d'unité.
 		$bg = getBGWithCustomProp -fromList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_UNIT_ID -customPropValue $bgUnitID
 
@@ -329,6 +330,8 @@ function createOrUpdateBG
 	# On doit gérer le tenant ITServices
 	elseif(($bgUnitID -eq "") -and ($bgSnowSvcID -ne "")) 
 	{
+		$tenantName = $global:VRA_TENANT__ITSERVICES
+
 		# Recherche du BG par son ID de service dans ServiceNow
 		$bg = getBGWithCustomProp -fromList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID -customPropValue $bgSnowSvcID
 
@@ -358,6 +361,10 @@ function createOrUpdateBG
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS__ALIVE
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
+		# Ajout aussi des informations sur le Tenant et le BG car les mettre ici, c'est le seul moyen que l'on pour récupérer cette information
+		# pour la génération des mails personnalisée... 
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME"] = $tenantName
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_NAME"] = $bgName
 
 		$logHistory.addLineAndDisplay("-> BG doesn't exists, creating...")
 		# Création du BG
@@ -368,6 +375,7 @@ function createOrUpdateBG
 	# Si le BG existe,
 	else
 	{
+		# ==========================================================================================
 
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
@@ -377,6 +385,22 @@ function createOrUpdateBG
 			# Ajout de la custom Property avec la valeur par défaut 
 			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE" = $global:VRA_BG_RES_MANAGE__AUTO})
 		}
+
+		
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_TENANT_NAME))
+		{
+			# Ajout de la custom Property avec la valeur par défaut 
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME" = $tenantName})
+		}
+
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_NAME))
+		{
+			# Ajout de la custom Property avec la valeur par défaut 
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $bgName})
+		}
+
+
+		# ==========================================================================================
 
 		# Si le nom du BG est incorrect, (par exemple si le nom de l'unité ou celle de la faculté a changé)
 		# Note: Dans le cas du tenant ITServices, vu qu'on fait une recherche avec le nom, ce test ne retournera
@@ -419,7 +443,10 @@ function createOrUpdateBG
 					# On continue ensuite l'exécution normalement 
 				}
 				
-			}
+				# Mise à jour de la custom property qui contient le nom du BG
+				$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $bgName})
+				
+			}# Fin s'il y a eu changement de nom 
 
 			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating BG '{0}' to '{1}'" -f $bg.name, $bgName))
 
