@@ -31,8 +31,8 @@
 
 <table class="sectionGrid">
   
-  #renderRowNoLabelMapping("Tenant", "#valueOf('provider-ch.epfl.tenant.name')")
-  #renderRowNoLabelMapping("Business Group", "#valueOf('provider-ch.epfl.bg.name')")
+  #renderRowNoLabelMapping("Tenant", "#valueOf('provider-ch.epfl.vra.tenant.name')")
+  #renderRowNoLabelMapping("Business Group", "#valueOf('provider-ch.epfl.vra.bg.name')")
 
   #renderRow("notification.email.extensions.deployment", "#valueOf('catalogItem-Name')")
   #renderRow("notification.email.extensions.action", $resourceAction_Name)
