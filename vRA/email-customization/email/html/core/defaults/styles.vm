@@ -1,5 +1,5 @@
 <style type="text/css">
-/* Release date: 2019-12-11 10:51:43 */
+/* Release date: 2019-12-11 11:27:07 */
 body {
         font-family: Arial, Helvetica, sans-serif;
 }
@@ -11,6 +11,7 @@ h2 {
 a {
     color: #000;
     text-decoration: underline #ff0000;
+    font-size:0.9em;
 }
 a:hover {
     color: #f00;
