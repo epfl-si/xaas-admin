@@ -714,8 +714,8 @@ try
 
 		}# FIN BOUCLE de parcours des services renvoyés
 
-		$json | ConvertTo-Json | out-file -FilePath "D:\IDEVING\IaaS\git\xaas-admin\powershell\data\itservices.json"
-
+		$json | ConvertTo-Json | out-file -FilePath  ([IO.Path]::Combine("$PSScriptRoot", "data", "itservices.json")) 
+		
 	}# FIN SI on doit traiter le Tenant ITServices 
 
 	# Gestion des erreurs s'il y en a
