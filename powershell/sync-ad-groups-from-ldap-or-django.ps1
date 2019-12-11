@@ -25,15 +25,12 @@ USAGES:
 param ( [string]$targetEnv, [string]$targetTenant)
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "define-mysql.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "DjangoMySQL.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 
 # Chargement des fichiers pour API REST
@@ -598,25 +595,29 @@ try
 		$counters.add('its.serviceProcessed', '# Service processed')
 		$counters.add('its.serviceSkipped', '# Service skipped')
 
-		# Chargement des infos se trouvant dans le fichier ".env" pour pouvoir accéder à la DB
-		$dbInfos = loadMySQLInfos -file $global:ENV_FILE -targetEnv $targetEnv
+		# Check de l'existence du fichier JSON contenant la liste des services
+		$itServiceJSONFile = ([IO.Path]::Combine($global:DATA_FOLDER, "itservices.json"))
+		if(!(Test-Path $itServiceJSONFile ))
+		{
+			Throw ("JSON file with ITServices not found ! ({0})" -f $itServiceJSONFile)
+		}
 
-		$django = [DjangoMySQL]::new($dbInfos.MYSQL_HOST, [int]$dbInfos.MYSQL_PORT, $dbInfos.MYSQL_DATABASE, $dbInfos.MYSQL_USER, $dbInfos.MYSQL_PASSWORD)
-
-		$servicesList = $django.getServicesList()
-
+		# Chargement des données depuis le fichier 
+		$servicesList = ((Get-Content -Path $itServiceJSONFile) -join "`n") | ConvertFrom-Json
+		
 		# Si on rencontre une erreur, 
 		if(($servicesList -eq $false) -or ($null -eq $servicesList))
 		{
 			Throw ("Error getting Services list for '{0}' tenant" -f $targetTenant)
 		}
 
+
 		$serviceNo = 1 
 		# Parcours des services renvoyés par Django
 		ForEach($service in $servicesList)
 		{
 
-			$logHistory.addLineAndDisplay(("-> [{0}/{1}] Service {2}..." -f $serviceNo, $servicesList.Count, $service.$global:MYSQL_ITS_SERVICES__SHORTNAME))
+			$logHistory.addLineAndDisplay(("-> [{0}/{1}] Service {2}..." -f $serviceNo, $servicesList.Count, $service.shortName))
 
 			$counters.inc('its.serviceProcessed')
 
@@ -630,7 +631,7 @@ try
 			{
 				$level += 1
 				# Recherche des informations pour le level courant.
-				$approveGroupInfos = $nameGenerator.getITSApproveADGroupName($service.$global:MYSQL_ITS_SERVICES__SHORTNAME, $level)
+				$approveGroupInfos = $nameGenerator.getITSApproveADGroupName($service.shortName, $level)
 
 				# Si vide, c'est qu'on a atteint le niveau max pour les level
 				if($null -eq $approveGroupInfos)
@@ -638,8 +639,8 @@ try
 					break
 				}
 
-				$approveGroupDescAD = $nameGenerator.getITSApproveADGroupDesc($service.$global:MYSQL_ITS_SERVICES__LONGNAME, $level)
-				$approveGroupNameGroups = $nameGenerator.getITSApproveGroupsADGroupName($service.$global:MYSQL_ITS_SERVICES__SHORTNAME, $level)
+				$approveGroupDescAD = $nameGenerator.getITSApproveADGroupDesc($service.longName, $level)
+				$approveGroupNameGroups = $nameGenerator.getITSApproveGroupsADGroupName($service.shortName, $level)
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
@@ -668,9 +669,9 @@ try
 			# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
 			# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
 			# sera le même
-			$admSupGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
-			$admSupGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_SUBTENANT_MANAGER", $service.$global:MYSQL_ITS_SERVICES__LONGNAME, $service.$global:MYSQL_ITS_SERVICES__SNOWID)
-			$admSupGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
+			$admSupGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $service.shortName)
+			$admSupGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_SUBTENANT_MANAGER", $service.longName, $service.snowId)
+			$admSupGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER", $service.shortName)
 
 			# Création des groupes + gestion des groupes prérequis 
 			if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
@@ -688,9 +689,9 @@ try
 			# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
 			# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
 			# sera le même
-			$userSharedGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_CONSUMER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
-			$userSharedGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_CONSUMER", $service.$global:MYSQL_ITS_SERVICES__LONGNAME, $service.$global:MYSQL_ITS_SERVICES__SNOWID)
-			$userSharedGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_CONSUMER", $service.$global:MYSQL_ITS_SERVICES__SHORTNAME)
+			$userSharedGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_CONSUMER", $service.shortName)
+			$userSharedGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_CONSUMER", $service.longName, $service.snowId)
+			$userSharedGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_CONSUMER", $service.shortName)
 
 			# Création des groupes + gestion des groupes prérequis 
 			if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroups `
@@ -702,7 +703,6 @@ try
 			}
 			# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
 			$doneADGroupList += $userSharedGroupNameAD
-
 			
 
 		}# FIN BOUCLE de parcours des services renvoyés
