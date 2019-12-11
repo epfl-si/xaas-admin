@@ -35,7 +35,7 @@ Get-ChildItem -Path $rootLogFolder -Recurse:$false -Directory | ForEach-Object {
         if($_.Name -eq $today)
         {
             Write-Host "-> Current day folder, skipping!"
-            Continue
+            return
         }
 
         # Définition du nom du fichier dans lequel on va regrouper les logs
