@@ -611,10 +611,17 @@ try
 			Throw ("Error getting Services list for '{0}' tenant" -f $targetTenant)
 		}
 
+		$json = @()
+
 		$serviceNo = 1 
 		# Parcours des services renvoyés par Django
 		ForEach($service in $servicesList)
 		{
+
+			$json += @{shortName = $service.$global:MYSQL_ITS_SERVICES__SHORTNAME
+					   longName = $service.$global:MYSQL_ITS_SERVICES__LONGNAME
+					   snowId = $service.$global:MYSQL_ITS_SERVICES__SNOWID}
+
 
 			$logHistory.addLineAndDisplay(("-> [{0}/{1}] Service {2}..." -f $serviceNo, $servicesList.Count, $service.$global:MYSQL_ITS_SERVICES__SHORTNAME))
 
@@ -706,6 +713,8 @@ try
 			
 
 		}# FIN BOUCLE de parcours des services renvoyés
+
+		$json | ConvertTo-Json | out-file -FilePath "D:\IDEVING\IaaS\git\xaas-admin\powershell\data\itservices.json"
 
 	}# FIN SI on doit traiter le Tenant ITServices 
 
