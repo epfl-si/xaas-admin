@@ -31,16 +31,21 @@
 
 <table class="sectionGrid">
   
-  #renderRowNoLabelMapping("Tenant", $formData.get("${keyPrefix}provider-ch.epfl.tenant.name"))
-  #renderRowNoLabelMapping("Business Group", $formData.get("${keyPrefix}provider-ch.epfl.bg.name"))
+  #renderRowNoLabelMapping("Tenant", "#valueOf('provider-ch.epfl.tenant.name')")
+  #renderRowNoLabelMapping("Business Group", "#valueOf('provider-ch.epfl.bg.name')")
 
   #renderRow("notification.email.extensions.deployment", "#valueOf('catalogItem-Name')")
   #renderRow("notification.email.extensions.action", $resourceAction_Name)
   #renderRow("notification.email.extensions.request.requestedBy", "#valueOf('requestedBy')")
-  #renderRowNoLabelMapping("Requested for email address", $formData.get("${keyPrefix}provider-ch.epfl.owner_mail"))
+  #renderRowNoLabelMapping("Requested for email address", "#valueOf('provider-ch.epfl.owner_mail')")
   #renderRow("notification.email.extensions.request.requestDate", "#valueOf('requestedDate')")
   #renderRow("notification.email.extensions.description", "#valueOf('description')")
+
+  ## For VM part
   #renderRow("notification.email.extensions.request.reason", "#valueOf('reasons')")
+  ## For XaaS part
+  #renderRow("notification.email.extensions.request.reason", "#valueOf('provider-reasonsForRequest')")
+  
   #renderRow("notification.email.extensions.request.numberOfInstances", "#valueOf('_number_of_instances')")
   #renderRowComponent("DMZ", $keyPrefix, "ch.epfl.iaas.dmz.enabled" )
   #renderRow("notification.email.extensions.request.estimatedLeasePrice", "#valueOf('requestLeaseCost')")
