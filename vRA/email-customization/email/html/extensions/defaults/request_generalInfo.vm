@@ -14,21 +14,6 @@
 
 ## Looking for data we need to build mail
 
-## We try to look for URL in "Details"
-#set( $form_url = $formData.get("Details") )
-#if ( "$!form_url" == "")
-  ## Info is not in "Details", we look into "workItemShellUrl"
-  #set( $form_url = $formData.get("workItemShellUrl") )
-#end
-
-## $form_url will now contains something like this:
-## https://vsissp-vra-test.epfl.ch/vcac/org/EPFL/#csp.cs.ui.deployment.detail%5BrouteParams:=27e3f681-61c0-41dd-8c80-27f2d7e8123e
-
-## We have to transform it into a "real" String before calling "split". If we don't do this, we won't have any error and the function call will just... not work... #facepalm
-## In fact $form_url is class of StringLiteral....
-#set($parts = $form_url.toString().split("/") )
-#set($tenant_name = $parts[5])
-
 <h2>#msg("notification.email.extensions.request.info") </h2>
 <br/>
 
@@ -45,14 +30,10 @@
 <!-- Scenario: $scenario -->
 
 <table class="sectionGrid">
-  #renderRowNoLabelMapping("Tenant", $tenant_name)
   
-  #if ( $tenant_name == "EPFL" )
-    #renderRowComponent("Unit ID", $keyPrefix, "ch.epfl.unit.id" )
-  #else
-    #renderRowComponent("ServiceNow svc ID", $keyPrefix, "ch.epfl.snow.svc.id" )
-  #end
-  
+  #renderRowNoLabelMapping("Tenant", $formData.get("${keyPrefix}provider-ch.epfl.tenant.name"))
+  #renderRowNoLabelMapping("Business Group", $formData.get("${keyPrefix}provider-ch.epfl.bg.name"))
+
   #renderRow("notification.email.extensions.deployment", "#valueOf('catalogItem-Name')")
   #renderRow("notification.email.extensions.action", $resourceAction_Name)
   #renderRow("notification.email.extensions.request.requestedBy", "#valueOf('requestedBy')")
