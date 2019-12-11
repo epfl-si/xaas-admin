@@ -1,182 +1,217 @@
-[
-    {
-        "longName":  "Antivirus",
-        "shortName":  "Antivirus",
-        "snowId":  "SVC0062"
-    },
-    {
-        "longName":  "AntiSpam",
-        "shortName":  "aspam",
-        "snowId":  "SVC0058"
-    },
-    {
-        "longName":  "IT security audit",
-        "shortName":  "audit",
-        "snowId":  "SVC0091"
-    },
-    {
-        "longName":  "Service for server backup",
-        "shortName":  "bkp",
-        "snowId":  "SVC0003"
-    },
-    {
-        "longName":  "Certificates",
-        "shortName":  "cert",
-        "snowId":  "SVC0011"
-    },
-    {
-        "longName":  "Confluence",
-        "shortName":  "cnfl",
-        "snowId":  "SVC0108"
-    },
-    {
-        "longName":  "Hardware repair and recycling",
-        "shortName":  "CRI",
-        "snowId":  "SVC0069"
-    },
-    {
-        "longName":  "Diode Network Security",
-        "shortName":  "diod",
-        "snowId":  "SVC0040"
-    },
-    {
-        "longName":  "End to End monitoring",
-        "shortName":  "e2e",
-        "snowId":  "SVC0345"
-    },
-    {
-        "longName":  "ERP exploitation",
-        "shortName":  "erpe",
-        "snowId":  "SVC0642"
-    },
-    {
-        "longName":  "LDAP Directory",
-        "shortName":  "ldap",
-        "snowId":  "SVC0052"
-    },
-    {
-        "longName":  "Email at EPFL",
-        "shortName":  "mail",
-        "snowId":  "SVC0082"
-    },
-    {
-        "longName":  "Multimedia library",
-        "shortName":  "Media",
-        "snowId":  "SVC0067"
-    },
-    {
-        "longName":  "Mailing lists",
-        "shortName":  "mlist",
-        "snowId":  "SVC0004"
-    },
-    {
-        "longName":  "moodle",
-        "shortName":  "moodle",
-        "snowId":  "SVC0060"
-    },
-    {
-        "longName":  "MS-SQL",
-        "shortName":  "mssql",
-        "snowId":  "SVC0021"
-    },
-    {
-        "longName":  "Individual storage",
-        "shortName":  "MyNAS",
-        "snowId":  "SVC0047"
-    },
-    {
-        "longName":  "MySQL hosting",
-        "shortName":  "MySQL",
-        "snowId":  "SVC0020"
-    },
-    {
-        "longName":  "File storage services",
-        "shortName":  "NAS",
-        "snowId":  "SVC0075"
-    },
-    {
-        "longName":  "Project Cloud Microsoft AZURE",
-        "shortName":  "prjcma",
-        "snowId":  "PRJ0016078"
-    },
-    {
-        "longName":  "Project Data Repository",
-        "shortName":  "prjdr",
-        "snowId":  "PRJ0011973"
-    },
-    {
-        "longName":  "Stockage Objet-S3",
-        "shortName":  "S3",
-        "snowId":  "SVC1057"
-    },
-    {
-        "longName":  "SafeNet",
-        "shortName":  "safenet",
-        "snowId":  "SVC0094"
-    },
-    {
-        "longName":  "SAP",
-        "shortName":  "sap",
-        "snowId":  "SVC0196"
-    },
-    {
-        "longName":  "SAP FInance",
-        "shortName":  "sapf",
-        "snowId":  "SVC0649"
-    },
-    {
-        "longName":  "SAP Hosting",
-        "shortName":  "saph",
-        "snowId":  "SVC0099"
-    },
-    {
-        "longName":  "SAP RH",
-        "shortName":  "sapr",
-        "snowId":  "SVC0651"
-    },
-    {
-        "longName":  "Search engines management",
-        "shortName":  "search",
-        "snowId":  "SVC0012"
-    },
-    {
-        "longName":  "SharePoint",
-        "shortName":  "shrp",
-        "snowId":  "SVC0128"
-    },
-    {
-        "longName":  "Support in case of hacking",
-        "shortName":  "suphack",
-        "snowId":  "SVC0015"
-    },
-    {
-        "longName":  "Unified communication",
-        "shortName":  "uc",
-        "snowId":  "SVC0029"
-    },
-    {
-        "longName":  "Virtual Desktop for courses",
-        "shortName":  "vdic",
-        "snowId":  "SVC0116"
-    },
-    {
-        "longName":  "Virtual Desktop for employees",
-        "shortName":  "vdie",
-        "snowId":  "SVC0019"
-    },
-    {
-        "longName":  "Virtualization Servers",
-        "shortName":  "vs",
-        "snowId":  "SVC007"
-    },
-    {
-        "longName":  "Wired Network",
-        "shortName":  "wnet",
-        "snowId":  "SVC0101"
-    },
-    {
-        "longName":  "Web Proxy",
-        "shortName":  "wproxy",
-        "snowId":  "SVC0066"
-    }
-]
+{
+    "dev": [],
+    "test": [
+        {
+            "longName":  "Antivirus",
+            "shortName":  "Antivirus",
+            "snowId":  "SVC0062"
+        },
+        {
+            "longName":  "MySQL hosting",
+            "shortName":  "MySQL",
+            "snowId":  "SVC0020"
+        },
+        {
+            "longName":  "Virtualization Servers",
+            "shortName":  "vs",
+            "snowId":  "SVC007"
+        },
+        {
+            "longName":  "Service for server backup TEST",
+            "shortName":  "bkpt",
+            "snowId":  "SVC0003"
+        },
+        {
+            "longName":  "Stockage Objet-S3 TEST",
+            "shortName":  "s3t",
+            "snowId":  "SVC1057"
+        },
+        {
+            "longName":  "Multimedia library",
+            "shortName":  "Media",
+            "snowId":  "SVC0067"
+        }
+    ],
+    "prod": [
+        {
+            "longName":  "Antivirus",
+            "shortName":  "Antivirus",
+            "snowId":  "SVC0062"
+        },
+        {
+            "longName":  "AntiSpam",
+            "shortName":  "aspam",
+            "snowId":  "SVC0058"
+        },
+        {
+            "longName":  "IT security audit",
+            "shortName":  "audit",
+            "snowId":  "SVC0091"
+        },
+        {
+            "longName":  "Service for server backup",
+            "shortName":  "bkp",
+            "snowId":  "SVC0003"
+        },
+        {
+            "longName":  "Certificates",
+            "shortName":  "cert",
+            "snowId":  "SVC0011"
+        },
+        {
+            "longName":  "Confluence",
+            "shortName":  "cnfl",
+            "snowId":  "SVC0108"
+        },
+        {
+            "longName":  "Hardware repair and recycling",
+            "shortName":  "CRI",
+            "snowId":  "SVC0069"
+        },
+        {
+            "longName":  "Diode Network Security",
+            "shortName":  "diod",
+            "snowId":  "SVC0040"
+        },
+        {
+            "longName":  "End to End monitoring",
+            "shortName":  "e2e",
+            "snowId":  "SVC0345"
+        },
+        {
+            "longName":  "ERP exploitation",
+            "shortName":  "erpe",
+            "snowId":  "SVC0642"
+        },
+        {
+            "longName":  "LDAP Directory",
+            "shortName":  "ldap",
+            "snowId":  "SVC0052"
+        },
+        {
+            "longName":  "Email at EPFL",
+            "shortName":  "mail",
+            "snowId":  "SVC0082"
+        },
+        {
+            "longName":  "Multimedia library",
+            "shortName":  "Media",
+            "snowId":  "SVC0067"
+        },
+        {
+            "longName":  "Mailing lists",
+            "shortName":  "mlist",
+            "snowId":  "SVC0004"
+        },
+        {
+            "longName":  "moodle",
+            "shortName":  "moodle",
+            "snowId":  "SVC0060"
+        },
+        {
+            "longName":  "MS-SQL",
+            "shortName":  "mssql",
+            "snowId":  "SVC0021"
+        },
+        {
+            "longName":  "Individual storage",
+            "shortName":  "MyNAS",
+            "snowId":  "SVC0047"
+        },
+        {
+            "longName":  "MySQL hosting",
+            "shortName":  "MySQL",
+            "snowId":  "SVC0020"
+        },
+        {
+            "longName":  "File storage services",
+            "shortName":  "NAS",
+            "snowId":  "SVC0075"
+        },
+        {
+            "longName":  "Project Cloud Microsoft AZURE",
+            "shortName":  "prjcma",
+            "snowId":  "PRJ0016078"
+        },
+        {
+            "longName":  "Project Data Repository",
+            "shortName":  "prjdr",
+            "snowId":  "PRJ0011973"
+        },
+        {
+            "longName":  "Stockage Objet-S3",
+            "shortName":  "S3",
+            "snowId":  "SVC1057"
+        },
+        {
+            "longName":  "SafeNet",
+            "shortName":  "safenet",
+            "snowId":  "SVC0094"
+        },
+        {
+            "longName":  "SAP",
+            "shortName":  "sap",
+            "snowId":  "SVC0196"
+        },
+        {
+            "longName":  "SAP FInance",
+            "shortName":  "sapf",
+            "snowId":  "SVC0649"
+        },
+        {
+            "longName":  "SAP Hosting",
+            "shortName":  "saph",
+            "snowId":  "SVC0099"
+        },
+        {
+            "longName":  "SAP RH",
+            "shortName":  "sapr",
+            "snowId":  "SVC0651"
+        },
+        {
+            "longName":  "Search engines management",
+            "shortName":  "search",
+            "snowId":  "SVC0012"
+        },
+        {
+            "longName":  "SharePoint",
+            "shortName":  "shrp",
+            "snowId":  "SVC0128"
+        },
+        {
+            "longName":  "Support in case of hacking",
+            "shortName":  "suphack",
+            "snowId":  "SVC0015"
+        },
+        {
+            "longName":  "Unified communication",
+            "shortName":  "uc",
+            "snowId":  "SVC0029"
+        },
+        {
+            "longName":  "Virtual Desktop for courses",
+            "shortName":  "vdic",
+            "snowId":  "SVC0116"
+        },
+        {
+            "longName":  "Virtual Desktop for employees",
+            "shortName":  "vdie",
+            "snowId":  "SVC0019"
+        },
+        {
+            "longName":  "Virtualization Servers",
+            "shortName":  "vs",
+            "snowId":  "SVC007"
+        },
+        {
+            "longName":  "Wired Network",
+            "shortName":  "wnet",
+            "snowId":  "SVC0101"
+        },
+        {
+            "longName":  "Web Proxy",
+            "shortName":  "wproxy",
+            "snowId":  "SVC0066"
+        }
+    ]
+}

@@ -611,6 +611,9 @@ try
 			Throw ("Error getting Services list for '{0}' tenant" -f $targetTenant)
 		}
 
+		# On prend la liste correspondant à l'environnement sur lequel on se trouve
+		$servicesList = $servicesList.$targetEnv
+
 
 		$serviceNo = 1 
 		# Parcours des services renvoyés par Django
