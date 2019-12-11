@@ -26,7 +26,7 @@ $body
 
 ## Include the footer
 #parse( 'core/footer.vm' )
-#showData()
+##showData()
 
 </body>
 
