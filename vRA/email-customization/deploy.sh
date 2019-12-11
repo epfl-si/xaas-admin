@@ -21,9 +21,19 @@ then
     echo "Missing targetEnv parameter"
     echo ""
     echo "Usage: $0 <targetEnv>"
-    echo "   <targetEnv>: dev|test|prod"
+    echo "   <targetEnv>: dev|test|prod [<sleepMinBetweenServers>]"
     echo ""
     exit 1
+fi
+
+# Si on doit faire un "sleep" entre les serveurs
+if [ "$2" == "" ]
+then
+    # Aucune pause, on trace !
+    sleepSecBetween=0
+else
+    # Définition du nombre de secondes à attendre en fonction du nombre de minutes
+    let sleepSecBetween=$2*60
 fi
 
 # Génération du nom de la variable dans laquelle il faudra aller chercher la liste des serveurs
@@ -45,10 +55,22 @@ OLD_DIR="$(pwd)"
 # ---------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------
 
-# Affiche un . par seconde durant le temps donné (en secondes) par le paramètre $1
-function waitForRestart()
+# Affiche un . par seconde durant le temps donné (en secondes) 
+#
+# $1    -> temps à attendre, en secondes
+# $2    -> texte à afficher
+function waitABit()
 {
     local i=0
+
+    # Si on ne doit en fait pas attendre...
+    if [ $1 -eq 0 ]
+    then
+        return
+    fi
+
+    echo -n "$2 "
+
     while [ $i -lt $1 ]
     do
         sleep 1
@@ -138,15 +160,25 @@ echo "done"
 
 # ---------------------------------------------------------------------------------
 
+previousServer=""
+
 # Parcours des appliances à mettre à jour
 for vra in ${!SERVER_LIST_VAR}
 do
+    # Si on n'est pas à la première exécution de la boucle
+    if [ "${previousServer}" != "" ]
+    then
+        # On attend le nombre de seconde données (peut-être 0) avant de passer au serveur suivant
+        waitABit $sleepSecBetween "Waiting ${sleepSecBetween} sec before next server"
+    fi
+    
+
     echo "Deploying on ${vra}..."
 
     echo "> Email templates"
     echo -n ">> Creating target folder if not exists... "
     # Création du dossier cible si n'existe pas.
-    ssh -q root@${vra} "if [ ! -e ${RESOURCE_EMAIL_TARGET_DIR} ]; then mkdir -p ${RESOURCE_EMAIL_TARGET_DIR}; fi"
+    ssh  -o "StrictHostKeyChecking=no" -q root@${vra} "if [ ! -e ${RESOURCE_EMAIL_TARGET_DIR} ]; then mkdir -p ${RESOURCE_EMAIL_TARGET_DIR}; fi"
     echo "done"
 
     echo -n ">> Copying ZIP file... "
@@ -194,6 +226,8 @@ do
     echo "> Restarting service... "
     ssh -q root@${vra} "service vcac-server restart"
     
+    # Mise à jour
+    previousServer=${vra}
 done
 
 echo -n "Local cleaning... "
@@ -204,8 +238,7 @@ echo "done"
 cd ${OLD_DIR}
 echo ""
 echo "All servers updated!"
-echo -n "Waiting for all services to restart"
-waitForRestart 120
+waitABit 120 "Waiting for all services to restart"
 echo ""
 echo "You can now try to login on one of the servers"
 echo ""
