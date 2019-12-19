@@ -16,6 +16,7 @@
    ----------
    HISTORIQUE DES VERSIONS
    0.1 - Version de base
+   0.2 - Ajout du JSON dans le message d'erreur si présent
 
 #>
 class RESTAPI: APIUtils
@@ -63,6 +64,7 @@ class RESTAPI: APIUtils
 			}
 			else 
 			{
+				$json = "No JSON"
 				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers 
 			}
 
@@ -94,7 +96,7 @@ class RESTAPI: APIUtils
 			# Le nom de la classe est récupéré dynamiquement car la classe courante va être dérivée en d'autres classes
             $classNameAndFunc =  "{0}::{1}" -f $this.gettype().Name, (Get-PSCallStack)[1].FunctionName
 
-			Throw ("{0}(): {1}" -f $classNameAndFunc, $errorDetails)
+			Throw ("{0}(): {1}`nJSON: {2}" -f $classNameAndFunc, $errorDetails, $json)
 		}
 	}
     
