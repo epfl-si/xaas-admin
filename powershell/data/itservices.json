@@ -14,7 +14,7 @@
         {
             "longName":  "Virtualization Servers",
             "shortName":  "vs",
-            "snowId":  "SVC007"
+            "snowId":  "SVC0080"
         },
         {
             "longName":  "Service for server backup TEST",
@@ -201,7 +201,7 @@
         {
             "longName":  "Virtualization Servers",
             "shortName":  "vs",
-            "snowId":  "SVC007"
+            "snowId":  "SVC0080"
         },
         {
             "longName":  "Windows Operation",
