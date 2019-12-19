@@ -54,6 +54,7 @@ class RESTAPI: APIUtils
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
+		$json = "No JSON"
 		try
 		{
 			if($null -ne $body)
@@ -64,7 +65,6 @@ class RESTAPI: APIUtils
 			}
 			else 
 			{
-				$json = "No JSON"
 				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers 
 			}
 
