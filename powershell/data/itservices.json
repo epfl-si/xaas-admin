@@ -204,6 +204,11 @@
             "snowId":  "SVC007"
         },
         {
+            "longName":  "Windows Operation",
+            "shortName":  "winop",
+            "snowId":  "SVC1168"
+        },
+        {
             "longName":  "Wired Network",
             "shortName":  "wnet",
             "snowId":  "SVC0101"
