@@ -629,17 +629,31 @@ class NameGenerator
         IN  : $facultyName  -> Nom de la faculté
         
         RET : Tableau avec :
-                - Nom de la Rule "in"
-                - Nom de la Rule "intra"¨
-                - Nom de la Rule "out"
+                - Tableau associatif pour la Rule "in"
+                - Tableau associatif pour la Rule "intra"¨
+                - Tableau associatif pour la Rule "out"
+                - Tableau associatif pour la Rule "deny"
     #>
     [System.Collections.ArrayList] getEPFLFirewallRuleNames([string]$facultyName)
     {
-        $in = "allow-{0}-in" -f $facultyName.ToUpper()
-        $intra = "allow-intra-{0}-communication" -f $facultyName.ToUpper()
-        $out = "allow-{0}-out" -f $facultyName.ToUpper()
 
-        return @($in, $intra, $out )
+        $ruleName = "allow-{0}-in" -f $facultyName.ToUpper()
+        $ruleIn = @{name   = $ruleName
+                    tag    = truncateString -str $ruleName -maxChars 32}
+
+        $ruleName = "allow-intra-{0}-comm" -f $facultyName.ToUpper()          
+        $ruleComm = @{name  = $ruleName
+                      tag    = truncateString -str $ruleName -maxChars 32}
+
+        $ruleName = "allow-{0}-out" -f $facultyName.ToUpper()
+        $ruleOut = @{name   = $ruleName
+                     tag    = truncateString -str $ruleName -maxChars 32}
+
+        $ruleName = "deny-{0}-all" -f $facultyName.ToUpper()
+        $ruleDeny = @{name   = $ruleName
+                      tag    = truncateString -str $ruleName -maxChars 32}
+
+        return @($ruleIn, $ruleComm, $ruleOut, $ruleDeny )
     }
 
     
@@ -1094,17 +1108,30 @@ class NameGenerator
         IN  : $serviceShortName  -> Nom court du service
         
         RET : Tableau avec :
-                - Nom de la Rule "in"
-                - Nom de la Rule "intra"¨
-                - Nom de la Rule "out"
+                - Tableau associatif pour la Rule "in"
+                - Tableau associatif pour la Rule "intra"¨
+                - Tableau associatif pour la Rule "out"
+                - Tableau associatif pour la Rule "deny"
     #>
     [System.Collections.ArrayList] getITSFirewallRuleNames([string]$serviceShortName)
     {
-        $in = "allow-{0}-in" -f $serviceShortName
-        $intra = "allow-intra-{0}-communication" -f $serviceShortName
-        $out = "allow-{0}-out" -f $serviceShortName
+        $ruleName = "allow-{0}-in" -f $serviceShortName
+        $ruleIn = @{name   = $ruleName
+                    tag    = truncateString -str $ruleName -maxChars 32}
 
-        return @($in, $intra, $out )
+        $ruleName = "allow-intra-{0}-comm" -f $serviceShortName          
+        $ruleComm = @{name  = $ruleName
+                      tag    = truncateString -str $ruleName -maxChars 32}
+
+        $ruleName = "allow-{0}-out" -f $serviceShortName
+        $ruleOut = @{name   = $ruleName
+                     tag    = truncateString -str $ruleName -maxChars 32}
+
+        $ruleName = "deny-{0}-all" -f $serviceShortName
+        $ruleDeny = @{name   = $ruleName
+                      tag    = truncateString -str $ruleName -maxChars 32}
+
+        return @($ruleIn, $ruleComm, $ruleOut, $ruleDeny )
     }    
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1207,6 +1234,12 @@ class NameGenerator
     #>
     [string] getVMMachinePrefix([string]$facultyNameOrServiceShortName)
     {
+
+        # Suppression de tous les caractères non alpha numériques
+        $facultyNameOrServiceShortName = $facultyNameOrServiceShortName -replace '[^a-z0-9]', ''
+
+        # On raccourci à 6 caractères pour ne pas avoir des préfixes trop longs
+        $facultyNameOrServiceShortName = $facultyNameOrServiceShortName.Substring(0, [System.Math]::Min(6, $facultyNameOrServiceShortName.length))
 
         # Pour l'ID court de l'environnement 
         $envId = ""

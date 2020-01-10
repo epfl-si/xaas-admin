@@ -288,6 +288,7 @@ function createOrUpdateBG
 	# Si on doit gérer le tenant contenant toutes les Unités,
 	if(($bgUnitID -ne "") -and ($bgSnowSvcID -eq ""))
 	{
+		$tenantName = $global:VRA_TENANT__EPFL
 		# Recherche du BG par son no d'unité.
 		$bg = getBGWithCustomProp -fromList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_UNIT_ID -customPropValue $bgUnitID
 
@@ -296,7 +297,6 @@ function createOrUpdateBG
 		{
 			# Ajout des customs properties en vue de sa création
 			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__UNIT
-			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS__ALIVE
 		}
 
 		# Tentative de recherche du préfix de machine
@@ -330,6 +330,8 @@ function createOrUpdateBG
 	# On doit gérer le tenant ITServices
 	elseif(($bgUnitID -eq "") -and ($bgSnowSvcID -ne "")) 
 	{
+		$tenantName = $global:VRA_TENANT__ITSERVICES
+
 		# Recherche du BG par son ID de service dans ServiceNow
 		$bg = getBGWithCustomProp -fromList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID -customPropValue $bgSnowSvcID
 
@@ -338,7 +340,7 @@ function createOrUpdateBG
 		{
 			# Création des propriété custom
 			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__SERVICE
-			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS__ALIVE
+			
 		}
 		# Pas d'ID de machine pour ce Tenant
 		$machinePrefixId = $null
@@ -356,6 +358,13 @@ function createOrUpdateBG
 	#>
 	if($null -eq $bg)
 	{
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS__ALIVE
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
+		# Ajout aussi des informations sur le Tenant et le BG car les mettre ici, c'est le seul moyen que l'on pour récupérer cette information
+		# pour la génération des mails personnalisée... 
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME"] = $tenantName
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_NAME"] = $bgName
 
 		$logHistory.addLineAndDisplay("-> BG doesn't exists, creating...")
 		# Création du BG
@@ -366,15 +375,32 @@ function createOrUpdateBG
 	# Si le BG existe,
 	else
 	{
+		# ==========================================================================================
 
-		# Si le BG n'a pas la custom property $global:getBGCustomPropValue, on l'ajoute
+		# Si le BG n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
 		# les BG existants avec la nouvelle "Custom Property"
-		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE))
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE))
 		{
 			# Ajout de la custom Property avec la valeur par défaut 
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE" = $global:VRA_BG_RES_MANAGE__AUTO})
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE" = $global:VRA_BG_RES_MANAGE__AUTO})
 		}
+
+		
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_TENANT_NAME))
+		{
+			# Ajout de la custom Property avec la valeur par défaut 
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME" = $tenantName})
+		}
+
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_NAME))
+		{
+			# Ajout de la custom Property avec la valeur par défaut 
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $bgName})
+		}
+
+
+		# ==========================================================================================
 
 		# Si le nom du BG est incorrect, (par exemple si le nom de l'unité ou celle de la faculté a changé)
 		# Note: Dans le cas du tenant ITServices, vu qu'on fait une recherche avec le nom, ce test ne retournera
@@ -417,7 +443,10 @@ function createOrUpdateBG
 					# On continue ensuite l'exécution normalement 
 				}
 				
-			}
+				# Mise à jour de la custom property qui contient le nom du BG
+				$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $bgName})
+				
+			}# Fin s'il y a eu changement de nom 
 
 			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating BG '{0}' to '{1}'" -f $bg.name, $bgName))
 
@@ -467,8 +496,17 @@ function createOrUpdateBGRoles
 	if($supportGrpList.Count -gt 0)
 	{
 		$logHistory.addLineAndDisplay("--> Updating 'Support role'...")
-		$vra.deleteBGRoleContent($bg.id, "CSP_SUPPORT")
-		$supportGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_SUPPORT", $_) }
+
+		# Si le role est géré de manière manuelle pour le BG
+		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
+		{
+			$logHistory.addLineAndDisplay("---> Role manually managed, skipping it...")	
+		}
+		else # Le rôle est géré de manière automatique
+		{
+			$vra.deleteBGRoleContent($bg.id, "CSP_SUPPORT")
+			$supportGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_SUPPORT", $_) }
+		}
 	}
 
 	# S'il faut faire des modifs
@@ -1018,7 +1056,10 @@ dans vRA pour l'environnement <b>{0}</b>.<br>Ceci signifie que les Business Grou
 					$mailSubject = getvRAMailSubject -shortSubject "Info - AD groups empty for Business Group" -targetEnv $targetEnv  -targetTenant $targetTenant
 					$message = getvRAMailContent -content ("Les groupes Active Directory suivants (avec nom du Business Group) `
 ne contiennent plus aucun utilisateur. Cela signifie donc que les Business Groups associés existent toujours mais ne sont plus utilisables par qui que ce soit....<br> `
-Il s'agit peut-être d'une erreur dans la synchro depuis MIIS ou autre, à surveiller:`
+Actions à entreprendre pour chaque unité:<ol>`
+<li>Aller contrôler dans <a href='https://search.epfl.ch'>Search</a> que l'unité ne contienne effectivement plus aucun membre (il peut y avoir des membres mais s'ils n'ont pas de compte AD, ils ne peuvent rien faire)</li> `
+<li>S'il n'y a plus aucun membre valable, le groupe AD correspondant peut être supprimé, ce qui fera en sorte de supprimer le BG de vRA automatiquement.</li> `
+</ol>`
 <br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
 				}
 
@@ -1144,12 +1185,13 @@ function createNSGroupIfNotExists
 	IN  : $nsx				-> Objet permettant d'accéder à l'API NSX
 	IN  : $nsxFWSectionName	-> Nom du groupe
 	IN  : $nsxFWSectionDesc	-> Description du groupe
+	IN  : $nsxNSGroup		-> Objet réprésentant le NSGroup auquel lier la section
 	
 	RET : Objet représentant la section de firewall
 #>
 function createFirewallSectionIfNotExists
 {
-	param([NSXAPI]$nsx, [string]$nsxFWSectionName, [string]$nsxFWSectionDesc)
+	param([NSXAPI]$nsx, [string]$nsxFWSectionName, [string]$nsxFWSectionDesc, [psobject]$nsxNSGroup)
 
 	$fwSection = $nsx.getFirewallSectionByName($nsxFWSectionName)
 
@@ -1168,7 +1210,7 @@ function createFirewallSectionIfNotExists
 		$logHistory.addLineAndDisplay(("-> Creating NSX Firewall section '{0}'... " -f $nsxFWSectionName))
 
 		# Création de la section
-		$fwSection = $nsx.addFirewallSection($nsxFWSectionName, $nsxFWSectionDesc, $insertBeforeSection.id)
+		$fwSection = $nsx.addFirewallSection($nsxFWSectionName, $nsxFWSectionDesc, $insertBeforeSection.id, $nsxNSGroup)
 
 		$counters.inc('NSXFWSectionCreated')
 
@@ -1199,17 +1241,17 @@ function createFirewallSectionRulesIfNotExists
 {
 	param([NSXAPI]$nsx, [PSObject]$nsxFWSection, [PSObject]$nsxNSGroup, [Array]$nsxFWRuleNames)
 
-	# On met dans des variables pour que ça soit plus clair
-	$ruleIn, $ruleComm, $ruleOut = $nsxFWRuleNames
-	# Représentation "string" pour les règles 
-	$allRules = $nsxFWRuleNames -join "::"
-
-	$nbExpectedRules = 3
+	$nbExpectedRules = 4
 	# On commence par check le nombre de noms qu'on a pour les règles
 	if($nsxFWRuleNames.Count -ne $nbExpectedRules)
 	{
 		Throw ("# of rules for NSX Section incorrect! {0} expected, {1} given " -f $nbExpectedRules, $nsxFWRuleNames.Count)
 	}
+
+	# On met dans des variables pour que ça soit plus clair
+	$ruleIn, $ruleComm, $ruleOut, $ruleDeny = $nsxFWRuleNames
+	# Représentation "string" pour les règles, utilisée pour gérer les doublons pour le compteur de règles existantes
+	$allRules = $nsxFWRuleNames | ConvertTo-Json
 
 	# Recherche des règles existantes 
 	$rules = $nsx.getFirewallSectionRules($nsxFWSection.id)
@@ -1218,16 +1260,16 @@ function createFirewallSectionRulesIfNotExists
 	if($rules.Count -eq 0)
 	{
 		
-		$logHistory.addLineAndDisplay(("-> Creating NSX Firewall section rules '{0}', '{1}', '{2}'... " -f $ruleIn, $ruleComm, $ruleOut))
+		$logHistory.addLineAndDisplay(("-> Creating NSX Firewall section rules '{0}', '{1}', '{2}', '{3}'... " -f $ruleIn.name, $ruleComm.name, $ruleOut.name, $ruleDeny.name))
 
 		# Création des règles 
-		$rules = $nsx.addFirewallSectionRules($nsxFWSection.id, $ruleIn, $ruleComm, $ruleOut, $nsxNSGroup)
+		$rules = $nsx.addFirewallSectionRules($nsxFWSection.id, $ruleIn, $ruleComm, $ruleOut, $ruleDeny, $nsxNSGroup)
 
 		$counters.inc('NSXFWSectionRulesCreated')
 	}
 	else # Les règles existent déjà 
 	{
-		$logHistory.addLineAndDisplay(("-> NSX Firewall section rules '{0}', '{1}', '{2}' already exists!" -f  $ruleIn, $ruleComm, $ruleOut))
+		$logHistory.addLineAndDisplay(("-> NSX Firewall section rules '{0}', '{1}', '{2}', '{3}' already exists!" -f  $ruleIn.name, $ruleComm.name, $ruleOut.name, $ruleDeny.name))
 
 		# Incrément du compteur avec gestion des doublons
 		$counters.inc('NSXFWSectionRulesExisting', $allRules)
@@ -1249,7 +1291,8 @@ function createFirewallSectionRulesIfNotExists
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-	$logHistory =[LogHistory]::new('2.sync-BG-from-AD', (Join-Path $PSScriptRoot "logs"), 30)
+	$logName = 'vra-sync-BG-from-AD-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
+	$logHistory =[LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
 
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
@@ -1651,7 +1694,7 @@ try
 		$nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
 
 		# Création de la section de Firewall si besoin
-		$nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc
+		$nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc -nsxNSGroup $nsxNSGroup
 
 		# Création des règles dans la section de firewall
 		createFirewallSectionRulesIfNotExists -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames

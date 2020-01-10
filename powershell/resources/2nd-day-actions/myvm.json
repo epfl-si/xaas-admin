@@ -14,6 +14,10 @@
             {
                 "name": "Reconfigure DMZ",
                 "approvals": [] 
+            },
+            {
+                "name": "Request support (VM)",
+                "approvals": []
             }
         ]
     },

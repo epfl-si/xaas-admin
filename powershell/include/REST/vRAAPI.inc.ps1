@@ -1096,8 +1096,9 @@ class vRAAPI: RESTAPI
 		# Si c'est une action développée en interne
 		if($appliesTo -eq "")
 		{
-			# Pas de filtre
-			$appliesToFilter = ""
+			# On filtre sur les éléments étant définis comme XaaS car il peut y avoir un même nom d'action
+			# valable pour un élément XaaS et pour un élément défini par le système (BluePrint)
+			$appliesToFilter = "providerType eq 'com.vmware.csp.core.designer.service' and"
 		}
 		else # Action prédéfinie
 		{
@@ -1271,7 +1272,8 @@ class vRAAPI: RESTAPI
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
 
-		return ($this.callAPI($uri, "Get", $null)).content
+		# Retour de la liste mais on ne prend que les éléments qui existent encore.
+		return  ($this.callAPI($uri, "Get", $null)).content 
 	}
 
 	<#
@@ -1530,6 +1532,138 @@ class vRAAPI: RESTAPI
 		
 	}
 
+	<#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+									Resource actions
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	#>
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des actions disponibles pour une ressource donnée
+
+		IN  : $forResource -> Objet représentant la ressource dont on veut la liste des actions.
+		
+		RET : Tableau avec la liste des actions
+	#>
+	[Array] getResourceActionList([PSCustomObject]$forResource)
+	{
+		
+		$uri = "https://{0}/catalog-service/api/consumer/resources/{1}/actions" -f $this.server, $forResource.id
+
+		# Retour de la liste
+		return $this.callAPI($uri, "Get", $null).content
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie une action donnée par son nom pour la ressource passée
+
+		IN  : $forResource 	-> Objet représentant la ressource 
+		IN  : $actionName	-> Nom de l'action
+		
+		RET : Objet contenant l'action
+				$null si pas trouvée
+	#>
+	[PSCustomObject] getResourceActionInfos([PSCustomObject]$forResource, [String]$actionName)
+	{
+		# Recherche de la liste et retour de l'action demandée 
+		$list= $this.getResourceActionList($forResource)
+		return $list | Where-Object { $_.name -eq $actionName }
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le template à utiliser pour effectuer une action donnée
+				sur une ressource identifiée par $forResource. Ce template sera ensuite utilisé
+				pour faire une 2nd action sur une ressource après avoir fait quelques 
+				modifications dessus.
+
+		IN  : $forResource 	-> Objet représentant la ressource 
+		IN  : $actionName	-> Nom de l'action
+		
+		RET : Objet contenant le template pour exécuter l'action
+	#>
+	[PSCustomObject] getResourceActionTemplate([PSCustomObject]$forResource,  [String]$actionName)
+	{
+		$actionInfos = $this.getResourceActionInfos($forResource, $actionName)
+
+		# Si l'action que l'on désire effectuer n'existe pas,
+		if($null -eq $actionInfos)
+		{
+			Throw "No action named '{0}' found!" -f $actionName
+		}
+
+		# URL de recherche du template pour l'action que l'on désire effectuer
+		$uri = "https://{0}/catalog-service/api/consumer/resources/{1}/actions/{2}/requests/template/" -f $this.server, $forResource.id, $actionInfos.id
+
+		return $this.callAPI($uri, "Get", $null)
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+									Virtual Machines
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	#>
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Met à jour une custom property sur une VM
+
+		IN  : $vm 				-> Objet représentant la VM à mettre à jour 
+		IN  : $customPropName	-> Nom de la custom property
+		IN  : $customPropValue	-> Valeur de la custom property
+		
+		RET : rien
+	#>
+	[void] updateVMCustomProp([PSCustomObject]$vm, [string]$customPropName, [string]$customPropValue)
+	{
+		# Recherche du template de l'action de reconfiguration car c'est ce qu'on devra utiliser pour 
+		# mettre à jour la custom property
+		$actionTemplate = $this.getResourceActionTemplate($vm, "Reconfigure")
+
+		# On regarde si on trouve la custom property dans la VM pour la mettre à jour
+		$updateOK = $false
+		Foreach($customProp in $actionTemplate.data.customProperties) 
+		{
+			# Si on tombe sur la propriété qu'on cherche 
+			if($customProp.data.id -eq $customPropName)
+			{
+				$customProp.data.value = $customPropValue
+				$updateOK = $true
+				break
+			}
+		}
+
+		# Si on n'a pas pu mettre à jour, c'est que la custom property n'existait pas dans la VM et donc il faut l'ajouter
+		if(!$updateOK)
+		{
+			$replace = @{ customPropName = $customPropName
+						  customPropValue = $customPropValue }
+
+			# Création de la property depuis le JSON
+			$newProp = $this.createObjectFromJSON("vra-resource-action-custom-prop.json", $replace)
+
+			# Ajout à la list
+			$actionTemplate.data.customProperties += $newProp
+		}
+
+
+		$uri = "https://{0}/catalog-service/api/consumer/resources/{1}/actions/{2}/requests" -f $this.server, $actionTemplate.resourceId, $actionTemplate.actionId
+
+		# Mise à jour de la description, bien qu'elle n'apparaîtra nulle part...
+		$actionTemplate.description = "Automatic Backup Tag Update"
+
+		$dummy = $this.callAPI($uri, "Post", $actionTemplate)
+
+	}
 
 
 }

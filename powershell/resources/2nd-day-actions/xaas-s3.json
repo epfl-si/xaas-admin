@@ -1,0 +1,29 @@
+[
+    {
+        "appliesTo": "",
+        "_comment": "S3_Bucket",
+        "actions": [
+            {
+                "name": "Request support (s3)",
+                "approvals": []
+            },
+            {
+                "name": "Regenerate Keys",
+                "approvals": [] 
+            },
+            {
+                "name": "Modify Bucket",
+                "approvals": [] 
+            },
+            {
+                "name": "Change Owner",
+                "approvals": [] 
+            },
+
+            {
+                "name": "Delete Bucket",
+                "approvals": []
+            }
+        ]
+    }
+]

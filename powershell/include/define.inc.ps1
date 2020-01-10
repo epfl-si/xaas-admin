@@ -15,10 +15,13 @@
 $global:RESOURCES_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources"))
 $global:BINARY_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "bin"))
 $global:CONFIG_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "config"))
+$global:DATA_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "data"))
 $global:TEMP_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "tmp"))
 $global:JSON_TEMPLATE_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "json-templates"))
 $global:JSON_2ND_DAY_ACTIONS_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "2nd-day-actions"))
+
 $global:ENV_FILE = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", ".env"))
+
 
 # Environnements
 $global:TARGET_ENV__DEV  = 'dev'
@@ -52,6 +55,10 @@ $global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID = "ch.epfl.snow.svc.id"
 $global:VRA_CUSTOM_PROP_VRA_BG_TYPE = "ch.epfl.vra.bg.type"
 $global:VRA_CUSTOM_PROP_VRA_BG_STATUS = "ch.epfl.vra.bg.status"
 $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE = "ch.epfl.vra.bg.res.manage"
+$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE = "ch.epfl.vra.bg.roles.support.manage"
+$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME = "ch.epfl.vra.tenant.name"
+$global:VRA_CUSTOM_PROP_VRA_BG_NAME = "ch.epfl.vra.bg.name"
+
 
 # Types de Business Group possibles
 $global:VRA_BG_TYPE__ADMIN 	 = "admin"

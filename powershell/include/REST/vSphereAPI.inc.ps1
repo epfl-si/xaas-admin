@@ -157,13 +157,13 @@ class vSphereAPI: RESTAPICurl
 		$vm = $this.getVM($vmName)
 		if($null -eq $vm)
 		{
-			Throw "VM '{}' not found in vSphere" -f $vmName
+			Throw "VM '{0}' not found in vSphere" -f $vmName
 		}
 
 		$tag = $this.getTag($tagName)
 		if($null -eq $tag)
 		{
-			Throw "Tag '{}' not found in vSphere" -f $tagName
+			Throw ("Tag '{0}' to {1} to/from VM {2} not found in vSphere" -f $tagName, $action, $vmName)
 		}
 
 
@@ -227,6 +227,20 @@ class vSphereAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+        BUT : Permet de savoir si une VM existe
+        
+		IN  : $vmName	-> Nom de la VM
+
+		RET : $true|$false
+	#>
+	[bool] VMExists([string]$vmName)
+	{
+		return ($null -ne $this.getVM($vmName))
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des tags (détaillés) attachés à l'objet représentant une VM qui 
 				est passé en paramètre. Cet objet aura été obtenu via le CmdLet "Get-VM"
         
@@ -240,8 +254,23 @@ class vSphereAPI: RESTAPICurl
 
 		if($null -eq $vm)
 		{
-			Throw "VM {} not found in vSphere" -f $vmName
+			Throw ("VM {0} not found in vSphere" -f $vmName)
 		}
+
+		return $this.getVMTags($vm)
+	}
+
+		<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des tags (détaillés) attachés à l'objet représentant une VM qui 
+				est passé en paramètre. Cet objet aura été obtenu via le CmdLet "Get-VM"
+        
+        IN  : $vmName	-> Nom de la VM
+
+		RET : Tableau avec les détails des tags 
+	#>
+    [Array] getVMTags([psobject] $vm)
+    {
 
 		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag-association?~action=list-attached-tags" -f $this.server
 
@@ -261,8 +290,7 @@ class vSphereAPI: RESTAPICurl
 
 		return $tagList
 	}
-
-
+	
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des tags (détaillés) attachés à l'objet représentant une VM qui 

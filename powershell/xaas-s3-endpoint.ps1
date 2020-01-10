@@ -1,8 +1,8 @@
 <#
 USAGES:
-    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -unitOrSvcID <unitOrSvcID> -friendlyName <friendlyName> [-linkedTo <linkedTo>]
+    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -unitOrSvcID <unitOrSvcID> -friendlyName <friendlyName> [-linkedTo <linkedTo>] [-bucketTag <bucketTag>]
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action delete -bucketName <bucketName>
-    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action regenKeys -bucketName <bucketName> -userType (ro|rw)
+    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action regenKeys -bucketName <bucketName> -userType (ro|rw|all)
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action versioning -bucketName <bucketName> -enabled (true|false)
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action versioning -bucketName <bucketName> -status
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action linkedBuckets -bucketName <bucketName>
@@ -20,7 +20,9 @@ USAGES:
                     (encore) implémentés dans Scality
 
 	DATE 	: Août 2019
-	AUTEUR 	: Lucien Chaboudez
+    AUTEUR 	: Lucien Chaboudez
+    
+    VERSION : 1.02
 
     REMARQUES : 
     - Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy via Set-ExecutionPolicy. 
@@ -48,7 +50,17 @@ USAGES:
         Documentation - https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=99188910                                
 
 #>
-param([string]$targetEnv, [string]$targetTenant, [string]$action, [string]$unitOrSvcID, [string]$friendlyName, [string]$linkedTo, [string]$bucketName, [string]$userType, [string]$enabled, [switch]$status)
+param([string]$targetEnv, 
+      [string]$targetTenant, 
+      [string]$action, 
+      [string]$unitOrSvcID, 
+      [string]$friendlyName, 
+      [string]$linkedTo, 
+      [string]$bucketName, 
+      [string]$userType, 
+      [string]$enabled, 
+      [string]$bucketTag,       # Présent mais pas utilisé pour le moment et pas non plus dans la roadmap Scality 7.5
+      [switch]$status)
 
 # Chargement du module PowerShell
 Import-Module AWSPowerShell
@@ -120,7 +132,8 @@ try
     $scality = [ScalityAPI]::new($configXaaSS3.getConfigValue($targetEnv, "server"), 
                                  $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "credentialProfile"), 
                                  $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "webConsoleUser"), 
-                                 $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "webConsolePassword"))
+                                 $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "webConsolePassword"),
+                                 $configXaaSS3.getConfigValue($targetEnv, "isScality"))
 
 
     
@@ -147,17 +160,19 @@ try
                 $nameGeneratorS3 = [NameGeneratorS3]::new($unitOrSvcID,  $friendlyName)
 
                 $bucketInfos.bucketName = $nameGeneratorS3.getBucketName()
+                $bucketInfos.serverName = $configXaaSS3.getConfigValue($targetEnv, "server")
 
                 $logHistory.addLine("Creating bucket {0}..." -f $bucketInfos.bucketName)
 
                 # Création du bucket
                 $s3Bucket = $scality.addBucket($bucketInfos.bucketName)
 
+                $bucketInfos.access = @{}
+
                 # Si le nouveau bucket doit être "standalone"
                 if($linkedTo -eq "")
                 {
-                    $bucketInfos.access = @{}
-
+                    
                     # Parcours des types d'accès
                     ForEach($accessType in $global:XAAS_S3_ACCESS_TYPES)
                     {
@@ -184,6 +199,7 @@ try
                         $logHistory.addLine("- Policy {0}" -f $bucketInfos.access.$accessType.policyName)
                         $s3Policy = $scality.addPolicy($bucketInfos.access.$accessType.policyName, $bucketInfos.bucketName, $accessType)
                         $bucketInfos.access.$accessType.policyArn = $s3Policy.Arn
+                        
 
                         # Ajout de l'utilisateur à la policy 
                         $logHistory.addLine("- Adding User to Policy... ")
@@ -195,18 +211,30 @@ try
                 else # Le Bucket doit être link à un autre
                 {
 
-                    # Recherche de la liste des policies pour le bucket auquel il faut link le nouveau 
-                    ForEach($s3Policy in $scality.getBucketPolicyList($linkedTo))
+                    # Parcours des types d'accès
+                    ForEach($accessType in $global:XAAS_S3_ACCESS_TYPES)
                     {
+                        $bucketInfos.access.$accessType = @{}
+
+                        # Recherche de la policy pour le type d'accès courant
+                        $s3Policy = $scality.getBucketPolicyForAccess($linkedTo, $accessType)
+
                         # Ajout du bucket à la policy 
                         $logHistory.addLine("Adding Bucket to Policy {0}..." -f $s3Policy.PolicyName)
                         $s3Policy = $scality.addBucketToPolicy($s3Policy.policyName, $bucketInfos.bucketName)
+
+                        $bucketInfos.access.$accessType.PolicyArn = $s3Policy.Arn
+                        $bucketInfos.access.$accessType.policyName = $s3Policy.PolicyName
+                        
+
                     }
-                }
+                    
+                }# FIN SI Le bucket doit être link à un autre
 
                 $output.results +=  $bucketInfos
-            }
-        }
+            }# FIN SI l'éventuel bucket auquel on doit lié existe bel et bien
+
+        }# FIN Action Create
 
 
         # -- Effacement d'un bucket
@@ -263,40 +291,54 @@ try
         # -- Génération de nouvelles clefs
         $ACTION_REGEN_KEYS {
 
-            # Recherche de la policy qui gère le type d'accès demandé
-            $s3Policy = $scality.getBucketPolicyForAccess($bucketName, $userType)
-            $logHistory.addLine(("'{0}' Policy for Bucket is: {1}" -f $userType, $s3Policy.PolicyName))
-
-            # Recherche de l'utilisateur dans la Policy
-            $s3User = $scality.getPolicyUserList($s3Policy.PolicyName)
-            
-
-            # Si aucun utilisateur remonté
-            if($s3User.Count -eq 0)
+            # On détermine pour quels types d'accès il faut regénérer les clefs
+            if($userType -eq 'all')
             {
-                $output.error = "No user found in '{0}' Policy '{1}'" -f $userName, $s3Policy.PolicyName
-
-                $logHistory.addLine($output.error)
+                $toRegen = @('ro', 'rw')
             }
-            # Trop d'utilisateurs remontés !
-            elseif ($s3User.Count -gt 1)
+            else
             {
-                $output.error = "Too many '{0}' users found ({1}) in Policy '{2}'" -f $userType, $s3User.Count, $s3Policy.PolicyName
-                $logHistory.addLine($output.error)
-            }
-            else 
-            {
-                $logHistory.addLine("Regenerating keys for user {0}... " -f $s3User[0].UserName)
-                # On lance la regénération des clefs pour l'utilisateur
-                $newKeys = $scality.regenerateUserAccessKey($s3User[0].UserName)
-
-                $output.results +=  @{userName = $s3User[0].UserName
-                                     userArn = $s3User[0].Arn
-                                     accessKeyId = $newKeys.AccessKeyId
-                                     secretAccessKey = $newKeys.SecretAccessKey}
+                $toRegen = @($userType)
             }
 
-            
+            # Parcours des types d'utilisateurs pour lesquels regénérer les clefs
+            ForEach($userAccessType in $toRegen)
+            {
+
+                # Recherche de la policy qui gère le type d'accès demandé
+                $s3Policy = $scality.getBucketPolicyForAccess($bucketName, $userAccessType)
+                $logHistory.addLine(("'{0}' Policy for Bucket is: {1}" -f $userAccessType, $s3Policy.PolicyName))
+
+                # Recherche de l'utilisateur dans la Policy
+                $s3User = $scality.getPolicyUserList($s3Policy.PolicyName)
+                
+
+                # Si aucun utilisateur remonté
+                if($s3User.Count -eq 0)
+                {
+                    $output.error = "No user found in '{0}' Policy '{1}'" -f $userName, $s3Policy.PolicyName
+
+                    $logHistory.addLine($output.error)
+                }
+                # Trop d'utilisateurs remontés !
+                elseif ($s3User.Count -gt 1)
+                {
+                    $output.error = "Too many '{0}' users found ({1}) in Policy '{2}'" -f $userType, $s3User.Count, $s3Policy.PolicyName
+                    $logHistory.addLine($output.error)
+                }
+                else 
+                {
+                    $logHistory.addLine("Regenerating keys for user {0}... " -f $s3User[0].UserName)
+                    # On lance la regénération des clefs pour l'utilisateur
+                    $newKeys = $scality.regenerateUserAccessKey($s3User[0].UserName)
+
+                    $output.results +=  @{userName = $s3User[0].UserName
+                                        userArn = $s3User[0].Arn
+                                        accessKeyId = $newKeys.AccessKeyId
+                                        secretAccessKey = $newKeys.SecretAccessKey}
+                }
+
+            }# FIN Boucle de parcours des types d'accès utilisateurs à regénérer
         }
 
 

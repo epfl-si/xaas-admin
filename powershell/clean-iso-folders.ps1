@@ -10,7 +10,8 @@ USAGES:
 	AUTEUR 	    : Lucien Chaboudez
 
 	Prérequis:
-    -
+	-
+	
     
 	REMARQUE : Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy
 				  via Set-ExecutionPolicy. Normalement, si on met la valeur "Unrestricted",
@@ -55,7 +56,8 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-	$logHistory =[LogHistory]::new('0.Clean-ISO-Folders', (Join-Path $PSScriptRoot "logs"), 30)
+	$logName = 'vra-Clean-ISO-Folders-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
+	$logHistory =[LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
 
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
