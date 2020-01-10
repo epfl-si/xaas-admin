@@ -62,34 +62,6 @@ function getResClusterName([PSObject]$reservation)
 
 <#
 	-------------------------------------------------------------------------------------
-	BUT : Envoie un mail aux admins du service (NAS ou MyNAS vu que c'est la même adresse mail)
-		  Afin de pouvoir envoyer un mail en UTF8 depuis un script PowerShell encodé en UTF8, il 
-		  faut procéder d'une manière bizarre... il faut sauvegarder le contenu du mail à envoyer
-		  dans un fichier, avec l'encoding "default" (ce qui fera un encoding UTF8, je cherche pas
-		  pourquoi...) et ensuite relire le fichier en spécifiant le format UTF8 cette fois-ci...
-		  Et là, abracadabra, plus de problème d'encodage lorsque l'on envoie le mail \o/
-
-	IN  : $mailAddress	-> Adresse à laquelle envoyer le mail. C'est aussi cette adresse qui
-									sera utilsée comme adresse d'expéditeur. Le nécessaire sera ajouté
-									au début de l'adresse afin qu'elle puisse être utilisée comme
-									adresse d'expédition sans que le système mail de l'école ne la
-									refuse.
-   IN  : $mailSubject   -> Le sujet du mail
-   IN  : $mailMessage   -> Le contenu du message
-#>
-function sendMailTo([string]$mailAddress, [string] $mailSubject, [string] $mailMessage)
-{
-	$tmpMailFile = ".\tmpmail.txt"
-
-	$mailMessage | Out-File $tmpMailFile -Encoding default
-	$mailMessage = Get-Content $tmpMailFile -Encoding UTF8 | Out-String
-	Remove-Item $tmpMailFile
-
-    Send-MailMessage -From "noreply+$mailAddress" -To $mailAddress -Subject $mailSubject -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding Unicode
-}
-
-<#
-	-------------------------------------------------------------------------------------
 	BUT : Permet de savoir si un groupe Active Directory existe.
 	   
 	IN  : $groupName	-> Le nom du groupe à contrôler.
