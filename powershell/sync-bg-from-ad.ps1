@@ -1767,14 +1767,14 @@ catch # Dans le cas d'une erreur dans le script
 	# On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
 	$errorMessage = $errorMessage -replace "`n", "<br>"
 	
-	# Envoi d'un message d'erreur aux admins 
+	# Création des informations pour l'envoi du mail d'erreur
 	$valToReplace = @{scriptName = $MyInvocation.MyCommand.Name
 					  computerName = $env:computername
 					  parameters = (formatParameters -parameters $PsBoundParameters )
 					  error = $errorMessage
 					  errorTrace =  [System.Net.WebUtility]::HtmlEncode($errorTrace)
 					  }
-
+	# Envoi d'un message d'erreur aux admins 
 	$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 	
 }
