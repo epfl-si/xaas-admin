@@ -1048,7 +1048,7 @@ function handleNotifications
 				{
 					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
 					$mailSubject = "Error - AD groups not found for Business Group"
-					$templateName = "ad-groups-not-found"
+					$templateName = "ad-groups-not-found-for-bg"
 				}
 
 				# ---------------------------------------
