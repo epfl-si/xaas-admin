@@ -32,6 +32,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -116,31 +117,33 @@ function handleNotifications
 		{
 			# Suppression des doublons 
 			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
+
+			$valToReplace = @{}
+
 			switch($notif)
 			{
 				# ---------------------------------------
 				# Groupe active directory manquants pour création des éléments pour Tenant EPFL
 				'missingEPFLADGroups'
 				{
-					$docUrl = ""
-					Write-Warning "Set doc URL"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Active Directory groups missing" -targetEnv $targetEnv -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les groupes Active Directory suivants sont manquants pour l'environnement <b>{0}</b> et le Tenant <b>EPFL</b>. `
-<br>Leur absence empêche la création d'autres groupes AD ainsi que des Business Groups qui les utilisent. `
-<br>Veuillez les créer à la main comme expliqué dans la procédure:`
-<br><ul><li>{1}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{2}'>ici</a>."  -f $targetEnv, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.docUrl = ""
+
+					$mailSubject = "Error - Active Directory groups missing"
+
+					$templateName = "ad-groups-missing-for-groups-creation"
 				}
 
 				# ---------------------------------------
 				# Groupe active directory manquants pour création des éléments pour Tenant ITS
 				'missingITSADGroups'
 				{
-					$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=72516653"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Active Directory groups missing" -targetEnv $targetEnv -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les groupes Active Directory suivants sont manquants pour l'environnement <b>{0}</b> et le Tenant <b>ITServices</b>. `
-<br>Leur absence empêche la création d'autres groupes AD ainsi que des Business Groups qui les utilisent. `
-<br>Veuillez les créer à la main comme expliqué dans la procédure:`
-<br><ul><li>{1}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{2}'>ici</a>."  -f $targetEnv, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=72516653"
+
+					$mailSubject = "Error - Active Directory groups missing"
+
+					$templateName = "ad-groups-missing-for-groups-creation"
 				}
 
 				default
@@ -153,7 +156,7 @@ function handleNotifications
 			}
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
-			sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
+			$notificationMail.send($mailSubject, $templateName, $valToReplace)
 
 		} # FIN S'il y a des notifications pour la catégorie courante
 	}# FIN BOUCLE de parcours des catégories de notifications
@@ -237,6 +240,9 @@ try
 
 	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups" ainsi que d'autre choses...
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
+
+	# Objet pour pouvoir envoyer des mails de notification
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 	
 	Import-Module ActiveDirectory
 
@@ -760,9 +766,6 @@ try
 	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
 
 
-
-
-
 }
 catch # Dans le cas d'une erreur dans le script
 {
@@ -775,11 +778,15 @@ catch # Dans le cas d'une erreur dans le script
 	# On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
 	$errorMessage = $errorMessage -replace "`n", "<br>"
 	
-	# Envoi d'un message d'erreur aux admins
-	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant $targetTenant
-	$mailMessage = getvRAMailContent -content ("<b>Computer:</b> {3}<br><b>Script:</b> {0}<br><b>Parameters:</b>{4}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
-	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace), $env:computername, (formatParameters -parameters $PsBoundParameters ))
-
-	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
+	# Création des informations pour l'envoi du mail d'erreur
+	$valToReplace = @{
+						scriptName = $MyInvocation.MyCommand.Name
+						computerName = $env:computername
+						parameters = (formatParameters -parameters $PsBoundParameters )
+						error = $errorMessage
+						errorTrace =  [System.Net.WebUtility]::HtmlEncode($errorTrace)
+					}
+	# Envoi d'un message d'erreur aux admins 
+	$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 	
 }	
