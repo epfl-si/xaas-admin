@@ -9,6 +9,7 @@
    15.02.2018 - 1.0 - Version de base
    08.03.2018 - 1.1 - Ajout de sendMailTo
    07.06.2018 - 1.2 - Ajout getvRAMailSubject, getvRAMailContent, ADGroupExists
+   10.01.2020 - 1.3 - Suppression sendMailTo, getvRAMailSubject et getvRAMailContent car création d'une classe pour faire le job
 
 #>
 
@@ -80,36 +81,6 @@ function ADGroupExists([string]$groupName)
 	{
 		return $false
 	}
-}
-
-
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Crée un sujet de mail pour vRA à partir du sujet "court" passé en paramètre
-		  et du nom de l'environnement courant
-
-	IN  : $shortSubject -> sujet court
-	IN  : $targetEnv	-> Environnement courant
-	IN  : $targetTenant -> Tenant courant
-#>
-function getvRAMailSubject([string] $shortSubject, [string]$targetEnv, [string]$targetTenant)
-{
-
-	return "vRA Service [{0}->{1}]: {2}" -f $targetEnv, $targetTenant, $shortSubject
-}
-
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Crée un contenu de mail en ajoutant le début et la fin.
-
-	IN  : $content -> contenu du mail initial
-#>
-function getvRAMailContent([string] $content)
-{
-
-	return "Bonjour,<br><br>{0}<br><br>Salutations,<br>L'équipe vRA.<br> Paix et prospérité \\//" -f $content
 }
 
 
