@@ -61,6 +61,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -645,12 +646,8 @@ function sendErrorMail2ndDayActionFile
 {
 	(param [string] $errorMsg)
 
-	$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=74055755"
-	$mailSubject = getvRAMailSubject -shortSubject "Error - 2nd day action JSON file error!" -targetEnv $targetEnv -targetTenant $targetTenant
-	$message = getvRAMailContent -content ("Une erreur est survenue durant le chargement du fichier contenant la liste des '2nd day actions':<br>`
-	{0}<br><br>Veuillez faire le nécessaire à partir de la <a href='{1}'>documentation suivante</a>." -f $errorMsg, $docUrl)	
-
-	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
+	$valToReplace = @{errorMsg = $errorMsg}
+	$notificationMail.send("Error - 2nd day action JSON file error!", "2nd-action-json-file-error", $valToReplace)
 }
 
 <#
@@ -665,13 +662,8 @@ function sendErrorMail2ndDayActionFile
 #>
 function sendErrorMailNoResTemplateFound
 {
-	$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=72516585"
-	$mailSubject = getvRAMailSubject -shortSubject "Error - No Reservation Template found for tenant!" -targetEnv $targetEnv -targetTenant $targetTenant
-	$message = getvRAMailContent -content ("Il n'existe aucun Template de Reservation pour la création des Business Groups sur l'environnement <b>{0}</b>.<br><br>Veuillez créer au moins un `
-	Template à partir de la <a href='{1}'>documentation suivante</a>." -f $targetEnv, $docUrl)	
-
-
-	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
+	$valToReplace = @{}
+	$notificationMail.send("Error - No Reservation Template found for tenant!", "no-reservation-template-found-for-tenant", $valToReplace)
 }
 
 <#
@@ -981,106 +973,91 @@ function handleNotifications
 			# Suppression des doublons 
 			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
 
+			$valToReplace = @{}
+
 			switch($notif)
 			{
 				# ---------------------------------------
 				# Préfixes de machine non trouvés
 				'newBGMachinePrefixNotFound'
 				{
-					$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=70976775"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Machine prefixes not found" -targetEnv $targetEnv -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les préfixes de machines suivants n'ont pas été trouvés `
-dans vRA pour l'environnement <b>{0}</b> et le tenant <b>{1}</b>.<br>Veuillez les créer à la main:`
-<br><ul><li>{2}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{3}'>ici</a>."  -f $targetEnv, $targetTenant, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
+					$valToReplace.prefixList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Machine prefixes not found"
+					$templateName = "new-bg-machine-prefix-not-found"
 				}
 
 				# ---------------------------------------
 				# BG sans "custom property" permettant de définir le statut
 				'bgWithoutCustomPropStatus'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$global:VRA_CUSTOM_PROP_VRA_BG_STATUS' custom property" `
-													 -targetEnv $targetEnv -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les Business Groups suivants ne contiennent pas la 'Custom Property' `
-<b>{0}</b>.<br>Veuillez faire le nécessaire:`
-<br><ul><li>{1}</li></ul>"  -f $global:VRA_CUSTOM_PROP_VRA_BG_STATUS, ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_BG_STATUS
+					$mailSubject = "Warning - Business Group without '{{customProperty}}' custom property"
+					$templateName = "bg-without-custom-prop"
 				}
 
 				# ---------------------------------------
 				# BG sans "custom property" permettant de définir le type
 				'bgWithoutCustomPropType'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$global:VRA_CUSTOM_PROP_VRA_BG_TYPE' custom property" `
-													 -targetEnv $targetEnv -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les Business Groups suivants ne contiennent pas la 'Custom Property' `
-<b>{0}</b>.<br>Veuillez faire le nécessaire:`
-<br><ul><li>{1}</li></ul>"  -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_BG_TYPE
+					$mailSubject = "Warning - Business Group without '{{customProperty}}' custom property"
+					$templateName = "bg-without-custom-prop"
 				}
 
 				# ---------------------------------------
 				# BG marqué comme étant des 'ghost'
 				'bgSetAsGhost'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Info - Business Group marked as 'ghost'" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les Business Groups suivants ont leur statut qui est passé à 'ghost' `
-car les unités associées ont disparu mais il y a toujours des items contenus dans les Business Groups.<br>Les droits ont été donnés `
-aux administrateurs de la faculté afin qu'ils puissent gérer la chose.
-<br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Info - Business Group marked as 'ghost'"
+					$templateName = "bg-set-as-ghost"
 				}
 
 				# ---------------------------------------
 				# BG effacés
 				'bgDeleted'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Info - Business Group deleted" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les Business Groups suivants ont été effacés car les unités associées `
-ont disparu et il n'y avait plus aucun item contenu dans les Business Groups.`
-<br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Info - Business Group deleted"
+					$templateName = "bg-deleted"
 				}
 
 				# ---------------------------------------
 				# Préfix de machine non trouvé pour un renommage de faculté
 				'facRenameMachinePrefixNotFound'
 				{
-					$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=70976775"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Machine prefixes not found for new faculty name" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les préfixes de machines suivants n'ont pas été trouvés `
-dans vRA pour l'environnement <b>{0}</b>.<br>Ceci signifie que les Business Groups de la faculté renommée n'ont pas pu être renommés.`
-<br>Veuillez créer les préfixes de machine à la main:`
-<br><ul><li>{1}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{2}'>ici</a>."  -f $targetEnv, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
+					$valToReplace.prefixList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Machine prefixes not found for new faculty name"
+					$templateName = "fac-rename-machine-prefix-not-found"
 				}
 
 				# ---------------------------------------
 				# Groupes AD soudainement devenus vides...
 				'emptyADGroups'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Info - AD groups empty for Business Group" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les groupes Active Directory suivants (avec nom du Business Group) `
-ne contiennent plus aucun utilisateur. Cela signifie donc que les Business Groups associés existent toujours mais ne sont plus utilisables par qui que ce soit....<br> `
-Actions à entreprendre pour chaque unité:<ol>`
-<li>Aller contrôler dans <a href='https://search.epfl.ch'>Search</a> que l'unité ne contienne effectivement plus aucun membre (il peut y avoir des membres mais s'ils n'ont pas de compte AD, ils ne peuvent rien faire)</li> `
-<li>S'il n'y a plus aucun membre valable, le groupe AD correspondant peut être supprimé, ce qui fera en sorte de supprimer le BG de vRA automatiquement.</li> `
-</ol>`
-<br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Info - AD groups empty for Business Group"
+					$templateName = "empty-ad-groups"
 				}
 
 				# ---------------------------------------
 				# Groupes AD pour les rôles...
 				'adGroupsNotFound'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Error - AD groups not found fo Business Group" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les groupes Active Directory suivants n'ont pas été trouvés.`
-Il s'agit peut-être d'une erreur dans l'exécution du script 'sync-ad-groups-from-ldap.ps1' qui créé ceux-ci:`
-<br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - AD groups not found for Business Group"
+					$templateName = "ad-groups-not-found-for-bg"
 				}
 
 				# ---------------------------------------
 				# Renommage de dossier d'ISO privées échoué
 				'ISOFolderNotRenamed'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Private ISO folder renaming failed" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les dossiers suivants n'ont pas pu être renommés suite au changement du nom du Business Group auxquels ils sont associés.`
-Du coup, un nouveau dossier vide a été créé avec le bon nom et il faudra manuellement faire du ménage pour l'ancien dossier.`
-<br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.folderList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Private ISO folder renaming failed"
+					$templateName = "iso-folder-not-renamed"
 				}
 				
 
@@ -1094,9 +1071,10 @@ Du coup, un nouveau dossier vide a été créé avec le bon nom et il faudra man
 			}
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
-			sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
+			$notificationMail.send($mailSubject, $templateName, $valToReplace)
 
 		} # FIN S'il y a des notifications pour la catégorie courante
+
 	}# FIN BOUCLE de parcours des catégories de notifications
 }
 
@@ -1299,6 +1277,9 @@ try
 
 	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
+
+	# Objet pour pouvoir envoyer des mails de notification
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
 	$doneBGList = @()
 
@@ -1786,11 +1767,15 @@ catch # Dans le cas d'une erreur dans le script
 	# On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
 	$errorMessage = $errorMessage -replace "`n", "<br>"
 	
+	# Création des informations pour l'envoi du mail d'erreur
+	$valToReplace = @{	
+						scriptName = $MyInvocation.MyCommand.Name
+					  	computerName = $env:computername
+					  	parameters = (formatParameters -parameters $PsBoundParameters )
+					  	error = $errorMessage
+					  	errorTrace =  [System.Net.WebUtility]::HtmlEncode($errorTrace)
+					}
 	# Envoi d'un message d'erreur aux admins 
-	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant $targetTenant
-	$mailMessage = getvRAMailContent -content ("<b>Computer:</b> {3}<br><b>Script:</b> {0}<br><b>Parameters:</b>{4}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
-	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace), $env:computername, (formatParameters -parameters $PsBoundParameters ))
-
-	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
+	$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 	
 }

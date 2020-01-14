@@ -9,6 +9,7 @@
    15.02.2018 - 1.0 - Version de base
    08.03.2018 - 1.1 - Ajout de sendMailTo
    07.06.2018 - 1.2 - Ajout getvRAMailSubject, getvRAMailContent, ADGroupExists
+   10.01.2020 - 1.3 - Suppression sendMailTo, getvRAMailSubject et getvRAMailContent car création d'une classe pour faire le job
 
 #>
 
@@ -62,34 +63,6 @@ function getResClusterName([PSObject]$reservation)
 
 <#
 	-------------------------------------------------------------------------------------
-	BUT : Envoie un mail aux admins du service (NAS ou MyNAS vu que c'est la même adresse mail)
-		  Afin de pouvoir envoyer un mail en UTF8 depuis un script PowerShell encodé en UTF8, il 
-		  faut procéder d'une manière bizarre... il faut sauvegarder le contenu du mail à envoyer
-		  dans un fichier, avec l'encoding "default" (ce qui fera un encoding UTF8, je cherche pas
-		  pourquoi...) et ensuite relire le fichier en spécifiant le format UTF8 cette fois-ci...
-		  Et là, abracadabra, plus de problème d'encodage lorsque l'on envoie le mail \o/
-
-	IN  : $mailAddress	-> Adresse à laquelle envoyer le mail. C'est aussi cette adresse qui
-									sera utilsée comme adresse d'expéditeur. Le nécessaire sera ajouté
-									au début de l'adresse afin qu'elle puisse être utilisée comme
-									adresse d'expédition sans que le système mail de l'école ne la
-									refuse.
-   IN  : $mailSubject   -> Le sujet du mail
-   IN  : $mailMessage   -> Le contenu du message
-#>
-function sendMailTo([string]$mailAddress, [string] $mailSubject, [string] $mailMessage)
-{
-	$tmpMailFile = ".\tmpmail.txt"
-
-	$mailMessage | Out-File $tmpMailFile -Encoding default
-	$mailMessage = Get-Content $tmpMailFile -Encoding UTF8 | Out-String
-	Remove-Item $tmpMailFile
-
-    Send-MailMessage -From "noreply+$mailAddress" -To $mailAddress -Subject $mailSubject -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding Unicode
-}
-
-<#
-	-------------------------------------------------------------------------------------
 	BUT : Permet de savoir si un groupe Active Directory existe.
 	   
 	IN  : $groupName	-> Le nom du groupe à contrôler.
@@ -108,36 +81,6 @@ function ADGroupExists([string]$groupName)
 	{
 		return $false
 	}
-}
-
-
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Crée un sujet de mail pour vRA à partir du sujet "court" passé en paramètre
-		  et du nom de l'environnement courant
-
-	IN  : $shortSubject -> sujet court
-	IN  : $targetEnv	-> Environnement courant
-	IN  : $targetTenant -> Tenant courant
-#>
-function getvRAMailSubject([string] $shortSubject, [string]$targetEnv, [string]$targetTenant)
-{
-
-	return "vRA Service [{0}->{1}]: {2}" -f $targetEnv, $targetTenant, $shortSubject
-}
-
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Crée un contenu de mail en ajoutant le début et la fin.
-
-	IN  : $content -> contenu du mail initial
-#>
-function getvRAMailContent([string] $content)
-{
-
-	return "Bonjour,<br><br>{0}<br><br>Salutations,<br>L'équipe vRA.<br> Paix et prospérité \\//" -f $content
 }
 
 
