@@ -34,6 +34,11 @@
   #renderRowNoLabelMapping("Tenant", "#valueOf('provider-ch.epfl.vra.tenant.name')")
   #renderRowNoLabelMapping("Business Group", "#valueOf('provider-ch.epfl.vra.bg.name')")
 
+  ## Service or Unit information (if a property is not found, nothing is displayed. So it means we don't have to 
+  ## add an 'if' to check for which tenant the request is done.
+  #renderRowNoLabelMapping("Unit ID", "#valueOf('provider-ch.epfl.unit.id')")
+  #renderRowNoLabelMapping("SNOW Svc ID", "#valueOf('provider-ch.epfl.snow.svc.id')")
+
   #renderRow("notification.email.extensions.deployment", "#valueOf('catalogItem-Name')")
   #renderRow("notification.email.extensions.action", $resourceAction_Name)
   #renderRow("notification.email.extensions.request.requestedBy", "#valueOf('requestedBy')")
