@@ -127,7 +127,7 @@ function handleNotifications
 				'missingEPFLADGroups'
 				{
 					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
-					$valToReplace.docUrl = ""
+					$valToReplace.docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=115605511"
 
 					$mailSubject = "Error - Active Directory groups missing"
 
