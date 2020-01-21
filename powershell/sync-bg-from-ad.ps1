@@ -1381,6 +1381,10 @@ try
 	# Création de l'objet pour gérer les 2nd day actions
 	$secondDayActions = [SecondDayActions]::new()
 
+	# On détermine s'il est nécessaire de mettre à jour les ACLs des dossiers contenant les ISO
+	$forceACLsUpdateFile =  ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE))
+	$forceACLsUpdate = (Test-path $forceACLsUpdateFile)
+
 	# Parcours des groupes AD pour l'environnement/tenant donné
 	$adGroupList | ForEach-Object {
 
@@ -1648,23 +1652,36 @@ try
 		$bgISOFolder = $nameGenerator.getNASPrivateISOPath($bgName)
 
 		# Si on a effectivement un dossier où mettre les ISO et qu'il n'existe pas encore,
+		# NOTE: Si on est sur le DEV, on a fait en sorte que $bgISOFolder soit vide ("") donc
+		# on n'entrera jamais dans ce IF
 		if(($bgISOFolder -ne "") -and (-not (Test-Path $bgISOFolder)))
 		{
 			$logHistory.addLineAndDisplay(("--> Creating ISO folder '{0}'..." -f $bgISOFolder))
 			# On le créé
 			$dummy = New-Item -Path $bgISOFolder -ItemType:Directory
 
+			# Pour faire en sorte que les ACLs soient mises à jour.
+			$ISOFolderCreated = $true
+		} # FIN S'il faut créer un dossier pour les ISO et qu'il n'existe pas encore.
+
+		
+		# Si on a créé un dossier où qu'on doit mettre à jour les ACLs
+		if($ISOFolderCreated -or $forceACLsUpdate)
+		{
 			# Récupération et modification des ACL pour ajouter les groupes AD qui sont pour le Role "Shared" dans le BG
 			$acl = Get-Acl $bgISOFolder
 			ForEach($sharedGrp in $sharedGrpList)
 			{
-				$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($sharedGrp, "Modify", "ContainerInherit,ObjectInherit", "None","Allow")
+				# On fait en sorte de créer le dossier sans donner les droits de création de sous-dossier à l'utilisateur, histoire qu'il ne puisse pas décompresser une ISO
+				# NOTE: Si l'ACL existe déjà, elle sera écrasée avec la nouvelle qu'on a ici
+				$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($sharedGrp,  "CreateFiles, WriteExtendedAttributes, WriteAttributes, Delete, ReadAndExecute, Synchronize", "ContainerInherit,ObjectInherit",  "None", "Allow")
 				$acl.SetAccessRule($ar)
 			}
 			Set-Acl $bgISOFolder $acl
 
-		} # FIN SI on n'est pas sur l'environnement de DEV 
-		
+			# Pour ne pas retomber dans la condition à la prochaine itération de la boucle
+			$ISOFolderCreated = $false
+		}
 
 
 
@@ -1753,6 +1770,12 @@ try
 	if(Test-Path -Path $recreatePoliciesFile)
 	{
 		Remove-Item -Path $recreatePoliciesFile
+	}
+
+	# Si on a dû mettre à jour les ACLs des dossiers, 
+	if($forceACLsUpdate)
+	{
+		Remove-Item -Path $forceACLsUpdateFile
 	}
 
 }
