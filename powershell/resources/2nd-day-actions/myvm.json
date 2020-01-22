@@ -18,6 +18,14 @@
             {
                 "name": "Request support (VM)",
                 "approvals": []
+            },
+            {
+                "name": "[Backup] Config",
+                "approvals": []
+            },
+            {
+                "name": "[Backup] Restore",
+                "approvals": []
             }
         ]
     },
