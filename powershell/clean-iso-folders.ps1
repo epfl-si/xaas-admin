@@ -51,7 +51,7 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 # --------------------------------- FONCTIONS ------------------------------------
 
 # Fonction trouvée ici: http://www.lucd.info/2015/10/02/answer-the-question/
-# Quelques adaptations ont été faite
+# Quelques adaptations ont été faite... ainsi que correction de bug... 
 function Set-CDDriveAndAnswer
 {
   [CmdletBinding()]
@@ -75,9 +75,9 @@ function Set-CDDriveAndAnswer
           Set-VMQuestion -VMQuestion $question -Option button.yes -Confirm:$false
           $pass = $maxPass + 1
         }
-        $pass++
+		$pass++
+		Start-Sleep 2
       }
-      Start-Sleep 2
     }
   }
  
