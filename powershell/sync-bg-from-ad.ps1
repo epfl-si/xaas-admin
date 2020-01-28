@@ -1413,6 +1413,12 @@ try
 			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
 			$faculty, $unit = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{facultyName = $faculty
+										 facultyID = $facultyID
+										 unitName = $unit
+										 unitID = $unitID})
+
 			Write-Debug "-> Current AD group Faculty : $($faculty) ($($facultyID))"
 			Write-Debug "-> Current AD group Unit    : $($unit) ($($unitID)) "
 
@@ -1490,6 +1496,11 @@ try
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
 			$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
+				serviceName = $serviceLongName
+				snowServiceId = $snowServiceId})
 
 			# Création du nom/description du business group
 			$bgName = $nameGenerator.getBGName($serviceShortName)

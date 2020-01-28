@@ -322,6 +322,14 @@ try
 			# --------------------------------- FACULTE
 			# ----------------------------------------------------------------------------------
 
+			# Initialisation des détails pour le générateur de noms 
+			# NOTE: On ne connait pas encore toutes les informations donc on initialise 
+			# avec juste celles qui sont nécessaires pour la suite. Le reste, on met une
+			# chaîne vide.
+			$nameGenerator.initDetails(@{facultyName = $faculty['name']
+										facultyID = $faculty['uniqueidentifier']
+										unitName = ''
+										unitID = ''})
 			
 			# --------------------------------- APPROVE
 
@@ -416,6 +424,12 @@ try
 
 				# Recherche des membres de l'unité
 				$ldapMemberList = $ldap.getUnitMembers($unit['uniqueidentifier'])
+
+				# Initialisation des détails pour le générateur de noms
+				$nameGenerator.initDetails(@{facultyName = $faculty['name']
+											facultyID = $faculty['uniqueidentifier']
+											unitName = $unit['name']
+											unitID = $unit['uniqueidentifier']})
 
 				# Création du nom du groupe AD et de la description
 				$adGroupName = $nameGenerator.getEPFLRoleADGroupName("CSP_CONSUMER", [int]$faculty['uniqueidentifier'], [int]$unit['uniqueidentifier'], $false)
@@ -629,6 +643,11 @@ try
 			$logHistory.addLineAndDisplay(("-> [{0}/{1}] Service {2}..." -f $serviceNo, $servicesList.Count, $service.shortName))
 
 			$counters.inc('its.serviceProcessed')
+
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{serviceShortName = $service.shortName
+										serviceName = $service.longName
+										snowServiceId = $service.snowId})
 
 			$serviceNo += 1
 

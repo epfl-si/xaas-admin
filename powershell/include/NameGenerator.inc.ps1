@@ -22,6 +22,11 @@ class NameGenerator
 {
     hidden [string]$tenant  # Tenant sur lequel on est en train de bosser 
     hidden [string]$env     # Environnement sur lequel on est en train de bosser.
+    # Détails pour la génération des différents noms. Sera initialisé via 'initDetails' pour mettre à jour
+    # les informations en fonction des noms à générer.
+    hidden [System.Collections.IDictionary]$details 
+
+
 
     hidden $GROUP_TYPE_AD = 'adGroup'
     hidden $GROUP_TYPE_GROUPS = 'groupsGroup'
@@ -61,6 +66,88 @@ class NameGenerator
 
         $this.tenant = $tenant.ToLower()
         $this.env    = $env.ToLower()
+
+        $this.details = @{}
+    }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : initialise les détails nécessaires pour utiliser les fonctions ci-dessous.
+                On devra ensuite passer par la fonction 'getDetails' pour récupérer une des valeurs.
+
+        IN  : $details          -> Dictionnaire avec les détails nécessaire. Le contenu varie en fonction du tenant 
+                                    passé lors de l'instanciation de l'objet.
+
+                                    EPFL:
+                                        facultyName      -> Le nom de la faculté du Business Group
+                                        facultyID        -> ID de la faculté du Business Group
+                                        unitName         -> Nom de l'unité
+                                        unitID           -> ID de l'unité du Business Group
+                                    
+                                    ITServices:
+                                        serviceShortName    -> Nom court du service
+                                        serviceName         -> Nom long du service
+                                        snowServiceId       -> ID du service dans ServiceNow
+    #>
+    [void] initDetails([System.Collections.IDictionary]$details)
+    {
+        $keysToCheck = @()
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL 
+            {
+                $keysToCheck = @('facultyName', 'facultyID', 'unitName', 'unitID')
+            }
+
+            $global:VRA_TENANT__ITSERVICES
+            {
+                $keysToCheck = @('serviceShortName', 'serviceName', 'snowServiceId')
+            } 
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+
+        # Contrôle que toutes les infos sont là.
+        $missingKeys = @()
+        Foreach($key in $keysToCheck)
+        {
+            if(! $details.ContainsKey($key))
+            {
+                $missingKeys += $key
+            }
+        }
+
+        # Si des infos sont manquantes...
+        if($missingKeys.Count -gt 0)
+        {
+            Throw ("Following keys are missing: {0}" -f ($missingKeys -join ', '))
+        }
+
+        $this.details = $details
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la valeur d'un détail, donné par son nom. Si pas trouvé, une exception
+                est levée.
+
+        IN  : $name -> Nom du détail que l'on désire.
+
+        RET : La valeur du détail
+    #>
+    hidden [String] getDetail([string]$name)
+    {
+        if(!$this.details.ContainsKey($name))
+        {
+            Throw ("Asked detail ({0}) doesn't exists in list" -f $name)
+        }
+
+        return $this.details.$name
     }
 
     <#
@@ -180,25 +267,13 @@ class NameGenerator
                                     $this.GROUP_TYPE_GROUPS
         IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
                                     $true|$false  
-        IN  : $details          -> Dictionnaire avec les détails nécessaire. Le contenu varie en fonction du tenant 
-                                    passé lors de l'instanciation de l'objet.
-
-                                    EPFL:
-                                        facultyName      -> Le nom de la faculté du Business Group
-                                        facultyID        -> ID de la faculté du Business Group
-                                        unitName         -> Nom de l'unité
-                                        unitID           -> ID de l'unité du Business Group
-                                    
-                                    ITServices:
-                                        serviceShortName    -> Nom court du service
-                                        serviceName         -> Nom long du service
-                                        snowServiceId       -> ID du service dans ServiceNow
+        
                 
         RET : Liste avec :
             - Nom du groupe à utiliser pour le rôle.
             - Description du groupe (si $type == 'ad', sinon, "")
     #>
-    hidden [System.Collections.ArrayList] getRoleGroupNameAndDesc([string]$role, [string]$type, [bool]$fqdn, [System.Collections.IDictionary]$details)
+    hidden [System.Collections.ArrayList] getRoleGroupNameAndDesc([string]$role, [string]$type, [bool]$fqdn)
     {
         # On initialise à vide car la description n'est pas toujours générée. 
         $groupDesc = ""
@@ -222,8 +297,8 @@ class NameGenerator
                 {
                     # Même nom de groupe (court) pour AD et "groups"
                     # vra_<envShort>_sup_<facultyName>
-                    $groupName = "{0}{1}_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($details.facultyName)
-                    $groupDesc = "Support for Faculty {0} on Tenant {1} on Environment {2}" -f $details.facultyName.toUpper(), $this.tenant.ToUpper(), $this.env.ToUpper()
+                    $groupName = "{0}{1}_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('facultyName'))
+                    $groupDesc = "Support for Faculty {0} on Tenant {1} on Environment {2}" -f $this.getDetail('facultyName').toUpper(), $this.tenant.ToUpper(), $this.env.ToUpper()
                 }
                 # Shared, Users
                 elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
@@ -233,9 +308,9 @@ class NameGenerator
                     if($type -eq $this.GROUP_TYPE_AD)
                     {
                         # vra_<envShort>_<facultyID>_<unitID>
-                        $groupName = "{0}{1}_{2}_{3}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $details.facultyID, $details.unitID
+                        $groupName = "{0}{1}_{2}_{3}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getDetail('facultyID'), $this.getDetail('unitID')
                         # <facultyName>;<unitName>
-                        $groupDesc = "{0};{1}" -f $details.facultyName.toUpper(), $details.unitName.toUpper()
+                        $groupDesc = "{0};{1}" -f $this.getDetail('facultyName').toUpper(), $this.getDetail('unitName').toUpper()
                     }
                     # Groupe "groups"
                     else
@@ -267,11 +342,11 @@ class NameGenerator
                         $role -eq "CSP_CONSUMER")
                 {
                     # vra_<envShort>_<serviceShort>
-                    $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($details.serviceShortName)
+                    $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('serviceShortName'))
                     # <snowServiceId>;<serviceName>
                     # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
                     # réutilisé pour d'autres choses dans la création des éléments dans vRA
-                    $groupDesc = "{0};{1}" -f $details.snowServiceId, $details.serviceName
+                    $groupDesc = "{0};{1}" -f $this.getDetail('snowServiceId'), $this.getDetail('serviceName')
 
                 }
                 # Autre EPFL
@@ -320,12 +395,8 @@ class NameGenerator
     #>
     [string] getEPFLRoleADGroupName([string]$role, [int]$facultyID, [int]$unitID, [bool]$fqdn)
     {
-        $details = @{facultyName = ""
-                    facultyID = $facultyID
-                    unitName = ""
-                    unitID = $unitID }
-
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn, $details)
+        
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn)
         return $groupName
     }
 
@@ -347,11 +418,7 @@ class NameGenerator
     #>
     [string] getEPFLRoleADGroupName([string]$role, [string]$facultyName, [bool]$fqdn)
     {
-        $details = @{facultyName = $facultyName
-                    facultyID = ""
-                    unitName = ""
-                    unitID = "" }
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn, $details)
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn)
         return $groupName
     }
     
@@ -371,11 +438,8 @@ class NameGenerator
     #>
     [string] getEPFLRoleADGroupDesc([string]$role, [string]$facultyName, [string]$unitName)
     {
-        $details = @{facultyName = $facultyName
-                    facultyID = ""
-                    unitName = $unitName
-                    unitID = "" }
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $false, $details)
+      
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $false)
         return $groupDesc
     }
 
@@ -394,11 +458,7 @@ class NameGenerator
     #>
     [string] getEPFLRoleGroupsGroupName([string]$role, [string]$facultyName)
     {
-        $details = @{facultyName = $facultyName
-                    facultyID = ""
-                    unitName = ""
-                    unitID = "" }
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false, $details)
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false)
         return $groupName
     }
 
@@ -736,10 +796,7 @@ class NameGenerator
     #>
     [string] getITSRoleADGroupName([string]$role, [string] $serviceShortName, [bool]$fqdn)
     {
-        $details = @{serviceShortName = $serviceShortName
-                    serviceName = ""
-                    snowServiceId = ""}
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn, $details)
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn)
         return $groupName
     }
 
@@ -759,11 +816,7 @@ class NameGenerator
     #>
     [string] getITSRoleADGroupDesc([string]$role, [string]$serviceName, [string]$snowServiceId)
     {
-        $details = @{serviceShortName = ""
-                    serviceName = $serviceName
-                    snowServiceId = $snowServiceId}
-
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $false, $details)
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $false)
         return $groupDesc
     }    
 
@@ -782,10 +835,7 @@ class NameGenerator
     #>
     [string] getITSRoleGroupsGroupName([string]$role, [string]$serviceShortName)
     {
-        $details = @{serviceShortName = $serviceShortName
-                    serviceName = ""
-                    snowServiceId = ""}
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false, $details)
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false)
         return $groupName
     }
 
@@ -972,7 +1022,7 @@ class NameGenerator
     {
         $type_desc = ""
         $suffix = ""
-        
+
         switch($approvalPolicyType)
         {
             $global:APPROVE_POLICY_TYPE__ITEM_REQ
@@ -1347,7 +1397,7 @@ class NameGenerator
     {
         # Eclatement du nom pour récupérer les informations
         $partList = $ADGroupName.Split("_")
-
+        $result = @()
         switch($this.tenant)
         {
             $global:VRA_TENANT__EPFL
@@ -1360,7 +1410,7 @@ class NameGenerator
                     Throw ("Incorrect group name ({0}) for Tenant {1}" -f $ADGroupName, $this.tenant)
                 }
 
-                return @($partList[2], $partList[3])
+                $result = @($partList[2], $partList[3])
             }
 
             # ITServices 
@@ -1374,7 +1424,7 @@ class NameGenerator
                     Throw ("Incorrect group name ({0}) for Tenant {1}" -f $ADGroupName, $this.tenant)
                 }
 
-                return @($partList[2])
+                $result = @($partList[2])
             }
 
             # Tenant pas géré
@@ -1383,7 +1433,7 @@ class NameGenerator
                 Throw ("Unsupported Tenant ({0})" -f $this.tenant)
             }
         }
-        return $null
+        return $result
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1420,7 +1470,6 @@ class NameGenerator
                     Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
                 }
 
-                return $partList
             }
 
             $global:VRA_TENANT__ITSERVICES
@@ -1433,7 +1482,7 @@ class NameGenerator
                     Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
                 }
 
-                return @($partList)
+                $partList = @($partList)
             }
 
             default
@@ -1441,6 +1490,8 @@ class NameGenerator
                 Throw ("Unsupported Tenant ({0})" -f $this.tenant)
             }
         }
+
+        return $partList
 
     }
 
@@ -1496,6 +1547,8 @@ class NameGenerator
         # Extraction des infos pour construire les noms des autres éléments
         $partList = $bgName.Split("_")
 
+        $resName = ""
+
         switch($this.tenant)
         {
             $global:VRA_TENANT__EPFL
@@ -1506,7 +1559,7 @@ class NameGenerator
                 # Le nom de la Reservation est généré comme suit
                 # <tenantShort>_<faculty>_<unit>[_<info1>[_<info2>...]]_<cluster>
 
-                return "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
+                $resName = "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
             }
 
             $global:VRA_TENANT__ITSERVICES
@@ -1517,7 +1570,7 @@ class NameGenerator
                 # Le nom de la Reservation est généré comme suit
                 # <tenantShort>_<serviceShortName>_<cluster>
                 
-                return "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
+                $resName = "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
             }
 
             default
@@ -1526,6 +1579,7 @@ class NameGenerator
             }
         }
 
+        return $resName
     }
 
 
