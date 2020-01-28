@@ -784,10 +784,6 @@ class NameGenerator
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn, $details)
         return $groupName
     }
-    [string] getITSRoleADGroupName([string]$role, [string] $serviceShortName)
-    {
-        return $this.getITSRoleADGroupName($role, $serviceShortName, $false)
-    }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
