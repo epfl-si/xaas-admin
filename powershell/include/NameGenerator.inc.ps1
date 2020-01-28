@@ -371,58 +371,26 @@ class NameGenerator
         return @($groupName, $groupDesc)
     }
 
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# ----------------------------------------------------------------------------- EPFL --------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
 
     <# 
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom du groupe AD pour les paramètres passés 
-              Pas utilisé pour CSP_SUPPORT, voir plus bas.
-
-        REMARQUE : ATTENTION A BIEN PASSER DES [int] POUR CERTAINS PARAMETRES !! SI CE N'EST PAS FAIT, C'EST LE 
-                   MAUVAIS PROTOTYPE DE FONCTION QUI RISQUE D'ETRE PRIS EN COMPTE.
-
+              
         IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
+							        "CSP_SUBTENANT_MANAGER"
+							        "CSP_SUPPORT"
 							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
                                     "CSP_CONSUMER"
-        IN  : $facultyID        -> ID de la faculté du Business Group
-        IN  : $unitID           -> ID de l'unité du Business Group
         IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
                                     $true|$false  
                                     Si pas passé => $false      
     #>
-    [string] getEPFLRoleADGroupName([string]$role, [int]$facultyID, [int]$unitID, [bool]$fqdn)
-    {
-        
+    [string] getRoleADGroupName([string]$role, [bool]$fqdn)
+    {   
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn)
         return $groupName
     }
 
-    
-    <# 
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du groupe AD pour les paramètres passés 
-              Utilisé uniquement pour les groupe CSP_SUPPORT et CSP_SUBTENANT_MANAGER. On doit 
-              quand même le passer en  paramètre dans le cas où la fonction devrait évoluer 
-              dans le futur
-
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUPPORT"
-                                    "CSP_SUBTENANT_MANAGER"
-        IN  : $facultyName      -> Nom de la faculté
-        IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
-                                    $true|$false  
-                                    Si pas passé => $false      
-    #>
-    [string] getEPFLRoleADGroupName([string]$role, [string]$facultyName, [bool]$fqdn)
-    {
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn)
-        return $groupName
-    }
-    
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
     <# 
         -------------------------------------------------------------------------------------
@@ -433,17 +401,13 @@ class NameGenerator
 							        "CSP_SUPPORT"
 							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
                                     "CSP_CONSUMER"
-        IN  : $facultyName      -> Le nom de la faculté du Business Group
-        IN  : $unitName         -> Nom de l'unité
     #>
-    [string] getEPFLRoleADGroupDesc([string]$role, [string]$facultyName, [string]$unitName)
+    [string] getRoleADGroupDesc([string]$role)
     {
-      
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $false)
         return $groupDesc
     }
 
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
     <# 
         -------------------------------------------------------------------------------------
@@ -454,15 +418,13 @@ class NameGenerator
 							        "CSP_SUPPORT"
 							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
                                     "CSP_CONSUMER"
-        IN  : $facultyName      -> Le nom de la faculté du Business Group    
     #>
-    [string] getEPFLRoleGroupsGroupName([string]$role, [string]$facultyName)
+    [string] getRoleGroupsGroupName([string]$role)
     {
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false)
         return $groupName
     }
 
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
     <# 
         -------------------------------------------------------------------------------------
@@ -471,13 +433,20 @@ class NameGenerator
         IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
                                     "CSP_SUPPORT"
                                     "CSP_MANAGER"
-        IN  : $facultyName      -> Le nom de la faculté du Business Group    
     #>
-    [string] getEPFLRoleGroupsADGroupName([string]$role, [string]$facultyName)
+    [string] getRoleGroupsADGroupName([string]$role)
     {
-        $groupName = $this.getEPFLRoleGroupsGroupName($role, $facultyName)
+        $groupName = $this.getRoleGroupsGroupName($role)
         return $groupName + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
     }
+
+    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
+    <# ----------------------------------------------------------------------------- EPFL --------------------------------------------------------------------------------------- #>
+    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
+
+
+    
+    
 
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -820,43 +789,6 @@ class NameGenerator
         return $groupDesc
     }    
 
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
-    <# 
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du groupe "GROUPS" pour les paramètres passés 
-
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
-        IN  : $serviceShortName -> Le nom court du service
-    #>
-    [string] getITSRoleGroupsGroupName([string]$role, [string]$serviceShortName)
-    {
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false)
-        return $groupName
-    }
-
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
-    <# 
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du groupe "GROUPS" dans Active Directory pour les paramètres passés 
-
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
-        IN  : $serviceShortName -> Le nom court du service
-    #>
-    [string] getITSRoleGroupsADGroupName([string]$role, [string]$serviceShortName)
-    {
-        $groupName = $this.getITSRoleGroupsGroupName($role, $serviceShortName)
-        return $groupName + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
-    }    
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>

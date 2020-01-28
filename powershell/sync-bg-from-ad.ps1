@@ -1437,8 +1437,8 @@ try
 			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $unitID}
 
 			# Groupes de sécurités AD pour les différents rôles du BG
-			$managerGrpList = @($nameGenerator.getEPFLRoleADGroupName("CSP_SUBTENANT_MANAGER", $faculty, $true))
-			$supportGrpList = @($nameGenerator.getEPFLRoleADGroupName("CSP_SUPPORT", $faculty, $true))
+			$managerGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $true))
+			$supportGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUPPORT", $true))
 			# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
 			# créés par le script "sync-ad-groups-from-ldap.ps1"
 			$sharedGrpList  = @($ADFullGroupName)
