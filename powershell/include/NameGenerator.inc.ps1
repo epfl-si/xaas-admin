@@ -742,50 +742,89 @@ class NameGenerator
 
         return @($name, $desc)
     }
-    
-
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# ----------------------------------------------------------------------------- EPFL --------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
 
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom et la description d'un Entitlement pour le tenant EPFL
-
-        IN  : $facultyName  -> Nom de la faculté
-        IN  : $unitName     -> Nom de l'unité
+        BUT : Renvoie le nom et la description d'un Entitlement pour le tenant
 
         RET : Tableau avec :
                 - Nom de l'Entitlement
                 - Description de l'entitlement
     #>
-    [System.Collections.ArrayList] getEPFLBGEntNameAndDesc([string] $facultyName, [string]$unitName)
+    [System.Collections.ArrayList] getBGEntNameAndDesc()
     {
-        $name = $this.getEntName($facultyName, $unitName)
-        $desc = $this.getEntDescription($facultyName, $unitName)
+        $name = ""
+        $desc = ""
+
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL
+            {
+                $name = $this.getEntName($this.getDetail('facultyName'), $this.getDetail('unitName'))
+                $desc = $this.getEntDescription($this.getDetail('facultyName'), $this.getDetail('unitName'))
+            }
+
+
+            $global:VRA_TENANT__ITSERVICES
+            {
+                $name = $this.getEntName($this.getDetail('serviceShortName'))
+                $desc = $this.getEntDescription($this.getDetail('serviceName'))
+            }
+
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+
         return @($name, $desc)
         
     }
+
 
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom et la description du Security Group (NSX) pour une faculté donnée
 
-        IN  : $facultyName  -> Nom de la faculté
-        
+        IN  : $bgName   -> Le nom du BG lié au Business Group
+
         RET : Tableau avec :
                 - Le nom du NS Group
                 - La description du NS Group
     #>
-    [System.Collections.ArrayList] getEPFLSecurityGroupNameAndDesc([string]$facultyName)
+    [System.Collections.ArrayList] getSecurityGroupNameAndDesc([string]$bgName)
     {
-        $name = "sg.epfl_{0}" -f $facultyName
-        $desc = "Tenant: {0}\nFaculty: {1}" -f $this.tenant, $facultyName
+        $name = ""
+        $desc = ""
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL
+            {
+                $name = "sg.epfl_{0}" -f $this.getDetail('facultyName')
+                $desc = "Tenant: {0}\nFaculty: {1}" -f $this.tenant, $this.getDetail('facultyName')
+            }
 
+
+            $global:VRA_TENANT__ITSERVICES
+            {
+                $name = "sg.its_{0}" -f $this.getDetail('serviceShortName')
+                $desc = "Tenant: {0}\nBusiness Group: {1}\nSNOWID: {2}" -f $this.tenant, $bgName, $this.getDetail('snowServiceId')
+            }
+
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+        
         return @($name, $desc)
     }
+    
 
     <#
         -------------------------------------------------------------------------------------
@@ -795,35 +834,78 @@ class NameGenerator
         
         RET : Le nom du NS Group
     #>
-    [string] getEPFLSecurityTagName([string]$facultyName)
+    [string] getSecurityTagName()
     {
-        return "st.epfl_{0}" -f $facultyName.ToLower()
+        $tagName = ""
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL
+            {
+                $tagName = "st.epfl_{0}" -f $this.getDetail('facultyName').ToLower()
+            }
+
+            
+            $global:VRA_TENANT__ITSERVICES
+            {
+                $tagName = "st.its_{0}" -f $this.getDetail('serviceShortName')
+            }
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+
+        return $tagName
+
     }
 
-    
+
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom et la description de la section de firewall (NSX) pour une faculté donnée
+        BUT : Renvoie le nom et la description de la section de firewall (NSX)
 
-        IN  : $facultyName  -> Nom de la faculté
-        
         RET : Tableau avec :
                 - Le nom de la section de firewall
                 - La description de la section de firewall
     #>
-    [System.Collections.ArrayList] getEPFLFirewallSectionNameAndDesc([string]$facultyName)
+    [System.Collections.ArrayList] getFirewallSectionNameAndDesc()
     {
-        $name = "epfl_{0}" -f $facultyName
-        $desc = "Section for Tenant {0} and Faculty {1}" -f $this.tenant, $facultyName
+        $name = ""
+        $desc = ""
+
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL
+            {
+                $name = "epfl_{0}" -f $this.getDetail('facultyName')
+                $desc = "Section for Tenant {0} and Faculty {1}" -f $this.tenant, $this.getDetail('facultyName')
+            }
+
+
+            $global:VRA_TENANT__ITSERVICES
+            {
+                $name = "its_{0}" -f $this.getDetail('serviceShortName')
+                $desc = "Section for Tenant {0} and Service {1}" -f $this.tenant, $this.getDetail('serviceShortName')
+            }
+
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+
+        }
 
         return @($name.ToLower(), $desc)
     }
 
+
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie la liste des noms de "rules" pour une section de firewall
-
-        IN  : $facultyName  -> Nom de la faculté
         
         RET : Tableau avec :
                 - Tableau associatif pour la Rule "in"
@@ -831,27 +913,57 @@ class NameGenerator
                 - Tableau associatif pour la Rule "out"
                 - Tableau associatif pour la Rule "deny"
     #>
-    [System.Collections.ArrayList] getEPFLFirewallRuleNames([string]$facultyName)
+    [System.Collections.ArrayList] getFirewallRuleNames()
     {
+        $ruleMiddle = ""
 
-        $ruleName = "allow-{0}-in" -f $facultyName.ToUpper()
-        $ruleIn = @{name   = $ruleName
-                    tag    = truncateString -str $ruleName -maxChars 32}
+        switch($this.tenant)
+        {
 
-        $ruleName = "allow-intra-{0}-comm" -f $facultyName.ToUpper()          
-        $ruleComm = @{name  = $ruleName
-                      tag    = truncateString -str $ruleName -maxChars 32}
+            $global:VRA_TENANT__EPFL
+            {
+                $ruleMiddle = $this.getDetail('facultyName').ToUpper()
+            }
 
-        $ruleName = "allow-{0}-out" -f $facultyName.ToUpper()
-        $ruleOut = @{name   = $ruleName
-                     tag    = truncateString -str $ruleName -maxChars 32}
 
-        $ruleName = "deny-{0}-all" -f $facultyName.ToUpper()
-        $ruleDeny = @{name   = $ruleName
-                      tag    = truncateString -str $ruleName -maxChars 32}
+            $global:VRA_TENANT__ITSERVICES
+            {
+                $ruleMiddle = $this.getDetail('serviceShortName')
+            }
 
-        return @($ruleIn, $ruleComm, $ruleOut, $ruleDeny )
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+
+        # Création des noms de règles
+        $ruleNameList = @()
+
+        $ruleNameList += "allow-{0}-in" -f $ruleMiddle
+        $ruleNameList += "allow-intra-{0}-comm" -f $ruleMiddle        
+        $ruleNameList += "allow-{0}-out" -f $ruleMiddle
+        $ruleNameList += "deny-{0}-all" -f $ruleMiddle
+
+        # Création de la liste avec nom et Tag (qui est le nom mais tronqué)
+        $ruleList = @()
+        Foreach($ruleName in $ruleNameList)
+        {
+            $ruleList += @{name   = $ruleName
+                           tag    = truncateString -str $ruleName -maxChars 32}    
+        }
+
+        return $ruleList
     }
+
+    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
+    <# ----------------------------------------------------------------------------- EPFL --------------------------------------------------------------------------------------- #>
+    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
+
+   
+
+    
 
     
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -931,109 +1043,6 @@ class NameGenerator
         return $groupInfos.name + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
     }
 
-
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom et la description d'un Entitlement pour le tenant ITS
-
-        IN  : $serviceShortName -> Nom court du service
-        IN  : $serviceLongName  -> Nom long du service
-
-        RET : Tableau avec :
-                - Nom de l'Entitlement
-                - Description de l'entitlement
-    #>
-    [System.Collections.ArrayList] getITSBGEntNameAndDesc([string] $serviceShortName, [string]$serviceLongName)
-    {
-        return @($this.getEntName($serviceShortName)
-                 $this.getEntDescription($serviceLongName))
-        
-    }
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du Security Group (NSX) pour un service donné
-
-        IN  : $serviceShortName -> Nom court du service
-        IN  : $bgName           -> Nom du business group lié au security group
-        IN  : $snowServiceId    -> ID du service dans Snow
-        
-        RET : Tableau avec :
-                - Le nom du NS Group
-                - La description du NS Group
-    #>
-    [System.Collections.ArrayList] getITSSecurityGroupNameAndDesc([string]$serviceShortName, [string]$bgName, [string]$snowServiceId)
-    {
-        $name = "sg.its_{0}" -f $serviceShortName
-        $desc = "Tenant: {0}\nBusiness Group: {1}\nSNOWID: {2}" -f $this.tenant, $bgName, $snowServiceId
-
-        return @($name, $desc)
-    }
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du security tag (NSX) pour un service donné
-
-        IN  : $serviceShortName -> Nom court du service
-        
-        RET : Le nom du NS Group
-    #>
-    [string] getITSSecurityTagName([string]$serviceShortName)
-    {
-        return "st.its_{0}" -f $serviceShortName
-    }    
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom et la description de la section de firewall (NSX) pour une faculté donnée
-
-        IN  : $serviceShortName  -> Nom court du service
-        
-        RET : Tableau avec :
-                - Le nom de la section de firewall
-                - La description de la section de firewall
-    #>
-    [System.Collections.ArrayList] getITSFirewallSectionNameAndDesc([string]$serviceShortName)
-    {
-        $name = "its_{0}" -f $serviceShortName
-        $desc = "Section for Tenant {0} and Service {1}" -f $this.tenant, $serviceShortName
-
-        return @($name, $desc)
-    }
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie la liste des noms de "rules" pour une section de firewall
-
-        IN  : $serviceShortName  -> Nom court du service
-        
-        RET : Tableau avec :
-                - Tableau associatif pour la Rule "in"
-                - Tableau associatif pour la Rule "intra"¨
-                - Tableau associatif pour la Rule "out"
-                - Tableau associatif pour la Rule "deny"
-    #>
-    [System.Collections.ArrayList] getITSFirewallRuleNames([string]$serviceShortName)
-    {
-        $ruleName = "allow-{0}-in" -f $serviceShortName
-        $ruleIn = @{name   = $ruleName
-                    tag    = truncateString -str $ruleName -maxChars 32}
-
-        $ruleName = "allow-intra-{0}-comm" -f $serviceShortName          
-        $ruleComm = @{name  = $ruleName
-                      tag    = truncateString -str $ruleName -maxChars 32}
-
-        $ruleName = "allow-{0}-out" -f $serviceShortName
-        $ruleOut = @{name   = $ruleName
-                     tag    = truncateString -str $ruleName -maxChars 32}
-
-        $ruleName = "deny-{0}-all" -f $serviceShortName
-        $ruleDeny = @{name   = $ruleName
-                      tag    = truncateString -str $ruleName -maxChars 32}
-
-        return @($ruleIn, $ruleComm, $ruleOut, $ruleDeny )
-    }    
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# --------------------------------------------------------------------------- AUTRES --------------------------------------------------------------------------------------- #>

@@ -1428,7 +1428,7 @@ try
 
 
 			# Génération du nom et de la description de l'entitlement
-			$entName, $entDesc = $nameGenerator.getEPFLBGEntNameAndDesc($faculty, $unit)
+			$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
 
 			# Nom du préfix de machine
 			$machinePrefixName = $nameGenerator.getVMMachinePrefix($faculty)
@@ -1477,13 +1477,13 @@ try
 
 			# -- NSX --
 			# Nom et description du NSGroup
-			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getEPFLSecurityGroupNameAndDesc($faculty)
+			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bgName)
 			# Nom du security Tag
-			$nsxSTName = $nameGenerator.getEPFLSecurityTagName($faculty)
+			$nsxSTName = $nameGenerator.getSecurityTagName()
 			# Nom et description de la section de firewall
-			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getEPFLFirewallSectionNameAndDesc($faculty)
+			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
 			# Nom de règles de firewall
-			$nsxFWRuleNames = $nameGenerator.getEPFLFirewallRuleNames($faculty)
+			$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
 
 		}
 		# Si Tenant ITServices
@@ -1507,7 +1507,7 @@ try
 			$bgDesc = $serviceLongName
 			
 			# Génération du nom et de la description de l'entitlement
-			$entName, $entDesc = $nameGenerator.getITSBGEntNameAndDesc($serviceShortName, $serviceLongName)
+			$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
 
 			# Nom du préfix de machine
 			# NOTE ! Il n'y a pas de préfix de machine pour les Business Group du tenant ITServices.
@@ -1558,13 +1558,13 @@ try
 
 			# -- NSX --
 			# Nom et description du NSGroup
-			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getITSSecurityGroupNameAndDesc($serviceShortName, $bgName, $snowServiceId)
+			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bgName)
 			# Nom du security Tag
-			$nsxSTName = $nameGenerator.getITSSecurityTagName($serviceShortName)
+			$nsxSTName = $nameGenerator.getSecurityTagName()
 			# Nom et description de la section de firewall
-			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getITSFirewallSectionNameAndDesc($serviceShortName)
+			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
 			# Nom de règles de firewall
-			$nsxFWRuleNames = $nameGenerator.getITSFirewallRuleNames($serviceShortName)
+			$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
 		}
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
