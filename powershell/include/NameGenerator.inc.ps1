@@ -316,11 +316,7 @@ class NameGenerator
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn, $details)
         return $groupName
     }
-    
-    [string] getEPFLRoleADGroupName([string]$role, [int]$facultyID, [int]$unitID)
-    {
-        return $this.getEPFLRoleADGroupName($role, $facultyID, $unitID, $false)
-    }
+
     
     <# 
         -------------------------------------------------------------------------------------
@@ -347,10 +343,6 @@ class NameGenerator
         return $groupName
     }
 
-    [string] getEPFLRoleADGroupName([string]$role, [string]$facultyName)
-    {
-        return $this.getEPFLRoleADGroupName($role, $facultyName, $false)
-    }
 
     <# 
         -------------------------------------------------------------------------------------
