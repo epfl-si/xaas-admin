@@ -98,7 +98,7 @@ class NameGenerator
         switch($this.tenant)
         {
             # Tenant EPFL
-            epfl 
+            $global:VRA_TENANT__EPFL 
             {
                 if($role -eq "CSP_SUBTENANT_MANAGER")
                 {
@@ -125,7 +125,7 @@ class NameGenerator
             }
 
             # Tenant ITServices
-            itservices
+            $global:VRA_TENANT__ITSERVICES
             {
                 if($role -eq "CSP_SUBTENANT_MANAGER" -or `
                     $role -eq "CSP_SUPPORT")
@@ -145,6 +145,12 @@ class NameGenerator
                 {
                     Throw ("Incorrect role given ({0})" -f $role)
                 }
+            }
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
             }
         }
         return $null
@@ -201,7 +207,7 @@ class NameGenerator
         switch($this.tenant)
         {
             # Tenant EPFL
-            epfl
+            $global:VRA_TENANT__EPFL 
             {
                 # Admin
                 if($role -eq "CSP_SUBTENANT_MANAGER")
@@ -245,7 +251,7 @@ class NameGenerator
             }
 
             # Tenant ITServices
-            itservices
+            $global:VRA_TENANT__ITSERVICES
             {
                 # Admin, Support
                 if($role -eq "CSP_SUBTENANT_MANAGER" -or `
@@ -273,6 +279,12 @@ class NameGenerator
                 {
                     Throw ("Incorrect value for role : '{0}'" -f $role)
                 }
+            }
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
             }
 
         }
@@ -342,38 +354,6 @@ class NameGenerator
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn, $details)
         return $groupName
     }
-
-
-    <# 
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie la description du groupe AD pour les paramètres passés 
-              Utilisé uniquement pour les groupe CSP_SUPPORT et CSP_SUBTENANT_MANAGER. On doit 
-              quand même le passer en  paramètre dans le cas où la fonction devrait évoluer 
-              dans le futur
-
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUPPORT"
-                                    "CSP_SUBTENANT_MANAGER"
-        IN  : $facultyName      -> Nom de la faculté
-        IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
-                                    $true|$false  
-                                    Si pas passé => $false      
-    #>
-    [string] getEPFLRoleADGroupDesc([string]$role, [string]$facultyName, [bool]$fqdn)
-    {
-        $details = @{facultyName = $facultyName
-            facultyID = ""
-            unitName = ""
-            unitID = "" }
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn, $details)
-        return $groupDesc
-    }
-
-    [string] getEPFLRoleADGroupDesc([string]$role, [string]$facultyName)
-    {
-        return $this.getEPFLRoleADGroupDesc($role, $facultyName, $false)
-    }    
-
     
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
@@ -523,29 +503,14 @@ class NameGenerator
     {
         return $this.getEPFLApproveGroupName($facultyName, $level, $this.GROUP_TYPE_AD, $fqdn)
     }
-    [PSCustomObject] getEPFLApproveADGroupName([string]$facultyName, [int]$level)
-    {
-        return $this.getEPFLApproveADGroupName($facultyName, $level, $false)
-    }
-    [PSCustomObject] getEPFLApproveADGroupName([string]$facultyName)
-    {
-        return $this.getEPFLApproveADGroupName($facultyName, 1, $false)
-    }
-
+    
 
     [PSCustomObject] getEPFLApproveGroupsGroupName([string]$facultyName, [int]$level, [bool]$fqdn)
     {
         return $this.getEPFLApproveGroupName($facultyName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
     }
-    [PSCustomObject] getEPFLApproveGroupsGroupName([string]$facultyName, [int]$level)
-    {
-        return $this.getEPFLApproveGroupsGroupName($facultyName, $level, $false)
-    }
-    [PSCustomObject] getEPFLApproveGroupsGroupName([string]$facultyName)
-    {
-        return $this.getEPFLApproveGroupsGroupName($facultyName, 1, $false)
-    }
-
+    
+    
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie l'adresse mail du groupe "groups" qui est utilisé pour faire les validations
@@ -558,7 +523,7 @@ class NameGenerator
     #>
     [string] getEPFLApproveGroupsEmail([string]$facultyName, [int]$level)
     {
-        $groupInfos = $this.getEPFLApproveGroupsGroupName($facultyName, $level)
+        $groupInfos = $this.getEPFLApproveGroupsGroupName($facultyName, $level, $false)
         return "{0}{1}" -f $groupInfos.name, [NameGenerator]::GROUPS_EMAIL_SUFFIX
     }
     
@@ -603,14 +568,7 @@ class NameGenerator
         $groupInfos = $this.getEPFLApproveGroupName($facultyName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
         return $groupInfos.name + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
     }
-    [string] getEPFLApproveGroupsADGroupName([string]$facultyName, [int]$level)
-    {
-        return $this.getEPFLApproveGroupsADGroupName($facultyName, $level, $false)
-    }
-    [string] getEPFLApproveGroupsADGroupName([string]$facultyName)
-    {
-        return $this.getEPFLApproveGroupsADGroupName($facultyName, 1, $false)
-    }
+    
 
     <#
         -------------------------------------------------------------------------------------
@@ -934,28 +892,13 @@ class NameGenerator
     {
         return $this.getITSApproveGroupName($serviceShortName, $level, $this.GROUP_TYPE_AD, $fqdn)
     }
-    [PSCustomObject] getITSApproveADGroupName([string]$serviceShortName, [int]$level)
-    {
-        return $this.getITSApproveADGroupName($serviceShortName, $level, $false)
-    }
-    [PSCustomObject] getITSApproveADGroupName([string]$serviceShortName)
-    {
-        return $this.getITSApproveADGroupName($serviceShortName, 1, $false)
-    }
-
+    
 
     [PSCustomObject] getITSApproveGroupsGroupName([string]$serviceShortName, [int]$level, [bool]$fqdn)
     {
         return $this.getITSApproveGroupName($serviceShortName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
     }
-    [PSCustomObject] getITSApproveGroupsGroupName([string]$serviceShortName, [int]$level)
-    {
-        return $this.getITSApproveGroupsGroupName($serviceShortName, $level, $false)
-    }
-    [PSCustomObject] getITSApproveGroupsGroupName([string]$serviceShortName)
-    {
-        return $this.getITSApproveGroupsGroupName($serviceShortName, 1, $false)
-    }
+    
 
     <#
         -------------------------------------------------------------------------------------
@@ -969,7 +912,7 @@ class NameGenerator
     #>
     [string] getITSApproveGroupsEmail([string]$serviceShortName, [int]$level)
     {
-        $groupInfos = $this.getITSApproveGroupsGroupName($serviceShortName, $level)
+        $groupInfos = $this.getITSApproveGroupsGroupName($serviceShortName, $level, $false)
         return $groupInfos.name + [NameGenerator]::GROUPS_EMAIL_SUFFIX
     }    
     
@@ -991,15 +934,7 @@ class NameGenerator
         $groupInfos = $this.getITSApproveGroupName($serviceShortName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
         return $groupInfos.name + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
     }
-    [string] getITSApproveGroupsADGroupName([string]$serviceShortName, [int]$level)
-    {
-        return $this.getITSApproveGroupsADGroupName($serviceShortName, $level, $false)
-    }
-    [string] getITSApproveGroupsADGroupName([string]$serviceShortName)
-    {
-        return $this.getITSApproveGroupsADGroupName($serviceShortName, 1, $false)
-    }
-
+   
 
     <#
         -------------------------------------------------------------------------------------
@@ -1035,21 +970,30 @@ class NameGenerator
     #>
     [System.Collections.ArrayList] getITSApprovalPolicyNameAndDesc([string]$serviceShortName, [string]$serviceName, [string]$approvalPolicyType)
     {
-        if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+        $type_desc = ""
+        $suffix = ""
+        
+        switch($approvalPolicyType)
         {
-            $suffix = "newItems"
-            $type_desc = "new items"
-        }
-        elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-        {
-            $suffix = "2ndDay"
-            $type_desc = "2nd day actions"
-        }
-        else 
-        {
-            Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
-        }
+            $global:APPROVE_POLICY_TYPE__ITEM_REQ
+            {
+                $suffix = "newItems"
+                $type_desc = "new items"
+            }
 
+            $global:APPROVE_POLICY_TYPE__ACTION_REQ
+            {
+                $suffix = "2ndDay"
+                $type_desc = "2nd day actions"
+            }
+
+            default
+            {
+                Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
+            }
+
+        }
+  
         $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($serviceShortName), $suffix
         $desc = "Approval policy for {0} for Service: {1}" -f $type_desc, $serviceName
 
@@ -1290,6 +1234,12 @@ class NameGenerator
                 }
                 return "{0}{1}-" -f $this.transformForGroupName($facultyNameOrServiceShortName) , $envId
             }
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
         }
         return ""
     }
@@ -1398,36 +1348,42 @@ class NameGenerator
         # Eclatement du nom pour récupérer les informations
         $partList = $ADGroupName.Split("_")
 
-        # EPFL
-        if($this.tenant -eq $global:VRA_TENANT__EPFL)
+        switch($this.tenant)
         {
-            # Le nom du groupe devait avoir la forme :
-            # vra_<envShort>_<facultyID>_<unitID>
-
-            if($partList.Count -lt 4)
+            $global:VRA_TENANT__EPFL
             {
-                Throw ("Incorrect group name ({0}) for Tenant {1}" -f $ADGroupName, $this.tenant)
+                # Le nom du groupe devait avoir la forme :
+                # vra_<envShort>_<facultyID>_<unitID>
+
+                if($partList.Count -lt 4)
+                {
+                    Throw ("Incorrect group name ({0}) for Tenant {1}" -f $ADGroupName, $this.tenant)
+                }
+
+                return @($partList[2], $partList[3])
             }
 
-            return @($partList[2], $partList[3])
-        }
-        # ITServices
-        elseif($this.tenant -eq $global:VRA_TENANT__ITSERVICES)
-        {
-            # Le nom du groupe devait avoir la forme :
-            # vra_<envShort>_<serviceShortName>
-            
-            if($partList.Count -lt 3)
+            # ITServices 
+            $global:VRA_TENANT__ITSERVICES
             {
-                Throw ("Incorrect group name ({0}) for Tenant {1}" -f $ADGroupName, $this.tenant)
+                # Le nom du groupe devait avoir la forme :
+                # vra_<envShort>_<serviceShortName>
+                
+                if($partList.Count -lt 3)
+                {
+                    Throw ("Incorrect group name ({0}) for Tenant {1}" -f $ADGroupName, $this.tenant)
+                }
+
+                return @($partList[2])
             }
 
-            return @($partList[2])
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
         }
-        else # Autre Tenant (ex: vsphere.local)
-        {
-            Throw ("Unsupported Tenant ({0})" -f $this.tenant)
-        }
+        return $null
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1452,36 +1408,40 @@ class NameGenerator
         # Eclatement du nom pour récupérer les informations
         $partList = $ADGroupDesc.Split(";")
 
-        # EPFL
-        if($this.tenant -eq $global:VRA_TENANT__EPFL)
+        switch($this.tenant)
         {
-            # Le nom du groupe devait avoir la forme :
-            # <facultyNam>;<unitName>
-
-            if($partList.Count -lt 2)
+            $global:VRA_TENANT__EPFL
             {
-                Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
+                # Le nom du groupe devait avoir la forme :
+                # <facultyNam>;<unitName>
+
+                if($partList.Count -lt 2)
+                {
+                    Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
+                }
+
+                return $partList
             }
 
-            return $partList
-        }
-        # ITServices
-        elseif($this.tenant -eq $global:VRA_TENANT__ITSERVICES)
-        {
-            # Le nom du groupe devait avoir la forme :
-            # <snowServiceId>;<serviceName>
-            
-            if($partList.Count -lt 2)
+            $global:VRA_TENANT__ITSERVICES
             {
-                Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
+                # Le nom du groupe devait avoir la forme :
+                # <snowServiceId>;<serviceName>
+                
+                if($partList.Count -lt 2)
+                {
+                    Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
+                }
+
+                return @($partList)
             }
 
-            return @($partList)
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
         }
-        else # Autre Tenant (ex: vsphere.local)
-        {
-            Throw ("Unsupported Tenant ({0})" -f $this.tenant)
-        }
+
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1536,32 +1496,36 @@ class NameGenerator
         # Extraction des infos pour construire les noms des autres éléments
         $partList = $bgName.Split("_")
 
-        # Si Tenant EPFL
-        if($this.tenant -eq $global:VRA_TENANT__EPFL)
+        switch($this.tenant)
         {
-            # Le nom du BG a la structure suivante :
-            # epfl_<faculty>_<unit>[_<info1>[_<info2>...]]
+            $global:VRA_TENANT__EPFL
+            {
+                # Le nom du BG a la structure suivante :
+                # epfl_<faculty>_<unit>[_<info1>[_<info2>...]]
 
-            # Le nom de la Reservation est généré comme suit
-            # <tenantShort>_<faculty>_<unit>[_<info1>[_<info2>...]]_<cluster>
+                # Le nom de la Reservation est généré comme suit
+                # <tenantShort>_<faculty>_<unit>[_<info1>[_<info2>...]]_<cluster>
 
-            return "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
-        }
-        # Si Tenant ITServices
-        elseif($this.tenant -eq $global:VRA_TENANT__ITSERVICES)
-        {
-            # Le nom du BG a la structure suivante :
-            # its_<serviceShortName>
+                return "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
+            }
 
-            # Le nom de la Reservation est généré comme suit
-            # <tenantShort>_<serviceShortName>_<cluster>
-            
-            return "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
+            $global:VRA_TENANT__ITSERVICES
+            {
+                # Le nom du BG a la structure suivante :
+                # its_<serviceShortName>
+
+                # Le nom de la Reservation est généré comme suit
+                # <tenantShort>_<serviceShortName>_<cluster>
+                
+                return "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
+            }
+
+            default
+            {
+                Throw("Unsupported Tenant ({0})" -f $this.tenant)
+            }
         }
-        else
-        {
-            Throw("Unsupported Tenant ({0})" -f $this.tenant)
-        }
+
     }
 
 
@@ -1625,22 +1589,24 @@ class NameGenerator
     #>
     [string] getNASPrivateISOPath([string]$bgName)
     {
-        # Si on est sur la prod 
-        if($this.env -eq $global:TARGET_ENV__PROD)
+        switch($this.env)
         {
-            return ([IO.Path]::Combine($global:NAS_PRIVATE_ISO_PROD, $this.tenant, $bgName))
-        }
-        # On est sur le test
-        elseif($this.env -eq $global:TARGET_ENV__TEST)
-        {
-            return ([IO.Path]::Combine($global:NAS_PRIVATE_ISO_TEST, $this.tenant, $bgName))
-        }
-        else # On est sur le dev
-        {
-            # Pas dispo pour cet environnement
-            return ""
-        }
+            $global:TARGET_ENV__PROD
+            {
+                return ([IO.Path]::Combine($global:NAS_PRIVATE_ISO_PROD, $this.tenant, $bgName))    
+            }
 
+            $global:TARGET_ENV__TEST
+            {
+                return ([IO.Path]::Combine($global:NAS_PRIVATE_ISO_TEST, $this.tenant, $bgName))
+            }
+
+            $global:TARGET_ENV__DEV
+            {
+                return ""
+            }
+        }
+       return ""
     }
 
 
