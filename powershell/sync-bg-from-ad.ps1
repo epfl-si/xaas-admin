@@ -1366,11 +1366,11 @@ try
 	#>
 	if($targetTenant -eq $global:VRA_TENANT__EPFL)
 	{
-		$adGroupNameRegex = $nameGenerator.getEPFLADGroupNameRegEx("CSP_CONSUMER")
+		$adGroupNameRegex = $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")
 	}
 	else 
 	{
-		$adGroupNameRegex = $nameGenerator.getITSADGroupNameRegEx("CSP_CONSUMER")
+		$adGroupNameRegex = $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")
 	}
 	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
 	Where-Object {$_.Name -match $adGroupNameRegex} 
