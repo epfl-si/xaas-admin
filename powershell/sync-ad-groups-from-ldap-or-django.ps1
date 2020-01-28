@@ -339,7 +339,7 @@ try
 			while($true)
 			{
 				$level += 1
-				$approveGroupInfos = $nameGenerator.getEPFLApproveADGroupName($faculty['name'], $level, $false)
+				$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
 
 				# S'il n'y a plus de groupe pour le level courant, on sort
 				if($null -eq $approveGroupInfos)
@@ -347,8 +347,8 @@ try
 					break
 				}
 				
-				$approveGroupDescAD = $nameGenerator.getEPFLApproveADGroupDesc($faculty['name'], $level)
-				$approveGroupNameGroups = $nameGenerator.getEPFLApproveGroupsADGroupName($faculty['name'], $level, $false)
+				$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
+				$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
@@ -659,7 +659,7 @@ try
 			{
 				$level += 1
 				# Recherche des informations pour le level courant.
-				$approveGroupInfos = $nameGenerator.getITSApproveADGroupName($service.shortName, $level, $false)
+				$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
 
 				# Si vide, c'est qu'on a atteint le niveau max pour les level
 				if($null -eq $approveGroupInfos)
@@ -667,8 +667,8 @@ try
 					break
 				}
 
-				$approveGroupDescAD = $nameGenerator.getITSApproveADGroupDesc($service.longName, $level)
-				$approveGroupNameGroups = $nameGenerator.getITSApproveGroupsADGroupName($service.shortName, $level, $false)
+				$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
+				$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `

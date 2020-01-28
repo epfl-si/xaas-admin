@@ -1446,11 +1446,11 @@ try
 			
 			# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG. On prend le niveau 1 car c'est celui de EXHEB
 			# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
-			#$capacityAlertMails += $nameGenerator.getEPFLApproveGroupsEmail($faculty, 1)
+			#$capacityAlertMails += $nameGenerator.getApproveGroupsEmail(1)
 
 			# Nom et description de la policy d'approbation + nom du groupe AD qui devra approuver
-			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ITEM_REQ)
+			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			
 			# Tableau pour les approbateurs des différents niveaux
 			$approverGroupAtDomainList = @()
@@ -1459,7 +1459,7 @@ try
 			While($true)
 			{
 				$level += 1
-				$levelGroupInfos = $nameGenerator.getEPFLApproveADGroupName($faculty, $level, $true)
+				$levelGroupInfos = $nameGenerator.getApproveADGroupName($level, $true)
 				# Si on n'a plus de groupe pour le level courant, on sort
 				if($null -eq $levelGroupInfos)
 				{
@@ -1526,11 +1526,11 @@ try
 
 			# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG
 			# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
-			#$capacityAlertMails += $nameGenerator.getITSApproveGroupsEmail($serviceShortName, 1)
+			#$capacityAlertMails += $nameGenerator.getApproveGroupsEmail(1)
 
 			# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
-			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ITEM_REQ)
+			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			
 			# Tableau pour les approbateurs des différents niveaux
 			$approverGroupAtDomainList = @()
@@ -1539,7 +1539,7 @@ try
 			While($true)
 			{
 				$level += 1
-				$levelGroupInfos = $nameGenerator.getITSApproveADGroupName($serviceShortName, $level, $true)
+				$levelGroupInfos = $nameGenerator.getApproveADGroupName($level, $true)
 
 				# Si on a un nom de groupe vide, c'est qu'il n'y a aucun groupe pour le level courant donc on peut sortir de la boucle
 				if($null -eq $levelGroupInfos)
