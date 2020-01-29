@@ -98,75 +98,7 @@ function identicalArrays([Object[]]$arrayA, [Object[]]$arrayB)
     
 } 
 
-
-function checkFuncCall([string]$funcName, [PSCustomObject]$testInfos, [int]$testNo, [PSCustomObject]$onObject)
-{
-    # Création de la liste des paramètres 
-    $formattedParams = @()
-
-    Foreach($param in $testInfos.params)
-    {
-        if($param.GetType().Name -eq 'Boolean')
-        {
-            $formattedParams += ("`${0}" -f $param.ToString().toLower() )
-        }
-        elseif ($param.GetType().Name -eq 'String')
-        {
-            $formattedParams += ("'{0}'" -f $param)
-        }
-        elseif($param.GetType().Name -eq 'Int32')
-        {
-            $formattedParams += ("{0}" -f $param)
-        }
-        else 
-        {
-            Throw ("Param type ({0}) not handled" -f $param.GetType().Name)    
-        }
-    }
-
-    # Rendu de l'appel à la fonction 
-    $cmd = "`$onObject.{0}({1})" -f $funcName, ($formattedParams -join ",")
-
-    $returnedValue = Invoke-Expression $cmd
-
-    $allOK = $true
-
-    # Si c'est un tableau associatif
-    if($returnedValue.GetType().Name -eq 'Hashtable')
-    {
-        # On compare les dictionnaires (un au format Hashtable et l'autre en PSCustomObject )
-        $allOK = identicalDicts -hashtable $returnedValue -object $testInfos.expected
-
-    }
-    # C'est un tableau
-    elseif($returnedValue.getType().Name -eq "Object[]")
-    {
-        $allOK = identicalArrays -arrayA $returnedValue -arrayB $testInfos.expected
-    }
-    else # Int, String, Bool
-    {
-
-        if($returnedValue -ne $testInfos.expected)
-        {
-            $allOK = $false
-        }
-    }
-
-    # Affichage du résultat
-    if($allOK)
-    {
-        $msg = "[{0}] (returned) {1} == {2} (expected)" -f $testNo, ($returnedValue | Convertto-json), ($testInfos.expected | convertto-json)
-        Write-Host -ForegroundColor:DarkGreen $msg
-    }
-    else
-    {
-        $msg = "[{0}] (returned) {1} != {2} (expected)" -f $testNo, ($returnedValue | Convertto-json), ($testInfos.expected | convertto-json)
-        Write-Host -ForegroundColor:Red $msg
-    }
-
-
-    return $allOK
-}
+ 
 
 # ------------------------------------------------------------------------------
 
@@ -174,42 +106,7 @@ $counters = [Counters]::new()
 $counters.add('ok', 'Passed')
 $counters.add('ko', 'Errors')
 
-<#
-    BUT : Exécute les tests qui sont présents dans un fichier JSON dont le chemin est passé en paramètre
 
-    IN  : $jsonTestFile -> Chemin jusqu'au fichier JSON contenant les tests
-    IN  : $onObject     -> Objet (intance de classe) sur lequelle effectuer les tests.   
-#>
-function execTests([string]$jsonTestFile, [PSCustomObject]$onObject)
-{
-    try {
-        $testList = (Get-Content -Path $jsonTestFile -raw) | ConvertFrom-Json    
-    }
-    catch {
-        Write-Error ("Error loading JSON file {0}" -f $jsonTestFile)
-        exit
-    }
-    
-    # Parcours des fonction à contrôler
-    foreach($funcInfos in $testList)
-    {
-        Write-Host $funcInfos.name
-        $testNo = 1
-        foreach($test in $funcInfos.tests)
-        {
-            if(checkFuncCall -funcName $funcInfos.name -testInfos $test -testNo $testNo -onObject $onObject)
-            {
-                $counters.inc('ok')
-            }
-            else
-            {
-                $counters.inc('ko')
-            }
-            $testNo++
-        }
-        Write-Host ""
-    }
-}
 
 # Création de l'objet sur lequel exécuter les tests.
 $nameGenerator = [NameGenerator]::new('test', 'epfl')
