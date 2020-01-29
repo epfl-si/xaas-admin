@@ -754,34 +754,10 @@ class NameGenerator
     #>
     [System.Collections.ArrayList] getBGEntNameAndDesc()
     {
-        $name = ""
-        $desc = ""
-
-        switch($this.tenant)
-        {
-            $global:VRA_TENANT__EPFL
-            {
-                $name = $this.getEntName($this.getDetail('facultyName'), $this.getDetail('unitName'))
-                $desc = $this.getEntDescription($this.getDetail('facultyName'), $this.getDetail('unitName'))
-            }
-
-
-            $global:VRA_TENANT__ITSERVICES
-            {
-                $name = $this.getEntName($this.getDetail('serviceShortName'))
-                $desc = $this.getEntDescription($this.getDetail('serviceName'))
-            }
-
-
-            # Tenant pas géré
-            default
-            {
-                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
-            }
-        }
+        $name = $this.getEntName()
+        $desc = $this.getEntDescription()
 
         return @($name, $desc)
-        
     }
 
 
@@ -957,97 +933,6 @@ class NameGenerator
         return $ruleList
     }
 
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# ----------------------------------------------------------------------------- EPFL --------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
-   
-
-    
-
-    
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# --------------------------------------------------------------------------- IT SERVICES ---------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du groupe à utiliser pour le Role $role du BG du service
-              $serviceShortName au sein du tenant ITServices.
-              En fonction du paramètre $type, on sait si on doit renvoyer un nom de groupe "groups"
-              ou un nom de groupe AD.
-
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
-        IN  : $serviceShortName -> Le nom court du service
-        IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
-                                    $true|$false  
-                                    Si pas passé => $false  
-        
-		RET : Nom du groupe à utiliser pour le rôle.
-    #>
-    [string] getITSRoleADGroupName([string]$role, [string] $serviceShortName, [bool]$fqdn)
-    {
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn)
-        return $groupName
-    }
-
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
-    <# 
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie la description du groupe AD pour les paramètres passés 
-
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
-        IN  : $serviceName      -> Le nom du service
-        IN  : $snowServiceId    -> ID du service dans ServiceNow
-    #>
-    [string] getITSRoleADGroupDesc([string]$role, [string]$serviceName, [string]$snowServiceId)
-    {
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $false)
-        return $groupDesc
-    }    
-
-
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    
-
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du groupe GROUPS créé dans AD à utiliser pour le mécanisme 
-              d'approbation des demandes pour un Business Group du tenant ITServices
-
-        IN  : $serviceShortName -> Le nom court du service
-        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
-        IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
-                                    $true|$false  
-                                    Si pas passé => $false 
-
-        RET : Le nom du groupe à utiliser pour l'approbation
-    #>
-    [string] getApproveGroupsADGroupName([string]$serviceShortName, [int]$level, [bool]$fqdn)
-    {
-        $groupInfos = $this.getITSApproveGroupName($serviceShortName, $level, $this.GROUP_TYPE_GROUPS, $fqdn)
-        return $groupInfos.name + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
-    }
-
-
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# --------------------------------------------------------------------------- AUTRES --------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
 
     <#
         -------------------------------------------------------------------------------------
@@ -1138,12 +1023,23 @@ class NameGenerator
         -------------------------------------------------------------------------------------
         BUT : Renvoie le préfixe de machine à utiliser pour une faculté ou un service
 
-        IN  : $facultyNameOrServiceShortName -> Nom de la faculté ou nom court du service
-
 		RET : Préfixe de machine
     #>
-    [string] getVMMachinePrefix([string]$facultyNameOrServiceShortName)
+    [string] getVMMachinePrefix()
     {
+        $facultyNameOrServiceShortName = ""
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL 
+            { 
+                $facultyNameOrServiceShortName = $this.getDetail('facultyName')
+            }
+
+            $global:VRA_TENANT__ITSERVICES 
+            { 
+                $facultyNameOrServiceShortName = $this.getDetail('serviceShortName')
+            }
+        }
 
         # Suppression de tous les caractères non alpha numériques
         $facultyNameOrServiceShortName = $facultyNameOrServiceShortName -replace '[^a-z0-9]', ''
@@ -1192,14 +1088,30 @@ class NameGenerator
         -------------------------------------------------------------------------------------
         BUT : Renvoie la description d'un BG du tenant EPFL
 
-        IN  : $facultyName  -> Nom de la faculté 
-        IN  : $unitName     -> Nom de l'unité
-
 		RET : Description du BG
     #>
-    [string] getEPFLBGDescription([string]$facultyName, [string]$unitName)
+    [string] getBGDescription()
     {
-        return "Faculty: {0}`nUnit: {1}" -f $facultyName.toUpper(), $unitName.toUpper()
+        $desc = ""
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL 
+            { 
+                $desc = "Faculty: {0}`nUnit: {1}" -f $this.getDetail('facultyName').toUpper(), $this.getDetail('unitName').toUpper()
+            }
+
+            $global:VRA_TENANT__ITSERVICES 
+            {
+                $desc = "" 
+            }
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+        return $desc
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1208,30 +1120,34 @@ class NameGenerator
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom d'un Entitlement en fonction du tenant défini. 
-              Au vu des paramètres, c'est pour le tenant EPFL que cette fonction sera utilisée.
-
-        IN  : $facultyName  -> Nom de la faculté 
-        IN  : $unitName     -> Nom de l'unité
 
 		RET : Description du BG
     #>
     [string] getEntName([string]$facultyName, [string]$unitName)
     {
-        return "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($facultyName), $this.transformForGroupName($unitName)
-    }    
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom d'un Entitlement en fonction du tenant défini. 
-              Au vu des paramètres, c'est pour le tenant ITServices que cette fonction sera utilisée.
+        $name = ""
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL 
+            { 
+                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($facultyName), $this.transformForGroupName($unitName)
+            }
 
-        IN  : $serviceShortName -> Nom court du service
+            $global:VRA_TENANT__ITSERVICES 
+            {
+                $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('serviceShortName')) 
+            }
 
-		RET : Description du BG
-    #>
-    [string] getEntName([string]$serviceShortName)
-    {
-        return "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($serviceShortName)
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+
+        }
+        return $name
     }    
+
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1239,32 +1155,32 @@ class NameGenerator
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie la description d'un Entitlement
-              Au vu des paramètres, cette méthode ne sera appelée que pour le tenant EPFL
-
-        IN  : $facultyName  -> Nom de la faculté 
-        IN  : $unitName     -> Nom de l'unité
-
+              
 		RET : Description de l'entitlement
     #>
-    [string] getEntDescription([string]$facultyName, [string]$unitName)
+    [string] getEntDescription()
     {
-        return "Faculty: {0}`nUnit: {1}" -f $facultyName.toUpper(), $unitName.toUpper()
+        $desc = ""
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL 
+            { 
+                $desc = "Faculty: {0}`nUnit: {1}" -f $this.getDetail('facultyName').toUpper(), $this.getDetail('unitName').toUpper()
+            }
+
+            $global:VRA_TENANT__ITSERVICES 
+            {
+                $desc = "Service: {0}" -f $this.getDetail('serviceName')
+            }
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+        return $desc
     }    
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie la description d'un Entitlement 
-              Au vu des paramètres, cette méthode ne sera appelée que pour le tenant ITServices
-
-        IN  : $serviceLongName -> Nom long du service
-
-		RET : Description de l'entitlement
-    #>
-    [string] getEntDescription([string]$serviceLongName)
-    {
-        # Par défaut, pas de description mais on se laisse la porte "ouverte" avec l'existance de cette méthode
-        return "Service: {0}" -f $serviceLongName
-    }     
-
 
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1392,34 +1308,34 @@ class NameGenerator
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom à utiliser pour un BG en fonction des paramètres passés.
-              Au vu des paramètres, cette fonction ne sera utilisée que pour le Tenant EPFL
-
-        IN  : $facultyName  -> Nom de la faculté
-        IN  : $unitName     -> Nom de l'unité
 
         RET : Le nom du BG à utiliser
     #>
-    [string] getBGName([string]$facultyName, [string]$unitName)
+    [string] getBGName()
     {
-        return "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($facultyName), $this.transformForGroupName($unitName)
+        $name = ""
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL
+            {
+                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
+            }
+
+            $global:VRA_TENANT__ITSERVICES
+            {
+                $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('serviceShortName'))
+            }
+
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+
+        return $name
+        
     }
 
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom à utiliser pour un BG en fonction des paramètres passés.
-              Au vu des paramètres, cette fonction ne sera utilisée que pour le Tenant ITService
-
-        IN  : $serviceShortName -> Le nom court du service.
-
-        RET : Le nom du BG à utiliser
-    #>
-    [string] getBGName([string]$serviceShortName)
-    {
-        return "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($serviceShortName)
-    }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1435,9 +1351,6 @@ class NameGenerator
     #>
     [string] getBGResName([string]$bgName, [string]$clusterName)
     {
-        # Extraction des infos pour construire les noms des autres éléments
-        $partList = $bgName.Split("_")
-
         $resName = ""
 
         switch($this.tenant)

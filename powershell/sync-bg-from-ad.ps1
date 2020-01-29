@@ -1424,14 +1424,14 @@ try
 
 			# Création du nom/description du business group
 			$bgName = $nameGenerator.getBGName($faculty, $unit)
-			$bgDesc = $nameGenerator.getEPFLBGDescription($faculty, $unit)
+			$bgDesc = $nameGenerator.getBGDescription()
 
 
 			# Génération du nom et de la description de l'entitlement
 			$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
 
 			# Nom du préfix de machine
-			$machinePrefixName = $nameGenerator.getVMMachinePrefix($faculty)
+			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
 			# Custom properties du Buisness Group
 			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $unitID}
@@ -1517,8 +1517,8 @@ try
 			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID" = $snowServiceId}
 
 			# Groupes de sécurités AD pour les différents rôles du BG
-			$managerGrpList = @($nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $serviceShortName, $true))
-			$supportGrpList = @($nameGenerator.getITSRoleADGroupName("CSP_SUPPORT", $serviceShortName, $true))
+			$managerGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $true))
+			$supportGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUPPORT", $true))
 			# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
 			# créés par le script "sync-ad-groups-from-ldap.ps1"
 			$sharedGrpList  = @($ADFullGroupName)
