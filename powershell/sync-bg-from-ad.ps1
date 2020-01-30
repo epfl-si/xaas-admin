@@ -25,6 +25,7 @@ USAGES:
 									on perd quelques références avec les objets déjà créés...
 									Le fichier est automatiquement effacé à la fin du script s'il existe, ceci
 									afin d'éviter de recréer inutilement les approval policies
+	- FORCE_ISO_FOLDER_ACL_UPDATE -> forcer la mise à jour des ACLs des dossiers où se trouvent les ISO sur le NAS
 
 
 	Prérequis:
