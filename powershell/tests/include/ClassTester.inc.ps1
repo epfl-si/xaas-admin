@@ -22,6 +22,22 @@
                             "<key2>": <retourInt>
                             }
                     },
+                    {
+                        "params": [["<arrayStrParam1>", <arrayIntParam> ], <boolParam>],
+                        "expected": "<retourStr>"
+                    },
+                    {
+                        "params": [ 
+                            {
+                                "<key1>": "<retourStr>",
+                                "<key2>": <retourInt>
+                            }
+                        ],
+                        "expected": { 
+                            "<key1>": "<retourStr>",
+                            "<key2>": <retourInt>
+                            }
+                    }
                     ...
 
                 ]
@@ -29,7 +45,9 @@
             ...
         ]
 
-        On peut passer des paramètres Int, Bool ou String pour le moment, le tout, dans une liste.
+        On peut passer des paramètres Int, Bool, String, Array et Hashtable à la fonction de test,
+        le tout, dans une liste. On peut faire des mix en ayant un Array avec String, Bool ou Int dedans.
+
         Au niveau des valeurs de retour, on gère les valeurs "simples" (Int, String, Bool) ou les
         éléments plus complexes comme des listes (Array) ou des Dictionnaires (Hashtable ou IDictionary).
         Plusieurs tests peuvent être mis pour une fonction donnée.
@@ -114,6 +132,71 @@ class ClassTester
         }
     }
 
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Formate le paramètre passé pour qu'ils puissent être directement inclus dans la 
+                génération d'une commande (string) qui sera appelée via Invoke-Expression
+
+        IN  : $param    -> Objet contenant la pearamètre
+
+        RET : Paramètre formaté sous forme de chaîne de caractères
+    #>
+    hidden [String] formatParameter([object]$param)
+    {
+        $formattedParam = ""
+
+        switch($param.GetType().Name)
+            {
+                "Boolean"
+                {
+                    $formattedParam = ("`${0}" -f $param.ToString().toLower() )
+                }
+
+                "String"
+                {
+                    $formattedParam = ("'{0}'" -f $param)
+                }
+
+                "Int32"
+                {
+                    $formattedParam = ("{0}" -f $param)
+                }
+
+                # Typiquement 'hashtable' ou 'idictionnary'
+                "PSCustomObject"
+                {
+                    $keyValueList = @()
+                    # Parcours des éléments 
+                    ForEach($key in $param.PSObject.Properties)
+                    {
+                        # Création de la chaîne: <key>="<valueStr>" ou <key>=<valueInt>
+                        $keyValueList += ("{0}={1}" -f $key.Name, $this.formatParameter($key.Value))
+                    }
+                    $formattedParam = "@{{{0}}}" -f ($keyValueList -join ";")
+                }
+
+                # Tableau
+                "Object[]"
+                {
+                    $valueList = @()
+                    ForEach($el in $param)
+                    {
+                        $valueList += $this.formatParameter($el)
+                    }                    
+
+                    $formattedParam = "@({0})" -f ($valueList -join ",")
+                }
+
+                default
+                {
+                    Throw ("Param type ({0}) not handled" -f $param.GetType().Name)  
+                }
+
+            }
+
+            return $formattedParam
+    }
+
 
     <#
         -------------------------------------------------------------------------------------
@@ -131,23 +214,9 @@ class ClassTester
     
         Foreach($param in $paramList)
         {
-            if($param.GetType().Name -eq 'Boolean')
-            {
-                $formattedParams += ("`${0}" -f $param.ToString().toLower() )
-            }
-            elseif ($param.GetType().Name -eq 'String')
-            {
-                $formattedParams += ("'{0}'" -f $param)
-            }
-            elseif($param.GetType().Name -eq 'Int32')
-            {
-                $formattedParams += ("{0}" -f $param)
-            }
-            else 
-            {
-                Throw ("Param type ({0}) not handled" -f $param.GetType().Name)    
-            }
+            $formattedParams += $this.formatParameter($param)
         }
+
         return $formattedParams
     }
 
@@ -172,6 +241,12 @@ class ClassTester
         $returnedValue = Invoke-Expression $cmd
     
         $allOK = $true
+
+        # S'il ne faut pas check la valeur de retour
+        if($null -eq $testInfos.expected)
+        {
+            return $allOK
+        }
     
         # Si c'est un tableau associatif
         if($returnedValue.GetType().Name -eq 'Hashtable')

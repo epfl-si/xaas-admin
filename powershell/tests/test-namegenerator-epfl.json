@@ -1,5 +1,21 @@
 [
     {
+        "name": "initDetails",
+        "tests": [
+            {
+                "params": [
+                    {
+                        "facultyName": "SI",
+                        "facultyID": "12635",
+                        "unitName": "IDEV-ING",
+                        "unitID": "13031"
+                    }
+                ],
+                "expected": null
+            }
+        ]
+    },
+    {
         "name": "getADGroupNameRegEx",
         "tests": [
             {
