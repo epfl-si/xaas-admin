@@ -1,25 +1,83 @@
+<#
+   BUT : Permet d'effectuer des tests sur une autre classe en appelant ses fonctions avec 
+        des paramètres donnés et en regardant si le résultat correspond à ce qui est attendu.
+        Les tests à effectuer sont décrits dans un fichier JSON dont la structure est la suivante :
 
+        [
+            {
+                "name": "<nomDeLaFonctionATester>",
+                "tests": [
+                    {
+                        "params": ["<strParam>", <intParam>, <boolParam>],
+                        "expected": "<retourStr>"
+                    },
+                    {
+                        "params": ["<strParam>", <intParam>, <boolParam>],
+                        "expected": [ "<retourStr>", <retourInt> ]
+                    },
+                    {
+                        "params": ["<strParam>", <intParam>, <boolParam>],
+                        "expected": { 
+                            "<key1>": "<retourStr>",
+                            "<key2>": <retourInt>
+                            }
+                    },
+                    ...
 
+                ]
+            },
+            ...
+        ]
+
+        On peut passer des paramètres Int, Bool ou String pour le moment, le tout, dans une liste.
+        Au niveau des valeurs de retour, on gère les valeurs "simples" (Int, String, Bool) ou les
+        éléments plus complexes comme des listes (Array) ou des Dictionnaires (Hashtable ou IDictionary).
+        Plusieurs tests peuvent être mis pour une fonction donnée.
+         
+
+   AUTEUR : Lucien Chaboudez
+   DATE   : Janvier 2020
+
+   Prérequis:
+   Les fichiers doivent avoir été inclus au programme principal avant que le fichier courant puisse être inclus.
+   - ../include/define.inc.ps1
+   - ../include/functions.inc.ps1
+   - ../include/NameGenerator.inc.ps1
+   - ../include/Counters.inc.ps1
+
+   ----------
+   HISTORIQUE DES VERSIONS
+   0.1 - Version de base
+
+#>
 class ClassTester
 {
     hidden [Counters] $counters # Pour compter les erreurs et succès des tests
     hidden [PSCustomObject] $targetObject # Objet sur lequel on fait les tests
 
-    ClassTester([Counters]$counters)
+    ClassTester()
     {
-        $this.counters = $counters
+        $this.counters = [Counters]::new()
+        $this.counters.add('ok', 'Passed')
+        $this.counters.add('ko', 'Errors')
     }
 
 
-    [Counters]getCounters()
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie l'objet Counters permettant de savoir combien de tests ont passé/échoué
+    #>
+    [Counters]getResults()
     {
         return $this.counters
     }
 
     <#
         -------------------------------------------------------------------------------------
-
-        BUT : Exécute les tests qui sont présents dans un fichier JSON dont le chemin est passé en paramètre
+        BUT : Exécute les tests qui sont présents dans un fichier JSON dont le chemin est passé en paramètre.
+                Les résultats de chaque test seront affichés à l'écran et un compteur de test
+                réussi/échoués sera mis à jour. Celui-ci pourra être interrogé via la fonction
+                getResults()
 
         IN  : $jsonTestFile -> Chemin jusqu'au fichier JSON contenant les tests
         IN  : $onObject     -> Objet (intance de classe) sur lequelle effectuer les tests.   
@@ -95,7 +153,6 @@ class ClassTester
 
     <#
         -------------------------------------------------------------------------------------
-
         BUT : Contrôle que l'appel à une fonction de l'objet $this.targetObject, avec les informations de tests donnée, se déroule correctement
 
         IN  : $funcName     -> Nom de la fonction à tester 
@@ -191,6 +248,7 @@ class ClassTester
         {
             ForEach($key in $fromFunc.keys)
             {
+                # Si la propriété n'existe pas dans l'objet, 
                 if( ($fromJSON.PSObject.Properties | Where-Object { $_.name -eq $key} ).count -eq 0)
                 {
                     $allOK = $false
@@ -239,6 +297,7 @@ class ClassTester
                     # On compare au niveau "dictionnaire"
                     $allOK = $this.identicalDicts($fromFunc[$index], $fromJSON[$index])
                 }
+                # Valeur simple de type Int, Bool, String
                 elseif ($fromFunc[$index] -ne $fromJSON[$index])
                 {
                     $allOK = $false
@@ -253,5 +312,4 @@ class ClassTester
         }
         return $allOk
     } 
-    
 }
