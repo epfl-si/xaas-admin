@@ -7,6 +7,7 @@
    ----------
    HISTORIQUE DES VERSIONS
    20.03.2018 - 1.0 - Version de base
+   30.01.2020 - 1.1 - Check si on a déjà le compteur à l'ajout
 #>
 class Counters
 {
@@ -28,13 +29,17 @@ class Counters
 	#>
     [void] add([string] $id, [string]$description)
     {
-        $this.counters.Add($id, @{description = $description
-                               value = 0
-                               list = @()})
-        <# on enregistre l'ordre dans lequel les ID sont ajouté à l'objet. On ne peut pas se fier à 
-        $this.counters car c'est un dictionnaire et celui-ci ne garde pas l'ordre d'ajout des éléments.
-        #>
-        $this.idList += $id
+        # Si on n'a pas déjà le compteur
+        if($this.idList -notcontains $id)
+        {
+            $this.counters.Add($id, @{description = $description
+                                value = 0
+                                list = @()})
+            <# on enregistre l'ordre dans lequel les ID sont ajouté à l'objet. On ne peut pas se fier à 
+            $this.counters car c'est un dictionnaire et celui-ci ne garde pas l'ordre d'ajout des éléments.
+            #>
+            $this.idList += $id
+        }
     }
 
 
