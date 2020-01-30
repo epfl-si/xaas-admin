@@ -3,6 +3,11 @@
          - Groupes utilisés dans Active Directory et l'application "groups" (https://groups.epfl.ch). Les noms utilisés pour 
            ces groupes sont identiques mais le groupe AD généré pour le groupe de l'application "groups" est différent.
          - OU Active Directory dans laquelle les groupes doivent être mis.
+         - Noms des éléments dans vRA
+
+         Avant d'être utilisé, l'objet instancié devra être configuré via la fonction 'initDetails()'.
+         Il y a cependant quelques fonctions (à la fin du fichier) qui peuvent être utilisées sans que la 
+         classe soit initialisée.
          
 
    AUTEUR : Lucien Chaboudez
@@ -16,17 +21,18 @@
    ----------
    HISTORIQUE DES VERSIONS
    0.1 - Version de base
+   0.2 - Suppression des fonctions spécifiques aux tenant, configuration de la classe via 'initDetails' et appel
+        ensuite de fonctions plus génériques
 
 #>
 class NameGenerator
 {
     hidden [string]$tenant  # Tenant sur lequel on est en train de bosser 
     hidden [string]$env     # Environnement sur lequel on est en train de bosser.
+
     # Détails pour la génération des différents noms. Sera initialisé via 'initDetails' pour mettre à jour
     # les informations en fonction des noms à générer.
     hidden [System.Collections.IDictionary]$details 
-
-
 
     hidden $GROUP_TYPE_AD = 'adGroup'
     hidden $GROUP_TYPE_GROUPS = 'groupsGroup'
@@ -1183,9 +1189,41 @@ class NameGenerator
     }    
 
 
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom à utiliser pour un BG en fonction des paramètres passés.
+
+        RET : Le nom du BG à utiliser
+    #>
+    [string] getBGName()
+    {
+        $name = ""
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL
+            {
+                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
+            }
+
+            $global:VRA_TENANT__ITSERVICES
+            {
+                $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('serviceShortName'))
+            }
+
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+
+        return $name
+    }
+
     
+    <# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                        FONCTIONS UTILISABLES SANS CONFIGURATION DE LA CLASSE VIA LA FONCTION 'initDetails()'
+       ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#>
+
     <#
         -------------------------------------------------------------------------------------
         BUT : Extrait et renvoie les informations d'un groupe AD en les récupérant depuis son nom. 
@@ -1243,9 +1281,6 @@ class NameGenerator
         return $result
     }
 
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    
     <#
         -------------------------------------------------------------------------------------
         BUT : Extrait et renvoie les informations d'un groupe AD en les récupérant depuis sa description. 
@@ -1302,43 +1337,6 @@ class NameGenerator
 
     }
 
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom à utiliser pour un BG en fonction des paramètres passés.
-
-        RET : Le nom du BG à utiliser
-    #>
-    [string] getBGName()
-    {
-        $name = ""
-        switch($this.tenant)
-        {
-            $global:VRA_TENANT__EPFL
-            {
-                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
-            }
-
-            $global:VRA_TENANT__ITSERVICES
-            {
-                $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('serviceShortName'))
-            }
-
-            default
-            {
-                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
-            }
-        }
-
-        return $name
-        
-    }
-
-
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
     <#
     -------------------------------------------------------------------------------------
