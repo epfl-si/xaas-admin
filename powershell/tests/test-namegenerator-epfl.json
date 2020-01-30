@@ -25,36 +25,36 @@
         "name": "getEPFLRoleADGroupName",
         "tests": [
             {
-                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", "10077", "13682", true],
-                "expected": "vra_t_10077_13682@intranet.epfl.ch"
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", "12635", "13031", true],
+                "expected": "vra_t_12635_13031@intranet.epfl.ch"
             },
             {
-                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", "10077", "13682", false],
-                "expected": "vra_t_10077_13682"
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", "12635", "13031", false],
+                "expected": "vra_t_12635_13031"
             },
             {
-                "params": ["CSP_CONSUMER", "10077", "13682", true],
-                "expected": "vra_t_10077_13682@intranet.epfl.ch"
+                "params": ["CSP_CONSUMER", "12635", "13031", true],
+                "expected": "vra_t_12635_13031@intranet.epfl.ch"
             },
             {
-                "params": ["CSP_CONSUMER", "10077", "13682", false],
-                "expected": "vra_t_10077_13682"
+                "params": ["CSP_CONSUMER", "12635", "13031", false],
+                "expected": "vra_t_12635_13031"
             },
 
             {
-                "params": ["CSP_SUPPORT", "10077", true],
-                "expected": "vra_t_sup_10077@intranet.epfl.ch"
+                "params": ["CSP_SUPPORT", "12635", true],
+                "expected": "vra_t_sup_12635@intranet.epfl.ch"
             },
             {
-                "params": ["CSP_SUPPORT", "10077", false],
-                "expected": "vra_t_sup_10077"
+                "params": ["CSP_SUPPORT", "12635", false],
+                "expected": "vra_t_sup_12635"
             },
             {
-                "params": ["CSP_SUBTENANT_MANAGER", "10077", true],
+                "params": ["CSP_SUBTENANT_MANAGER", "12635", true],
                 "expected": "vra_t_adm_epfl@intranet.epfl.ch"
             },
             {
-                "params": ["CSP_SUBTENANT_MANAGER", "10077", false],
+                "params": ["CSP_SUBTENANT_MANAGER", "12635", false],
                 "expected": "vra_t_adm_epfl"
             }
         ]
@@ -363,8 +363,8 @@
         "name": "extractInfosFromADGroupName",
         "tests":[
             {
-                "params": ["vra_t_10001_10003"],
-                "expected": ["10001", "10003"]
+                "params": ["vra_t_12635_13031"],
+                "expected": ["12635", "13031"]
             }
         ]
     },
@@ -373,8 +373,8 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["SI;EXHEB"],
-                "expected": ["SI", "EXHEB"]
+                "params": ["SI;IDEV-ING"],
+                "expected": ["SI", "IDEV-ING"]
             }
         ]
     },
@@ -393,8 +393,8 @@
         "name": "getBGResName",
         "tests":[
             {
-                "params": ["epfl_si_vpsi", "clstr-test-INJ"],
-                "expected": "epfl_si_vpsi_clstr_test_inj"
+                "params": ["epfl_si_idev_ing", "clstr-test-INJ"],
+                "expected": "epfl_si_idev_ing_clstr_test_inj"
             }
         ]
     },
@@ -433,8 +433,8 @@
         "name": "getNASPrivateISOPath",
         "tests":[
             {
-                "params": ["epfl_si_vpsi"],
-                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_si_vpsi"
+                "params": ["epfl_si_idev_ing"],
+                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_si_idev_ing"
             }
         ]
     },
@@ -453,8 +453,8 @@
         "name": "getNASPrivateISOPathBGName",
         "tests":[
             {
-                "params": ["\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_si_vpsi"],
-                "expected": "epfl_si_vpsi"
+                "params": ["\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_si_idev_ing"],
+                "expected": "epfl_si_idev_ing"
             }
         ]
     }

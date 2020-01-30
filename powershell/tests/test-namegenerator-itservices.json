@@ -350,8 +350,8 @@
         "name": "extractInfosFromADGroupName",
         "tests":[
             {
-                "params": ["vra_t_antivirus"],
-                "expected": ["antivirus"]
+                "params": ["vra_t_vs"],
+                "expected": ["vs"]
             }
         ]
     },
@@ -360,8 +360,8 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["SVC0062;Antivirus"],
-                "expected": ["SVC0062", "Antivirus"]
+                "params": ["SVC0007;Virtualization Service"],
+                "expected": ["SVC0007", "Virtualization Service"]
             }
         ]
     },
@@ -390,8 +390,8 @@
         "name": "getADGroupFQDN",
         "tests":[
             {
-                "params": ["vra_t_antivirus"],
-                "expected": "vra_t_antivirus@intranet.epfl.ch"
+                "params": ["vra_t_vs"],
+                "expected": "vra_t_vs@intranet.epfl.ch"
             }
         ]
     },
