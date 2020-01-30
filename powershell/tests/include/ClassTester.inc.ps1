@@ -89,7 +89,7 @@ class ClassTester
             $testList = (Get-Content -Path $jsonTestFile -raw) | ConvertFrom-Json    
         }
         catch {
-            Write-Error ("Error loading JSON file {0}" -f $jsonTestFile)
+            Write-Error ("Error loading JSON file {0}`n{1}" -f $jsonTestFile, $_)
             exit
         }
         
