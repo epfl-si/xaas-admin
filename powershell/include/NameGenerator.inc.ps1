@@ -1123,14 +1123,14 @@ class NameGenerator
 
 		RET : Description du BG
     #>
-    [string] getEntName([string]$facultyName, [string]$unitName)
+    [string] getEntName()
     {
         $name = ""
         switch($this.tenant)
         {
             $global:VRA_TENANT__EPFL 
             { 
-                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($facultyName), $this.transformForGroupName($unitName)
+                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
             }
 
             $global:VRA_TENANT__ITSERVICES 
