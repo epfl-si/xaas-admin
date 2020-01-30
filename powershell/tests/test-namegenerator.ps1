@@ -27,13 +27,31 @@ $classTester = [ClassTester]::new()
 
 # ------------------------------------------
 # Tests pour le tenant EPFL
+$details = @{
+    facultyName = "SI"
+    facultyID = "12635"
+    unitName = "IDEV-ING"
+    unitID = "13031"
+}
+
 $nameGenerator = [NameGenerator]::new('test', 'epfl')
+$nameGenerator.initDetails($details)
+
 $jsonFile = ([IO.Path]::Combine("$PSScriptRoot", "test-namegenerator-epfl.json"))
 $classTester.runTests($jsonFile, $nameGenerator)
 
 # ------------------------------------------
 # Tests pour le tenant ITServices
+
+$details = @{
+    serviceShortName = "vs"
+    serviceName = "Virtualization Service"
+    snowServiceId = "SVC0007"
+}
+
 $nameGenerator = [NameGenerator]::new('test', 'itservices')
+$nameGenerator.initDetails($details)
+
 $jsonFile = ([IO.Path]::Combine("$PSScriptRoot", "test-namegenerator-itservices.json"))
 $classTester.runTests($jsonFile, $nameGenerator)
 
