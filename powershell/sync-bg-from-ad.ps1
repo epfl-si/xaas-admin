@@ -1365,14 +1365,8 @@ try
 	 groupe pour filtrer mais d'autres groupes avec des noms débutant de la même manière ont été ajoutés donc le filtre par expression régulière
 	 a été nécessaire.
 	#>
-	if($targetTenant -eq $global:VRA_TENANT__EPFL)
-	{
-		$adGroupNameRegex = $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")
-	}
-	else 
-	{
-		$adGroupNameRegex = $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")
-	}
+	$adGroupNameRegex = $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")
+	
 	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
 	Where-Object {$_.Name -match $adGroupNameRegex} 
 
@@ -1424,7 +1418,7 @@ try
 			Write-Debug "-> Current AD group Unit    : $($unit) ($($unitID)) "
 
 			# Création du nom/description du business group
-			$bgName = $nameGenerator.getBGName($faculty, $unit)
+			$bgName = $nameGenerator.getBGName()
 			$bgDesc = $nameGenerator.getBGDescription()
 
 
@@ -1504,7 +1498,7 @@ try
 				snowServiceId = $snowServiceId})
 
 			# Création du nom/description du business group
-			$bgName = $nameGenerator.getBGName($serviceShortName)
+			$bgName = $nameGenerator.getBGName()
 			$bgDesc = $serviceLongName
 			
 			# Génération du nom et de la description de l'entitlement
