@@ -16,6 +16,10 @@
    	19.08.2019 - 1.2 - Ajout d'un fichier de configuration JSON pour spécifier où il faut aller chercher les
 					  informations dans ldap.epfl.ch. On prenais uniquement dans 'o=epfl,c=ch' mais maintenant
 					  il faut aussi aller chercher dans 'o=ehe,c=ch' ...
+	31.01.2020 - 1.3 - Correction lors de l'utilisation de la fonction qui interroge scoldap.epfl.ch. Un no 
+						d'unité doit obligatoirement être codé sur 5 chiffres, il faut donc ajouter des 0
+						avant les nombres plus petits...			  
+	
 #>
 class EPFLLDAP
 {
@@ -226,8 +230,12 @@ class EPFLLDAP
 	#>
 	[Array] getUnitMembers([string]$unitUniqueIdentifier)
 	{
+		# On ajoute des 0 si besoin au début du no de l'unité pour que ça renvoie bien un résultat après
+		$unitUniqueIdentifier = $unitUniqueIdentifier.PadLeft(5, '0')
+
 		# On fait la recherche dans SCOLDAP cette fois-ci... et vous noterez le "U" juste après le "="... ouais parce que dans SCOLDAP, y'a une faille spatio-temporelle
 		# ou un truc over bizarre qui fait qu'il faut mettre un U avant le no d'unité... là de nouveau, WTF?
+		# Voir dans l'entête du présent fichier pour comprendre pourquoi on cherche dans SCOLDAP
 		$allMembers = $this.LDAPSearch($this.LDAPconfig.members.server, $this.LDAPconfig.members.rootDN, "subtree", "((uniqueidentifier=U$($unitUniqueIdentifier)))", @("memberuid"))
 
 		# Si rien trouvé, 
