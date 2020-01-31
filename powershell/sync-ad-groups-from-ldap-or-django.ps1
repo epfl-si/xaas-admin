@@ -322,6 +322,14 @@ try
 			# --------------------------------- FACULTE
 			# ----------------------------------------------------------------------------------
 
+			# Initialisation des détails pour le générateur de noms 
+			# NOTE: On ne connait pas encore toutes les informations donc on initialise 
+			# avec juste celles qui sont nécessaires pour la suite. Le reste, on met une
+			# chaîne vide.
+			$nameGenerator.initDetails(@{facultyName = $faculty['name']
+										facultyID = $faculty['uniqueidentifier']
+										unitName = ''
+										unitID = ''})
 			
 			# --------------------------------- APPROVE
 
@@ -331,7 +339,7 @@ try
 			while($true)
 			{
 				$level += 1
-				$approveGroupInfos = $nameGenerator.getEPFLApproveADGroupName($faculty['name'], $level)
+				$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
 
 				# S'il n'y a plus de groupe pour le level courant, on sort
 				if($null -eq $approveGroupInfos)
@@ -339,8 +347,8 @@ try
 					break
 				}
 				
-				$approveGroupDescAD = $nameGenerator.getEPFLApproveADGroupDesc($faculty['name'], $level)
-				$approveGroupNameGroups = $nameGenerator.getEPFLApproveGroupsADGroupName($faculty['name'], $level)
+				$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
+				$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
@@ -369,13 +377,13 @@ try
 			# Il faut créer les groupes pour les Roles CSP_SUBTENANT_MANAGER et CSP_SUPPORT s'ils n'existent pas
 
 			# Génération des noms des groupes dont on va avoir besoin.
-			$adminGroupNameAD = $nameGenerator.getEPFLRoleADGroupName("CSP_SUBTENANT_MANAGER", $faculty['name'])
-			$adminGroupDescAD = $nameGenerator.getEPFLRoleADGroupDesc("CSP_SUBTENANT_MANAGER", $faculty['name'])
-			$adminGroupNameGroups = $nameGenerator.getEPFLRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER", $faculty['name'])
+			$adminGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
+			$adminGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
+			$adminGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
 
-			$supportGroupNameAD = $nameGenerator.getEPFLRoleADGroupName("CSP_SUPPORT", $faculty['name'])
-			$supportGroupDescAD = $nameGenerator.getEPFLRoleADGroupDesc("CSP_SUPPORT", $faculty['name'])
-			$supportGroupNameGroups = $nameGenerator.getEPFLRoleGroupsADGroupName("CSP_SUPPORT", $faculty['name'])
+			$supportGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUPPORT", $false)
+			$supportGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUPPORT")
+			$supportGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUPPORT")
 
 			# Création des groupes + gestion des groupes prérequis 
 			if((createADGroupWithContent -groupName $adminGroupNameAD -groupDesc $adminGroupDescAD -groupMemberGroup $adminGroupNameGroups `
@@ -417,9 +425,15 @@ try
 				# Recherche des membres de l'unité
 				$ldapMemberList = $ldap.getUnitMembers($unit['uniqueidentifier'])
 
+				# Initialisation des détails pour le générateur de noms
+				$nameGenerator.initDetails(@{facultyName = $faculty['name']
+											facultyID = $faculty['uniqueidentifier']
+											unitName = $unit['name']
+											unitID = $unit['uniqueidentifier']})
+
 				# Création du nom du groupe AD et de la description
-				$adGroupName = $nameGenerator.getEPFLRoleADGroupName("CSP_CONSUMER", [int]$faculty['uniqueidentifier'], [int]$unit['uniqueidentifier'])
-				$adGroupDesc = $nameGenerator.getEPFLRoleADGroupDesc("CSP_CONSUMER", $faculty['name'], $unit['name'])
+				$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+				$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
 
 				# Pour définir si un groupe AD a été créé lors de l'itération courante
 				$newADGroupCreated = $false
@@ -565,7 +579,7 @@ try
 		# Parcours des groupes AD qui sont dans l'OU de l'environnement donné. On ne prend que les groupes qui sont utilisés pour 
 		# donner des droits d'accès aux unités. Afin de faire ceci, on fait un filtre avec une expression régulière
 		Get-ADGroup  -Filter ("Name -like '*'") -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
-		Where-Object {$_.Name -match $nameGenerator.getEPFLADGroupNameRegEx("CSP_CONSUMER")} | 
+		Where-Object {$_.Name -match $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")} | 
 		ForEach-Object {
 
 			# Si le groupe n'est pas dans ceux créés à partir de LDAP, c'est que l'unité n'existe plus. On supprime donc le groupe AD pour que 
@@ -630,6 +644,11 @@ try
 
 			$counters.inc('its.serviceProcessed')
 
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{serviceShortName = $service.shortName
+										serviceName = $service.longName
+										snowServiceId = $service.snowId})
+
 			$serviceNo += 1
 
 			# --------------------------------- APPROVE
@@ -640,7 +659,7 @@ try
 			{
 				$level += 1
 				# Recherche des informations pour le level courant.
-				$approveGroupInfos = $nameGenerator.getITSApproveADGroupName($service.shortName, $level)
+				$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
 
 				# Si vide, c'est qu'on a atteint le niveau max pour les level
 				if($null -eq $approveGroupInfos)
@@ -648,8 +667,8 @@ try
 					break
 				}
 
-				$approveGroupDescAD = $nameGenerator.getITSApproveADGroupDesc($service.longName, $level)
-				$approveGroupNameGroups = $nameGenerator.getITSApproveGroupsADGroupName($service.shortName, $level)
+				$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
+				$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
@@ -678,9 +697,9 @@ try
 			# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
 			# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
 			# sera le même
-			$admSupGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $service.shortName)
-			$admSupGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_SUBTENANT_MANAGER", $service.longName, $service.snowId)
-			$admSupGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER", $service.shortName)
+			$admSupGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
+			$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
+			$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
 
 			# Création des groupes + gestion des groupes prérequis 
 			if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
@@ -698,9 +717,9 @@ try
 			# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
 			# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
 			# sera le même
-			$userSharedGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_CONSUMER", $service.shortName)
-			$userSharedGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_CONSUMER", $service.longName, $service.snowId)
-			$userSharedGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_CONSUMER", $service.shortName)
+			$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+			$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
+			$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
 
 			# Création des groupes + gestion des groupes prérequis 
 			if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroups `

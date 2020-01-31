@@ -1365,14 +1365,8 @@ try
 	 groupe pour filtrer mais d'autres groupes avec des noms débutant de la même manière ont été ajoutés donc le filtre par expression régulière
 	 a été nécessaire.
 	#>
-	if($targetTenant -eq $global:VRA_TENANT__EPFL)
-	{
-		$adGroupNameRegex = $nameGenerator.getEPFLADGroupNameRegEx("CSP_CONSUMER")
-	}
-	else 
-	{
-		$adGroupNameRegex = $nameGenerator.getITSADGroupNameRegEx("CSP_CONSUMER")
-	}
+	$adGroupNameRegex = $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")
+	
 	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
 	Where-Object {$_.Name -match $adGroupNameRegex} 
 
@@ -1414,26 +1408,32 @@ try
 			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
 			$faculty, $unit = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{facultyName = $faculty
+										 facultyID = $facultyID
+										 unitName = $unit
+										 unitID = $unitID})
+
 			Write-Debug "-> Current AD group Faculty : $($faculty) ($($facultyID))"
 			Write-Debug "-> Current AD group Unit    : $($unit) ($($unitID)) "
 
 			# Création du nom/description du business group
-			$bgName = $nameGenerator.getBGName($faculty, $unit)
-			$bgDesc = $nameGenerator.getEPFLBGDescription($faculty, $unit)
+			$bgName = $nameGenerator.getBGName()
+			$bgDesc = $nameGenerator.getBGDescription()
 
 
 			# Génération du nom et de la description de l'entitlement
-			$entName, $entDesc = $nameGenerator.getEPFLBGEntNameAndDesc($faculty, $unit)
+			$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
 
 			# Nom du préfix de machine
-			$machinePrefixName = $nameGenerator.getVMMachinePrefix($faculty)
+			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
 			# Custom properties du Buisness Group
 			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $unitID}
 
 			# Groupes de sécurités AD pour les différents rôles du BG
-			$managerGrpList = @($nameGenerator.getEPFLRoleADGroupName("CSP_SUBTENANT_MANAGER", $faculty, $true))
-			$supportGrpList = @($nameGenerator.getEPFLRoleADGroupName("CSP_SUPPORT", $faculty, $true))
+			$managerGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $true))
+			$supportGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUPPORT", $true))
 			# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
 			# créés par le script "sync-ad-groups-from-ldap.ps1"
 			$sharedGrpList  = @($ADFullGroupName)
@@ -1441,11 +1441,11 @@ try
 			
 			# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG. On prend le niveau 1 car c'est celui de EXHEB
 			# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
-			#$capacityAlertMails += $nameGenerator.getEPFLApproveGroupsEmail($faculty, 1)
+			#$capacityAlertMails += $nameGenerator.getApproveGroupsEmail(1)
 
 			# Nom et description de la policy d'approbation + nom du groupe AD qui devra approuver
-			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ITEM_REQ)
+			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			
 			# Tableau pour les approbateurs des différents niveaux
 			$approverGroupAtDomainList = @()
@@ -1454,7 +1454,7 @@ try
 			While($true)
 			{
 				$level += 1
-				$levelGroupInfos = $nameGenerator.getEPFLApproveADGroupName($faculty, $level, $true)
+				$levelGroupInfos = $nameGenerator.getApproveADGroupName($level, $true)
 				# Si on n'a plus de groupe pour le level courant, on sort
 				if($null -eq $levelGroupInfos)
 				{
@@ -1472,13 +1472,13 @@ try
 
 			# -- NSX --
 			# Nom et description du NSGroup
-			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getEPFLSecurityGroupNameAndDesc($faculty)
+			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bgName)
 			# Nom du security Tag
-			$nsxSTName = $nameGenerator.getEPFLSecurityTagName($faculty)
+			$nsxSTName = $nameGenerator.getSecurityTagName()
 			# Nom et description de la section de firewall
-			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getEPFLFirewallSectionNameAndDesc($faculty)
+			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
 			# Nom de règles de firewall
-			$nsxFWRuleNames = $nameGenerator.getEPFLFirewallRuleNames($faculty)
+			$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
 
 		}
 		# Si Tenant ITServices
@@ -1492,12 +1492,17 @@ try
 			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
 			$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
+				serviceName = $serviceLongName
+				snowServiceId = $snowServiceId})
+
 			# Création du nom/description du business group
-			$bgName = $nameGenerator.getBGName($serviceShortName)
+			$bgName = $nameGenerator.getBGName()
 			$bgDesc = $serviceLongName
 			
 			# Génération du nom et de la description de l'entitlement
-			$entName, $entDesc = $nameGenerator.getITSBGEntNameAndDesc($serviceShortName, $serviceLongName)
+			$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
 
 			# Nom du préfix de machine
 			# NOTE ! Il n'y a pas de préfix de machine pour les Business Group du tenant ITServices.
@@ -1507,8 +1512,8 @@ try
 			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID" = $snowServiceId}
 
 			# Groupes de sécurités AD pour les différents rôles du BG
-			$managerGrpList = @($nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $serviceShortName, $true))
-			$supportGrpList = @($nameGenerator.getITSRoleADGroupName("CSP_SUPPORT", $serviceShortName, $true))
+			$managerGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $true))
+			$supportGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUPPORT", $true))
 			# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
 			# créés par le script "sync-ad-groups-from-ldap.ps1"
 			$sharedGrpList  = @($ADFullGroupName)
@@ -1516,11 +1521,11 @@ try
 
 			# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG
 			# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
-			#$capacityAlertMails += $nameGenerator.getITSApproveGroupsEmail($serviceShortName, 1)
+			#$capacityAlertMails += $nameGenerator.getApproveGroupsEmail(1)
 
 			# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
-			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ITEM_REQ)
+			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			
 			# Tableau pour les approbateurs des différents niveaux
 			$approverGroupAtDomainList = @()
@@ -1529,7 +1534,7 @@ try
 			While($true)
 			{
 				$level += 1
-				$levelGroupInfos = $nameGenerator.getITSApproveADGroupName($serviceShortName, $level, $true)
+				$levelGroupInfos = $nameGenerator.getApproveADGroupName($level, $true)
 
 				# Si on a un nom de groupe vide, c'est qu'il n'y a aucun groupe pour le level courant donc on peut sortir de la boucle
 				if($null -eq $levelGroupInfos)
@@ -1548,13 +1553,13 @@ try
 
 			# -- NSX --
 			# Nom et description du NSGroup
-			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getITSSecurityGroupNameAndDesc($serviceShortName, $bgName, $snowServiceId)
+			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bgName)
 			# Nom du security Tag
-			$nsxSTName = $nameGenerator.getITSSecurityTagName($serviceShortName)
+			$nsxSTName = $nameGenerator.getSecurityTagName()
 			# Nom et description de la section de firewall
-			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getITSFirewallSectionNameAndDesc($serviceShortName)
+			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
 			# Nom de règles de firewall
-			$nsxFWRuleNames = $nameGenerator.getITSFirewallRuleNames($serviceShortName)
+			$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
 		}
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
