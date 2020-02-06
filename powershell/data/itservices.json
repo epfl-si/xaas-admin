@@ -217,6 +217,17 @@
             "longName":  "Web Proxy",
             "shortName":  "wproxy",
             "snowId":  "SVC0066"
+        },
+        {
+            "longName":  "IS-Academia",
+            "shortName":  "isa",
+            "snowId":  "SVC0034"
+        },
+        {
+            "longName":  "MyPrint",
+            "shortName":  "mprnt",
+            "snowId":  "SVC0056"
         }
+
     ]
 }
