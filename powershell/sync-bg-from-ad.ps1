@@ -1674,6 +1674,7 @@ try
 		# Si on a créé un dossier où qu'on doit mettre à jour les ACLs
 		if($ISOFolderCreated -or $forceACLsUpdate)
 		{
+			$logHistory.addLineAndDisplay(("--> Applying ACLs on ISO folder '{0}'..." -f $bgISOFolder))
 			# Récupération et modification des ACL pour ajouter les groupes AD qui sont pour le Role "Shared" dans le BG
 			$acl = Get-Acl $bgISOFolder
 			ForEach($sharedGrp in $sharedGrpList)
