@@ -14,14 +14,49 @@
 class APIUtils
 {
 
+	hidden [Counters] $funcCalls
     <#
 	-------------------------------------------------------------------------------------
         BUT : Créer une instance de l'objet
 	#>
     APIUtils()
     {
+		$this.funcCalls = [Counters]::new()
+	}
+	
 
-    }
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Incrémente le nombre d'appels à la fonction qui se trouve 2 étages au-dessus.
+			Cette fonction-ci sera appelée par la fonction "callAPI()" qui sera implémentée
+			dans les classes enfantes.
+	#>
+	hidden [void] incFuncCall()
+	{
+		$funcName = (Get-PSCallStack)[2].FunctionName
+
+		# Si le compteur pour la fonction n'existe pas, 
+		if($this.funcCalls.get($funcName) -eq -1)
+		{
+			# Ajout du compteur
+			$this.funcCalls.add($funcName, ("# calls for {0}::{1}" -f $this.GetType().Name, $funcName))
+		}
+		# Incrémentation
+		$this.funcCalls.inc($funcName)
+	}
+
+	
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Incrémente le nombre d'appels à la fonction qui se trouve 2 étages au-dessus.
+			Cette fonction-ci sera appelée par la fonction "callAPI()" qui sera implémentée
+			dans les classes enfantes.
+	#>
+	[void] displayFuncCalls()
+	{
+		$this.funcCalls.display("# Calls per function")
+	}
+
 
 	<#
 		-------------------------------------------------------------------------------------

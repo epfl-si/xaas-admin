@@ -380,6 +380,8 @@ function createOrUpdateBG
 	# Si le BG existe,
 	else
 	{
+
+		$counters.inc('BGExisting')
 		# ==========================================================================================
 
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
@@ -1302,7 +1304,8 @@ try
 	$counters.add('ADGroups', '# AD group processed')
 	$counters.add('BGCreated', '# Business Group created')
 	$counters.add('BGUpdated', '# Business Group updated')
-	$counters.add('BGNotCreated', '# Business Group not created')
+	$counters.inc('BGExisting', '# Business Group already existing')
+	$counters.add('BGNotCreated', '# Business Group not created (because of an error)')
 	$counters.add('BGNotRenamed', '# Business Group not renamed')
 	$counters.add('BGDeleted', '# Business Group deleted')
 	$counters.add('BGGhost',	'# Business Group set as "ghost"')
@@ -1376,8 +1379,7 @@ try
 	<# Recherche des groupes pour lesquels il faudra créer des OUs
 	 On prend tous les groupes de l'OU et on fait ensuite un filtre avec une expression régulière sur le nom. Au début, on prenait le début du nom du
 	 groupe pour filtrer mais d'autres groupes avec des noms débutant de la même manière ont été ajoutés donc le filtre par expression régulière
-	 a été nécessaire.
-	#>
+	 a été nécessaire. #>
 	$adGroupNameRegex = $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")
 	
 	# La liste des propriétés pouvant être récupérées via -Properties
@@ -1435,68 +1437,14 @@ try
 			Write-Debug "-> Current AD group Unit    : $($unit) ($($unitID)) "
 
 			# Création du nom/description du business group
-			$bgName = $nameGenerator.getBGName()
 			$bgDesc = $nameGenerator.getBGDescription()
-
-
-			# Génération du nom et de la description de l'entitlement
-			$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
 
 			# Nom du préfix de machine
 			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
 			# Custom properties du Buisness Group
 			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $unitID}
-
-			# Groupes de sécurités AD pour les différents rôles du BG
-			$managerGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $true))
-			$supportGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUPPORT", $true))
-			# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
-			# créés par le script "sync-ad-groups-from-ldap.ps1"
-			$sharedGrpList  = @($ADFullGroupName)
-			$userGrpList    = @($ADFullGroupName)
-			
-			# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG. On prend le niveau 1 car c'est celui de EXHEB
-			# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
-			#$capacityAlertMails += $nameGenerator.getApproveGroupsEmail(1)
-
-			# Nom et description de la policy d'approbation + nom du groupe AD qui devra approuver
-			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ACTION_REQ)
-			
-			# Tableau pour les approbateurs des différents niveaux
-			$approverGroupAtDomainList = @()
-			$level = 0
-			# on fait une 
-			While($true)
-			{
-				$level += 1
-				$levelGroupInfos = $nameGenerator.getApproveADGroupName($level, $true)
-				# Si on n'a plus de groupe pour le level courant, on sort
-				if($null -eq $levelGroupInfos)
-				{
-					break
-				}
-				$approverGroupAtDomainList += $levelGroupInfos.name
-			}
-
-			# Vu qu'il y aura des quotas pour les demandes sur le tenant EPFL, on utilise une policy du type "Event Subscription", ceci afin d'appeler un Workflow défini
-			# qui se chargera de contrôler le quota.
-			$itemReqApprovalPolicyJSON = $newItems.getApprovalPolicyJSON($targetTenant)
-			# -> Pour créer les différents niveaux (si besoin) pour l'approbation 
-			$itemReqApprovalLevelJSON = $newItems.getApprovalLevelJSON($targetTenant)
-
-
-			# -- NSX --
-			# Nom et description du NSGroup
-			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bgName)
-			# Nom du security Tag
-			$nsxSTName = $nameGenerator.getSecurityTagName()
-			# Nom et description de la section de firewall
-			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
-			# Nom de règles de firewall
-			$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
-
+	
 		}
 		# Si Tenant ITServices
 		elseif($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
@@ -1515,12 +1463,8 @@ try
 				snowServiceId = $snowServiceId})
 
 			# Création du nom/description du business group
-			$bgName = $nameGenerator.getBGName()
 			$bgDesc = $serviceLongName
 			
-			# Génération du nom et de la description de l'entitlement
-			$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
-
 			# Nom du préfix de machine
 			# NOTE ! Il n'y a pas de préfix de machine pour les Business Group du tenant ITServices.
 			$machinePrefixName = ""
@@ -1528,56 +1472,63 @@ try
 			# Custom properties du Buisness Group
 			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID" = $snowServiceId}
 
-			# Groupes de sécurités AD pour les différents rôles du BG
-			$managerGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $true))
-			$supportGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUPPORT", $true))
-			# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
-			# créés par le script "sync-ad-groups-from-ldap.ps1"
-			$sharedGrpList  = @($ADFullGroupName)
-			$userGrpList    = @($ADFullGroupName)
+		}# FIN Si Tenant ITServices
 
-			# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG
-			# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
-			#$capacityAlertMails += $nameGenerator.getApproveGroupsEmail(1)
+		# Récupération du nom du BG
+		$bgName = $nameGenerator.getBGName()
 
-			# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
-			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ACTION_REQ)
-			
-			# Tableau pour les approbateurs des différents niveaux
-			$approverGroupAtDomainList = @()
-			$level = 0
-			# on fait une 
-			While($true)
+		# Génération du nom et de la description de l'entitlement
+		$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
+
+		# Groupes de sécurités AD pour les différents rôles du BG
+		$managerGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $true))
+		$supportGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUPPORT", $true))
+		# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
+		# créés par le script "sync-ad-groups-from-ldap.ps1"
+		$sharedGrpList  = @($ADFullGroupName)
+		$userGrpList    = @($ADFullGroupName)
+
+		# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG. On prend le niveau 1 car c'est celui de EXHEB
+		# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
+		#$capacityAlertMails += $nameGenerator.getApproveGroupsEmail(1)
+		
+		# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
+		$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ITEM_REQ)
+		$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ACTION_REQ)
+
+		# Tableau pour les approbateurs des différents niveaux
+		$approverGroupAtDomainList = @()
+		$level = 0
+		# on fait une 
+		While($true)
+		{
+			$level += 1
+			$levelGroupInfos = $nameGenerator.getApproveADGroupName($level, $true)
+			# Si on n'a plus de groupe pour le level courant, on sort
+			if($null -eq $levelGroupInfos)
 			{
-				$level += 1
-				$levelGroupInfos = $nameGenerator.getApproveADGroupName($level, $true)
-
-				# Si on a un nom de groupe vide, c'est qu'il n'y a aucun groupe pour le level courant donc on peut sortir de la boucle
-				if($null -eq $levelGroupInfos)
-				{
-					break
-				}
-				$approverGroupAtDomainList += $levelGroupInfos.name
+				break
 			}
-			
-			# Définition des noms des fichiers JSON contenant le nécessaire pour créer l'approval policy pour les demandes de NOUVEAUX éléments pour le tenant ITServices
-			# -> Fichier de base
-			$itemReqApprovalPolicyJSON = $newItems.getApprovalPolicyJSON($targetTenant)
-			# -> Pour créer les différents niveaux (si besoin) pour l'approbation (appelée dans tous les cas, avec un groupe devant approuver)
-			$itemReqApprovalLevelJSON = $newItems.getApprovalLevelJSON($targetTenant)
-
-
-			# -- NSX --
-			# Nom et description du NSGroup
-			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bgName)
-			# Nom du security Tag
-			$nsxSTName = $nameGenerator.getSecurityTagName()
-			# Nom et description de la section de firewall
-			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
-			# Nom de règles de firewall
-			$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
+			$approverGroupAtDomainList += $levelGroupInfos.name
 		}
+
+		# Vu qu'il y aura des quotas pour les demandes sur le tenant EPFL, on utilise une policy du type "Event Subscription", ceci afin d'appeler un Workflow défini
+		# qui se chargera de contrôler le quota.
+		$itemReqApprovalPolicyJSON = $newItems.getApprovalPolicyJSON($targetTenant)
+		# -> Pour créer les différents niveaux (si besoin) pour l'approbation 
+		$itemReqApprovalLevelJSON = $newItems.getApprovalLevelJSON($targetTenant)
+
+		
+		# -- NSX --
+		# Nom et description du NSGroup
+		$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bgName)
+		# Nom du security Tag
+		$nsxSTName = $nameGenerator.getSecurityTagName()
+		# Nom et description de la section de firewall
+		$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
+		# Nom de règles de firewall
+		$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
+
 
 		# Si on ne doit pas faire une synchro complète,
 		if(!$fullSync)
@@ -1821,6 +1772,10 @@ try
 	{
 		Remove-Item -Path $forceACLsUpdateFile
 	}
+
+	# Affichage des nombres d'appels aux fonctions des objets REST
+	$vra.displayFuncCalls()
+	$nsx.displayFuncCalls()
 
 }
 catch # Dans le cas d'une erreur dans le script
