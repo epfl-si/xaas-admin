@@ -1409,6 +1409,8 @@ try
 		$ADFullGroupName = $nameGenerator.getADGroupFQDN($_.Name)
 		$logHistory.addLineAndDisplay(("-> Current AD group         : $($_.Name)"))
 
+		$bgName = $nameGenerator.getBGName()
+
 		# Si on ne doit pas faire une synchro complète,
 		if(!$fullSync)
 		{
@@ -1418,6 +1420,8 @@ try
 			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
 			{
 				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
+				# On met à jour pour dire qu'on a quand même traité
+				$doneBGList += $bgName
 				return
 			}
 		}
@@ -1448,7 +1452,6 @@ try
 			Write-Debug "-> Current AD group Unit    : $($unit) ($($unitID)) "
 
 			# Création du nom/description du business group
-			$bgName = $nameGenerator.getBGName()
 			$bgDesc = $nameGenerator.getBGDescription()
 
 
