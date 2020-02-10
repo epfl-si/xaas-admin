@@ -1279,7 +1279,9 @@ class vRAAPI: RESTAPI
 		}
 
 		# Retour de la liste mais on ne prend que les éléments qui existent encore.
-		return  ($this.callAPI($uri, "Get", $null)).content 
+		# On filtre pour ne retourner que les éléments qui n'ont pas de parents car on ne veut pas les trucs
+		# genre "yum_update" ou autre.
+		return  ($this.callAPI($uri, "Get", $null)).content  | Where-Object { $_.parentResourceRef -eq $null}
 	}
 
 	<#
