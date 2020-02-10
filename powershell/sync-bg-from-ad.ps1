@@ -1773,6 +1773,10 @@ try
 		Remove-Item -Path $forceACLsUpdateFile
 	}
 
+	# Affichage des nombres d'appels aux fonctions des objets REST
+	$vra.displayFuncCalls()
+	$nsx.displayFuncCalls()
+
 }
 catch # Dans le cas d'une erreur dans le script
 {

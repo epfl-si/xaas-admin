@@ -115,7 +115,8 @@ class RESTAPICurl: RESTAPI
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
-
+		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
+		$this.incFuncCall()
 		$args = "--insecure -s --request {0}" -f $method.ToUpper()
 
 		$tmpFile = $null

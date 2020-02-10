@@ -118,7 +118,7 @@ class Counters
         {
             return $this.counters.Item($id).value
         }
-        return 0
+        return -1
     }
 
     <#

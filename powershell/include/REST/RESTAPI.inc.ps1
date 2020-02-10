@@ -54,6 +54,9 @@ class RESTAPI: APIUtils
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
+		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
+		$this.incFuncCall()
+
 		$json = "No JSON"
 		try
 		{
