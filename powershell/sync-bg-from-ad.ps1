@@ -1276,6 +1276,16 @@ try
 	$logName = 'vra-sync-BG-from-AD-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
 	$logHistory =[LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
 
+	# Petite info dans les logs.
+	if($fullSync)
+	{
+		$logHistory.addLineAndDisplay("Doing a FULL sync with all AD groups...")
+	}
+	else
+	{
+		$logHistory.addLineAndDisplay( ("Taking only AD groups modified last {0} day(s)..." -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS))
+	}
+
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
