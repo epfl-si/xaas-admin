@@ -1588,11 +1588,11 @@ try
 			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
 			{
 				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
-				$doneBGList += $bg.name
+				$doneBGList += $bgName
 				return
 			}
 		}
-		
+
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
 		if( ((checkIfADGroupsExists -groupList $managerGrpList) -eq $false) -or `
