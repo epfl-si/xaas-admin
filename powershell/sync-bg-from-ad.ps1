@@ -1409,23 +1409,6 @@ try
 		$ADFullGroupName = $nameGenerator.getADGroupFQDN($_.Name)
 		$logHistory.addLineAndDisplay(("-> Current AD group         : $($_.Name)"))
 
-		$bgName = $nameGenerator.getBGName()
-
-		# Si on ne doit pas faire une synchro complète,
-		if(!$fullSync)
-		{
-			# Si le groupe a déjà été modifié
-			# ET
-			# Si la date de modification du groupe est plus vieille que le nombre de jour que l'on a défini,
-			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
-			{
-				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
-				# On met à jour pour dire qu'on a quand même traité
-				$doneBGList += $bgName
-				return
-			}
-		}
-
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group
 
@@ -1452,6 +1435,7 @@ try
 			Write-Debug "-> Current AD group Unit    : $($unit) ($($unitID)) "
 
 			# Création du nom/description du business group
+			$bgName = $nameGenerator.getBGName()
 			$bgDesc = $nameGenerator.getBGDescription()
 
 
@@ -1594,6 +1578,21 @@ try
 			# Nom de règles de firewall
 			$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
 		}
+
+		# Si on ne doit pas faire une synchro complète,
+		if(!$fullSync)
+		{
+			# Si le groupe a déjà été modifié
+			# ET
+			# Si la date de modification du groupe est plus vieille que le nombre de jour que l'on a défini,
+			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
+			{
+				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
+				$doneBGList += $bg.name
+				return
+			}
+		}
+		
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
 		if( ((checkIfADGroupsExists -groupList $managerGrpList) -eq $false) -or `
