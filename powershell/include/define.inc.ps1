@@ -74,6 +74,11 @@ $global:VRA_BG_STATUS__GHOST = "ghost"
 $global:VRA_BG_RES_MANAGE__AUTO = "auto"
 $global:VRA_BG_RES_MANAGE__MAN = "man"
 
+# Pour filtrer et ne prendre que les groupes AD modifiés durant les X derniers jours pour la création des éléments dans vRA
+$global:AD_GROUP_MODIFIED_LAST_X_DAYS = 2
+
+
+### ISO
 # Nom chemin jusqu'aux volumes NAS où se trouvent les ISO privées
 $global:NAS_PRIVATE_ISO_TEST = "\\nassvmmix01\si_vsissp_iso_priv_repo_t02_app"
 $global:NAS_PRIVATE_ISO_PROD = "\\nassvmmix01\si_vsissp_iso_priv_repo_p01_app"
@@ -81,6 +86,8 @@ $global:NAS_PRIVATE_ISO_PROD = "\\nassvmmix01\si_vsissp_iso_priv_repo_p01_app"
 # Le nombre de jours pendant lesquels on garde les fichiers ISO privés avant de les supprimer
 $global:PRIVATE_ISO_LIFETIME_DAYS = 30
 
+
+## Fonctionnement alternatif
 # Fichiers utilisés pour "altérer" le fonctionnement des scripts
 $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES = "RECREATE_APPROVAL_POLICIES"
 $global:SCRIPT_ACTION_FILE__SIMULATION_MODE = "SIMULATION_MODE"
@@ -88,6 +95,6 @@ $global:SCRIPT_ACTION_FILE__TEST_MODE = "TEST_MODE"
 $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE = "FORCE_ISO_FOLDER_ACL_UPDATE"
 
 
-# NSX
+## NSX
 # Nom de la section avant laquelle il faut créer les sections de Firewall vide
 $global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME = "Legacy VLAN"

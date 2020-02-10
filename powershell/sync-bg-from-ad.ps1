@@ -1,6 +1,6 @@
 <#
 USAGES:
-	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl [-fullSync]
 #>
 <#
 	BUT 		: Crée/met à jour les Business groupes en fonction des groupes AD existant
@@ -9,10 +9,13 @@ USAGES:
 	AUTEUR 	: Lucien Chaboudez
 
 	PARAMETRES : 
-		$targetEnv	-> nom de l'environnement cible. Ceci est défini par les valeurs $global:TARGET_ENV__* 
+		$targetEnv		-> nom de l'environnement cible. Ceci est défini par les valeurs $global:TARGET_ENV__* 
 						dans le fichier "define.inc.ps1"
-		$targetTenant -> nom du tenant cible. Défini par les valeurs $global:VRA_TENANT__* dans le fichier
+		$targetTenant 	-> nom du tenant cible. Défini par les valeurs $global:VRA_TENANT__* dans le fichier
 						"define.inc.ps1"
+		$fullSync 		-> switch pour dire de prendre absolument tous les groupes AD pour faire le sync. Si 
+						ce switch n'est pas donné, on prendra par défaut les groupes AD qui ont été modifiés
+						durant les $global:AD_GROUP_MODIFIED_LAST_X_DAYS derniers jours (voir include/define.inc.ps1)
 
 	Documentation:
 		- Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976
@@ -50,7 +53,7 @@ USAGES:
 				  Ceci ne fonctionne pas ! A la place il faut à nouveau passer par la
 				  commande Set-ExecutionPolicy mais mettre la valeur "ByPass" en paramètre.
 #>
-param ( [string]$targetEnv, [string]$targetTenant)
+param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync)
 
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -1367,7 +1370,8 @@ try
 	#>
 	$adGroupNameRegex = $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")
 	
-	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
+	# La liste des propriétés pouvant être récupérées via -Properties
+	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description,whenChanged | 
 	Where-Object {$_.Name -match $adGroupNameRegex} 
 
 	# Création de l'objet pour récupérer les informations sur les approval policies à créer pour les demandes de nouveaux éléments
@@ -1380,6 +1384,9 @@ try
 	$forceACLsUpdateFile =  ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE))
 	$forceACLsUpdate = (Test-path $forceACLsUpdateFile)
 
+	# Calcul de la date dans le passé jusqu'à laquelle on peut prendre les groupes modifiés.
+	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
+
 	# Parcours des groupes AD pour l'environnement/tenant donné
 	$adGroupList | ForEach-Object {
 
@@ -1391,6 +1398,19 @@ try
 		# Génération du nom du groupe avec le domaine
 		$ADFullGroupName = $nameGenerator.getADGroupFQDN($_.Name)
 		$logHistory.addLineAndDisplay(("-> Current AD group         : $($_.Name)"))
+
+		# Si on ne doit pas faire une synchro complète,
+		if(!$fullSync)
+		{
+			# Si le groupe a déjà été modifié
+			# ET
+			# Si la date de modification du groupe est plus vieille que le nombre de jour que l'on a défini,
+			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
+			{
+				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
+				return
+			}
+		}
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group
@@ -1668,6 +1688,10 @@ try
 
 			# Pour faire en sorte que les ACLs soient mises à jour.
 			$ISOFolderCreated = $true
+
+			# On attend 1 seconde que le dossier se créée bien car si on essaie trop rapidement d'y accéder, on ne va pas pouvoir
+			# récuprer les ACL correctement...
+			Start-sleep -Seconds 1
 		} # FIN S'il faut créer un dossier pour les ISO et qu'il n'existe pas encore.
 
 		
@@ -1679,6 +1703,7 @@ try
 			$acl = Get-Acl $bgISOFolder
 			ForEach($sharedGrp in $sharedGrpList)
 			{
+				$logHistory.addLineAndDisplay(("---> Group '{0}'..." -f $sharedGrp))
 				# On fait en sorte de créer le dossier sans donner les droits de création de sous-dossier à l'utilisateur, histoire qu'il ne puisse pas décompresser une ISO
 				# NOTE: Si l'ACL existe déjà, elle sera écrasée avec la nouvelle qu'on a ici
 				$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($sharedGrp,  "CreateFiles, WriteExtendedAttributes, WriteAttributes, Delete, ReadAndExecute, Synchronize", "ContainerInherit,ObjectInherit",  "None", "Allow")
