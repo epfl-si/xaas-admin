@@ -32,6 +32,14 @@ class APIUtils
 	}
 
 	
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un élément dans le cache. Il sera référencé par l'URI de la requête
+				REST qui a été utilisée pour récupérer les données.
+
+		IN  : $object	-> Ce qu'il faut mettre dans le cache
+		IN  : $uri		-> URI pour identifier l'objet et le retrouver plus facilement.
+	#>
 	hidden [void] addInCache([PSObject]$object, [string]$uri)
 	{
 		# On n'ajoute que si ce n'est pas déjà dans le cache.
@@ -42,11 +50,21 @@ class APIUtils
 		}
 	}
 
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Recherche un élément dans le cache et le retourne
+		
+		IN  : $uri	-> URI qui identifie l'élément que l'on désire
+
+		RET : $null si pas trouvé dans le cache
+				L'objet
+	#>
 	hidden [PSObject] getFromCache([string]$uri)
 	{
 
 		$match = $this.cache | Where-Object { $_.uri -eq $uri}
-
+		
 		if($match.count -gt 0)
 		{
 			return $match.object
