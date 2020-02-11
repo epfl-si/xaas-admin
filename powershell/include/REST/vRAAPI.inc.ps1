@@ -758,7 +758,12 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", $null)).content
+		$result = ($this.callAPI($uri, "Get", $null)).content
+
+		# Ajout dans le cache
+		$this.addInCache($result, $uri)
+
+		return $result
 	}
 	hidden [Array] getServiceListQuery()
 	{
