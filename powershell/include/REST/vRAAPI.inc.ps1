@@ -20,6 +20,8 @@
    ----------
    HISTORIQUE DES VERSIONS
    0.1 - Version de base
+   0.2 - Ajout d'un cache pour certaines fonctions qui ne sont appelées sur des objets qui 
+		 restent en lecture seule (donc pas modifiés par le script)
 
 #>
 class vRAAPI: RESTAPI
@@ -1068,7 +1070,14 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", $null)).content
+
+		# Récupération du résultat pour le mettre dans le cache
+		$result = ($this.callAPI($uri, "Get", $null)).content
+
+		# Ajout dans le cache
+		$this.addInCache($result, $uri)
+
+		return $result
 		
 	}
 	hidden [Array] getActionListQuery()
@@ -1222,7 +1231,14 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", $null)).content
+
+		# Récupération du résultat pour l'ajouter dans le cache
+		$result = ($this.callAPI($uri, "Get", $null)).content
+
+		# Ajout dans le cache
+		$this.addInCache($result, $uri)
+
+		return $result
 
 	}
 	hidden [Array] getMachinePrefixListQuery()
