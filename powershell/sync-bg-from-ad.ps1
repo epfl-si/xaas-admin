@@ -1540,6 +1540,7 @@ try
 			{
 				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
 				$doneBGList += $bgName
+				$counters.inc('BGExisting')
 				return
 			}
 		}
