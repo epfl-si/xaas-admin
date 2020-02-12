@@ -118,7 +118,7 @@ class NotificationMail
         $mailSubject = "vRA Service [{0}->{1}]: {2}" -f $this.env, $this.tenant, $mailSubject
 
         # Fichier temporaire pour la création du mail
-        $tmpMailFile = ".\tmpmail.txt"
+        $tmpMailFile = (New-TemporaryFile).FullName
 
         # 1. Ajout du header
         Get-Content -Path $this.getPathToTemplateFile("header") | Out-File $tmpMailFile -Encoding default
@@ -156,7 +156,7 @@ class NotificationMail
 
 
         $mailMessage = Get-Content $tmpMailFile -Encoding UTF8 | Out-String
-        Remove-Item $tmpMailFile
+        Remove-Item $tmpMailFile -Force
 
         Send-MailMessage -From ("noreply+{0}" -f $this.sendToAddress) -To $this.sendToAddress -Subject $mailSubject `
                         -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding Unicode
