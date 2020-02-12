@@ -48,6 +48,7 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 
 
 # Fichiers propres au script courant 

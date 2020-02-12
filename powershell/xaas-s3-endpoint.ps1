@@ -71,6 +71,7 @@ Import-Module AWSPowerShell
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
