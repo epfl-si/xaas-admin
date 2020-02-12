@@ -1,0 +1,481 @@
+[
+    {
+        "name": "initDetails",
+        "tests": [
+            {
+                "params": [
+                    {
+                        "facultyName": "SI",
+                        "facultyID": "12635",
+                        "unitName": "IDEV-ING",
+                        "unitID": "13031"
+                    }
+                ],
+                "expected": null
+            }
+        ]
+    },
+    {
+        "name": "getADGroupNameRegEx",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "^vra_t_adm_epfl$"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "^vra_t_sup_\\d+$"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "^vra_t_\\d+_\\d+$"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "^vra_t_\\d+_\\d+$"
+            }
+
+        ]
+    },
+    {
+        "name": "getRoleADGroupName",
+        "tests": [
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", true],
+                "expected": "vra_t_12635_13031@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", false],
+                "expected": "vra_t_12635_13031"
+            },
+            {
+                "params": ["CSP_CONSUMER", true],
+                "expected": "vra_t_12635_13031@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_CONSUMER", false],
+                "expected": "vra_t_12635_13031"
+            },
+
+            {
+                "params": ["CSP_SUPPORT", true],
+                "expected": "vra_t_sup_si@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_SUPPORT", false],
+                "expected": "vra_t_sup_si"
+            },
+            {
+                "params": ["CSP_SUBTENANT_MANAGER", true],
+                "expected": "vra_t_adm_epfl@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_SUBTENANT_MANAGER", false],
+                "expected": "vra_t_adm_epfl"
+            }
+        ]
+    },
+
+    {
+        "name": "getRoleADGroupDesc",
+        "tests": [
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "Support for Faculty SI on Tenant EPFL on Environment TEST"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "Support for Faculty SI on Tenant EPFL on Environment TEST"
+            },
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "Administrators for Tenant EPFL on Environment TEST"
+            },
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "Administrators for Tenant EPFL on Environment TEST"
+            },
+
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "Administrators for Tenant EPFL on Environment TEST"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "Support for Faculty SI on Tenant EPFL on Environment TEST"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "SI;IDEV-ING"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "SI;IDEV-ING"
+            }
+        ]
+    },
+
+    {
+        "name": "getRoleGroupsGroupName",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "vra_t_adm_epfl"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "vra_t_sup_si"
+            }
+        ]
+    },
+
+    {
+        "name": "getRoleGroupsADGroupName",
+        "tests": [
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "vra_t_sup_si_AppGrpU"
+            },
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "vra_t_adm_epfl_AppGrpU"
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveADGroupName",
+        "tests": [
+            {
+                "params":[1, true],
+                "expected": {
+                    "onlyForTenant": false,
+                    "name": "vra_t_approval_service_manager@intranet.epfl.ch"
+                }
+            },
+            {
+                "params":[1, false],
+                "expected": {
+                    "onlyForTenant": false,
+                    "name": "vra_t_approval_service_manager"
+                }
+            },
+            {
+                "params":[2, true],
+                "expected": {
+                    "onlyForTenant": true,
+                    "name": "vra_t_approval_si@intranet.epfl.ch"
+                }
+            },
+            {
+                "params":[2, false],
+                "expected": {
+                    "onlyForTenant": true,
+                    "name": "vra_t_approval_si"
+                }
+            }
+
+        ]
+    },
+
+    {
+        "name": "getApproveGroupsGroupName",
+        "tests": [
+             {
+                "params":[1, false],
+                "expected": {
+                    "onlyForTenant": false,
+                    "name": "vra_t_approval_service_manager"
+                }
+            },
+            {
+                "params":[2, false],
+                "expected": {
+                    "onlyForTenant": true,
+                    "name": "vra_t_approval_si"
+                }
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveGroupsEmail",
+        "tests":[
+            {
+                "params":[1],
+                "expected": "vra_t_approval_service_manager@groupes.epfl.ch"
+            },
+            {
+                "params":[2],
+                "expected": "vra_t_approval_si@groupes.epfl.ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveADGroupDesc",
+        "tests":[
+            {
+                "params":[1],
+                "expected": "Approval group (level 1)"
+            },
+            {
+                "params":[2],
+                "expected": "Approval group (level 2) for Faculty: SI"
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveGroupsADGroupName",
+        "tests": [
+            {
+                "params":[1, false],
+                "expected": "vra_t_approval_service_manager_AppGrpU"
+            },
+            {
+                "params":[2, false],
+                "expected": "vra_t_approval_si_AppGrpU"
+            }
+        ]
+    },
+
+    {
+        "name": "getApprovalPolicyNameAndDesc",
+        "tests":[
+            {
+                "params":["new"],
+                "expected": ["epfl_si_newItems", "Approval policy for new items for SI Faculty"]
+            },
+            {
+                "params":["reconfigure"],
+                "expected": ["epfl_si_2ndDay", "Approval policy for 2nd day actions for SI Faculty"]
+            }
+        ]
+    },
+
+    {
+        "name": "getBGEntNameAndDesc",
+        "tests": [
+            {
+                "params":[],
+                "expected": ["epfl_si_idev_ing", "Faculty: SI\nUnit: IDEV-ING"]
+            }
+        ]
+    },
+
+    {
+        "name": "getSecurityGroupNameAndDesc",
+        "tests":[
+            {
+                "params": ["epfl_si_idev_ing"],
+                "expected": ["sg.epfl_SI", "Tenant: epfl\\nFaculty: SI"]
+            }
+        ]
+    },
+
+    {
+        "name": "getSecurityTagName",
+        "tests":[
+            {
+                "params":[],
+                "expected":"st.epfl_si"
+            }
+        ]
+    },
+
+    {
+        "name": "getFirewallSectionNameAndDesc",
+        "tests": [
+            {
+                "params":[],
+                "expected": ["epfl_si","Section for Tenant epfl and Faculty SI"]
+            }
+        ]   
+    },
+
+    {
+        "name": "getFirewallRuleNames",
+        "tests":[
+            {
+                "params":[],
+                "expected":[
+                    {
+                        "tag": "allow-SI-in",
+                        "name": "allow-SI-in"
+                    },
+                    {
+                        "tag": "allow-intra-SI-comm",
+                        "name": "allow-intra-SI-comm"
+                    },
+                    {
+                        "tag": "allow-SI-out",
+                        "name": "allow-SI-out"
+                    },
+                    {
+                        "tag": "deny-SI-all",
+                        "name": "deny-SI-all"
+                    }
+                ]
+            }
+        ]
+    },
+
+    {
+        "name": "getADGroupsOUDN",
+        "tests":[
+            {
+                "params": [true],
+                "expected": "OU=EPFL,OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            },
+            {
+                "params": [false],
+                "expected": "OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getVMMachinePrefix",
+        "tests":[
+            {
+                "params": [],
+                "expected": "sitvm"
+            }
+        ]
+    },
+
+    {
+        "name": "getBGDescription",
+        "tests":[
+            {
+                "params": [],
+                "expected": "Faculty: SI\nUnit: IDEV-ING"
+            }
+        ]
+    },
+
+    {
+        "name": "getEntName",
+        "tests":[
+            {
+                "params": [],
+                "expected": "epfl_si_idev_ing"
+            }
+        ]
+    },
+
+    {
+        "name": "getEntDescription",
+        "tests":[
+            {
+                "params": [],
+                "expected": "Faculty: SI\nUnit: IDEV-ING"
+            }
+        ]
+    },
+
+    {
+        "name": "extractInfosFromADGroupName",
+        "tests":[
+            {
+                "params": ["vra_t_12635_13031"],
+                "expected": ["12635", "13031"]
+            }
+        ]
+    },
+    
+    {
+        "name": "extractInfosFromADGroupDesc",
+        "tests":[
+            {
+                "params": ["SI;IDEV-ING"],
+                "expected": ["SI", "IDEV-ING"]
+            }
+        ]
+    },
+    
+    {
+        "name": "getBGName",
+        "tests":[
+            {
+                "params": [],
+                "expected": "epfl_si_idev_ing"
+            }
+        ]
+    },
+
+    {
+        "name": "getBGResName",
+        "tests":[
+            {
+                "params": ["epfl_si_idev_ing", "clstr-test-INJ"],
+                "expected": "epfl_si_idev_ing_clstr_test_inj"
+            }
+        ]
+    },
+
+    {
+        "name": "getADGroupFQDN",
+        "tests":[
+            {
+                "params": ["vra_t_12635_13035"],
+                "expected": "vra_t_12635_13035@intranet.epfl.ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getDirectoryName",
+        "tests":[
+            {
+                "params": [],
+                "expected": "intranet.epfl.ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getReservationTemplatePrefix",
+        "tests":[
+            {
+                "params": [],
+                "expected": "template_epfl_"
+            }
+        ]
+    },
+
+    {
+        "name": "getNASPrivateISOPath",
+        "tests":[
+            {
+                "params": ["epfl_si_idev_ing"],
+                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_si_idev_ing"
+            }
+        ]
+    },
+
+    {
+        "name": "getNASPrivateISORootPath",
+        "tests":[
+            {
+                "params": [],
+                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl"
+            }
+        ]
+    },
+
+    {
+        "name": "getNASPrivateISOPathBGName",
+        "tests":[
+            {
+                "params": ["\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_si_idev_ing"],
+                "expected": "epfl_si_idev_ing"
+            }
+        ]
+    }
+
+
+    
+
+]

@@ -32,6 +32,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -44,6 +45,51 @@ $configVra = [ConfigReader]::New("config-vra.json")
 $configVSphere = [ConfigReader]::New("config-vsphere.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 
+
+
+# --------------------------------------------------------------------------------
+# --------------------------------- FONCTIONS ------------------------------------
+
+# Fonction trouvée ici: http://www.lucd.info/2015/10/02/answer-the-question/
+# Quelques adaptations ont été faite... ainsi que correction de bug... 
+function Set-CDDriveAndAnswer
+{
+  [CmdletBinding()]
+  param(
+  [Parameter(Mandatory=$True,ValueFromPipeline=$True,ValueFromPipelinebyPropertyName=$True)]
+  [PSObject]$vm
+  )
+ 
+  Begin
+  {
+    $cdQuestion = {
+      param($vm)
+    
+      $maxPass = 10
+      $pass = 0
+    
+      while($pass -lt $maxPass){
+		$question = $vm | Get-VMQuestion -QuestionText "*locked the CD-ROM*"
+		
+        if($question){
+          Set-VMQuestion -VMQuestion $question -Option button.yes -Confirm:$false
+          $pass = $maxPass + 1
+        }
+		$pass++
+		Start-Sleep 2
+      }
+    }
+  }
+ 
+  Process
+  {
+    
+      $cd = Get-CDDrive -VM $vm
+      $job = Start-Job -Name Check-CDQuestion -ScriptBlock $cdQuestion -ArgumentList $vm
+      Set-CDDrive -CD $cd -NoMedia -Confirm:$false -ErrorAction Stop
+    
+  }
+}
 
 
 
@@ -71,6 +117,9 @@ try
 	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 
+	# Objet pour pouvoir envoyer des mails de notification
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
+
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
 	$counters.add('ISOFound', '# "old" ISO files found')
@@ -94,7 +143,7 @@ try
 		# Recherche du nom du BG auquel l'ISO est associée 
 		$bgName = $nameGenerator.getNASPrivateISOPathBGName($isoFile.FullName)
 		
-		$logHistory.addLineAndDisplay(("ISO file found! ${0} - BG:${1}" -f $isoFile.FullName, $bgName))
+		$logHistory.addLineAndDisplay(("ISO file found! {0} - BG: {1}" -f $isoFile.FullName, $bgName))
 		$counters.inc('ISOFound')
 
 		# Si on n'a pas encore de connexion à vRA, là, ça serait bien d'en ouvrir une histoire pouvoir continuer.
@@ -133,13 +182,15 @@ try
 			# Recherche de la liste des VM existantes dans le Tenant
 			$vmList = $vra.getBGItemList($bg, 'Virtual Machine')
 
+			$logHistory.addLineAndDisplay( ("Looking for VM in BG {0} to see if ISO file is mounted" -f $bgName) )
 			# Parcours des VM
 			ForEach($vm in $vmList)
 			{
-				$logHistory.addLineAndDisplay(("Checking VM '${0}'..." -f $vm.name))
+				$logHistory.addLineAndDisplay(("Checking VM '{0}'..." -f $vm.name))
 
 				# On recherche une éventuelle ISO montée 
 				$mountedISO = (Get-VM -Name $vm.name | Get-CDDrive).IsoPath
+
 
 				# Si c'est différent de $null, ça ne veut pas encore dire qu'il y a une ISO de montée
 				if($null -ne $mountedISO)
@@ -151,16 +202,19 @@ try
 					# Dans ce dernier cas, c'est comme si aucune ISO n'était montée.
 					
 					# On commencer par virer le nom du datastore (même s'il est vide) et on dit merci aux expressions régulières
-					$mountedISO = ($mountedISO -replace "\[.*\]\s", "").Trim()
+					# On transforme aussi les / en \ parce que notre chemin jusqu'à l'ISO version Windows contient des \ alors que sur
+					# vSphere, ce sont des / qui sont utilisés... et si on ne remplace pas, on ne pourra pas comparer correctement
+					# les path juste après...
+					$mountedISO = (($mountedISO -replace "\[.*\]\s", "") -replace "/", "\").Trim()
 
 					# On regarde maintenant si le chemin jusqu'à l'ISO que l'on a trouvée sur le volume se termine par celui de l'ISO montée
 					# Si c'est le cas, c'est que l'ISO est utilisée donc on ne peut pas l'effacer 
 					if($mountedISO -ne "" -and $isoFile.FullName.endsWith($mountedISO))
 					{
-						# on démonte l'image en mettant "no-media" 
-						Get-VM -Name $vm.name | Get-CDDrive | Set-CDDrive -NoMedia -Confirm:$false
-
+						
 						$logHistory.addLineAndDisplay("ISO file is mounted in VM. Unmounting...")
+						# on démonte l'image en mettant "no-media" 
+						Get-VM -Name $vm.name | Set-CDDriveAndAnswer
 						$counters.inc('ISOUnmounted')
 					}
 					
@@ -171,14 +225,14 @@ try
 		} 
 		else # Le BG n'existe pas 
 		{
-			$logHistory.addLineAndDisplay(("Business Group not found in vRA '${0}'" -f $bgName))
+			$logHistory.addLineAndDisplay(("Business Group not found in vRA '{0}'" -f $bgName))
 		}
 		
 		# Quand on arrive ici, on assure que l'ISO n'est plus utilisée par aucune VM si c'était le cas auparavant avant.
 		# On peut donc la faire disparaître
 
 		Remove-Item $isoFile.FullName -Force
-		$logHistory.addLineAndDisplay(("ISO file deleted: ${0}" -f $isoFile.FullName))
+		$logHistory.addLineAndDisplay(("ISO file deleted: {0}" -f $isoFile.FullName))
 		$counters.inc('ISODeleted')
 		
 
@@ -210,11 +264,15 @@ catch # Dans le cas d'une erreur dans le script
 	# On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
 	$errorMessage = $errorMessage -replace "`n", "<br>"
 	
+	# Création des informations pour l'envoi du mail d'erreur
+	$valToReplace = @{
+						scriptName = $MyInvocation.MyCommand.Name
+						computerName = $env:computername
+						parameters = (formatParameters -parameters $PsBoundParameters )
+						error = $errorMessage
+						errorTrace =  [System.Net.WebUtility]::HtmlEncode($errorTrace)
+					}
 	# Envoi d'un message d'erreur aux admins 
-	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant $targetTenant
-	$mailMessage = getvRAMailContent -content ("<b>Computer:</b> {3}<br><b>Script:</b> {0}<br><b>Parameters:</b>{4}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
-	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace), $env:computername, (formatParameters -parameters $PsBoundParameters ))
-
-	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
+	$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 	
 }

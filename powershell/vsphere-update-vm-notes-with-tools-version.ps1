@@ -26,6 +26,8 @@ param ( [string]$targetEnv)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions-vsphere.inc.ps1"))
 
@@ -85,6 +87,9 @@ try
     
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+
+    # Objet pour pouvoir envoyer des mails de notification
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
@@ -152,12 +157,16 @@ catch
     # On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
     $errorMessage = $errorMessage -replace "`n", "<br>"
     
-	# Envoi d'un message d'erreur aux admins 
-	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant $targetTenant
-	$mailMessage = getvRAMailContent -content ("<b>Computer:</b> {3}<br><b>Script:</b> {0}<br><b>Parameters:</b>{4}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
-	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace), $env:computername, (formatParameters -parameters $PsBoundParameters ))
-
-	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
+	# Création des informations pour l'envoi du mail d'erreur
+	$valToReplace = @{
+                        scriptName = $MyInvocation.MyCommand.Name
+                        computerName = $env:computername
+                        parameters = (formatParameters -parameters $PsBoundParameters )
+                        error = $errorMessage
+                        errorTrace =  [System.Net.WebUtility]::HtmlEncode($errorTrace)
+                    }
+    # Envoi d'un message d'erreur aux admins 
+    $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 }
 
 

@@ -1,0 +1,463 @@
+[
+    {
+        "name": "initDetails",
+        "tests": [
+            {
+                "params": [
+                    {
+                        "serviceShortName": "vs",
+                        "serviceName": "Virtualization Service",
+                        "snowServiceId": "SVC0007"
+                    }
+                ],
+                "expected": null
+            }
+        ]
+    },
+    {
+        "name": "getADGroupNameRegEx",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "^vra_t_adm_sup_its$"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "^vra_t_adm_sup_its$"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "^vra_t(?!_approval)_\\w+(?\u003c!_adm_sup_its)$"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "^vra_t(?!_approval)_\\w+(?\u003c!_adm_sup_its)$"
+            }
+
+        ]
+    },
+    {
+        "name": "getRoleADGroupName",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER", true],
+                "expected": "vra_t_adm_sup_its@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_SUBTENANT_MANAGER", false],
+                "expected": "vra_t_adm_sup_its"
+            },
+            {
+                "params": ["CSP_SUPPORT", true],
+                "expected": "vra_t_adm_sup_its@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_SUPPORT", false],
+                "expected": "vra_t_adm_sup_its"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", true],
+                "expected": "vra_t_vs@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", false],
+                "expected": "vra_t_vs"
+            },
+            {
+                "params": ["CSP_CONSUMER", true],
+                "expected": "vra_t_vs@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_CONSUMER", false],
+                "expected": "vra_t_vs"
+            }
+        ]
+    },
+
+    {
+        "name": "getRoleADGroupDesc",
+        "tests": [
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "Administrators/Support for Tenant ITSERVICES on Environment TEST"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "SVC0007;Virtualization Service"
+            },
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "Administrators/Support for Tenant ITSERVICES on Environment TEST"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "SVC0007;Virtualization Service"
+            }
+        ]
+    },
+
+    {
+        "name": "getRoleGroupsGroupName",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "vra_t_adm_sup_its"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "vra_t_vs"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "vra_t_vs"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "vra_t_adm_sup_its"
+            }
+        ]
+    },
+    {
+        "name": "getRoleGroupsADGroupName",
+        "tests": [
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "vra_t_adm_sup_its_AppGrpU"
+            },
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "vra_t_adm_sup_its_AppGrpU"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "vra_t_vs_AppGrpU"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "vra_t_vs_AppGrpU"
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveADGroupName",
+        "tests": [
+            {
+                "params":[1, true],
+                "expected": {
+                    "onlyForTenant": false,
+                    "name": "vra_t_approval_service_manager@intranet.epfl.ch"
+                }
+            },
+            {
+                "params":[1, false],
+                "expected": {
+                    "onlyForTenant": false,
+                    "name": "vra_t_approval_service_manager"
+                }
+            },
+            {
+                "params":[2, true],
+                "expected": {
+                    "onlyForTenant": true,
+                    "name": "vra_t_approval_service_chiefs@intranet.epfl.ch"
+                }
+            },
+            {
+                "params":[2, false],
+                "expected": {
+                    "onlyForTenant": true,
+                    "name": "vra_t_approval_service_chiefs"
+                }
+            }
+
+        ]
+    },
+
+    {
+        "name": "getApproveGroupsGroupName",
+        "tests": [
+             {
+                "params":[1, false],
+                "expected": {
+                    "onlyForTenant": false,
+                    "name": "vra_t_approval_service_manager"
+                }
+            },
+            {
+                "params":[2, false],
+                "expected": {
+                    "onlyForTenant": true,
+                    "name": "vra_t_approval_service_chiefs"
+                }
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveGroupsEmail",
+        "tests":[
+            {
+                "params":[1],
+                "expected": "vra_t_approval_service_manager@groupes.epfl.ch"
+            },
+            {
+                "params":[2],
+                "expected": "vra_t_approval_service_chiefs@groupes.epfl.ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveGroupsADGroupName",
+        "tests": [
+            {
+                "params":[1, false],
+                "expected": "vra_t_approval_service_manager_AppGrpU"
+            },
+            {
+                "params":[2, false],
+                "expected": "vra_t_approval_service_chiefs_AppGrpU"
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveADGroupDesc",
+        "tests":[
+            {
+                "params":[1],
+                "expected": "Approval group (level 1)"
+            },
+            {
+                "params":[2],
+                "expected": "Approval group (level 2)"
+            }
+        ]
+    },
+
+    {
+        "name": "getApprovalPolicyNameAndDesc",
+        "tests":[
+            {
+                "params":["new"],
+                "expected": ["its_vs_newItems", "Approval policy for new items for Service: Virtualization Service"]
+            },
+            {
+                "params":["reconfigure"],
+                "expected": ["its_vs_2ndDay", "Approval policy for 2nd day actions for Service: Virtualization Service"]
+            }
+        ]
+    },
+
+    {
+        "name": "getBGEntNameAndDesc",
+        "tests": [
+            {
+                "params":[],
+                "expected": ["its_vs", "Service: Virtualization Service"]
+            }
+        ]
+    },
+
+    {
+        "name": "getSecurityGroupNameAndDesc",
+        "tests":[
+            {
+                "params": ["its_vs"],
+                "expected": ["sg.its_vs", "Tenant: itservices\\nBusiness Group: its_vs\\nSNOWID: SVC0007"]
+            }
+        ]
+    },
+
+    {
+        "name": "getSecurityTagName",
+        "tests":[
+            {
+                "params":[],
+                "expected":"st.its_vs"
+            }
+        ]
+    },
+
+    {
+        "name": "getFirewallSectionNameAndDesc",
+        "tests": [
+            {
+                "params":[],
+                "expected": ["its_vs","Section for Tenant itservices and Service vs"]
+            }
+        ]   
+    },
+
+    {
+        "name": "getFirewallRuleNames",
+        "tests":[
+            {
+                "params":[],
+                "expected":[
+                    {
+                        "tag": "allow-vs-in",
+                        "name": "allow-vs-in"
+                    },
+                    {
+                        "tag": "allow-intra-vs-comm",
+                        "name": "allow-intra-vs-comm"
+                    },
+                    {
+                        "tag": "allow-vs-out",
+                        "name": "allow-vs-out"
+                    },
+                    {
+                        "tag": "deny-vs-all",
+                        "name": "deny-vs-all"
+                    }
+                ]
+            }
+        ]
+    },
+
+    {
+        "name": "getADGroupsOUDN",
+        "tests":[
+            {
+                "params": [true],
+                "expected": "OU=ITServices,OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            },
+            {
+                "params": [false],
+                "expected": "OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getVMMachinePrefix",
+        "tests":[
+            {
+                "params": [],
+                "expected": "vs-t-"
+            }
+        ]
+    },
+
+    {
+        "name": "getEntName",
+        "tests":[
+            {
+                "params": [],
+                "expected": "its_vs"
+            }
+        ]
+    },
+
+    {
+        "name": "getEntDescription",
+        "tests":[
+            {
+                "params": [],
+                "expected": "Service: Virtualization Service"
+            }
+        ]
+    },
+
+    {
+        "name": "extractInfosFromADGroupName",
+        "tests":[
+            {
+                "params": ["vra_t_vs"],
+                "expected": ["vs"]
+            }
+        ]
+    },
+    
+    {
+        "name": "extractInfosFromADGroupDesc",
+        "tests":[
+            {
+                "params": ["SVC0007;Virtualization Service"],
+                "expected": ["SVC0007", "Virtualization Service"]
+            }
+        ]
+    },
+    
+    {
+        "name": "getBGName",
+        "tests":[
+            {
+                "params": [],
+                "expected": "its_vs"
+            }
+        ]
+    },
+
+    {
+        "name": "getBGResName",
+        "tests":[
+            {
+                "params": ["its_vs", "clstr-test-INJ"],
+                "expected": "its_vs_clstr_test_inj"
+            }
+        ]
+    },
+
+    {
+        "name": "getADGroupFQDN",
+        "tests":[
+            {
+                "params": ["vra_t_vs"],
+                "expected": "vra_t_vs@intranet.epfl.ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getDirectoryName",
+        "tests":[
+            {
+                "params": [],
+                "expected": "intranet.epfl.ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getReservationTemplatePrefix",
+        "tests":[
+            {
+                "params": [],
+                "expected": "template_its_"
+            }
+        ]
+    },
+    
+    {
+        "name": "getNASPrivateISOPath",
+        "tests":[
+            {
+                "params": ["its_vs"],
+                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\itservices\\its_vs"
+            }
+        ]
+    },
+
+    {
+        "name": "getNASPrivateISORootPath",
+        "tests":[
+            {
+                "params": [],
+                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\itservices"
+            }
+        ]
+    },
+
+    {
+        "name": "getNASPrivateISOPathBGName",
+        "tests":[
+            {
+                "params": ["\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\itservices\\its_vs"],
+                "expected": "its_vs"
+            }
+        ]
+    }
+]

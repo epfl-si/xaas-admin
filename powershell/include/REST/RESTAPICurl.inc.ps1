@@ -115,7 +115,21 @@ class RESTAPICurl: RESTAPI
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
+		# Si la requête est de la lecture
+		if($uri.ToLower() -eq "get")
+		{
+			# Si on a l'info dans le cache, on la retourne
+			$cached = $this.getFromCache($uri)
+			if($null -ne  $cached)
+			{
+				$this.incFuncCall($true)
+				return $cached
+			}
+		}		
 
+		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
+		$this.incFuncCall($false)
+		
 		$args = "--insecure -s --request {0}" -f $method.ToUpper()
 
 		$tmpFile = $null

@@ -20,6 +20,8 @@
    ----------
    HISTORIQUE DES VERSIONS
    0.1 - Version de base
+   0.2 - Ajout d'un cache pour certaines fonctions qui ne sont appelées sur des objets qui 
+		 restent en lecture seule (donc pas modifiés par le script)
 
 #>
 class vRAAPI: RESTAPI
@@ -109,7 +111,16 @@ class vRAAPI: RESTAPI
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
 
-		return ($this.callAPI($uri, "Get", $null)).content
+		$result = ($this.callAPI($uri, "Get", $null)).content
+
+		# On ne filtre que si on n'a pas déjà un filtre.
+		if($queryParams -notlike '*filter*')
+		{
+			# On filtre pour ne retourner que les éléments qui n'ont pas de parents car on ne veut pas les trucs
+			# genre "yum_update" ou autre.
+			$result = $result |  Where-Object { $_.parentResourceRef -eq $null}
+		}
+		return $result
 	}
 	hidden [Array] getBGListQuery()
 	{
@@ -296,7 +307,7 @@ class vRAAPI: RESTAPI
 
 						default:
 						{
-							Write-Error ("Custom property type '{0}' not supported!" -f $entry.value.type)
+							Write-Warning ("Custom property type '{0}' not supported!" -f $entry.value.type)
 						}
 					}
 
@@ -756,7 +767,12 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", $null)).content
+		$result = ($this.callAPI($uri, "Get", $null)).content
+
+		# Ajout dans le cache
+		$this.addInCache($result, $uri)
+
+		return $result
 	}
 	hidden [Array] getServiceListQuery()
 	{
@@ -853,7 +869,7 @@ class vRAAPI: RESTAPI
 				}
 				else # Pas d'infos trouvées pour l'action
 				{
-					Write-Error ("prepareEntActions(): No information found for action '{0}' for element '{1}'" -f $actionName, $targetElementName)
+					Write-Warning ("prepareEntActions(): No information found for action '{0}' for element '{1}'" -f $actionName, $targetElementName)
 				}
 			} # Fin BOUCLE de parcours des actions pour l'élément courant 
 			
@@ -1068,7 +1084,14 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", $null)).content
+
+		# Récupération du résultat pour le mettre dans le cache
+		$result = ($this.callAPI($uri, "Get", $null)).content
+
+		# Ajout dans le cache
+		$this.addInCache($result, $uri)
+
+		return $result
 		
 	}
 	hidden [Array] getActionListQuery()
@@ -1090,6 +1113,12 @@ class vRAAPI: RESTAPI
 
 		RET : Objet contenant l'action
 				$null si n'existe pas
+
+		REMARQUE : On n'utilise pas le filtre OData avec le nom de l'action recherchée (même si ça peut être
+					plus rapide) car si le nom de l'action contient des [ ], ça va retourner une erreur et 
+					impossible de trouver comment formater la requête pour que ça passe. Même en encodant
+					(urlencode), ça ne passe pas... donc, on utilise un "Where-Object" pour trouver ce que
+					l'on recherche.
 	#>
 	[PSCustomObject] getAction([string] $name, [string]$appliesTo)
 	{
@@ -1098,15 +1127,15 @@ class vRAAPI: RESTAPI
 		{
 			# On filtre sur les éléments étant définis comme XaaS car il peut y avoir un même nom d'action
 			# valable pour un élément XaaS et pour un élément défini par le système (BluePrint)
-			$appliesToFilter = "providerType eq 'com.vmware.csp.core.designer.service' and"
+			$appliesToFilter = "providerType eq 'com.vmware.csp.core.designer.service'"
 		}
 		else # Action prédéfinie
 		{
 			# Filtre
-			$appliesToFilter = "startswith(externalId, '{0}') and" -f $appliesTo
+			$appliesToFilter = "startswith(externalId, '{0}')" -f $appliesTo
 		}
-		
-		$list = $this.getActionListQuery(("`$filter=({0} name eq '{1}')" -f $appliesToFilter, $name))
+
+		$list = $this.getActionListQuery(("`$filter={0}" -f $appliesToFilter)) | Where-Object { $_.name -eq $name }
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
@@ -1216,7 +1245,14 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", $null)).content
+
+		# Récupération du résultat pour l'ajouter dans le cache
+		$result = ($this.callAPI($uri, "Get", $null)).content
+
+		# Ajout dans le cache
+		$this.addInCache($result, $uri)
+
+		return $result
 
 	}
 	hidden [Array] getMachinePrefixListQuery()
@@ -1273,7 +1309,9 @@ class vRAAPI: RESTAPI
 		}
 
 		# Retour de la liste mais on ne prend que les éléments qui existent encore.
-		return  ($this.callAPI($uri, "Get", $null)).content 
+		# On filtre pour ne retourner que les éléments qui n'ont pas de parents car on ne veut pas les trucs
+		# genre "yum_update" ou autre.
+		return  ($this.callAPI($uri, "Get", $null)).content  | Where-Object { $_.parentResourceRef -eq $null}
 	}
 
 	<#

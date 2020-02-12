@@ -32,6 +32,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -116,31 +117,33 @@ function handleNotifications
 		{
 			# Suppression des doublons 
 			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
+
+			$valToReplace = @{}
+
 			switch($notif)
 			{
 				# ---------------------------------------
 				# Groupe active directory manquants pour création des éléments pour Tenant EPFL
 				'missingEPFLADGroups'
 				{
-					$docUrl = ""
-					Write-Warning "Set doc URL"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Active Directory groups missing" -targetEnv $targetEnv -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les groupes Active Directory suivants sont manquants pour l'environnement <b>{0}</b> et le Tenant <b>EPFL</b>. `
-<br>Leur absence empêche la création d'autres groupes AD ainsi que des Business Groups qui les utilisent. `
-<br>Veuillez les créer à la main comme expliqué dans la procédure:`
-<br><ul><li>{1}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{2}'>ici</a>."  -f $targetEnv, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=115605511"
+
+					$mailSubject = "Error - Active Directory groups missing"
+
+					$templateName = "ad-groups-missing-for-groups-creation"
 				}
 
 				# ---------------------------------------
 				# Groupe active directory manquants pour création des éléments pour Tenant ITS
 				'missingITSADGroups'
 				{
-					$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=72516653"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Active Directory groups missing" -targetEnv $targetEnv -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les groupes Active Directory suivants sont manquants pour l'environnement <b>{0}</b> et le Tenant <b>ITServices</b>. `
-<br>Leur absence empêche la création d'autres groupes AD ainsi que des Business Groups qui les utilisent. `
-<br>Veuillez les créer à la main comme expliqué dans la procédure:`
-<br><ul><li>{1}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{2}'>ici</a>."  -f $targetEnv, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=72516653"
+
+					$mailSubject = "Error - Active Directory groups missing"
+
+					$templateName = "ad-groups-missing-for-groups-creation"
 				}
 
 				default
@@ -153,7 +156,7 @@ function handleNotifications
 			}
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
-			sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
+			$notificationMail.send($mailSubject, $templateName, $valToReplace)
 
 		} # FIN S'il y a des notifications pour la catégorie courante
 	}# FIN BOUCLE de parcours des catégories de notifications
@@ -237,6 +240,9 @@ try
 
 	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups" ainsi que d'autre choses...
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
+
+	# Objet pour pouvoir envoyer des mails de notification
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 	
 	Import-Module ActiveDirectory
 
@@ -316,6 +322,14 @@ try
 			# --------------------------------- FACULTE
 			# ----------------------------------------------------------------------------------
 
+			# Initialisation des détails pour le générateur de noms 
+			# NOTE: On ne connait pas encore toutes les informations donc on initialise 
+			# avec juste celles qui sont nécessaires pour la suite. Le reste, on met une
+			# chaîne vide.
+			$nameGenerator.initDetails(@{facultyName = $faculty['name']
+										facultyID = $faculty['uniqueidentifier']
+										unitName = ''
+										unitID = ''})
 			
 			# --------------------------------- APPROVE
 
@@ -325,7 +339,7 @@ try
 			while($true)
 			{
 				$level += 1
-				$approveGroupInfos = $nameGenerator.getEPFLApproveADGroupName($faculty['name'], $level)
+				$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
 
 				# S'il n'y a plus de groupe pour le level courant, on sort
 				if($null -eq $approveGroupInfos)
@@ -333,8 +347,8 @@ try
 					break
 				}
 				
-				$approveGroupDescAD = $nameGenerator.getEPFLApproveADGroupDesc($faculty['name'], $level)
-				$approveGroupNameGroups = $nameGenerator.getEPFLApproveGroupsADGroupName($faculty['name'], $level)
+				$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
+				$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
@@ -363,13 +377,13 @@ try
 			# Il faut créer les groupes pour les Roles CSP_SUBTENANT_MANAGER et CSP_SUPPORT s'ils n'existent pas
 
 			# Génération des noms des groupes dont on va avoir besoin.
-			$adminGroupNameAD = $nameGenerator.getEPFLRoleADGroupName("CSP_SUBTENANT_MANAGER", $faculty['name'])
-			$adminGroupDescAD = $nameGenerator.getEPFLRoleADGroupDesc("CSP_SUBTENANT_MANAGER", $faculty['name'])
-			$adminGroupNameGroups = $nameGenerator.getEPFLRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER", $faculty['name'])
+			$adminGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
+			$adminGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
+			$adminGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
 
-			$supportGroupNameAD = $nameGenerator.getEPFLRoleADGroupName("CSP_SUPPORT", $faculty['name'])
-			$supportGroupDescAD = $nameGenerator.getEPFLRoleADGroupDesc("CSP_SUPPORT", $faculty['name'])
-			$supportGroupNameGroups = $nameGenerator.getEPFLRoleGroupsADGroupName("CSP_SUPPORT", $faculty['name'])
+			$supportGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUPPORT", $false)
+			$supportGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUPPORT")
+			$supportGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUPPORT")
 
 			# Création des groupes + gestion des groupes prérequis 
 			if((createADGroupWithContent -groupName $adminGroupNameAD -groupDesc $adminGroupDescAD -groupMemberGroup $adminGroupNameGroups `
@@ -411,9 +425,15 @@ try
 				# Recherche des membres de l'unité
 				$ldapMemberList = $ldap.getUnitMembers($unit['uniqueidentifier'])
 
+				# Initialisation des détails pour le générateur de noms
+				$nameGenerator.initDetails(@{facultyName = $faculty['name']
+											facultyID = $faculty['uniqueidentifier']
+											unitName = $unit['name']
+											unitID = $unit['uniqueidentifier']})
+
 				# Création du nom du groupe AD et de la description
-				$adGroupName = $nameGenerator.getEPFLRoleADGroupName("CSP_CONSUMER", [int]$faculty['uniqueidentifier'], [int]$unit['uniqueidentifier'])
-				$adGroupDesc = $nameGenerator.getEPFLRoleADGroupDesc("CSP_CONSUMER", $faculty['name'], $unit['name'])
+				$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+				$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
 
 				# Pour définir si un groupe AD a été créé lors de l'itération courante
 				$newADGroupCreated = $false
@@ -559,7 +579,7 @@ try
 		# Parcours des groupes AD qui sont dans l'OU de l'environnement donné. On ne prend que les groupes qui sont utilisés pour 
 		# donner des droits d'accès aux unités. Afin de faire ceci, on fait un filtre avec une expression régulière
 		Get-ADGroup  -Filter ("Name -like '*'") -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
-		Where-Object {$_.Name -match $nameGenerator.getEPFLADGroupNameRegEx("CSP_CONSUMER")} | 
+		Where-Object {$_.Name -match $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")} | 
 		ForEach-Object {
 
 			# Si le groupe n'est pas dans ceux créés à partir de LDAP, c'est que l'unité n'existe plus. On supprime donc le groupe AD pour que 
@@ -624,6 +644,11 @@ try
 
 			$counters.inc('its.serviceProcessed')
 
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{serviceShortName = $service.shortName
+										serviceName = $service.longName
+										snowServiceId = $service.snowId})
+
 			$serviceNo += 1
 
 			# --------------------------------- APPROVE
@@ -634,7 +659,7 @@ try
 			{
 				$level += 1
 				# Recherche des informations pour le level courant.
-				$approveGroupInfos = $nameGenerator.getITSApproveADGroupName($service.shortName, $level)
+				$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
 
 				# Si vide, c'est qu'on a atteint le niveau max pour les level
 				if($null -eq $approveGroupInfos)
@@ -642,8 +667,8 @@ try
 					break
 				}
 
-				$approveGroupDescAD = $nameGenerator.getITSApproveADGroupDesc($service.longName, $level)
-				$approveGroupNameGroups = $nameGenerator.getITSApproveGroupsADGroupName($service.shortName, $level)
+				$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
+				$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
@@ -672,9 +697,9 @@ try
 			# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
 			# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
 			# sera le même
-			$admSupGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $service.shortName)
-			$admSupGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_SUBTENANT_MANAGER", $service.longName, $service.snowId)
-			$admSupGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER", $service.shortName)
+			$admSupGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
+			$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
+			$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
 
 			# Création des groupes + gestion des groupes prérequis 
 			if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
@@ -692,9 +717,9 @@ try
 			# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
 			# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
 			# sera le même
-			$userSharedGroupNameAD = $nameGenerator.getITSRoleADGroupName("CSP_CONSUMER", $service.shortName)
-			$userSharedGroupDescAD = $nameGenerator.getITSRoleADGroupDesc("CSP_CONSUMER", $service.longName, $service.snowId)
-			$userSharedGroupNameGroups = $nameGenerator.getITSRoleGroupsADGroupName("CSP_CONSUMER", $service.shortName)
+			$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+			$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
+			$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
 
 			# Création des groupes + gestion des groupes prérequis 
 			if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroups `
@@ -760,9 +785,6 @@ try
 	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
 
 
-
-
-
 }
 catch # Dans le cas d'une erreur dans le script
 {
@@ -775,11 +797,15 @@ catch # Dans le cas d'une erreur dans le script
 	# On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
 	$errorMessage = $errorMessage -replace "`n", "<br>"
 	
-	# Envoi d'un message d'erreur aux admins
-	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant $targetTenant
-	$mailMessage = getvRAMailContent -content ("<b>Computer:</b> {3}<br><b>Script:</b> {0}<br><b>Parameters:</b>{4}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
-	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace), $env:computername, (formatParameters -parameters $PsBoundParameters ))
-
-	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
+	# Création des informations pour l'envoi du mail d'erreur
+	$valToReplace = @{
+						scriptName = $MyInvocation.MyCommand.Name
+						computerName = $env:computername
+						parameters = (formatParameters -parameters $PsBoundParameters )
+						error = $errorMessage
+						errorTrace =  [System.Net.WebUtility]::HtmlEncode($errorTrace)
+					}
+	# Envoi d'un message d'erreur aux admins 
+	$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 	
 }	

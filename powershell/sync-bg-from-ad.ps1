@@ -1,6 +1,6 @@
 <#
 USAGES:
-	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl [-fullSync]
 #>
 <#
 	BUT 		: Crée/met à jour les Business groupes en fonction des groupes AD existant
@@ -9,10 +9,13 @@ USAGES:
 	AUTEUR 	: Lucien Chaboudez
 
 	PARAMETRES : 
-		$targetEnv	-> nom de l'environnement cible. Ceci est défini par les valeurs $global:TARGET_ENV__* 
+		$targetEnv		-> nom de l'environnement cible. Ceci est défini par les valeurs $global:TARGET_ENV__* 
 						dans le fichier "define.inc.ps1"
-		$targetTenant -> nom du tenant cible. Défini par les valeurs $global:VRA_TENANT__* dans le fichier
+		$targetTenant 	-> nom du tenant cible. Défini par les valeurs $global:VRA_TENANT__* dans le fichier
 						"define.inc.ps1"
+		$fullSync 		-> switch pour dire de prendre absolument tous les groupes AD pour faire le sync. Si 
+						ce switch n'est pas donné, on prendra par défaut les groupes AD qui ont été modifiés
+						durant les $global:AD_GROUP_MODIFIED_LAST_X_DAYS derniers jours (voir include/define.inc.ps1)
 
 	Documentation:
 		- Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976
@@ -25,6 +28,7 @@ USAGES:
 									on perd quelques références avec les objets déjà créés...
 									Le fichier est automatiquement effacé à la fin du script s'il existe, ceci
 									afin d'éviter de recréer inutilement les approval policies
+	- FORCE_ISO_FOLDER_ACL_UPDATE -> forcer la mise à jour des ACLs des dossiers où se trouvent les ISO sur le NAS
 
 
 	Prérequis:
@@ -49,7 +53,7 @@ USAGES:
 				  Ceci ne fonctionne pas ! A la place il faut à nouveau passer par la
 				  commande Set-ExecutionPolicy mais mettre la valeur "ByPass" en paramètre.
 #>
-param ( [string]$targetEnv, [string]$targetTenant)
+param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync)
 
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -61,6 +65,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -375,6 +380,8 @@ function createOrUpdateBG
 	# Si le BG existe,
 	else
 	{
+
+		$counters.inc('BGExisting')
 		# ==========================================================================================
 
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
@@ -645,12 +652,8 @@ function sendErrorMail2ndDayActionFile
 {
 	(param [string] $errorMsg)
 
-	$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=74055755"
-	$mailSubject = getvRAMailSubject -shortSubject "Error - 2nd day action JSON file error!" -targetEnv $targetEnv -targetTenant $targetTenant
-	$message = getvRAMailContent -content ("Une erreur est survenue durant le chargement du fichier contenant la liste des '2nd day actions':<br>`
-	{0}<br><br>Veuillez faire le nécessaire à partir de la <a href='{1}'>documentation suivante</a>." -f $errorMsg, $docUrl)	
-
-	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
+	$valToReplace = @{errorMsg = $errorMsg}
+	$notificationMail.send("Error - 2nd day action JSON file error!", "2nd-action-json-file-error", $valToReplace)
 }
 
 <#
@@ -665,13 +668,8 @@ function sendErrorMail2ndDayActionFile
 #>
 function sendErrorMailNoResTemplateFound
 {
-	$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=72516585"
-	$mailSubject = getvRAMailSubject -shortSubject "Error - No Reservation Template found for tenant!" -targetEnv $targetEnv -targetTenant $targetTenant
-	$message = getvRAMailContent -content ("Il n'existe aucun Template de Reservation pour la création des Business Groups sur l'environnement <b>{0}</b>.<br><br>Veuillez créer au moins un `
-	Template à partir de la <a href='{1}'>documentation suivante</a>." -f $targetEnv, $docUrl)	
-
-
-	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
+	$valToReplace = @{}
+	$notificationMail.send("Error - No Reservation Template found for tenant!", "no-reservation-template-found-for-tenant", $valToReplace)
 }
 
 <#
@@ -981,106 +979,91 @@ function handleNotifications
 			# Suppression des doublons 
 			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
 
+			$valToReplace = @{}
+
 			switch($notif)
 			{
 				# ---------------------------------------
 				# Préfixes de machine non trouvés
 				'newBGMachinePrefixNotFound'
 				{
-					$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=70976775"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Machine prefixes not found" -targetEnv $targetEnv -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les préfixes de machines suivants n'ont pas été trouvés `
-dans vRA pour l'environnement <b>{0}</b> et le tenant <b>{1}</b>.<br>Veuillez les créer à la main:`
-<br><ul><li>{2}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{3}'>ici</a>."  -f $targetEnv, $targetTenant, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
+					$valToReplace.prefixList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Machine prefixes not found"
+					$templateName = "new-bg-machine-prefix-not-found"
 				}
 
 				# ---------------------------------------
 				# BG sans "custom property" permettant de définir le statut
 				'bgWithoutCustomPropStatus'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$global:VRA_CUSTOM_PROP_VRA_BG_STATUS' custom property" `
-													 -targetEnv $targetEnv -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les Business Groups suivants ne contiennent pas la 'Custom Property' `
-<b>{0}</b>.<br>Veuillez faire le nécessaire:`
-<br><ul><li>{1}</li></ul>"  -f $global:VRA_CUSTOM_PROP_VRA_BG_STATUS, ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_BG_STATUS
+					$mailSubject = "Warning - Business Group without '{{customProperty}}' custom property"
+					$templateName = "bg-without-custom-prop"
 				}
 
 				# ---------------------------------------
 				# BG sans "custom property" permettant de définir le type
 				'bgWithoutCustomPropType'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Warning - Business Group without '$global:VRA_CUSTOM_PROP_VRA_BG_TYPE' custom property" `
-													 -targetEnv $targetEnv -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les Business Groups suivants ne contiennent pas la 'Custom Property' `
-<b>{0}</b>.<br>Veuillez faire le nécessaire:`
-<br><ul><li>{1}</li></ul>"  -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_BG_TYPE
+					$mailSubject = "Warning - Business Group without '{{customProperty}}' custom property"
+					$templateName = "bg-without-custom-prop"
 				}
 
 				# ---------------------------------------
 				# BG marqué comme étant des 'ghost'
 				'bgSetAsGhost'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Info - Business Group marked as 'ghost'" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les Business Groups suivants ont leur statut qui est passé à 'ghost' `
-car les unités associées ont disparu mais il y a toujours des items contenus dans les Business Groups.<br>Les droits ont été donnés `
-aux administrateurs de la faculté afin qu'ils puissent gérer la chose.
-<br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Info - Business Group marked as 'ghost'"
+					$templateName = "bg-set-as-ghost"
 				}
 
 				# ---------------------------------------
 				# BG effacés
 				'bgDeleted'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Info - Business Group deleted" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les Business Groups suivants ont été effacés car les unités associées `
-ont disparu et il n'y avait plus aucun item contenu dans les Business Groups.`
-<br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Info - Business Group deleted"
+					$templateName = "bg-deleted"
 				}
 
 				# ---------------------------------------
 				# Préfix de machine non trouvé pour un renommage de faculté
 				'facRenameMachinePrefixNotFound'
 				{
-					$docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=70976775"
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Machine prefixes not found for new faculty name" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les préfixes de machines suivants n'ont pas été trouvés `
-dans vRA pour l'environnement <b>{0}</b>.<br>Ceci signifie que les Business Groups de la faculté renommée n'ont pas pu être renommés.`
-<br>Veuillez créer les préfixes de machine à la main:`
-<br><ul><li>{1}</li></ul>De la documentation pour faire ceci peut être trouvée <a href='{2}'>ici</a>."  -f $targetEnv, ($uniqueNotifications -join "</li>`n<li>"), $docUrl)
+					$valToReplace.prefixList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Machine prefixes not found for new faculty name"
+					$templateName = "fac-rename-machine-prefix-not-found"
 				}
 
 				# ---------------------------------------
 				# Groupes AD soudainement devenus vides...
 				'emptyADGroups'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Info - AD groups empty for Business Group" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les groupes Active Directory suivants (avec nom du Business Group) `
-ne contiennent plus aucun utilisateur. Cela signifie donc que les Business Groups associés existent toujours mais ne sont plus utilisables par qui que ce soit....<br> `
-Actions à entreprendre pour chaque unité:<ol>`
-<li>Aller contrôler dans <a href='https://search.epfl.ch'>Search</a> que l'unité ne contienne effectivement plus aucun membre (il peut y avoir des membres mais s'ils n'ont pas de compte AD, ils ne peuvent rien faire)</li> `
-<li>S'il n'y a plus aucun membre valable, le groupe AD correspondant peut être supprimé, ce qui fera en sorte de supprimer le BG de vRA automatiquement.</li> `
-</ol>`
-<br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Info - AD groups empty for Business Group"
+					$templateName = "empty-ad-groups"
 				}
 
 				# ---------------------------------------
 				# Groupes AD pour les rôles...
 				'adGroupsNotFound'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Error - AD groups not found fo Business Group" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les groupes Active Directory suivants n'ont pas été trouvés.`
-Il s'agit peut-être d'une erreur dans l'exécution du script 'sync-ad-groups-from-ldap.ps1' qui créé ceux-ci:`
-<br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - AD groups not found for Business Group"
+					$templateName = "ad-groups-not-found-for-bg"
 				}
 
 				# ---------------------------------------
 				# Renommage de dossier d'ISO privées échoué
 				'ISOFolderNotRenamed'
 				{
-					$mailSubject = getvRAMailSubject -shortSubject "Error - Private ISO folder renaming failed" -targetEnv $targetEnv  -targetTenant $targetTenant
-					$message = getvRAMailContent -content ("Les dossiers suivants n'ont pas pu être renommés suite au changement du nom du Business Group auxquels ils sont associés.`
-Du coup, un nouveau dossier vide a été créé avec le bon nom et il faudra manuellement faire du ménage pour l'ancien dossier.`
-<br><ul><li>{0}</li></ul>"  -f  ($uniqueNotifications -join "</li>`n<li>"))
+					$valToReplace.folderList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Private ISO folder renaming failed"
+					$templateName = "iso-folder-not-renamed"
 				}
 				
 
@@ -1094,9 +1077,10 @@ Du coup, un nouveau dossier vide a été créé avec le bon nom et il faudra man
 			}
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
-			sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $message
+			$notificationMail.send($mailSubject, $templateName, $valToReplace)
 
 		} # FIN S'il y a des notifications pour la catégorie courante
+
 	}# FIN BOUCLE de parcours des catégories de notifications
 }
 
@@ -1294,11 +1278,24 @@ try
 	$logName = 'vra-sync-BG-from-AD-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
 	$logHistory =[LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
 
+	# Petite info dans les logs.
+	if($fullSync)
+	{
+		$logHistory.addLineAndDisplay("Doing a FULL sync with all AD groups...")
+	}
+	else
+	{
+		$logHistory.addLineAndDisplay( ("Taking only AD groups modified last {0} day(s)..." -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS))
+	}
+
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
 	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
+
+	# Objet pour pouvoir envoyer des mails de notification
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
 	$doneBGList = @()
 
@@ -1307,7 +1304,8 @@ try
 	$counters.add('ADGroups', '# AD group processed')
 	$counters.add('BGCreated', '# Business Group created')
 	$counters.add('BGUpdated', '# Business Group updated')
-	$counters.add('BGNotCreated', '# Business Group not created')
+	$counters.inc('BGExisting', '# Business Group already existing')
+	$counters.add('BGNotCreated', '# Business Group not created (because of an error)')
 	$counters.add('BGNotRenamed', '# Business Group not renamed')
 	$counters.add('BGDeleted', '# Business Group deleted')
 	$counters.add('BGGhost',	'# Business Group set as "ghost"')
@@ -1381,17 +1379,11 @@ try
 	<# Recherche des groupes pour lesquels il faudra créer des OUs
 	 On prend tous les groupes de l'OU et on fait ensuite un filtre avec une expression régulière sur le nom. Au début, on prenait le début du nom du
 	 groupe pour filtrer mais d'autres groupes avec des noms débutant de la même manière ont été ajoutés donc le filtre par expression régulière
-	 a été nécessaire.
-	#>
-	if($targetTenant -eq $global:VRA_TENANT__EPFL)
-	{
-		$adGroupNameRegex = $nameGenerator.getEPFLADGroupNameRegEx("CSP_CONSUMER")
-	}
-	else 
-	{
-		$adGroupNameRegex = $nameGenerator.getITSADGroupNameRegEx("CSP_CONSUMER")
-	}
-	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
+	 a été nécessaire. #>
+	$adGroupNameRegex = $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")
+	
+	# La liste des propriétés pouvant être récupérées via -Properties
+	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description,whenChanged | 
 	Where-Object {$_.Name -match $adGroupNameRegex} 
 
 	# Création de l'objet pour récupérer les informations sur les approval policies à créer pour les demandes de nouveaux éléments
@@ -1399,6 +1391,13 @@ try
 
 	# Création de l'objet pour gérer les 2nd day actions
 	$secondDayActions = [SecondDayActions]::new()
+
+	# On détermine s'il est nécessaire de mettre à jour les ACLs des dossiers contenant les ISO
+	$forceACLsUpdateFile =  ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE))
+	$forceACLsUpdate = (Test-path $forceACLsUpdateFile)
+
+	# Calcul de la date dans le passé jusqu'à laquelle on peut prendre les groupes modifiés.
+	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
 
 	# Parcours des groupes AD pour l'environnement/tenant donné
 	$adGroupList | ForEach-Object {
@@ -1428,72 +1427,24 @@ try
 			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
 			$faculty, $unit = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{facultyName = $faculty
+										 facultyID = $facultyID
+										 unitName = $unit
+										 unitID = $unitID})
+
 			Write-Debug "-> Current AD group Faculty : $($faculty) ($($facultyID))"
 			Write-Debug "-> Current AD group Unit    : $($unit) ($($unitID)) "
 
 			# Création du nom/description du business group
-			$bgName = $nameGenerator.getBGName($faculty, $unit)
-			$bgDesc = $nameGenerator.getEPFLBGDescription($faculty, $unit)
-
-
-			# Génération du nom et de la description de l'entitlement
-			$entName, $entDesc = $nameGenerator.getEPFLBGEntNameAndDesc($faculty, $unit)
+			$bgDesc = $nameGenerator.getBGDescription()
 
 			# Nom du préfix de machine
-			$machinePrefixName = $nameGenerator.getVMMachinePrefix($faculty)
+			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
 			# Custom properties du Buisness Group
 			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $unitID}
-
-			# Groupes de sécurités AD pour les différents rôles du BG
-			$managerGrpList = @($nameGenerator.getEPFLRoleADGroupName("CSP_SUBTENANT_MANAGER", $faculty, $true))
-			$supportGrpList = @($nameGenerator.getEPFLRoleADGroupName("CSP_SUPPORT", $faculty, $true))
-			# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
-			# créés par le script "sync-ad-groups-from-ldap.ps1"
-			$sharedGrpList  = @($ADFullGroupName)
-			$userGrpList    = @($ADFullGroupName)
-			
-			# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG. On prend le niveau 1 car c'est celui de EXHEB
-			# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
-			#$capacityAlertMails += $nameGenerator.getEPFLApproveGroupsEmail($faculty, 1)
-
-			# Nom et description de la policy d'approbation + nom du groupe AD qui devra approuver
-			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getEPFLApprovalPolicyNameAndDesc($faculty, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-			
-			# Tableau pour les approbateurs des différents niveaux
-			$approverGroupAtDomainList = @()
-			$level = 0
-			# on fait une 
-			While($true)
-			{
-				$level += 1
-				$levelGroupInfos = $nameGenerator.getEPFLApproveADGroupName($faculty, $level, $true)
-				# Si on n'a plus de groupe pour le level courant, on sort
-				if($null -eq $levelGroupInfos)
-				{
-					break
-				}
-				$approverGroupAtDomainList += $levelGroupInfos.name
-			}
-
-			# Vu qu'il y aura des quotas pour les demandes sur le tenant EPFL, on utilise une policy du type "Event Subscription", ceci afin d'appeler un Workflow défini
-			# qui se chargera de contrôler le quota.
-			$itemReqApprovalPolicyJSON = $newItems.getApprovalPolicyJSON($targetTenant)
-			# -> Pour créer les différents niveaux (si besoin) pour l'approbation 
-			$itemReqApprovalLevelJSON = $newItems.getApprovalLevelJSON($targetTenant)
-
-
-			# -- NSX --
-			# Nom et description du NSGroup
-			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getEPFLSecurityGroupNameAndDesc($faculty)
-			# Nom du security Tag
-			$nsxSTName = $nameGenerator.getEPFLSecurityTagName($faculty)
-			# Nom et description de la section de firewall
-			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getEPFLFirewallSectionNameAndDesc($faculty)
-			# Nom de règles de firewall
-			$nsxFWRuleNames = $nameGenerator.getEPFLFirewallRuleNames($faculty)
-
+	
 		}
 		# Si Tenant ITServices
 		elseif($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
@@ -1506,13 +1457,14 @@ try
 			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
 			$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
+				serviceName = $serviceLongName
+				snowServiceId = $snowServiceId})
+
 			# Création du nom/description du business group
-			$bgName = $nameGenerator.getBGName($serviceShortName)
 			$bgDesc = $serviceLongName
 			
-			# Génération du nom et de la description de l'entitlement
-			$entName, $entDesc = $nameGenerator.getITSBGEntNameAndDesc($serviceShortName, $serviceLongName)
-
 			# Nom du préfix de machine
 			# NOTE ! Il n'y a pas de préfix de machine pour les Business Group du tenant ITServices.
 			$machinePrefixName = ""
@@ -1520,56 +1472,79 @@ try
 			# Custom properties du Buisness Group
 			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID" = $snowServiceId}
 
-			# Groupes de sécurités AD pour les différents rôles du BG
-			$managerGrpList = @($nameGenerator.getITSRoleADGroupName("CSP_SUBTENANT_MANAGER", $serviceShortName, $true))
-			$supportGrpList = @($nameGenerator.getITSRoleADGroupName("CSP_SUPPORT", $serviceShortName, $true))
-			# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
-			# créés par le script "sync-ad-groups-from-ldap.ps1"
-			$sharedGrpList  = @($ADFullGroupName)
-			$userGrpList    = @($ADFullGroupName)
+		}# FIN Si Tenant ITServices
 
-			# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG
-			# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
-			#$capacityAlertMails += $nameGenerator.getITSApproveGroupsEmail($serviceShortName, 1)
+		# Récupération du nom du BG
+		$bgName = $nameGenerator.getBGName()
 
-			# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
-			$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ITEM_REQ)
-			$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getITSApprovalPolicyNameAndDesc($serviceShortName, $serviceLongName, $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-			
-			# Tableau pour les approbateurs des différents niveaux
-			$approverGroupAtDomainList = @()
-			$level = 0
-			# on fait une 
-			While($true)
+		# Génération du nom et de la description de l'entitlement
+		$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
+
+		# Groupes de sécurités AD pour les différents rôles du BG
+		$managerGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $true))
+		$supportGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUPPORT", $true))
+		# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
+		# créés par le script "sync-ad-groups-from-ldap.ps1"
+		$sharedGrpList  = @($ADFullGroupName)
+		$userGrpList    = @($ADFullGroupName)
+
+		# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG. On prend le niveau 1 car c'est celui de EXHEB
+		# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
+		#$capacityAlertMails += $nameGenerator.getApproveGroupsEmail(1)
+		
+		# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
+		$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ITEM_REQ)
+		$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ACTION_REQ)
+
+		# Tableau pour les approbateurs des différents niveaux
+		$approverGroupAtDomainList = @()
+		$level = 0
+		# on fait une 
+		While($true)
+		{
+			$level += 1
+			$levelGroupInfos = $nameGenerator.getApproveADGroupName($level, $true)
+			# Si on n'a plus de groupe pour le level courant, on sort
+			if($null -eq $levelGroupInfos)
 			{
-				$level += 1
-				$levelGroupInfos = $nameGenerator.getITSApproveADGroupName($serviceShortName, $level, $true)
-
-				# Si on a un nom de groupe vide, c'est qu'il n'y a aucun groupe pour le level courant donc on peut sortir de la boucle
-				if($null -eq $levelGroupInfos)
-				{
-					break
-				}
-				$approverGroupAtDomainList += $levelGroupInfos.name
+				break
 			}
-			
-			# Définition des noms des fichiers JSON contenant le nécessaire pour créer l'approval policy pour les demandes de NOUVEAUX éléments pour le tenant ITServices
-			# -> Fichier de base
-			$itemReqApprovalPolicyJSON = $newItems.getApprovalPolicyJSON($targetTenant)
-			# -> Pour créer les différents niveaux (si besoin) pour l'approbation (appelée dans tous les cas, avec un groupe devant approuver)
-			$itemReqApprovalLevelJSON = $newItems.getApprovalLevelJSON($targetTenant)
-
-
-			# -- NSX --
-			# Nom et description du NSGroup
-			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getITSSecurityGroupNameAndDesc($serviceShortName, $bgName, $snowServiceId)
-			# Nom du security Tag
-			$nsxSTName = $nameGenerator.getITSSecurityTagName($serviceShortName)
-			# Nom et description de la section de firewall
-			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getITSFirewallSectionNameAndDesc($serviceShortName)
-			# Nom de règles de firewall
-			$nsxFWRuleNames = $nameGenerator.getITSFirewallRuleNames($serviceShortName)
+			$approverGroupAtDomainList += $levelGroupInfos.name
 		}
+
+		# Vu qu'il y aura des quotas pour les demandes sur le tenant EPFL, on utilise une policy du type "Event Subscription", ceci afin d'appeler un Workflow défini
+		# qui se chargera de contrôler le quota.
+		$itemReqApprovalPolicyJSON = $newItems.getApprovalPolicyJSON($targetTenant)
+		# -> Pour créer les différents niveaux (si besoin) pour l'approbation 
+		$itemReqApprovalLevelJSON = $newItems.getApprovalLevelJSON($targetTenant)
+
+		
+		# -- NSX --
+		# Nom et description du NSGroup
+		$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bgName)
+		# Nom du security Tag
+		$nsxSTName = $nameGenerator.getSecurityTagName()
+		# Nom et description de la section de firewall
+		$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
+		# Nom de règles de firewall
+		$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
+
+
+		# Si on ne doit pas faire une synchro complète,
+		if(!$fullSync)
+		{
+			# Si le groupe a déjà été modifié
+			# ET
+			# Si la date de modification du groupe est plus vieille que le nombre de jour que l'on a défini,
+			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
+			{
+				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
+				$doneBGList += $bgName
+				$counters.inc('BGExisting')
+				return
+			}
+		}
+
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
 		if( ((checkIfADGroupsExists -groupList $managerGrpList) -eq $false) -or `
@@ -1667,23 +1642,42 @@ try
 		$bgISOFolder = $nameGenerator.getNASPrivateISOPath($bgName)
 
 		# Si on a effectivement un dossier où mettre les ISO et qu'il n'existe pas encore,
+		# NOTE: Si on est sur le DEV, on a fait en sorte que $bgISOFolder soit vide ("") donc
+		# on n'entrera jamais dans ce IF
 		if(($bgISOFolder -ne "") -and (-not (Test-Path $bgISOFolder)))
 		{
 			$logHistory.addLineAndDisplay(("--> Creating ISO folder '{0}'..." -f $bgISOFolder))
 			# On le créé
 			$dummy = New-Item -Path $bgISOFolder -ItemType:Directory
 
+			# Pour faire en sorte que les ACLs soient mises à jour.
+			$ISOFolderCreated = $true
+
+			# On attend 1 seconde que le dossier se créée bien car si on essaie trop rapidement d'y accéder, on ne va pas pouvoir
+			# récuprer les ACL correctement...
+			Start-sleep -Seconds 1
+		} # FIN S'il faut créer un dossier pour les ISO et qu'il n'existe pas encore.
+
+		
+		# Si on a créé un dossier où qu'on doit mettre à jour les ACLs
+		if($ISOFolderCreated -or $forceACLsUpdate)
+		{
+			$logHistory.addLineAndDisplay(("--> Applying ACLs on ISO folder '{0}'..." -f $bgISOFolder))
 			# Récupération et modification des ACL pour ajouter les groupes AD qui sont pour le Role "Shared" dans le BG
 			$acl = Get-Acl $bgISOFolder
 			ForEach($sharedGrp in $sharedGrpList)
 			{
-				$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($sharedGrp, "Modify", "ContainerInherit,ObjectInherit", "None","Allow")
+				$logHistory.addLineAndDisplay(("---> Group '{0}'..." -f $sharedGrp))
+				# On fait en sorte de créer le dossier sans donner les droits de création de sous-dossier à l'utilisateur, histoire qu'il ne puisse pas décompresser une ISO
+				# NOTE: Si l'ACL existe déjà, elle sera écrasée avec la nouvelle qu'on a ici
+				$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($sharedGrp,  "CreateFiles, WriteExtendedAttributes, WriteAttributes, Delete, ReadAndExecute, Synchronize", "ContainerInherit,ObjectInherit",  "None", "Allow")
 				$acl.SetAccessRule($ar)
 			}
 			Set-Acl $bgISOFolder $acl
 
-		} # FIN SI on n'est pas sur l'environnement de DEV 
-		
+			# Pour ne pas retomber dans la condition à la prochaine itération de la boucle
+			$ISOFolderCreated = $false
+		}
 
 
 
@@ -1774,6 +1768,16 @@ try
 		Remove-Item -Path $recreatePoliciesFile
 	}
 
+	# Si on a dû mettre à jour les ACLs des dossiers, 
+	if($forceACLsUpdate)
+	{
+		Remove-Item -Path $forceACLsUpdateFile
+	}
+
+	# Affichage des nombres d'appels aux fonctions des objets REST
+	$vra.displayFuncCalls()
+	$nsx.displayFuncCalls()
+
 }
 catch # Dans le cas d'une erreur dans le script
 {
@@ -1786,11 +1790,15 @@ catch # Dans le cas d'une erreur dans le script
 	# On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
 	$errorMessage = $errorMessage -replace "`n", "<br>"
 	
+	# Création des informations pour l'envoi du mail d'erreur
+	$valToReplace = @{	
+						scriptName = $MyInvocation.MyCommand.Name
+					  	computerName = $env:computername
+					  	parameters = (formatParameters -parameters $PsBoundParameters )
+					  	error = $errorMessage
+					  	errorTrace =  [System.Net.WebUtility]::HtmlEncode($errorTrace)
+					}
 	# Envoi d'un message d'erreur aux admins 
-	$mailSubject = getvRAMailSubject -shortSubject ("Error in script '{0}'" -f $MyInvocation.MyCommand.Name) -targetEnv $targetEnv -targetTenant $targetTenant
-	$mailMessage = getvRAMailContent -content ("<b>Computer:</b> {3}<br><b>Script:</b> {0}<br><b>Parameters:</b>{4}<br><b>Error:</b> {1}<br><b>Trace:</b> <pre>{2}</pre>" -f `
-	$MyInvocation.MyCommand.Name, $errorMessage, [System.Net.WebUtility]::HtmlEncode($errorTrace), $env:computername, (formatParameters -parameters $PsBoundParameters ))
-
-	sendMailTo -mailAddress $configGlobal.getConfigValue("mail", "admin") -mailSubject $mailSubject -mailMessage $mailMessage
+	$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 	
 }
