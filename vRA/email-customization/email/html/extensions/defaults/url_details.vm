@@ -1,0 +1,9 @@
+#set ($details = "#valueOf('Details')" )
+#notEmpty($details)
+  <a href="$details">#msg('notification.email.extensions.url.details')</a>
+#end
+
+#set ($workItemShellUrl = "#valueOf('workItemShellUrl')" )
+#notEmpty($workItemShellUrl)
+  <a href="$workItemShellUrl">#msg('notification.email.extensions.url.details')</a>
+#end

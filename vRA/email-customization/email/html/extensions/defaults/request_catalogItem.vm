@@ -1,0 +1,113 @@
+  #set( $request_leasePeriod = "#valueOf('requestLeasePeriod')" )
+  #if( "$!request_leasePeriod" == "" || "$!request_leasePeriod.trim()" == "" )  
+    #set( $requestIsQuoteProvided = $formData.get("${keyPrefix}requestIsQuoteProvided") ) 
+    #if( "$!requestIsQuoteProvided" != "" && $requestIsQuoteProvided )  
+      #set( $request_leasePeriod = "#msg('notification.email.extensions.request.unlimited')" )
+    #end
+  #end
+
+  #set( $request_NumberOfInstances = "#valueOf('_number_of_instances')" )
+  #if( "$!request_NumberOfInstances" == "" )  
+     #set( $request_NumberOfInstances = "1" )
+  #end
+
+  <div class="main_heading">  
+    <div class="main_heading1"> $mainHeading1 </div> 
+    <div class="main_heading2">
+         <br/>$userInformation requested $request_NumberOfInstances instance(s) of <font color=#3EC6E0><b>#valueOf('catalogItem-Name')</b></font> on #valueOf('requestedDate'). The requested lease period is <font color=#3EC6E0><b>$request_leasePeriod</b></font>. $scenarioMessage
+    </div>  
+  </div>
+
+## Show Request Components
+<br/>
+<h2 class="components_heading">#msg("notification.email.extensions.component.componentInfo")</h2>
+
+<div class="components">
+
+#set( $component_size = "#valueOf('component-ComponentNos') " )
+#set( $Integer = 0 )
+
+#if( "$!component_size" != "" && "$!component_size.trim()" != "" )
+  #set( $componentSize = $Integer.parseInt($component_size.trim()) )
+
+  #if( $componentSize != 0 )
+
+    #foreach($index in [1..$componentSize] )
+
+      ## Component general info
+      #set( $curKey = "component${index}-Name" )
+      #set( $component_componentName = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-Type" )
+      #set( $component_componentType = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-Parent" )
+      #set( $component_parentComponent = "#valueOf($curKey)" )
+
+      ## Software specified
+      #set( $curKey = "component${index}-Software-Install-Path" )
+      #set( $component_installPath = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-Software-Group-License" )
+      #set( $component_groupLicense = "#valueOf($curKey)" )
+
+      ## VM specified
+      #set( $curKey = "component${index}-cpu" )
+      #set( $component_cpu = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-memory" )
+      #set( $component_memory = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-storage" )
+      #set( $component_storage = "#valueOf($curKey)" )
+
+      #set( $curKey = "component${index}-Data Center" )
+      #set( $component_dataCenter = "#valueOf($curKey)" )
+
+
+      <!-- Code to display component starts here -->
+  <div class="component">
+    <h2 class="title"> $component_componentType </h2>
+    <div class="content">
+      <div class="component_name"> $component_componentName </div>
+    </div>
+           
+    <div class="component_fields">
+      <ul>
+        #notEmpty($component_cpu)
+          <li><span> $component_cpu CPU(s) </span></li>
+        #end
+        
+        #notEmpty($component_memory)  
+          <li><span> $component_memory MB Memory </span></li>
+        #end
+
+        #notEmpty($component_storage)
+          <li><span> $component_storage GB Storage </span></li>
+        #end
+
+        #notEmpty($component_parentComponent)
+          <li><span> Parent: $component_parentComponent </span></li>
+        #end
+
+        #notEmpty($component_dataCenter)
+          <li><span> Data Center: $component_dataCenter </span></li>
+        #end
+      </ul>
+    </div>
+ </div> ##end of component div
+
+   <!-- Code to display ends here -->
+
+    ##For loop
+    #end
+
+  ##end for if ($componentSize != 0)
+  #end
+## end for #if( "$!component_size" != "" )
+#end
+
+</div> ## end of components div
+
+
+

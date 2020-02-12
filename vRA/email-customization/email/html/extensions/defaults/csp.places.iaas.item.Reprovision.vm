@@ -1,0 +1,12 @@
+<div class="layoutSection">
+   <h2>#msg("notification.email.extensions.reprovision.machine.request")</h2>
+   <table class="sectionGrid">
+      <col class="layoutColumn" />
+      <tr class="layoutRow">
+         <td class="layoutField">
+            <div class="label">#msg("notification.email.extensions.name")</div>
+            <div class="value">#valueOf("MachineName")</div>
+         </td>
+      </tr>
+   </table>
+</div>

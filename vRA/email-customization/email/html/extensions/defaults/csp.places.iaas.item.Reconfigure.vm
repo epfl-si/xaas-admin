@@ -1,0 +1,166 @@
+## requestInfo BEGIN
+#set( $request_applicationDevelopment = "#valueOf('catalogItem-Name')" )
+#set( $request_requestedBy = "#valueOf('requestedBy')" )
+#set( $request_requestDate = "#valueOf('requestedDate')" )
+#set( $request_description = "#valueOf('description')" )
+#set( $request_reason = "#valueOf('reasons')" )
+#set( $request_new_leaseCost = "#valueOf('requestLeaseCost')" )
+#set( $request_new_leasePeriod = "#valueOf('requestLeasePeriod')" )
+#set( $request_new_totalCost = "#valueOf('requestTotalLeaseCost')" )
+
+<h2>#msg("notification.email.extensions.request.info")</h2>
+<table class="sectionGrid">
+  #notEmpty($request_applicationDevelopment)
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.applicationDevelopment")</td>
+		<td class="InfoTab-row-value">$request_applicationDevelopment</td>
+  </tr>
+  #end
+  #notEmpty($request_requestedBy)
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.requestedBy")</td>
+		<td class="InfoTab-row-value">$request_requestedBy</td>
+  </tr>
+  #end
+  #notEmpty($request_requestDate)
+    #set( $request_requestDateLabel = "#msg('notification.email.extensions.request.requestDate')" )
+    <tr>
+       <td class="InfoTab-row-header" valign="top">$request_requestDateLabel</td>
+       <td class="InfoTab-row-value" valign="top">$request_requestDate</td>
+    </tr>
+  #end
+  #notEmpty($request_description)
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.description")</td>
+		<td class="InfoTab-row-value">$request_description</td>
+  </tr>
+  #end
+  #notEmpty($request_reason)
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.reason")</td>
+		<td class="InfoTab-row-value">$request_reason</td>
+  </tr>
+  #end
+  #notEmpty($request_leaseCost)
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.estimatedLeasePrice")</td>
+		<td class="InfoTab-row-value">$request_leaseCost</td>
+  </tr>
+  #end
+  #notEmpty($request_leasePeriod)
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.leasePeriod")</td>
+      <td class="InfoTab-row-value">$request_leasePeriod</td>
+
+  </tr>
+  #end
+  #notEmpty($request_totalCost)
+  <tr>
+     <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.request.totalPrice")</td>
+		<td class="InfoTab-row-value">$request_totalCost</td>
+  </tr>
+  #end
+</table>
+<br/>
+## requestInfo END
+
+
+## Action Details
+#set( $action_name = "#valueOf('resourceAction')" )
+#set( $component_componentName = "#valueOf('resource-Name')" )
+#set( $component_componentType = "#valueOf('resource-Type')" )
+#set ( $new_lease = "#valueOf('Cafe.Shim.VirtualMachine.Reconfigure.Lease')" )
+#set( $new_expirationDate = "#valueOf('ExpirationDate')" )
+#set( $new_destructionDate = "#valueOf('resource-MachineDestructionDate')" )
+
+#set ( $new_cpu = "#valueOf('Cafe.Shim.VirtualMachine.Reconfigure.CpuCount')" )
+#set ( $old_cpu = "#valueOf('VirtualMachine.CPU.Count')" )
+
+#set ( $new_mem = "#valueOf('Cafe.Shim.VirtualMachine.Reconfigure.MemorySize')" )
+#set ( $old_mem = "#valueOf('VirtualMachine.Memory.Size')" )
+
+#set ( $new_storage = "#valueOf('Cafe.Shim.VirtualMachine.Reconfigure.UpdatedTotalStorageSize')" )
+#set ( $old_storage = "#valueOf('resource-Cafe.Shim.VirtualMachine.TotalStorageSize')" )
+
+#if( "$!new_storage" == "" || "$!new_storage.trim()" == "" )
+  #set ( $new_storage = $old_storage )
+#end
+
+#fromJson('Cafe.Shim.VirtualMachine.Reconfigure.PropertyBag', 'oldValues')
+#set( $oldValues = $formData.get("oldValues") )
+#foreach($oldValue in $oldValues)
+   #if( $oldValue.get("PropertyName") == "VirtualMachine.CPU.Count" )
+      #set( $old_cpu = $oldValue.get("PropertyValue") )
+   #end
+   #if( $oldValue.get("PropertyName") == "VirtualMachine.Memory.Size" )
+      #set( $old_mem = $oldValue.get("PropertyValue") )
+   #end
+#end
+
+<h2>#msg("notification.email.extensions.action.details")</h2>
+<table class="sectionGrid">
+   #notEmpty($action_name)
+   <tr>
+   <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.action.name")</td>
+      <td class="InfoTab-row-value">$action_name</td>
+   </tr>
+   #end
+
+   ## Component general info begin
+   #notEmpty($component_componentName)
+   <tr>
+   <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.component.name")</td>
+      <td class="InfoTab-row-header" valign="top">
+      <td class="InfoTab-row-value">$component_componentName</td>
+   </tr>
+   #end
+   #notEmpty($component_componentType)
+   <tr>
+   <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.component.type")</td>
+      <td class="InfoTab-row-value">$component_componentType</td>
+   </tr>
+   #end
+   #notEmpty($new_lease)
+   <tr>
+      <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.component.lease")</td>
+      <td class="InfoTab-row-value">$new_lease</td>
+   </tr>
+   #end
+   #notEmpty($new_expirationDate)
+     #set( $expirationDateLabel = "#msg('notification.email.extensions.expiration.date')" )
+     <tr>
+      <td class="InfoTab-row-header" valign="top">$expirationDateLabel</td>
+      <td class="InfoTab-row-value">$new_expirationDate</td>
+     </tr>
+   #end
+   #notEmpty($new_destructionDate)
+     #set( $destructionDateLabel = "#msg('notification.email.extensions.destruction.date')" )
+     <tr>
+      <td class="InfoTab-row-header" valign="top">$destructionDateLabel</td>
+      <td class="InfoTab-row-value">$new_destructionDate</td>
+     </tr>
+   #end
+
+   #notEmpty($old_cpu)
+   <tr>
+      <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.cpus")</td>
+      <td class="InfoTab-row-value">$old_cpu</td>
+      <td class="InfoTab-row-value">$new_cpu</td>
+   </tr>
+   #end
+   #notEmpty($old_mem)
+   <tr>
+      <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.memory")</td>
+      <td class="InfoTab-row-value">$old_mem MB</td>
+      <td class="InfoTab-row-value">$new_mem MB</td>
+   </tr>
+   #end
+   #notEmpty($old_storage)
+   <tr>
+      <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.storage")</td>
+      <td class="InfoTab-row-value">$old_storage GB</td>
+      <td class="InfoTab-row-value">$new_storage GB</td>
+   </tr>
+   #end
+
+</table>

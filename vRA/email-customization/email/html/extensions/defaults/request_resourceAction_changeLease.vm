@@ -1,0 +1,19 @@
+#if( !$resourceAction || "$!resourceAction" == "" )
+	#break
+#end 
+
+#if ($resourceAction != "{com.vmware.csp.component.iaas.proxy.provider@resource.action.name.machine.ChangeLease}" && $resourceAction != "{com.vmware.csp.component.cafe.composition@resource.action.deployment.changelease.name}")
+	#break
+#end	
+
+#set( $ExpirationDate = "#valueOf('ExpirationDate')" )
+#if( "$!ExpirationDate" == "" || "$!ExpirationDate.trim()" == "" ) 
+  #set( $ExpirationDate = "#msg('notification.email.extensions.request.unlimited')" )
+#end
+
+#parse( 'extensions/request_generalInfo.vm' )
+#renderRow("notification.email.extensions.new.expiration.date", "$ExpirationDate")
+</table> <br/>
+#parse( 'extensions/request_resourceAction_resource.vm' )
+#parse ( 'extensions/url_details.vm' )
+#stop

@@ -1,0 +1,15 @@
+## Iterate through the pages in the layout
+#notEmpty( $links )
+   <div class="links">
+     <div class="linksDesc">
+         #msg("notification.email.core.links.desc")
+     </div>
+     <ul>
+         #foreach ($link in $links)
+            <li>
+                 <a class="linkUrl" href="$link.url">$link.text</a>
+            </li>
+         #end
+     </ul>
+   </div>
+#end

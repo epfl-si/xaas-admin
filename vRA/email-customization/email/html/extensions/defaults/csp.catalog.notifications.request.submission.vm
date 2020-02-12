@@ -1,0 +1,3 @@
+## It seems that this scenario is for all built-in element (Virtual Machines) and XaaS elements and is for 
+## request mail generation, sent to requestor
+#parse( 'extensions/displayRequest.vm' )

@@ -1,0 +1,36 @@
+#if( !$resourceAction || "$!resourceAction" == "" )
+	#break
+#end 
+
+#if ($resourceAction != "{com.vmware.csp.component.iaas.proxy.provider@resource.action.name.machine.Reconfigure}")
+	#break
+#end	
+
+#set ( $reconfigure_new_cpu = "#valueOf('Cafe.Shim.VirtualMachine.Reconfigure.UpdatedCpuCount')" ) 
+#set ( $reconfigure_old_cpu = "#valueOf('resource-MachineCPU')" )
+#set ( $reconfigure_new_memory = "#valueOf('Cafe.Shim.VirtualMachine.Reconfigure.UpdatedMemorySize')" )
+#set ( $reconfigure_old_memory = "#valueOf('resource-MachineMemory')" )
+#set ( $reconfigure_new_storage = "#valueOf('Cafe.Shim.VirtualMachine.Reconfigure.UpdatedTotalStorageSize')" )
+#set ( $reconfigure_old_storage = "#valueOf('resource-MachineStorage')" )
+ 
+#if( "$!reconfigure_new_cpu" == "" || "$!reconfigure_new_cpu.trim()" == "" )
+    #set ( $reconfigure_new_cpu = $reconfigure_old_cpu )
+#end
+
+#if( "$!reconfigure_new_memory" == "" || "$!reconfigure_new_memory.trim()" == "" )
+    #set ( $reconfigure_new_memory = $reconfigure_old_memory )
+#end
+
+#if( "$!reconfigure_new_storage" == "" || "$!reconfigure_new_storage.trim()" == "" )
+    #set ( $reconfigure_new_storage = $reconfigure_old_storage )
+#end
+
+##Display reconfig request properties
+	#parse( 'extensions/request_generalInfo.vm' )
+    #renderRow("notification.email.extensions.cpus", "$reconfigure_new_cpu")
+    #renderRow("notification.email.extensions.memory", "$reconfigure_new_memory", "MB")
+    #renderRow("notification.email.extensions.storage", "$reconfigure_new_storage", "GB")
+</table> <br/>
+#parse( 'extensions/request_resourceAction_resource.vm' )
+#parse ( 'extensions/url_details.vm' )
+#stop

@@ -1,0 +1,58 @@
+## General request info
+## This is displayed in "Request information" part of the email.
+
+#if( !$resourceAction || "$!resourceAction" == "" )
+  #set( $request_leasePeriod = "#valueOf('requestLeasePeriod')" )
+  #if( "$!request_leasePeriod" == "" || "$!request_leasePeriod.trim()" == "" )  
+    #set( $requestIsQuoteProvided = $formData.get("${keyPrefix}requestIsQuoteProvided") ) 
+    #if( "$!requestIsQuoteProvided" != "" && $requestIsQuoteProvided )  
+      #set( $request_leasePeriod = "#msg('notification.email.extensions.request.unlimited')" )
+    #end
+  #end
+#end
+
+
+## Looking for data we need to build mail
+
+<h2>#msg("notification.email.extensions.request.info") </h2>
+<br/>
+
+##This is special case handling for scale-out/In emails, they have different template than regualar action emails.
+#if( $resourceAction == "{com.vmware.csp.component.cafe.composition@resource.action.deployment.scaleout.name}")
+    #parse( 'extensions/request_scaleOutAction.vm' )
+#end
+
+#if( $resourceAction == "{com.vmware.csp.component.cafe.composition@resource.action.deployment.scalein.name}")
+    #parse( 'extensions/request_scaleInAction.vm' )
+#end
+
+## Adding Scenario ID in email, just to help to develop things
+<!-- Scenario: $scenario -->
+
+<table class="sectionGrid">
+  
+  #renderRowNoLabelMapping("Tenant", "#valueOf('provider-ch.epfl.vra.tenant.name')")
+  #renderRowNoLabelMapping("Business Group", "#valueOf('provider-ch.epfl.vra.bg.name')")
+
+  ## Service or Unit information (if a property is not found, nothing is displayed. So it means we don't have to 
+  ## add an 'if' to check for which tenant the request is done.
+  #renderRowNoLabelMapping("Unit ID", "#valueOf('provider-ch.epfl.unit.id')")
+  #renderRowNoLabelMapping("SNOW Svc ID", "#valueOf('provider-ch.epfl.snow.svc.id')")
+
+  #renderRow("notification.email.extensions.deployment", "#valueOf('catalogItem-Name')")
+  #renderRow("notification.email.extensions.action", $resourceAction_Name)
+  #renderRow("notification.email.extensions.request.requestedBy", "#valueOf('requestedBy')")
+  #renderRowNoLabelMapping("Requested for email address", "#valueOf('provider-ch.epfl.owner_mail')")
+  #renderRow("notification.email.extensions.request.requestDate", "#valueOf('requestedDate')")
+  #renderRow("notification.email.extensions.description", "#valueOf('description')")
+
+  ## For VM part
+  #renderRow("notification.email.extensions.request.reason", "#valueOf('reasons')")
+  ## For XaaS part
+  #renderRow("notification.email.extensions.request.reason", "#valueOf('provider-reasonsForRequest')")
+  
+  #renderRow("notification.email.extensions.request.numberOfInstances", "#valueOf('_number_of_instances')")
+  #renderRowComponent("DMZ", $keyPrefix, "ch.epfl.iaas.dmz.enabled" )
+  #renderRow("notification.email.extensions.request.estimatedLeasePrice", "#valueOf('requestLeaseCost')")
+  #renderRow("notification.email.extensions.request.leasePeriod", $request_leasePeriod)
+  #renderRow("notification.email.extensions.request.totalPrice", "#valueOf('requestTotalLeaseCost')")

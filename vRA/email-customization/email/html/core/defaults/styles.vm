@@ -1,0 +1,289 @@
+<style type="text/css">
+/* Release date: 2020-01-10 08:10:07 */
+body {
+        font-family: Arial, Helvetica, sans-serif;
+}
+h1,
+h2 {
+    margin: 0;
+    color: #333333;
+}
+a {
+    color: #000;
+    text-decoration: underline #ff0000;
+    font-size:0.9em;
+}
+a:hover {
+    color: #f00;
+    text-decoration: underline #000;
+    font-size:12px;
+}
+.layoutPage {
+    margin-top: 12;
+    border-bottom: solid 1 black;
+}
+.layoutSection {
+    margin-top: 6;
+    margin-left: 4;
+    border-bottom: solid 1 gray;
+}
+.layoutRow {
+    overflow: auto
+}
+.layoutRow:after {
+    clear: both
+}
+.layoutColumn,
+.layoutText,
+.layoutField,
+.layoutPlaceholder,
+.layoutFlow {
+    min-width: 20em
+}
+.label {
+    white-space: nowrap;
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.layoutField,
+.layoutText,
+.layoutPlaceholder,
+.layoutFlow {} .layoutField .label {
+    text-align: right;
+    padding-right: 0.5em;
+    float: left;
+    width: 11em
+}
+
+.layoutField .value {
+    text-align: left;
+    padding-right: 0.5em;
+    float: left;
+}
+.layoutCell {
+    min-width: 5em;
+}
+
+    
+.layoutDataTable table {
+    border-collapse: collapse;
+    width: 100%;
+}
+.layoutDataTable table thead {
+    border-style: solid;
+    border-width: 1px;
+    background-color: #DDDDDD;
+}
+.layoutDataTable table thead th {
+    font-size: 0.8em;
+    text-align: left;
+    padding: 2px;
+}
+.layoutDataTable table tbody {
+    border-style: solid;
+    border-width: 1px;
+}
+.layoutDataTable table tbody td {
+    text-align: left;
+    padding: 2px;
+}
+.horizontalTable table,
+th td {
+    border: 1px solid grey;
+    border-collapse: collapse;
+    width: 100%;
+}
+.horizontalTable thead {
+    border-style: solid;
+    border-width: 1px;
+    background-color: #DDDDDD;
+}
+.horizontalTable table thead th {
+    font-size: 0.8em;
+    text-align: left;
+    padding: 2px;
+}
+.horizontalTable table tbody {
+    border-style: solid;
+    border-width: 1px;
+}
+.horizontalTable table tbody td {
+    text-align: left;
+    padding: 2px;
+}
+.links {
+    margin-top: 2em;
+}
+.links ul {
+    list-style-type: square;
+}
+.failedText {
+    color: #ff0000;
+}
+.successText {
+    color: #00ff00;
+}
+/* main_heading - begins */
+
+.main_heading1 {
+    font-family: 'Brush Script MT', cursive;
+    font-size: 30px;
+    font-weight: 500;
+    text-align: center;
+}
+.main_heading2 {
+    font-family: Papyrus, fantasy;
+    font-size: 15px;
+    font-weight: 500;
+}
+/* main_heading - ends */
+
+.components * {
+    margin: 0 auto;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+    box-sizing: border-box;
+}
+/* components - begins */
+
+.components {
+    font-family: Papyrus, fantasy;
+    margin: 10px auto;
+    text-align: center;
+    padding: 5px 5px;
+    padding-right: 0;
+}
+.components_heading {
+    font-family: Papyrus, fantasy;
+    color: #9C9E9F;
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    text-align: center;
+}
+.components:before,
+.components:after {
+    content: "";
+    display: table;
+}
+.components:after {
+    clear: both;
+}
+/* components - eneds */
+/* component - begins */
+
+.component {
+    border-top-color: #FFFFFF;
+    min-width: 210px;
+    margin: 0 15px 32px;
+    overflow: hidden;
+    border-radius: 5px;
+    float: left;
+}
+.component .title {
+    background: #3EC6E0;
+    color: #FEFEFE;
+    line-height: 2.5;
+    position: relative;
+    padding: 0 3px 0 3px;
+    font-size: 1.4rem;
+}
+.components .component .content {
+    background: #53CFE9;
+    position: relative;
+    color: #FEFEFE;
+    padding: 10px 0 5px 0;
+}
+.content:after,
+.content:before {
+    left: 10%;
+    border: solid transparent;
+}
+.component .content:after {
+    border-color: rgba(136, 183, 213, 0);
+    border-width: 2px;
+    margin-left: -2px;
+    border-top-color: #53CFE9;
+}
+/* component - end */
+/* component_name,ip,fields - begins */
+
+.component_name {
+    margin-bottom: 0.625rem;
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+.component_ip {
+    font-style: italic;
+    font-size: 1.1rem;
+}
+.component_fields {
+    list-style-type: none;
+    background: #FFFFFF;
+    color: #9C9C9C;
+    padding: 15px 5px 5px 5px;
+    font-size: 0.9rem;
+    border: solid #3EC6E0;
+    border-bottom-left-radius: 0.5em;
+    border-bottom-right-radius: 0.5em;
+    border-width: 0 1px 1px 1px;
+}
+.component_fields li {
+    padding: 3px 0;
+    width: 100%;
+    text-align: left;
+}
+.details_url {
+    clear: both;
+}
+.layoutExtension h2 {
+    color: #b51f1f;
+    text-align:center;
+    width:100%;
+    font-size:18px;
+    margin-bottom: -10px;
+}
+.layoutExtension {
+    width:550px;
+}
+
+/* component_name,ip,fields - ends */
+
+table.InfoTab-table, .sectionGrid {
+    border-spacing: 1px;
+    border-collapse: separate; 
+    width:550px;
+}
+
+td.InfoTab-row-header{
+    border: 1px solid #b51f1f; 
+    color : #b51f1f; 
+    font-size:12px;
+    font-weight:bold;
+    vertical-align:top;
+    padding-left:4px;
+    padding-right:4px;
+    padding-top : 1px;
+    padding-bottom: 1px;
+    white-space:nowrap;
+}
+
+td.InfoTab-row-value, tr.InfoTab-row-value {
+    border: 1px solid #000;
+    color: #000;
+    font-size:12px;
+    padding-left:4px;
+    padding-right:4px;   
+}
+
+div.header img {
+    margin-bottom:20px;
+}
+</style>

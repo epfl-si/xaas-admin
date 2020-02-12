@@ -1,0 +1,192 @@
+#set ($name = "#valueOf('MachineName')")
+#set ($description = "#valueOf('provider-resource1-description')")
+#set ($type = "#valueOf('MachineType')")
+#set ($interfaceType = "#valueOf('MachineInterfaceType')")
+#set ($status = "#valueOf('MachineStatus')")
+#set ($blueprint = "#valueOf('MachineBlueprintName')")
+#set ($cpu = "#valueOf('MachineCPU')")
+#set ($mem = "#valueOf('MachineMemory')")
+#set ($storage = "#valueOf('MachineStorage')")
+#set ($expirationDate = "#valueOf('MachineExpirationDate')")
+#set ($destructionDate = "#valueOf('MachineDestructionDate')")
+#set ($dailyCost = "#valueOf('MachineDailyCost')")
+#set( $networks = $formData.get("provider-NETWORK_LIST") )
+#set( $disks = $formData.get("provider-DISK_VOLUMES") )
+
+<div class="layoutSection">
+   <h2>#msg("notification.email.extensions.machine.info")</h2>
+   <table class="sectionGrid">
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.name")</td>
+		<td class="InfoTab-row-value">$name</td>
+  </tr>
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.description")</td>
+         <td class="InfoTab-row-value" valign="top">$description</td>
+  </tr>
+      #notEmpty($type)
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.type")</td>
+		<td class="InfoTab-row-value">$type</td>
+  </tr>
+      #end
+      #notEmpty($interfaceType)
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.interface.type")</td>
+		<td class="InfoTab-row-value">$interfaceType</td>
+  </tr>
+      #end
+      #notEmpty($status)
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.status")</td>
+		<td class="InfoTab-row-value">$status</td>
+  </tr>
+      #end
+      #notEmpty($blueprint)
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.blueprint")</td>
+		<td class="InfoTab-row-value">$blueprint</td>
+  </tr>
+      #end
+      #notEmpty($cpu)
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.cpus")</td>
+		<td class="InfoTab-row-value">$cpu</td>
+  </tr>
+      #end
+      #notEmpty($mem)
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.memory")</td>
+		<td class="InfoTab-row-value">$mem MB </td>
+  </tr>
+      #end
+      #notEmpty($storage)
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.storage")</td>
+		<td class="InfoTab-row-value">$storage GB</td>
+  </tr>
+      #end
+      #notEmpty($expirationDate)
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.expiration.date")</td>
+		<td class="InfoTab-row-value">$expirationDate</td>
+  </tr>
+      #end
+      #notEmpty($destructionDate)
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.destruction.date")</td>
+		<td class="InfoTab-row-value">$destructionDate</td>
+  </tr>
+      #end
+      #notEmpty($dailyCost)
+      <tr>
+         <td class="InfoTab-row-header" valign="top">#msg("notification.email.extensions.daily.cost")</td>
+		<td class="InfoTab-row-value">
+               #if ($dailyCost != "0")
+                  $dailyCost
+               #else
+                  #msg("notification.email.extensions.daily.cost.na")
+               #end
+           </td>
+  </tr>
+      #end
+   </table>
+   <br/>
+
+   #if ($networks && $networks.getValue() && $networks.getValue().size()>0)
+   <h2>#msg('notification.email.extensions.network.info')</h2>
+      <table class="sectionGrid">
+        #foreach( $network in $networks.getValue() )
+            #if($network && $network.getValue())   
+                 #set( $network_name = $network.getValue().get("NETWORK_NAME"))
+                 #set( $network_mac = $network.getValue().get("NETWORK_MAC_ADDRESS") )
+                 #set( $network_ip  = $network.getValue().get("NETWORK_ADDRESS") )          
+               
+                 #if($networks.getValue().size() > 1)
+                    #if($velocityCount > 1)
+                       <tr>
+                         <td class="InfoTab-row-header" valign="top" colspan="2">&nbsp;
+                         </td>
+                       </tr>     
+                    #end
+                     
+                     <tr>
+                      <td class="InfoTab-row-header" valign="top" colspan="2">Network-$velocityCount</td>
+                    </tr>         
+                 #end   
+                 
+                 #notEmpty($network_name)
+                 <tr>
+                   <td class="InfoTab-row-header" valign="top">#msg('notification.email.extensions.network.name')</td>
+                   <td class="InfoTab-row-value" valign="top">$network_name</td>
+                 </tr>
+                 #end
+                 #notEmpty($network_mac)
+                 <tr>
+                   <td class="InfoTab-row-header" valign="top">#msg('notification.email.extensions.network.mac')</td>
+                   <td class="InfoTab-row-value" valign="top">$network_mac</td>
+                 </tr>
+                 #end
+                 #notEmpty($network_ip)
+                 <tr>
+                   <td class="InfoTab-row-header" valign="top">#msg('notification.email.extensions.network.ip')</td>
+                   <td class="InfoTab-row-value" valign="top">$network_ip</td>
+                 </tr>
+                 #end
+            #end    
+        #end     
+      </table> 
+   #end
+<br/>
+
+   #if ($disks && $disks.getValue() && $disks.getValue().size()>1)
+   <h2>#msg('notification.email.extensions.disk.info')</h2>
+      <table class="sectionGrid">
+        #foreach( $disk in $disks.getValue() )
+            #if($disk && $disk.getValue())
+                 #set( $disk_label = $disk.getValue().get("DISK_LABEL"))
+                 #set( $disk_input_id = $disk.getValue().get("DISK_INPUT_ID") )
+                 #set( $disk_drive = $disk.getValue().get("DISK_DRIVE") )
+                 #set( $disk_capacity = $disk.getValue().get("DISK_CAPACITY") )          
+                 
+                 #if($disks.getValue().size() > 1)
+                     #if($velocityCount > 1)
+                        <tr>
+                         <td class="InfoTab-row-header" valign="top" colspan="2">&nbsp;</td>
+                       </tr>     
+                     #end
+                        
+                        <tr>
+                         <td class="InfoTab-row-header" valign="top" colspan="2">Disk Volume-$velocityCount</td>
+                       </tr>         
+                 #end   
+                 
+                 #notEmpty($disk_label)
+                 <tr>
+                   <td class="InfoTab-row-header" valign="top">#msg('notification.email.extensions.disk.label')</td>
+                   <td class="InfoTab-row-value" valign="top">$disk_label</td>
+                 </tr>
+                 #end
+                 #notEmpty($disk_input_id)
+                 <tr>
+                   <td class="InfoTab-row-header" valign="top">#msg('notification.email.extensions.disk.inputId')</td>
+                   <td class="InfoTab-row-value" valign="top">$disk_input_id</td>
+                 </tr>
+                 #end
+                 #notEmpty($disk_drive)
+                 <tr>
+                   <td class="InfoTab-row-header" valign="top">#msg('notification.email.extensions.disk.drive')</td>
+                   <td class="InfoTab-row-value" valign="top">$disk_drive</td>
+                 </tr>
+                 #end
+                 #notEmpty($disk_capacity)
+                 <tr>
+                   <td class="InfoTab-row-header" valign="top">#msg('notification.email.extensions.disk.capacity')</td>
+                   <td class="InfoTab-row-value" valign="top">$disk_capacity</td>
+                 </tr>
+                 #end
+            #end    
+        #end     
+      </table> 
+   #end
+</div>

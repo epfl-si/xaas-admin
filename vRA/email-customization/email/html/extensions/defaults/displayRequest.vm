@@ -1,0 +1,24 @@
+#if( !$keyPrefix )
+	#set ($keyPrefix = "")
+#end
+
+#set ($resourceAction_Name = "#valueOf('resourceAction')" )
+#set( $curKey = "${keyPrefix}resourceAction" )
+
+## This var can, for example, have the following value:
+## {com.vmware.csp.component.iaas.proxy.provider@resource.action.name.machine.Reconfigure}
+#set ($resourceAction = $formData.get($curKey) )
+
+##Render RA requests
+## the include of the 2 first files (reconfigure, change lease) won't do anything if $resourceAction is 
+## not for a reconfigure or change lease action
+#parse( 'extensions/request_resourceAction_reconfigure.vm' )
+#parse( 'extensions/request_resourceAction_changeLease.vm' )
+## At the end of the following file, there is a "stop" command which seems to tell "ok, email generation done"... so it means that all line after this "parse" won't be processed
+#parse( 'extensions/request_resourceAction.vm' )
+
+##Render CI requests
+#parse( 'extensions/request_generalInfo.vm' )
+</table><br/>
+#parse( 'extensions/request_components.vm' )
+#parse ( 'extensions/url_details.vm' )
