@@ -1,7 +1,24 @@
 #!/bin/bash
 
+# BUT : Met en place la configuration de mail personnalisés sur un environnement donné (prod, test, dev).
+#       Tous les serveurs d'un environnement donné sont traités l'un après l'autre, avec un possible délai entre 
+#       chacun, histoire de laisser le temps aux services de redémarrer.
+#
+#       Le script se charge de :
+#       - Modifier certains fichiers :
+#           ++ styles.vm pour y ajouter la date courante, afin qu'on ait cette information dans les mails reçu par
+#               la suite. Cela permet de savoir si ce sont bien les bons fichiers qui ont été pris en compte pour générer
+#               le mail.
+#           ++ les fichiers 'header.vm' de chaque tenant pour y mettre l'URL du bon serveur (prod, test, dev) pour
+#               que les images affichées en haut du mail le soient correctement.
+#       - Créer des fichiers ZIP avec les différentes ressources à mettre sur les serveurs
+#       - Faire un backup (archive) des fichiers existants sur le serveur
+#       - Copier les fichiers ZIP sur les serveurs et les extraires.
+#       - Redémarrer les services sur les serveurs pour prendre les modifications en compte.
+
 # REMARQUE: Pour fonctionner, ce script a besoin que la clef SSH publique de l'utilisateur qui l'exécutera soit
 #           présente sur les serveurs cibles (voir fichier deloy.config pour avoir la liste des serveurs)
+
 
 SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
 CONFIG_FILE="${SCRIPT_PATH}/deploy.config"
