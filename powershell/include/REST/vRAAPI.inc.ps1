@@ -111,16 +111,8 @@ class vRAAPI: RESTAPI
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
 
-		$result = ($this.callAPI($uri, "Get", $null)).content
+		return ($this.callAPI($uri, "Get", $null)).content
 
-		# On ne filtre que si on n'a pas déjà un filtre.
-		if($queryParams -notlike '*filter*')
-		{
-			# On filtre pour ne retourner que les éléments qui n'ont pas de parents car on ne veut pas les trucs
-			# genre "yum_update" ou autre.
-			$result = $result |  Where-Object { $_.parentResourceRef -eq $null}
-		}
-		return $result
 	}
 	hidden [Array] getBGListQuery()
 	{
@@ -1309,9 +1301,17 @@ class vRAAPI: RESTAPI
 		}
 
 		# Retour de la liste mais on ne prend que les éléments qui existent encore.
-		# On filtre pour ne retourner que les éléments qui n'ont pas de parents car on ne veut pas les trucs
-		# genre "yum_update" ou autre.
-		return  ($this.callAPI($uri, "Get", $null)).content  | Where-Object { $_.parentResourceRef -eq $null}
+		$result = ($this.callAPI($uri, "Get", $null)).content 	
+
+		# On ne filtre que si on n'a pas déjà un filtre.
+		if($queryParams -notlike '*filter*')
+		{
+			# On filtre pour ne retourner que les éléments qui n'ont pas de parents car on ne veut pas les trucs
+			# genre "yum_update" ou autre.
+			$result = $result |  Where-Object { $_.parentResourceRef -eq $null}
+		}
+
+		return $result
 	}
 
 	<#
