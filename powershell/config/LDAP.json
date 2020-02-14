@@ -5,7 +5,7 @@
             {
                 "rootDN": "o=epfl,c=ch",
                 "nbLevelsForSearch": 3,
-                "limitToFaculties": [ "SV", "SI", "P", "STI", "ENAC", "IC", "SB", "CDM", "CDH", "E", "ENT-E", "R", "RHO", "ENT-R" ]
+                "limitToFaculties": [ "SV", "SI", "P", "STI", "ENAC", "IC", "SB", "CDM", "CDH", "E", "ENT-E", "R", "RHO", "ENT-R", "ENT-P" ]
             },
             {
                 "rootDN": "o=ehe,c=ch",
