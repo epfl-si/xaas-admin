@@ -224,6 +224,11 @@
             "snowId":  "SVC0034"
         },
         {
+            "longName":  "Oracle hosting",
+            "shortName":  "ora",
+            "snowId":  "SVC0072"
+        },
+        {
             "longName":  "MyPrint",
             "shortName":  "mprnt",
             "snowId":  "SVC0056"
