@@ -1821,6 +1821,7 @@ try
 catch # Dans le cas d'une erreur dans le script
 {
 	# Sauvegarde de la progression en cas d'erreur
+	$logHistory.addLineAndDisplay(("Saving progress for future resume ({0} BG processed)" -f $doneBGList.Count))
 	$resumeOnFail.save($doneBGList)	
 
 	# Récupération des infos
