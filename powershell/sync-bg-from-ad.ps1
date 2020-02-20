@@ -1,6 +1,6 @@
 <#
 USAGES:
-	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl [-fullSync]
+	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl [-fullSync] [-resume]
 #>
 <#
 	BUT 		: Crée/met à jour les Business groupes en fonction des groupes AD existant
@@ -16,6 +16,8 @@ USAGES:
 		$fullSync 		-> switch pour dire de prendre absolument tous les groupes AD pour faire le sync. Si 
 						ce switch n'est pas donné, on prendra par défaut les groupes AD qui ont été modifiés
 						durant les $global:AD_GROUP_MODIFIED_LAST_X_DAYS derniers jours (voir include/define.inc.ps1)
+		$resume			-> switch pour dire s'il faut tenter de reprendre depuis une précédente exécution qui 
+						aurait foiré.
 
 	Documentation:
 		- Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976
@@ -53,7 +55,7 @@ USAGES:
 				  Ceci ne fonctionne pas ! A la place il faut à nouveau passer par la
 				  commande Set-ExecutionPolicy mais mettre la valeur "ByPass" en paramètre.
 #>
-param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync)
+param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$resume)
 
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -82,7 +84,8 @@ $configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configNSX = [ConfigReader]::New("config-nsx.json")
 
-
+# Fichier pour suivre la progression de l'exécution du script
+$progressFile = ([IO.Path]::Combine("$PSScriptRoot", ("{0}.progress" -f $MyInvocation.ScriptName)))
 
 <#
 	-------------------------------------------------------------------------------------
@@ -1288,6 +1291,11 @@ try
 		$logHistory.addLineAndDisplay( ("Taking only AD groups modified last {0} day(s)..." -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS))
 	}
 
+	if($resume)
+	{
+		$logHistory.addLineAndDisplay("Trying to resume from previous execution...")
+	}
+
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
@@ -1299,6 +1307,14 @@ try
 
 	$doneBGList = @()
 
+	# Si on doit tenter de reprendre une exécution foirée ET qu'un fichier de progression existait, on charge son contenu
+	if($resume -and (Test-Path $progressFile))
+	{
+		$doneBGList = Get-Content -Path $progressFile | ConvertFrom-Json
+		$logHistory.addLineAndDisplay(("Resume file found, using it! {0} BG already processed" -f $doneBGList.Count))
+	}
+
+
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
 	$counters.add('ADGroups', '# AD group processed')
@@ -1307,6 +1323,7 @@ try
 	$counters.inc('BGExisting', '# Business Group already existing')
 	$counters.add('BGNotCreated', '# Business Group not created (because of an error)')
 	$counters.add('BGNotRenamed', '# Business Group not renamed')
+	$counters.add('BGResumeSkipped', '# Business Group skipped because of resume')
 	$counters.add('BGDeleted', '# Business Group deleted')
 	$counters.add('BGGhost',	'# Business Group set as "ghost"')
 	# Entitlements
@@ -1476,6 +1493,15 @@ try
 
 		# Récupération du nom du BG
 		$bgName = $nameGenerator.getBGName()
+
+		# Si on a déjà traité le BG
+		if($doneBGList -contains $bgName)
+		{
+			$counters.inc('BGResumeSkipped')
+			$logHistory.addLineAndDisplay(("--> Skipping because already processed in previous execution"))
+			# passage au BG suivant
+			return
+		}
 
 		# Génération du nom et de la description de l'entitlement
 		$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
@@ -1778,9 +1804,19 @@ try
 	$vra.displayFuncCalls()
 	$nsx.displayFuncCalls()
 
+	# Si un fichier de progression existait, on le supprime
+	if(Test-Path $progressFile)
+	{
+		Remove-Item -Path $progressFile
+	}
+
 }
 catch # Dans le cas d'une erreur dans le script
 {
+	# Sauvegarde de la progression en cas d'erreur
+	$doneBGList | ConvertTo-Json | Out-File $progressFile
+
+
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
 	$errorTrace = $_.ScriptStackTrace
