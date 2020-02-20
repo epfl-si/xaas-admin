@@ -759,12 +759,12 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		$result = ($this.callAPI($uri, "Get", $null)).content
+		$result = ($this.callAPI($uri, "Get", $null))
 
 		# Ajout dans le cache
 		$this.addInCache($result, $uri)
 
-		return $result
+		return $result.content
 	}
 	hidden [Array] getServiceListQuery()
 	{
@@ -1078,12 +1078,12 @@ class vRAAPI: RESTAPI
 		}
 
 		# Récupération du résultat pour le mettre dans le cache
-		$result = ($this.callAPI($uri, "Get", $null)).content
+		$result = ($this.callAPI($uri, "Get", $null))
 
 		# Ajout dans le cache
 		$this.addInCache($result, $uri)
 
-		return $result
+		return $result.content
 		
 	}
 	hidden [Array] getActionListQuery()
@@ -1239,12 +1239,12 @@ class vRAAPI: RESTAPI
 		}
 
 		# Récupération du résultat pour l'ajouter dans le cache
-		$result = ($this.callAPI($uri, "Get", $null)).content
+		$result = ($this.callAPI($uri, "Get", $null))
 
 		# Ajout dans le cache
 		$this.addInCache($result, $uri)
 
-		return $result
+		return $result.content
 
 	}
 	hidden [Array] getMachinePrefixListQuery()
