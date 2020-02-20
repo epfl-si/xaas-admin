@@ -56,7 +56,7 @@ class RESTAPI: APIUtils
 	{
 		
 		# Si la requête est de la lecture
-		if($uri.ToLower() -eq "get")
+		if($method.ToLower() -eq "get")
 		{
 			# Si on a l'info dans le cache, on la retourne
 			$cached = $this.getFromCache($uri)
