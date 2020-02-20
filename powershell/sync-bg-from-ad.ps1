@@ -68,6 +68,7 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$r
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ResumeOnFail.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -84,8 +85,6 @@ $configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configNSX = [ConfigReader]::New("config-nsx.json")
 
-# Fichier pour suivre la progression de l'exécution du script
-$progressFile = ([IO.Path]::Combine("$PSScriptRoot", ("{0}.progress" -f $MyInvocation.ScriptName)))
 
 <#
 	-------------------------------------------------------------------------------------
@@ -1275,11 +1274,18 @@ function createFirewallSectionRulesIfNotExists
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 #>
+
+# Objet pour sauvegarder/restaurer la progression du script en cas de plantage
+$resumeOnFail = [ResumeOnFail]::new()
+
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$logName = 'vra-sync-BG-from-AD-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
 	$logHistory =[LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
+
+	# On contrôle le prototype d'appel du script
+	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
 	# Petite info dans les logs.
 	if($fullSync)
@@ -1291,27 +1297,29 @@ try
 		$logHistory.addLineAndDisplay( ("Taking only AD groups modified last {0} day(s)..." -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS))
 	}
 
-	if($resume)
-	{
-		$logHistory.addLineAndDisplay("Trying to resume from previous execution...")
-	}
-
-	# On contrôle le prototype d'appel du script
-	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
-
 	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 
 	# Objet pour pouvoir envoyer des mails de notification
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
+
 	$doneBGList = @()
 
 	# Si on doit tenter de reprendre une exécution foirée ET qu'un fichier de progression existait, on charge son contenu
-	if($resume -and (Test-Path $progressFile))
+	if($resume)
 	{
-		$doneBGList = Get-Content -Path $progressFile | ConvertFrom-Json
-		$logHistory.addLineAndDisplay(("Resume file found, using it! {0} BG already processed" -f $doneBGList.Count))
+		$logHistory.addLineAndDisplay("Trying to resume from previous failed execution...")
+		$progress = $resumeOnFail.load()
+		if($null -ne $progress)
+		{
+			$doneBGList = $progress
+			$logHistory.addLineAndDisplay(("Resume file found, using it! {0} BG already processed" -f $doneBGList.Count))
+		}
+		else
+		{
+			$logHistory.addLineAndDisplay("No progress file found :-(")
+		}
 	}
 
 
@@ -1609,6 +1617,8 @@ try
 		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
 		if($null -eq $bg)
 		{
+			# On note quand même le BG comme pas traité
+			$doneBGList += $bgName
 			# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
 			return
 		}
@@ -1805,17 +1815,13 @@ try
 	$nsx.displayFuncCalls()
 
 	# Si un fichier de progression existait, on le supprime
-	if(Test-Path $progressFile)
-	{
-		Remove-Item -Path $progressFile
-	}
+	$resumeOnFail.clean()
 
 }
 catch # Dans le cas d'une erreur dans le script
 {
 	# Sauvegarde de la progression en cas d'erreur
-	$doneBGList | ConvertTo-Json | Out-File $progressFile
-
+	$resumeOnFail.save($doneBGList)	
 
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
