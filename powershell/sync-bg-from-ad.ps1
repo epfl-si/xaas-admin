@@ -1,6 +1,6 @@
 <#
 USAGES:
-	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl [-fullSync]
+	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl [-fullSync] [-resume]
 #>
 <#
 	BUT 		: Crée/met à jour les Business groupes en fonction des groupes AD existant
@@ -16,6 +16,8 @@ USAGES:
 		$fullSync 		-> switch pour dire de prendre absolument tous les groupes AD pour faire le sync. Si 
 						ce switch n'est pas donné, on prendra par défaut les groupes AD qui ont été modifiés
 						durant les $global:AD_GROUP_MODIFIED_LAST_X_DAYS derniers jours (voir include/define.inc.ps1)
+		$resume			-> switch pour dire s'il faut tenter de reprendre depuis une précédente exécution qui 
+						aurait foiré.
 
 	Documentation:
 		- Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976
@@ -53,7 +55,7 @@ USAGES:
 				  Ceci ne fonctionne pas ! A la place il faut à nouveau passer par la
 				  commande Set-ExecutionPolicy mais mettre la valeur "ByPass" en paramètre.
 #>
-param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync)
+param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$resume)
 
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -66,6 +68,7 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ResumeOnFail.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -81,7 +84,6 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync)
 $configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configNSX = [ConfigReader]::New("config-nsx.json")
-
 
 
 <#
@@ -1272,11 +1274,18 @@ function createFirewallSectionRulesIfNotExists
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 #>
+
+# Objet pour sauvegarder/restaurer la progression du script en cas de plantage
+$resumeOnFail = [ResumeOnFail]::new()
+
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$logName = 'vra-sync-BG-from-AD-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
 	$logHistory =[LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
+
+	# On contrôle le prototype d'appel du script
+	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
 	# Petite info dans les logs.
 	if($fullSync)
@@ -1288,16 +1297,31 @@ try
 		$logHistory.addLineAndDisplay( ("Taking only AD groups modified last {0} day(s)..." -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS))
 	}
 
-	# On contrôle le prototype d'appel du script
-	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
-
 	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 
 	# Objet pour pouvoir envoyer des mails de notification
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
+
 	$doneBGList = @()
+
+	# Si on doit tenter de reprendre une exécution foirée ET qu'un fichier de progression existait, on charge son contenu
+	if($resume)
+	{
+		$logHistory.addLineAndDisplay("Trying to resume from previous failed execution...")
+		$progress = $resumeOnFail.load()
+		if($null -ne $progress)
+		{
+			$doneBGList = $progress
+			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed" -f $doneBGList.Count))
+		}
+		else
+		{
+			$logHistory.addLineAndDisplay("No progress file found :-(")
+		}
+	}
+
 
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
@@ -1307,6 +1331,7 @@ try
 	$counters.inc('BGExisting', '# Business Group already existing')
 	$counters.add('BGNotCreated', '# Business Group not created (because of an error)')
 	$counters.add('BGNotRenamed', '# Business Group not renamed')
+	$counters.add('BGResumeSkipped', '# Business Group skipped because of resume')
 	$counters.add('BGDeleted', '# Business Group deleted')
 	$counters.add('BGGhost',	'# Business Group set as "ghost"')
 	# Entitlements
@@ -1477,6 +1502,15 @@ try
 		# Récupération du nom du BG
 		$bgName = $nameGenerator.getBGName()
 
+		# Si on a déjà traité le BG
+		if($doneBGList -contains $bgName)
+		{
+			$counters.inc('BGResumeSkipped')
+			$logHistory.addLineAndDisplay(("--> Skipping because already processed in previous execution"))
+			# passage au BG suivant
+			return
+		}
+
 		# Génération du nom et de la description de l'entitlement
 		$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
 
@@ -1583,6 +1617,8 @@ try
 		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
 		if($null -eq $bg)
 		{
+			# On note quand même le BG comme pas traité
+			$doneBGList += $bgName
 			# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
 			return
 		}
@@ -1778,9 +1814,15 @@ try
 	$vra.displayFuncCalls()
 	$nsx.displayFuncCalls()
 
+	# Si un fichier de progression existait, on le supprime
+	$resumeOnFail.clean()
+
 }
 catch # Dans le cas d'une erreur dans le script
 {
+	# Sauvegarde de la progression en cas d'erreur
+	$resumeOnFail.save($doneBGList)	
+
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
 	$errorTrace = $_.ScriptStackTrace
