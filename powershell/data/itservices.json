@@ -229,6 +229,31 @@
             "snowId":  "SVC0072"
         },
         {
+            "longName":  "Online news publication",
+            "shortName":  "actu",
+            "snowId":  "SVC0016"
+        },
+        {
+            "longName":  "Map (Plan.epfl)",
+            "shortName":  "plan",
+            "snowId":  "SVC0028"
+        },
+        {
+            "longName":  "Web hosting at the EPFL",
+            "shortName":  "wbhst",
+            "snowId":  "SVC0041"
+        },
+        {
+            "longName":  "PocketCampus",
+            "shortName":  "pktcmp",
+            "snowId":  "SVC0086"
+        },
+        {
+            "longName":  "Online events publication (Memento)",
+            "shortName":  "memto",
+            "snowId":  "SVC0095"
+        },
+        {
             "longName":  "MyPrint",
             "shortName":  "mprnt",
             "snowId":  "SVC0056"
