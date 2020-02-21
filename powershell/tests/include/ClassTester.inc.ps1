@@ -260,7 +260,16 @@ class ClassTester
         {
             $allOK = $this.identicalArrays($returnedValue, $testInfos.expected)
         }
-        else # Int, String, Bool
+        # String
+        elseif($returnedValue.getType().Name -eq "String")
+        {
+            # On fait une comparaison en tenant compte de la casse
+            if($returnedValue -cne $testInfos.expected)
+            {
+                $allOK = $false
+            }
+        }
+        else # Int, Bool
         {
     
             if($returnedValue -ne $testInfos.expected)
