@@ -339,7 +339,7 @@ class ClassTester
                     break
                 }
                 # La propriété existe, on check donc sa valeur
-                elseif ($fromFunc[$key] -ne $fromJSON.$key)
+                elseif ($fromFunc[$key] -cne $fromJSON.$key)
                 {
                     $allOK = $false
                     break
@@ -381,7 +381,12 @@ class ClassTester
                     # On compare au niveau "dictionnaire"
                     $allOK = $this.identicalDicts($fromFunc[$index], $fromJSON[$index])
                 }
-                # Valeur simple de type Int, Bool, String
+                # String, on contrôle la casse
+                elseif($fromFunc[$index].GetType().name -eq 'String')
+                {
+                    $allOK = ($fromFunc[$index] -ceq $fromJSON[$index])
+                }
+                # Valeur simple de type Int, Bool
                 elseif ($fromFunc[$index] -ne $fromJSON[$index])
                 {
                     $allOK = $false

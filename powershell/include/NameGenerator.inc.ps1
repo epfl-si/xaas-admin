@@ -814,7 +814,7 @@ class NameGenerator
         {
             $global:VRA_TENANT__EPFL
             {
-                $name = "sg.epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName')).ToUpper()
+                $name = "sg.epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
                 $desc = "Tenant: {0}\nFaculty: {1}" -f $this.tenant, $this.getDetail('facultyName')
             }
 
@@ -933,7 +933,7 @@ class NameGenerator
 
             $global:VRA_TENANT__EPFL
             {
-                $ruleMiddle = $this.sanitizeFacultyName($this.getDetail('facultyName')).ToUpper()
+                $ruleMiddle = $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
             }
 
 
