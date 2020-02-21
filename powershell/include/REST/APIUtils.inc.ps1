@@ -63,6 +63,9 @@ class APIUtils
 	hidden [PSObject] getFromCache([string]$uri)
 	{
 
+		# On simule que ce n'est pas dans le cache, afin de voir si l'exécution d'un full est plus rapide depuis le hotfix.
+		return $null
+
 		$match = $this.cache | Where-Object { $_.uri -eq $uri}
 		
 		if($match.count -gt 0)
