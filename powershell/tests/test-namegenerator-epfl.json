@@ -269,7 +269,7 @@
         "tests":[
             {
                 "params": ["epfl_entr_idev_ing"],
-                "expected": ["sg.epfl_ENTR", "Tenant: epfl\\nFaculty: ENT-R"]
+                "expected": ["sg.epfl_entr", "Tenant: epfl\\nFaculty: ENT-R"]
             }
         ]
     },
@@ -301,20 +301,20 @@
                 "params":[],
                 "expected":[
                     {
-                        "tag": "allow-ENTR-in",
-                        "name": "allow-ENTR-in"
+                        "tag": "allow-entr-in",
+                        "name": "allow-entr-in"
                     },
                     {
-                        "tag": "allow-intra-ENTR-comm",
-                        "name": "allow-intra-ENTR-comm"
+                        "tag": "allow-intra-entr-comm",
+                        "name": "allow-intra-entr-comm"
                     },
                     {
-                        "tag": "allow-ENTR-out",
-                        "name": "allow-ENTR-out"
+                        "tag": "allow-entr-out",
+                        "name": "allow-entr-out"
                     },
                     {
-                        "tag": "deny-ENTR-all",
-                        "name": "deny-ENTR-all"
+                        "tag": "deny-entr-all",
+                        "name": "deny-entr-all"
                     }
                 ]
             }

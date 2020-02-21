@@ -153,7 +153,7 @@ class NameGenerator
             Throw ("Asked detail ({0}) doesn't exists in list" -f $name)
         }
 
-        return $this.details.$name.ToLower()
+        return $this.details.$name
     }
 
     <#
@@ -381,7 +381,7 @@ class NameGenerator
                     # <snowServiceId>;<serviceName>
                     # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
                     # réutilisé pour d'autres choses dans la création des éléments dans vRA
-                    $groupDesc = "{0};{1}" -f $this.getDetail('snowServiceId'), $this.getDetail('serviceName')
+                    $groupDesc = "{0};{1}" -f $this.getDetail('snowServiceId').ToUpper(), $this.getDetail('serviceName')
 
                 }
                 # Autre EPFL
@@ -652,7 +652,7 @@ class NameGenerator
                 # Le premier niveau d'approbation est générique à toutes les facultés donc pas de description "précise" pour celui-ci
                 if($level -gt 1)
                 {
-                    $desc = "{0} for Faculty: {1}" -f $desc, $this.getDetail('facultyName')
+                    $desc = "{0} for Faculty: {1}" -f $desc, $this.getDetail('facultyName').ToUpper()
                 }
             }
 
