@@ -254,6 +254,11 @@
             "snowId":  "SVC0095"
         },
         {
+            "longName":  "EXHEB Fonctionnement",
+            "shortName":  "exheb",
+            "snowId":  "SVC0166"
+        },
+        {
             "longName":  "MyPrint",
             "shortName":  "mprnt",
             "snowId":  "SVC0056"
