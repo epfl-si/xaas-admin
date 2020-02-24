@@ -24,7 +24,7 @@
 		 restent en lecture seule (donc pas modifiés par le script)
 
 #>
-class vRAAPI: RESTAPI
+class vRAAPI: RESTAPICurl
 {
 	hidden [string]$token
 	hidden [string]$tenant
@@ -892,10 +892,11 @@ class vRAAPI: RESTAPI
 		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
+		IN  : $allowCache	-> $true|$false pour dire si on peut utiliser le cache
 
 		RET : Liste des Reservations
 	#>
-	hidden [Array] getResListQuery([string] $queryParams)
+	hidden [Array] getResListQuery([string] $queryParams, [bool]$allowCache)
 	{
 		$uri = "https://{0}/reservation-service/api/reservations/?page=1&limit=9999" -f $this.server
 
@@ -904,12 +905,18 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", $null)).content
+
+		$result = ($this.callAPI($uri, "Get", $null))
+
+		# Si on a le droit d'utiliser le cache
+		if($allowCache)
+		{
+			# Ajout dans le cache
+			$this.addInCache($result, $uri)
+		}
+
+		return $result.content
 		
-	}
-	hidden [Array] getResListQuery()
-	{
-		return $this.getResListQuery($null)
 	}
 
 
@@ -917,13 +924,14 @@ class vRAAPI: RESTAPI
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des Reservations contenant une chaine de caractères donnée
 
-		IN  : $nameContains		-> (optionel) Chaine de caractères que doit contenir le nom
+		IN  : $str			-> Chaine de caractères que doit contenir le nom (peut être vide)
+		IN  : $allowCache	-> $true|$false pour dire si on peut utiliser le cache 
 
 		RET : Liste des Reservations
 	#>
-	[Array] getResListMatch([string] $str)
+	[Array] getResListMatch([string] $str, [bool]$allowCache)
 	{
-		return $this.getResListQuery(("`$filter=substringof('{0}', name)" -f $str))
+		return $this.getResListQuery(("`$filter=substringof('{0}', name)" -f $str), $allowCache)
 	}
 
 
@@ -938,7 +946,7 @@ class vRAAPI: RESTAPI
 	#>
 	[PSCustomObject] getRes([string] $name)
 	{
-		$list = $this.getResListQuery(("`$filter=name eq '{0}'" -f $name))
+		$list = $this.getResListQuery(("`$filter=name eq '{0}'" -f $name), $false)
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
@@ -955,7 +963,7 @@ class vRAAPI: RESTAPI
 	#>
 	[PSCustomObject] getBGResList([string] $bgID)
 	{
-		return $this.getResListQuery(("`$filter=subTenantId eq '{0}'" -f $bgID))
+		return $this.getResListQuery(("`$filter=subTenantId eq '{0}'" -f $bgID), $false)
 	}
 
 
