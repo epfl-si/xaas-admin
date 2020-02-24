@@ -77,7 +77,7 @@ class vRAAPI: RESTAPICurl
 	{
 		$uri = "https://{0}/identity/api/tokens/{1}" -f $this.server, $this.token
 
-		Invoke-RestMethod -Uri $uri -Method Delete -Headers $this.headers
+		$this.callAPI($uri, "Delete", $null)
 	}
 
 
