@@ -24,7 +24,7 @@
 		 restent en lecture seule (donc pas modifiés par le script)
 
 #>
-class vRAAPI: RESTAPI
+class vRAAPI: RESTAPICurl
 {
 	hidden [string]$token
 	hidden [string]$tenant
