@@ -9,11 +9,11 @@
    DATE   : Mai 2019
 
 
-   ----------
-   HISTORIQUE DES VERSIONS
-   0.1 - Version de base
-   0.2 - Ajout d'un filtre dans la récupération des NSGroups
-
+    ----------
+    HISTORIQUE DES VERSIONS
+    0.1 - Version de base
+    0.2 - Ajout d'un filtre dans la récupération des NSGroups
+    0.3 - Ajout d'un cache pour certains éléments.
 #>
 class NSXAPI: RESTAPICurl
 {
@@ -61,7 +61,16 @@ class NSXAPI: RESTAPICurl
     {
         $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $id
 
-        return $this.callAPI($uri, "Get", $null)
+        $nsGroup = $this.callAPI($uri, "Get", $null)
+
+        # Si le NS group existe (il devrait vu qu'on l'a cherché par ID)
+        if($null -ne $nsGroup)
+        {
+            # on l'ajoute au cache
+            $this.addInCache($nsGroup, $uri)
+        }
+
+        return $nsGroup
         
     }
 
@@ -152,6 +161,17 @@ class NSXAPI: RESTAPICurl
 	#>
 	[psObject] getFirewallSectionByName([string] $name, [string]$filterType, [string]$type)
 	{
+        # Création de la clef pour la gestion du cache
+        $cacheKey = "FWSection_{0}_{1}_{2}" -f $name, $filterType, $type
+
+        # Si c'est dans le cache, on retourne la valeur
+        $fwSection = $this.getFromCache($cacheKey)
+        if($null -ne $fwSection)
+        {
+            return $fwSection
+        }
+        
+       
         if($filterType -eq "")
         {
             $filterType = "FILTER"
@@ -166,8 +186,16 @@ class NSXAPI: RESTAPICurl
         # Récupération de la liste
 		$sectionList = $this.callAPI($uri, "GET", $null).results
         
-        # Retour de celui-ci
-        return $sectionList | Where-Object {$_.display_name -eq $name }
+        # Isolation de la section que l'on veut.
+        $fwSection = $sectionList | Where-Object {$_.display_name -eq $name }
+
+        # Si on a trouvé ce qu'on cherchait 
+        if($null -ne $fwSection)
+        {
+            # On ajoute dans le cache
+            $this.addInCache($fwSection, $cacheKey)
+        }
+        return $fwSection
     }
     
     <#
