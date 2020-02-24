@@ -161,6 +161,10 @@ class RESTAPICurl: RESTAPI
 
 		if($this.curl.ExitCode -ne 0)
 		{
+			if($this.curl.ExitCode -eq 52)
+			{
+				$errorStr = "Empty answer received from remote host"
+			}
 			Throw "Error executing command ({0}) with error : `n{1}" -f $this.curl.StartInfo.Arguments, $errorStr
 		}
 
