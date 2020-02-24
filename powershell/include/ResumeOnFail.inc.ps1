@@ -41,17 +41,23 @@ class ResumeOnFail
     <#
 	-------------------------------------------------------------------------------------
         BUT : Charge une progression depuis un fichier.
-        
+        é
         RET : objet avec la progression
                 $null si le fichier n'existe pas.
 	#>
     [object] load()
     {
+        $result = $null
         if(Test-Path $this.progressFile)
         {
-            return Get-Content -path $this.progressFile | ConvertFrom-Json
+            $content = Get-Content -path $this.progressFile 
+    
+            if(($null -ne $content) -and ($content.Trim() -ne ""))
+            {
+                $result = $content | ConvertFrom-Json
+            }
         }
-        return $null
+        return $result
     }
 
 
