@@ -538,10 +538,13 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] getBGEnt([string]$BGID)
 	{
-		$ent = $this.getEntListQuery() | Where-Object {$_.organization.subtenantRef -eq $BGID}
+		$uri = "https://{0}/catalog-service/api/entitlements/?page=1&limit=9999&`$filter=organization/subTenant/id eq '{1}'" -f $this.server, $BGID
+
+		$ent = ($this.callAPI($uri, "Get", $null)).content
 
 		if($ent.Count -eq 0){return $null}
 		return $ent[0]
+
 	}
 
 
@@ -569,19 +572,6 @@ class vRAAPI: RESTAPICurl
 	[Array] getEntListMatch([string]$str)
 	{
 		return $this.getEntListQuery(("`$filter=substringof('{0}', name)" -f $str))
-	}
-
-	<#
-		-------------------------------------------------------------------------------------
-		BUT : Renvoie la liste des Entitlements pour le BG dont l'ID est passé en paramètre
-
-		IN  : $BGID	-> ID du BG dont on veut les entitlements
-
-		RET : Tableau de Entitlements
-	#>
-	[Array] getBGEntList([string]$BGID)
-	{
-		return $this.getEntListQuery() | Where-Object {$_.organization.subtenantRef -eq $BGID}
 	}
 
 
