@@ -267,7 +267,8 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 	BUT : Créé (si inexistant) ou met à jour un Business Group (si existant)
 
 	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $existingBGList		-> Liste des BG existants
+	IN  : $existingBGList		-> Tableau associatif avec la liste des BG, aura été créé via la fonction 
+									createMappingBGList
 	IN  : $bgUnitID				-> (optionnel) No d'unité du BG à ajouter/mettre à jour.
 									A passer uniquement si tenant EPFL, sinon ""
 	IN  : $bgSnowSvcID			-> (optionnel) No de service dans Snow pour le BG à ajouter/mettre à jour.
@@ -284,7 +285,7 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 #>
 function createOrUpdateBG
 {
-	param([vRAAPI]$vra, [Array]$existingBGList, [string]$bgUnitID, [string]$bgSnowSvcID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$capacityAlertsEmail,[System.Collections.Hashtable]$customProperties)
+	param([vRAAPI]$vra, [Hashtable]$existingBGList, [string]$bgUnitID, [string]$bgSnowSvcID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$capacityAlertsEmail,[System.Collections.Hashtable]$customProperties)
 
 	# On transforme à null si "" pour que ça passe correctement plus loin
 	if($machinePrefixName -eq "")
@@ -296,8 +297,9 @@ function createOrUpdateBG
 	if(($bgUnitID -ne "") -and ($bgSnowSvcID -eq ""))
 	{
 		$tenantName = $global:VRA_TENANT__EPFL
+		
 		# Recherche du BG par son no d'unité.
-		$bg = getBGWithCustomProp -fromList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_UNIT_ID -customPropValue $bgUnitID
+		$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgUnitID
 
 		# Si la recherche du BG par son no de l'unité ne donne rien,
 		if($null -eq $bg)
@@ -340,7 +342,7 @@ function createOrUpdateBG
 		$tenantName = $global:VRA_TENANT__ITSERVICES
 
 		# Recherche du BG par son ID de service dans ServiceNow
-		$bg = getBGWithCustomProp -fromList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID -customPropValue $bgSnowSvcID
+		$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgSnowSvcID
 
 		# On tente de rechercher le BG par son nom et s'il n'existe pas,
 		if($null -eq $bg)
@@ -1106,21 +1108,26 @@ function checkIfADGroupsExists
 	$allOK = $true
 	Foreach($groupName in $groupList)
 	{
-		# Si le groupe ressemble à 'xyz@intranet.epfl.ch'
-		if($groupName.endswith([NameGenerator]::AD_DOMAIN_NAME))
+		if($global:existingADGroups  -notcontains $groupName)
 		{
-			# On explose pour avoir :
-			# $groupShort = 'xyz' 
-			# $domain = 'intranet.epfl.ch'
-			$groupShort, $domain = $groupName.Split('@')
-			if((ADGroupExists -groupName $groupShort) -eq $false)
+			# Si le groupe ressemble à 'xyz@intranet.epfl.ch'
+			if($groupName.endswith([NameGenerator]::AD_DOMAIN_NAME))
 			{
-				# Enregistrement du nom du groupe
-				$notifications['adGroupsNotFound'] += $groupName
-				$allOK = $false
-			}
-		}
-	}
+				# On explose pour avoir :
+				# $groupShort = 'xyz' 
+				# $domain = 'intranet.epfl.ch'
+				$groupShort, $domain = $groupName.Split('@')
+				if((ADGroupExists -groupName $groupShort) -eq $false)
+				{
+					# Enregistrement du nom du groupe
+					$notifications['adGroupsNotFound'] += $groupName
+					$allOK = $false
+				}
+			} # FIN Si le groupe ressemble à un groupe AD
+
+		} # Fin SI le groupe n'est pas dans ceux qui sont OK
+
+	} # FIN BOUCLE sur les groupes à contrôler
 	return $allOK
 }
 
@@ -1264,6 +1271,67 @@ function createFirewallSectionRulesIfNotExists
 }
 
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Prend une liste des BG et créé un mapping entre la valeur de la custom
+			property donnée et le BG. On fait ceci pour avoir à éviter de parcourir
+			N fois la liste de BG pour chercher s'il existe. Là, on pourra accéder
+			directement via la valeur de la custom property donc ça sera plus rapide.
+
+	IN  : $bgList			-> La liste des BG pour laquelle créer le mapping
+	IN  : $customPropName	-> Le nom de la custom property à chercher
+
+	RET : Tableau associatif avec en clef la valeur de la custom property cherchée préfixée
+			avec _ histoire d'avoir un caractère autorisé pour commencer le nom de la clef.
+			Et en valeur, on trouve le BG.
+#>
+function createMappingBGList([Array]$bgList, [string]$customPropName)
+{
+	$mappingList = @{}
+
+	# Parcours des BG
+	ForEach($bg in $bgList)
+	{
+		# Récupération de la valeur de la customProperty
+		$propValue = getBGCustomPropValue -bg $bg -customPropName $customPropName
+
+		if($null -ne $propValue)
+		{
+			# Création d'un nom de clef pour qu'elle commence avec un caractères autorisé
+			$key = "_{0}" -f $propValue
+
+			$mappingList.$key = $bg
+		}
+	}
+
+	return $mappingList
+}
+
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Renvoie le BG correspondant à la valeur de custom property passée
+
+	IN  : $mappingList			-> La liste de mapping qui aura été générée par la
+									fonction createMappingBGList
+	IN  : $customPropValue		-> Valeur de la custom property pour laquelle on veut le BG
+
+	RET : Le BG
+			$null si pas trouvé
+#>
+function getBGFromMappingList([Hashtable]$mappingList, [string]$customPropValue)
+{
+	# Génération de la clef de recherche
+	$key = "_{0}" -f $customPropValue
+
+	# Si la clef existe, retour du résultat
+	if($mappingList.Keys -contains $key)
+	{
+		return $mappingList.$key
+	}
+	return $null
+}
+
 
 <#
 	-------------------------------------------------------------------------------------
@@ -1277,6 +1345,10 @@ function createFirewallSectionRulesIfNotExists
 
 # Objet pour sauvegarder/restaurer la progression du script en cas de plantage
 $resumeOnFail = [ResumeOnFail]::new()
+
+<# Pour lister les groupes AD qui existent afin de ne pas contrôler 1000x le même groupe. Cette variable est créée de manière global
+pour pouvoir être accédée par la fonction checkIfADGroupsExists #>
+$global:existingADGroups = @()
 
 try
 {
@@ -1398,8 +1470,20 @@ try
 	$nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), $configNSX.getConfigValue($targetEnv, "user"), $configNSX.getConfigValue($targetEnv, "password"))
 
 
-	# Recherche de BG existants
+	# Recherche de BG existants 
 	$existingBGList = $vra.getBGList()
+
+	# Recherche de la custom prop pour faire la liste de mapping
+	if($targetTenant -eq $global:VRA_TENANT__EPFL)
+	{
+		$customPropName = $global:VRA_CUSTOM_PROP_EPFL_UNIT_ID
+	}
+	elseif($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
+	{
+		$customPropName = $global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID
+	}
+	# Création de la liste de mapping
+	$customPropToExistingBGMapping = createMappingBGList -bgList $existingBGList -customPropName $customPropName
 	
 	<# Recherche des groupes pour lesquels il faudra créer des OUs
 	 On prend tous les groupes de l'OU et on fait ensuite un filtre avec une expression régulière sur le nom. Au début, on prenait le début du nom du
@@ -1611,7 +1695,7 @@ try
 		# --------------------------------- Business Group 
 
 		# Création ou mise à jour du Business Group
-		$bg = createOrUpdateBG -vra $vra -existingBGList $existingBGList -bgUnitID $unitID -bgSnowSvcID $snowServiceId -bgName $bgName -bgDesc $bgDesc `
+		$bg = createOrUpdateBG -vra $vra -existingBGList $customPropToExistingBGMapping -bgUnitID $unitID -bgSnowSvcID $snowServiceId -bgName $bgName -bgDesc $bgDesc `
 									-machinePrefixName $machinePrefixName -capacityAlertsEmail ($capacityAlertMails -join ",") -customProperties $bgCustomProperties
 
 		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
