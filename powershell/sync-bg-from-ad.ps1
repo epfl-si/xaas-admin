@@ -699,7 +699,7 @@ function createOrUpdateBGReservations
 	
 
 	$logHistory.addLineAndDisplay("-> Getting Reservation template list...")
-	$resTemplateList = $vra.getResListMatch($resTemplatePrefix)
+	$resTemplateList = $vra.getResListMatch($resTemplatePrefix, $true)
 
 	if($resTemplateList.Count -eq 0)
 	{
@@ -857,7 +857,7 @@ function deleteBGAndComponentsIfPossible
 		# --------------
 		# Reservations
 		# Parcours des Reservations trouvées et suppression
-		$vra.getResListMatch($resNameBase) | ForEach-Object {
+		$vra.getResListMatch($resNameBase, $false) | ForEach-Object {
 
 			$logHistory.addLineAndDisplay(("--> Deleting Reservation '{0}'..." -f $_.Name))
 			$vra.deleteRes($_.id)
@@ -1106,21 +1106,35 @@ function checkIfADGroupsExists
 	$allOK = $true
 	Foreach($groupName in $groupList)
 	{
-		# Si le groupe ressemble à 'xyz@intranet.epfl.ch'
-		if($groupName.endswith([NameGenerator]::AD_DOMAIN_NAME))
+
+		# Si on n'a pas encore check le groupe,
+		if($global:existingADGroups -notcontains $groupName)
 		{
-			# On explose pour avoir :
-			# $groupShort = 'xyz' 
-			# $domain = 'intranet.epfl.ch'
-			$groupShort, $domain = $groupName.Split('@')
-			if((ADGroupExists -groupName $groupShort) -eq $false)
+			# Si le groupe ressemble à 'xyz@intranet.epfl.ch'
+			if($groupName.endswith([NameGenerator]::AD_DOMAIN_NAME))
 			{
-				# Enregistrement du nom du groupe
-				$notifications['adGroupsNotFound'] += $groupName
-				$allOK = $false
-			}
-		}
-	}
+				# On explose pour avoir :
+				# $groupShort = 'xyz' 
+				# $domain = 'intranet.epfl.ch'
+				$groupShort, $domain = $groupName.Split('@')
+				if((ADGroupExists -groupName $groupShort) -eq $false)
+				{
+					$logHistory.addWarningAndDisplay(("Security group '{0}' not found in Active Directory" -f $groupName))
+					# Enregistrement du nom du groupe
+					$notifications['adGroupsNotFound'] += $groupName
+					$allOK = $false
+				}
+				else # Le groupe est OK
+				{
+					# On l'enregistre pour ne plus avoir le à le contrôler par la suite 
+					$global:existingADGroups += $groupName
+				}
+
+			}# FIN Si le groupe ressemble à un groupe AD
+
+		} # Fin SI le groupe n'est pas dans ceux qui sont OK
+
+	} # FIN BOUCLE sur les groupes à contrôler
 	return $allOK
 }
 
@@ -1278,6 +1292,11 @@ function createFirewallSectionRulesIfNotExists
 # Objet pour sauvegarder/restaurer la progression du script en cas de plantage
 $resumeOnFail = [ResumeOnFail]::new()
 
+<# Pour lister les groupes AD qui existent afin de ne pas contrôler 1000x le même groupe. Cette variable est créée de manière global
+pour pouvoir être accédée par la fonction checkIfADGroupsExists #>
+$global:existingADGroups = @()
+
+
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
@@ -1424,6 +1443,9 @@ try
 	# Calcul de la date dans le passé jusqu'à laquelle on peut prendre les groupes modifiés.
 	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
 
+	# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
+	$capacityAlertMails = @($configGlobal.getConfigValue("mail", "capacityAlert"))
+
 	# Parcours des groupes AD pour l'environnement/tenant donné
 	$adGroupList | ForEach-Object {
 
@@ -1434,14 +1456,11 @@ try
 
 		# Génération du nom du groupe avec le domaine
 		$ADFullGroupName = $nameGenerator.getADGroupFQDN($_.Name)
-		$logHistory.addLineAndDisplay(("-> Current AD group         : $($_.Name)"))
+		$logHistory.addLineAndDisplay(("[{0}/{1}] Current AD group: {2}" -f $counters.get('ADGroups'), $adGroupList.Count, $_.Name))
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group
 
-		# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
-		$capacityAlertMails = @($configGlobal.getConfigValue("mail", "capacityAlert"))
-		
 		# Si Tenant EPFL
 		if($targetTenant -eq $global:VRA_TENANT__EPFL)
 		{
@@ -1578,7 +1597,6 @@ try
 				return
 			}
 		}
-
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
 		if( ((checkIfADGroupsExists -groupList $managerGrpList) -eq $false) -or `
