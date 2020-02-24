@@ -1307,10 +1307,24 @@ function createMappingBGList([Array]$bgList, [string]$customPropName)
 	return $mappingList
 }
 
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Renvoie le BG correspondant à la valeur de custom property passée
+
+	IN  : $mappingList			-> La liste de mapping qui aura été générée par la
+									fonction createMappingBGList
+	IN  : $customPropValue		-> Valeur de la custom property pour laquelle on veut le BG
+
+	RET : Le BG
+			$null si pas trouvé
+#>
 function getBGFromMappingList([Hashtable]$mappingList, [string]$customPropValue)
 {
+	# Génération de la clef de recherche
 	$key = "_{0}" -f $customPropValue
 
+	# Si la clef existe, retour du résultat
 	if($mappingList.Keys -contains $key)
 	{
 		return $mappingList.$key
