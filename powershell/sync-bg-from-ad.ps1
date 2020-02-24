@@ -1485,7 +1485,7 @@ try
 		if($null -ne $progress)
 		{
 			$doneBGList = $progress
-			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed. Skipping to unprocessed..." -f $doneBGList.Count))
+			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed. Skipping to unprocessed (could take some time)..." -f $doneBGList.Count))
 		}
 		else
 		{
