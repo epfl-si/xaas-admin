@@ -88,18 +88,6 @@ class RESTAPICurl: RESTAPI
 	}
 
 
-	<#
-		-------------------------------------------------------------------------------------
-		BUT : Renvoie un nom de fichier temporaire contenant les informations à envoyer via
-				un appel à curl.exe
-
-		RET : Chemin jusqu'au fichier
-	#>
-	hidden [String]getTmpFilename()
-	{
-		$length = 10
-		return [IO.Path]::Combine($global:TEMP_FOLDER, ( -join ((0x30..0x39) + ( 0x41..0x5A) + ( 0x61..0x7A) | Get-Random -Count $length | ForEach-Object {[char]$_}) )) 
-	}
 	
 	
 	<#
@@ -137,7 +125,7 @@ class RESTAPICurl: RESTAPI
 		if($null -ne $body)
 		{
 			# Génération d'un nom de fichier temporaire et ajout du JSON dans celui-ci
-			$tmpFile = $this.getTmpFilename()
+			$tmpFile = (New-TemporaryFile).FullName
 			(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:default
 
 			$args += ' --data "@{0}"' -f $tmpFile
