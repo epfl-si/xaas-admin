@@ -1298,7 +1298,7 @@ function createMappingBGList([Array]$bgList, [string]$customPropName)
 {
 	$mappingList = @{}
 
-	$logHistory.addLineAndDisplay("Creating mapping list for Business Groups...")
+	$logHistory.addLineAndDisplay(("Creating mapping list for {0} Business Groups..." -f $bgList.count))
 	# Parcours des BG
 	ForEach($bg in $bgList)
 	{
