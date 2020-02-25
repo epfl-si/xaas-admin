@@ -46,14 +46,6 @@ class RESTAPICurl: RESTAPI
 			Throw ("Binary file 'curl.exe' is missing... ({0})" -f $pathToCurl)
 		}
 
-		<# Si le dossier n'existe pas, on le créé (il se peut qu'il n'existe pas car vu qu'il est vide,
-			il ne sera pas ajouté dans GIT)
-		#>
-		if(!(Test-Path $global:TEMP_FOLDER))
-		{
-			$dummy = New-Item -Path $global:TEMP_FOLDER -ItemType "directory"
-		}
-
 		# Création du nécessaire pour exécuter un process CURL
 		$this.curl = New-Object System.Diagnostics.Process
 		$this.curl.StartInfo.FileName = $pathToCurl
