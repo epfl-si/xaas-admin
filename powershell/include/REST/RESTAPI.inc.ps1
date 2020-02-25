@@ -71,49 +71,69 @@ class RESTAPI: APIUtils
 		$this.incFuncCall($false)
 
 		$json = "No JSON"
-		try
+
+		# On fait plusieurs tentatives dans le cas où ça foirerait
+		$nbCurlAttempts = 2
+		for($currentAttemptNo=1; $currentAttemptNo -le $nbCurlAttempts; $currentAttemptNo++)
 		{
-			if($null -ne $body)
+			try
 			{
-				# On converti l'objet du Body en JSON pour faire la requête
-				$json = ConvertTo-Json -InputObject $body -Depth 20
-				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers -Body $json
+				if($null -ne $body)
+				{
+					# On converti l'objet du Body en JSON pour faire la requête
+					$json = ConvertTo-Json -InputObject $body -Depth 20
+					return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers -Body $json
+				}
+				else 
+				{
+					return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers 
+				}
+
+
 			}
-			else 
+			catch 
 			{
-				return Invoke-RestMethod -Uri $uri -Method $method -Headers $this.headers 
-			}
+				# Si on n'est psa encore au nombre d'essais
+				if($currentAttemptNo -lt $nbCurlAttempts)
+				{
+					# On fait une petite pause et on y retourne
+					Start-Sleep -seconds 2
+				}
+				else
+				{
+					$exceptionMessage = ""
+					# Si une erreur survient, on la "repropage" mais avec un message d'erreur plus parlant qu'un "Bad Request" ou autre... 
+					# On va récupérer le message qui a été renvoyé par vRA et on va le rebalance en exception !
+					if($null -ne $_.ErrorDetails)  
+					{
+						$errorDetails = $_.ErrorDetails.Message
+					}
+					else
+					{
+						$errorDetails = $_.Exception.message
+					}
+
+					if($null -ne $_.Exception.InnerException)
+					{
+						$exceptionMessage = $_.Exception.InnerException.Message
+					}
 
 
-		}
-		catch 
-		{
-			$exceptionMessage = ""
-			# Si une erreur survient, on la "repropage" mais avec un message d'erreur plus parlant qu'un "Bad Request" ou autre... 
-			# On va récupérer le message qui a été renvoyé par vRA et on va le rebalance en exception !
-			if($null -ne $_.ErrorDetails)  
-			{
-				$errorDetails = $_.ErrorDetails.Message
-			}
-			else
-			{
-				$errorDetails = $_.Exception.message
-			}
+					$errorDetails = "{0}`n{1}" -f $errorDetails, $exceptionMessage
 
-			if($null -ne $_.Exception.InnerException)
-			{
-				$exceptionMessage = $_.Exception.InnerException.Message
-			}
+					# On récupère aussi le nom de la classe et de la fonction qui a appelé celle-ci, histoire d'avoir un peu d'infos dans le message d'erreur
+					# Le nom de la classe est récupéré dynamiquement car la classe courante va être dérivée en d'autres classes
+					$classNameAndFunc =  "{0}::{1}" -f $this.gettype().Name, (Get-PSCallStack)[1].FunctionName
 
+					Throw ("{0}(): {1}`nJSON: {2}" -f $classNameAndFunc, $errorDetails, $json)
 
-			$errorDetails = "{0}`n{1}" -f $errorDetails, $exceptionMessage
+				}# FIN SI on a fait le nombre d'essais max
 
-			# On récupère aussi le nom de la classe et de la fonction qui a appelé celle-ci, histoire d'avoir un peu d'infos dans le message d'erreur
-			# Le nom de la classe est récupéré dynamiquement car la classe courante va être dérivée en d'autres classes
-            $classNameAndFunc =  "{0}::{1}" -f $this.gettype().Name, (Get-PSCallStack)[1].FunctionName
+			} # FIN Catch
 
-			Throw ("{0}(): {1}`nJSON: {2}" -f $classNameAndFunc, $errorDetails, $json)
-		}
+		} # FIN BOUCLE nombre d'essais
+
+		return $null
 	}
     
 }
