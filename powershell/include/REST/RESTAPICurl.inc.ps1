@@ -147,37 +147,70 @@ class RESTAPICurl: RESTAPI
 		# Explication sur le @'...'@ ici : https://stackoverflow.com/questions/18116186/escaping-quotes-and-double-quotes
 		$this.curl.StartInfo.Arguments = "{0} {1} `"{2}`"" -f ( $this.getCurlHeaders() ), $args, ($uri -replace " ","%20")
 
-		$out = $this.curl.Start()
+		$result = $null
 
-		$output = $this.curl.StandardOutput.ReadToEnd()
-		$errorStr = $this.curl.StandardError.ReadToEnd()
+		# On fait plusieurs tentatives dans le cas où ça foirerait
+		$nbCurlAttempts = 2
+		for($currentAttemptNo=1; $currentAttemptNo -le $nbCurlAttempts; $currentAttemptNo++)
+		{
+			$out = $this.curl.Start()
+
+			$output = $this.curl.StandardOutput.ReadToEnd()
+			$errorStr = $this.curl.StandardError.ReadToEnd()
+	
+			# Si aucune erreur
+			if($this.curl.ExitCode -eq 0)
+			{
+				
+				$result = $output | ConvertFrom-Json
+	
+				if($result.httpStatus -eq "NOT_FOUND")
+				{
+					$result = $null
+					
+				}
+				
+				# Si code d'erreur
+				if($null -ne $result.error_code)
+				{
+					# Si on a fait le max de tentative, on peut lever une erreur
+					if($currentAttemptNo -eq $nbCurlAttempts)
+					{
+						Throw "Error executing REST call: {0} `n{1}" -f $result.error_code, $result.error_message
+					}
+					
+				}
+				else # Aucun code d'erreur
+				{
+					# On peut sortir de la boucle car $result contient notre résultat
+					break
+				}
+		
+			}
+			# Si erreur Curl
+			else
+			{
+				# Si on a fait le max de tentative, on peut lever une erreur
+				if($currentAttemptNo -eq $nbCurlAttempts)
+				{
+					if($this.curl.ExitCode -eq 52)
+					{
+						$errorStr = "Empty answer received from remote host"
+					}
+					Throw "Error executing command ({0}) with error : `n{1}" -f $this.curl.StartInfo.Arguments, $errorStr
+				}
+
+			}# FIN SI erreur Curl 
+	
+			# On attend un peu avant la prochaine tentative
+			Start-Sleep -Seconds 2
+		}# FIN BOUCLE du nombre d'appels Curl
 
 		# Si on a utilisé un fichier temporaire, 
 		if($null -ne $tmpFile)
 		{
 			# Suppression du fichier temporaire 
 			Remove-Item -Path $tmpFile -Force:$true -Confirm:$false
-		}
-
-		if($this.curl.ExitCode -ne 0)
-		{
-			if($this.curl.ExitCode -eq 52)
-			{
-				$errorStr = "Empty answer received from remote host"
-			}
-			Throw "Error executing command ({0}) with error : `n{1}" -f $this.curl.StartInfo.Arguments, $errorStr
-		}
-
-		$result = $output | ConvertFrom-Json
-
-		if($result.httpStatus -eq "NOT_FOUND")
-		{
-			return $null
-		}
-
-		if($null -ne $result.error_code)
-		{
-			Throw "Error executing REST call: {0} `n{1}" -f $result.error_code, $result.error_message
 		}
 
 		return $result
