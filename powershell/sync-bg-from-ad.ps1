@@ -701,11 +701,11 @@ function createOrUpdateBGReservations
 	
 
 	$logHistory.addLineAndDisplay("-> Getting Reservation template list...")
-	$resTemplateList = $vra.getResListMatch($resTemplatePrefix)
+	$resTemplateList = $vra.getResListMatch($resTemplatePrefix, $true)
 
 	if($resTemplateList.Count -eq 0)
 	{
-		$logHistory.addErrorAndDisplay("No Reservation template found !! An email has been send to administrators to inform them.")
+		$logHistory.addErrorAndDisplay("No Reservation template found !! An email has been sent to administrators to inform them.")
 		sendErrorMailNoResTemplateFound
 		exit
 	}
@@ -859,7 +859,7 @@ function deleteBGAndComponentsIfPossible
 		# --------------
 		# Reservations
 		# Parcours des Reservations trouvées et suppression
-		$vra.getResListMatch($resNameBase) | ForEach-Object {
+		$vra.getResListMatch($resNameBase, $false) | ForEach-Object {
 
 			$logHistory.addLineAndDisplay(("--> Deleting Reservation '{0}'..." -f $_.Name))
 			$vra.deleteRes($_.id)
@@ -1108,6 +1108,7 @@ function checkIfADGroupsExists
 	$allOK = $true
 	Foreach($groupName in $groupList)
 	{
+		# Si on n'a pas encore check le groupe,
 		if($global:existingADGroups  -notcontains $groupName)
 		{
 			# Si le groupe ressemble à 'xyz@intranet.epfl.ch'
@@ -1119,10 +1120,19 @@ function checkIfADGroupsExists
 				$groupShort, $domain = $groupName.Split('@')
 				if((ADGroupExists -groupName $groupShort) -eq $false)
 				{
+					$logHistory.addWarningAndDisplay(("Security group '{0}' not found in Active Directory" -f $groupName))
+
 					# Enregistrement du nom du groupe
 					$notifications['adGroupsNotFound'] += $groupName
 					$allOK = $false
 				}
+				else # Le groupe est OK
+				{
+					# On l'enregistre pour ne plus avoir le à le contrôler par la suite 
+					$global:existingADGroups += $groupName
+				}
+
+
 			} # FIN Si le groupe ressemble à un groupe AD
 
 		} # Fin SI le groupe n'est pas dans ceux qui sont OK
@@ -1289,6 +1299,8 @@ function createMappingBGList([Array]$bgList, [string]$customPropName)
 {
 	$mappingList = @{}
 
+	$logHistory.addLineAndDisplay("Creating mapping list for Business Groups...")
+
 	# Parcours des BG
 	ForEach($bg in $bgList)
 	{
@@ -1376,23 +1388,7 @@ try
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
 
-	$doneBGList = @()
-
-	# Si on doit tenter de reprendre une exécution foirée ET qu'un fichier de progression existait, on charge son contenu
-	if($resume)
-	{
-		$logHistory.addLineAndDisplay("Trying to resume from previous failed execution...")
-		$progress = $resumeOnFail.load()
-		if($null -ne $progress)
-		{
-			$doneBGList = $progress
-			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed" -f $doneBGList.Count))
-		}
-		else
-		{
-			$logHistory.addLineAndDisplay("No progress file found :-(")
-		}
-	}
+	
 
 
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
@@ -1485,6 +1481,24 @@ try
 	# Création de la liste de mapping
 	$customPropToExistingBGMapping = createMappingBGList -bgList $existingBGList -customPropName $customPropName
 	
+	$doneBGList = @()
+
+	# Si on doit tenter de reprendre une exécution foirée ET qu'un fichier de progression existait, on charge son contenu
+	if($resume)
+	{
+		$logHistory.addLineAndDisplay("Trying to resume from previous failed execution...")
+		$progress = $resumeOnFail.load()
+		if($null -ne $progress)
+		{
+			$doneBGList = $progress
+			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed" -f $doneBGList.Count))
+		}
+		else
+		{
+			$logHistory.addLineAndDisplay("No progress file found :-(")
+		}
+	}
+
 	<# Recherche des groupes pour lesquels il faudra créer des OUs
 	 On prend tous les groupes de l'OU et on fait ensuite un filtre avec une expression régulière sur le nom. Au début, on prenait le début du nom du
 	 groupe pour filtrer mais d'autres groupes avec des noms débutant de la même manière ont été ajoutés donc le filtre par expression régulière
@@ -1508,23 +1522,16 @@ try
 	# Calcul de la date dans le passé jusqu'à laquelle on peut prendre les groupes modifiés.
 	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
 
+	# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
+	$capacityAlertMails = @($configGlobal.getConfigValue("mail", "capacityAlert"))
+
 	# Parcours des groupes AD pour l'environnement/tenant donné
 	$adGroupList | ForEach-Object {
 
 		$counters.inc('ADGroups')
 
-		# Pour repartir "propre" pour le groupe AD courant
-		$secondDayActions.clearApprovalPolicyMapping()
-
-		# Génération du nom du groupe avec le domaine
-		$ADFullGroupName = $nameGenerator.getADGroupFQDN($_.Name)
-		$logHistory.addLineAndDisplay(("-> Current AD group         : $($_.Name)"))
-
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group
-
-		# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
-		$capacityAlertMails = @($configGlobal.getConfigValue("mail", "capacityAlert"))
 		
 		# Si Tenant EPFL
 		if($targetTenant -eq $global:VRA_TENANT__EPFL)
@@ -1541,9 +1548,6 @@ try
 										 facultyID = $facultyID
 										 unitName = $unit
 										 unitID = $unitID})
-
-			Write-Debug "-> Current AD group Faculty : $($faculty) ($($facultyID))"
-			Write-Debug "-> Current AD group Unit    : $($unit) ($($unitID)) "
 
 			# Création du nom/description du business group
 			$bgDesc = $nameGenerator.getBGDescription()
@@ -1590,10 +1594,21 @@ try
 		if($doneBGList -contains $bgName)
 		{
 			$counters.inc('BGResumeSkipped')
-			$logHistory.addLineAndDisplay(("--> Skipping because already processed in previous execution"))
 			# passage au BG suivant
 			return
 		}
+
+		#### Lorsque l'on arrive ici, c'est que l'on commence à exécuter le code pour les BG qui n'ont pas été "skipped" lors du 
+		#### potentiel '-resume' que l'on a passé au script.
+		# Pour repartir "propre" pour le groupe AD courant
+		$secondDayActions.clearApprovalPolicyMapping()
+
+		# Génération du nom du groupe avec le domaine
+		$ADFullGroupName = $nameGenerator.getADGroupFQDN($_.Name)
+
+		# On n'affiche que maintenant le groupe AD que l'on traite, comme ça on économise du temps d'affichage pour le passage de tous les
+		# groupes qui ont potentiellement déjà été traités si on fait un "resume"
+		$logHistory.addLineAndDisplay(("[{0}/{1}] Current AD group: {2}" -f $counters.get('ADGroups'), $adGroupList.Count, $_.Name))
 
 		# Génération du nom et de la description de l'entitlement
 		$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
@@ -1817,6 +1832,8 @@ try
 		$nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
 
 		$doneBGList += $bg.name
+		# On sauvegarde l'avancement dans le cas où on arrêterait le script au milieu manuellement
+		$resumeOnFail.save($doneBGList)	
 
 	}# Fin boucle de parcours des groupes AD pour l'environnement/tenant donnés
 

@@ -24,7 +24,7 @@
 		 restent en lecture seule (donc pas modifiés par le script)
 
 #>
-class vRAAPI: RESTAPI
+class vRAAPI: RESTAPICurl
 {
 	hidden [string]$token
 	hidden [string]$tenant
@@ -77,7 +77,7 @@ class vRAAPI: RESTAPI
 	{
 		$uri = "https://{0}/identity/api/tokens/{1}" -f $this.server, $this.token
 
-		Invoke-RestMethod -Uri $uri -Method Delete -Headers $this.headers
+		$this.callAPI($uri, "Delete", $null)
 	}
 
 
@@ -538,7 +538,9 @@ class vRAAPI: RESTAPI
 	#>
 	[PSCustomObject] getBGEnt([string]$BGID)
 	{
-		$ent = $this.getEntListQuery() | Where-Object {$_.organization.subtenantRef -eq $BGID}
+		$uri = "https://{0}/catalog-service/api/entitlements/?page=1&limit=9999&`$filter=organization/subTenant/id eq '{1}'" -f $this.server, $BGID
+
+		$ent = ($this.callAPI($uri, "Get", $null)).content
 
 		if($ent.Count -eq 0){return $null}
 		return $ent[0]
@@ -570,20 +572,6 @@ class vRAAPI: RESTAPI
 	{
 		return $this.getEntListQuery(("`$filter=substringof('{0}', name)" -f $str))
 	}
-
-	<#
-		-------------------------------------------------------------------------------------
-		BUT : Renvoie la liste des Entitlements pour le BG dont l'ID est passé en paramètre
-
-		IN  : $BGID	-> ID du BG dont on veut les entitlements
-
-		RET : Tableau de Entitlements
-	#>
-	[Array] getBGEntList([string]$BGID)
-	{
-		return $this.getEntListQuery() | Where-Object {$_.organization.subtenantRef -eq $BGID}
-	}
-
 
 	<#
 		-------------------------------------------------------------------------------------
@@ -892,10 +880,11 @@ class vRAAPI: RESTAPI
 		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
+		IN  : $allowCache	-> $true|$false pour dire si on peut utiliser le cache	
 
 		RET : Liste des Reservations
 	#>
-	hidden [Array] getResListQuery([string] $queryParams)
+	hidden [Array] getResListQuery([string] $queryParams, [bool]$allowCache)
 	{
 		$uri = "https://{0}/reservation-service/api/reservations/?page=1&limit=9999" -f $this.server
 
@@ -904,7 +893,17 @@ class vRAAPI: RESTAPI
 		{
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
-		return ($this.callAPI($uri, "Get", $null)).content
+
+		$result = ($this.callAPI($uri, "Get", $null))
+
+		# Si on a le droit d'utiliser le cache
+		if($allowCache)
+		{
+			# Ajout dans le cache
+			$this.addInCache($result, $uri)
+		}
+
+		return $result.content
 		
 	}
 	hidden [Array] getResListQuery()
@@ -917,13 +916,14 @@ class vRAAPI: RESTAPI
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des Reservations contenant une chaine de caractères donnée
 
-		IN  : $nameContains		-> (optionel) Chaine de caractères que doit contenir le nom
+		IN  : $str			-> Chaine de caractères que doit contenir le nom (peut être vide)
+		IN  : $allowCache	-> $true|$false pour dire si on peut utiliser le cache 
 
 		RET : Liste des Reservations
 	#>
-	[Array] getResListMatch([string] $str)
+	[Array] getResListMatch([string] $str, [bool]$allowCache)
 	{
-		return $this.getResListQuery(("`$filter=substringof('{0}', name)" -f $str))
+		return $this.getResListQuery(("`$filter=substringof('{0}', name)" -f $str), $allowCache)
 	}
 
 
@@ -938,7 +938,7 @@ class vRAAPI: RESTAPI
 	#>
 	[PSCustomObject] getRes([string] $name)
 	{
-		$list = $this.getResListQuery(("`$filter=name eq '{0}'" -f $name))
+		$list = $this.getResListQuery(("`$filter=name eq '{0}'" -f $name), $false)
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
@@ -955,7 +955,7 @@ class vRAAPI: RESTAPI
 	#>
 	[PSCustomObject] getBGResList([string] $bgID)
 	{
-		return $this.getResListQuery(("`$filter=subTenantId eq '{0}'" -f $bgID))
+		return $this.getResListQuery(("`$filter=subTenantId eq '{0}'" -f $bgID), $false)
 	}
 
 
@@ -1015,7 +1015,8 @@ class vRAAPI: RESTAPI
 
 		# Si un des éléments a changé, 
 		if(((ConvertTo-Json -InputObject $res.extensionData -Depth 20) -ne (ConvertTo-Json -InputObject $resTemplate.extensionData -Depth 20)) -or
-		   ((ConvertTo-Json -InputObject $res.alertPolicy -Depth 20) -ne (ConvertTo-Json -InputObject $resTemplate.alertPolicy -Depth 20)))
+		   ((ConvertTo-Json -InputObject $res.alertPolicy -Depth 20) -ne (ConvertTo-Json -InputObject $resTemplate.alertPolicy -Depth 20)) -or 
+		   ($res.name -ne $name))
 		{
 			# Initialisation des champs pour pouvoir mettre à jour la Reservation
 			$res.name = $name

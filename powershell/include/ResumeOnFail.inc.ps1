@@ -47,11 +47,18 @@ class ResumeOnFail
 	#>
     [object] load()
     {
+        $result = $null
+
         if(Test-Path $this.progressFile)
         {
-            return Get-Content -path $this.progressFile | ConvertFrom-Json
+            $content = Get-Content -path $this.progressFile 
+
+            if(($null -ne $content) -and ($content.Trim() -ne ""))
+            {
+                $result = $content | ConvertFrom-Json
+            }
         }
-        return $null
+        return $result
     }
 
 
