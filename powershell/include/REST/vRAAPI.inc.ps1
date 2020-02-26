@@ -1015,7 +1015,8 @@ class vRAAPI: RESTAPICurl
 
 		# Si un des éléments a changé, 
 		if(((ConvertTo-Json -InputObject $res.extensionData -Depth 20) -ne (ConvertTo-Json -InputObject $resTemplate.extensionData -Depth 20)) -or
-		   ((ConvertTo-Json -InputObject $res.alertPolicy -Depth 20) -ne (ConvertTo-Json -InputObject $resTemplate.alertPolicy -Depth 20)))
+		   ((ConvertTo-Json -InputObject $res.alertPolicy -Depth 20) -ne (ConvertTo-Json -InputObject $resTemplate.alertPolicy -Depth 20)) -or 
+		   ($res.name -ne $name))
 		{
 			# Initialisation des champs pour pouvoir mettre à jour la Reservation
 			$res.name = $name
