@@ -170,7 +170,6 @@ class NSXAPI: RESTAPICurl
         {
             return $fwSection
         }
-
         if($filterType -eq "")
         {
             $filterType = "FILTER"
