@@ -262,6 +262,11 @@
             "longName":  "MyPrint",
             "shortName":  "mprnt",
             "snowId":  "SVC0056"
+        },
+        {
+            "longName":  "Press review",
+            "shortName":  "press",
+            "snowId":  "SVC0046"
         }
 
     ]
