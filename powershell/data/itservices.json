@@ -267,7 +267,13 @@
             "longName":  "Press review",
             "shortName":  "press",
             "snowId":  "SVC0046"
+        },
+        {
+            "longName":  "EPFL directory (People, CV)",
+            "shortName":  "peopl",
+            "snowId":  "SVC0033"
         }
+
 
     ]
 }
