@@ -272,7 +272,38 @@
             "longName":  "EPFL directory (People, CV)",
             "shortName":  "peopl",
             "snowId":  "SVC0033"
+        },
+        {
+            "longName":  "AD directory",
+            "shortName":  "ad",
+            "snowId":  "SVC0026"
+        },
+        {
+            "longName":  "Identity – Accreditation management",
+            "shortName":  "accred",
+            "snowId":  "SVC0055"
+        },
+        {
+            "longName":  "Shared documents & agenda my.epfl.ch",
+            "shortName":  "my",
+            "snowId":  "SVC0024"
+        },
+        {
+            "longName":  "Cadi 2.0",
+            "shortName":  "cadi",
+            "snowId":  "SVC0074"
+        },
+        {
+            "longName":  "Passwords management",
+            "shortName":  "gaspar",
+            "snowId":  "SVC0085"
+        },
+        {
+            "longName":  "Authentication & authorisation Tequila",
+            "shortName":  "tequila",
+            "snowId":  "SVC0018"
         }
+
 
 
     ]
