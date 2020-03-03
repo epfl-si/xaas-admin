@@ -302,6 +302,76 @@
             "longName":  "Authentication & authorisation Tequila",
             "shortName":  "tequila",
             "snowId":  "SVC0018"
+        },
+        {
+            "longName":  "GOUV-GE Fonctionnement",
+            "shortName":  "gouvge",
+            "snowId":  "SVC0141"
+        },
+        {
+            "longName":  "VPSI Fonctionnement",
+            "shortName":  "vpsi",
+            "snowId":  "SVC0173"
+        },
+        {
+            "longName":  "IDEVAM Fonctionnement",
+            "shortName":  "idevam",
+            "snowId":  "SVC0174"
+        },
+        {
+            "longName":  "IDEV-FSD Fonctionnement",
+            "shortName":  "idevfsd",
+            "snowId":  "SVC0176"
+        },
+        {
+            "longName":  "IDEVING Fonctionnement",
+            "shortName":  "ideving",
+            "snowId":  "SVC0177"
+        },
+        {
+            "longName":  "EXDESK Fonctionnement",
+            "shortName":  "exdesk",
+            "snowId":  "SVC0178"
+        },
+        {
+            "longName":  "EXTERP Fonctionnement",
+            "shortName":  "exterp",
+            "snowId":  "SVC0179"
+        },
+        {
+            "longName":  "EXINFR Fonctionnement",
+            "shortName":  "exinfr",
+            "snowId":  "SVC0181"
+        },
+        {
+            "longName":  "GIF-GE Fonctionnement",
+            "shortName":  "gifge",
+            "snowId":  "SVC0182"
+        },
+        {
+            "longName":  "EXAPP Fonctionnement",
+            "shortName":  "exapp",
+            "snowId":  "SVC0183"
+        },
+        {
+            "longName":  "IDEV-GE Fonctionnement",
+            "shortName":  "idevge",
+            "snowId":  "SVC0184"
+        },
+        {
+            "longName":  "EXOP-GE Fonctionnement",
+            "shortName":  "exopge",
+            "snowId":  "SVC0185"
+        },
+        {
+            "longName":  "IDEV-RH Fonctionnement",
+            "shortName":  "idevrh",
+            "snowId":  "SVC0602"
+        },
+        {
+            "longName":  "IDEV-FIN Fonctionnement",
+            "shortName":  "idevfin",
+            "snowId":  "SVC0606"
         }
 
 
