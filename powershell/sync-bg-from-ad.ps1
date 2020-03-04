@@ -566,8 +566,8 @@ function createOrUpdateBGEnt
 	}
 	else # L'entitlement existe
 	{
-		# Si le nom a changé (car le nom du BG a changé)
-		if($ent.name -ne $entName)
+		# Si le nom a changé (car le nom du BG a changé) ou la description a changé 
+		if(($ent.name -ne $entName) -or ($ent.description -ne $entDesc))
 		{
 			$logHistory.addLineAndDisplay(("-> Updating Entitlement {0}..." -f $ent.name))
 			# Mise à jour du nom/description de l'entitlement courant et on force la réactivation
