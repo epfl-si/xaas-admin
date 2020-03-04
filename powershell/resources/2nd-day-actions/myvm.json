@@ -12,6 +12,13 @@
                 "approvals": [] 
             },
             {
+                "name": "[NSX] Reconfigure DMZ",
+                "approvals": []
+            },
+            {
+                "name": "[NSX] Scan request",
+                "approvals": []
+            },            {
                 "name": "Reconfigure DMZ",
                 "approvals": [] 
             },
