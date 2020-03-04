@@ -1108,8 +1108,9 @@ function checkIfADGroupsExists
 	$allOK = $true
 	Foreach($groupName in $groupList)
 	{
+
 		# Si on n'a pas encore check le groupe,
-		if($global:existingADGroups  -notcontains $groupName)
+		if($global:existingADGroups -notcontains $groupName)
 		{
 			# Si le groupe ressemble à 'xyz@intranet.epfl.ch'
 			if($groupName.endswith([NameGenerator]::AD_DOMAIN_NAME))
@@ -1121,7 +1122,6 @@ function checkIfADGroupsExists
 				if((ADGroupExists -groupName $groupShort) -eq $false)
 				{
 					$logHistory.addWarningAndDisplay(("Security group '{0}' not found in Active Directory" -f $groupName))
-
 					# Enregistrement du nom du groupe
 					$notifications['adGroupsNotFound'] += $groupName
 					$allOK = $false
@@ -1132,8 +1132,7 @@ function checkIfADGroupsExists
 					$global:existingADGroups += $groupName
 				}
 
-
-			} # FIN Si le groupe ressemble à un groupe AD
+			}# FIN Si le groupe ressemble à un groupe AD
 
 		} # Fin SI le groupe n'est pas dans ceux qui sont OK
 
@@ -1299,8 +1298,7 @@ function createMappingBGList([Array]$bgList, [string]$customPropName)
 {
 	$mappingList = @{}
 
-	$logHistory.addLineAndDisplay("Creating mapping list for Business Groups...")
-
+	$logHistory.addLineAndDisplay(("Creating mapping list for {0} Business Groups..." -f $bgList.count))
 	# Parcours des BG
 	ForEach($bg in $bgList)
 	{
@@ -1388,9 +1386,6 @@ try
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
 
-	
-
-
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
 	$counters.add('ADGroups', '# AD group processed')
@@ -1465,7 +1460,6 @@ try
 	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
 	$nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), $configNSX.getConfigValue($targetEnv, "user"), $configNSX.getConfigValue($targetEnv, "password"))
 
-
 	# Recherche de BG existants 
 	$existingBGList = $vra.getBGList()
 
@@ -1480,6 +1474,24 @@ try
 	}
 	# Création de la liste de mapping
 	$customPropToExistingBGMapping = createMappingBGList -bgList $existingBGList -customPropName $customPropName
+
+	$doneBGList = @()
+
+	# Si on doit tenter de reprendre une exécution foirée ET qu'un fichier de progression existait, on charge son contenu
+	if($resume)
+	{
+		$logHistory.addLineAndDisplay("Trying to resume from previous failed execution...")
+		$progress = $resumeOnFail.load()
+		if($null -ne $progress)
+		{
+			$doneBGList = $progress
+			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed. Skipping to unprocessed (could take some time)..." -f $doneBGList.Count))
+		}
+		else
+		{
+			$logHistory.addLineAndDisplay("No progress file found :-(")
+		}
+	}
 	
 	$doneBGList = @()
 
@@ -1532,7 +1544,6 @@ try
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group
-		
 		# Si Tenant EPFL
 		if($targetTenant -eq $global:VRA_TENANT__EPFL)
 		{
@@ -1597,6 +1608,19 @@ try
 			# passage au BG suivant
 			return
 		}
+		
+		#### Lorsque l'on arrive ici, c'est que l'on commence à exécuter le code pour les BG qui n'ont pas été "skipped" lors du 
+		#### potentiel '-resume' que l'on a passé au script.
+
+		# Pour repartir "propre" pour le groupe AD courant
+		$secondDayActions.clearApprovalPolicyMapping()
+
+		# Génération du nom du groupe avec le domaine
+		$ADFullGroupName = $nameGenerator.getADGroupFQDN($_.Name)
+
+		# On n'affiche que maintenant le groupe AD que l'on traite, comme ça on économise du temps d'affichage pour le passage de tous les
+		# groupes qui ont potentiellement déjà été traités si on fait un "resume"
+		$logHistory.addLineAndDisplay(("[{0}/{1}] Current AD group: {2}" -f $counters.get('ADGroups'), $adGroupList.Count, $_.Name))
 
 		#### Lorsque l'on arrive ici, c'est que l'on commence à exécuter le code pour les BG qui n'ont pas été "skipped" lors du 
 		#### potentiel '-resume' que l'on a passé au script.
@@ -1678,7 +1702,6 @@ try
 			}
 		}
 
-
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
 		if( ((checkIfADGroupsExists -groupList $managerGrpList) -eq $false) -or `
 			((checkIfADGroupsExists -groupList $supportGrpList) -eq $false) -or `
@@ -1758,7 +1781,6 @@ try
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus
 		$logHistory.addLineAndDisplay("-> Updating Entitlement...")
-		
 		$ent = $vra.updateEnt($ent, $true)
 
 

@@ -9,11 +9,12 @@
    DATE   : Mai 2019
 
 
-    ----------
-    HISTORIQUE DES VERSIONS
-    0.1 - Version de base
-    0.2 - Ajout d'un filtre dans la récupération des NSGroups
-    0.3 - Ajout d'un cache pour certains éléments.
+   ----------
+   HISTORIQUE DES VERSIONS
+   0.1 - Version de base
+   0.2 - Ajout d'un filtre dans la récupération des NSGroups
+   0.3 - Ajout d'un cache pour certains éléments.
+
 #>
 class NSXAPI: RESTAPICurl
 {
@@ -71,7 +72,6 @@ class NSXAPI: RESTAPICurl
         }
 
         return $nsGroup
-        
     }
 
     <#
@@ -170,8 +170,6 @@ class NSXAPI: RESTAPICurl
         {
             return $fwSection
         }
-        
-       
         if($filterType -eq "")
         {
             $filterType = "FILTER"

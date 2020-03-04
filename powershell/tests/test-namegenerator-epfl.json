@@ -5,7 +5,7 @@
             {
                 "params": [
                     {
-                        "facultyName": "SI",
+                        "facultyName": "ENT-R",
                         "facultyID": "12635",
                         "unitName": "IDEV-ING",
                         "unitID": "13031"
@@ -59,11 +59,11 @@
 
             {
                 "params": ["CSP_SUPPORT", true],
-                "expected": "vra_t_sup_si@intranet.epfl.ch"
+                "expected": "vra_t_sup_entr@intranet.epfl.ch"
             },
             {
                 "params": ["CSP_SUPPORT", false],
-                "expected": "vra_t_sup_si"
+                "expected": "vra_t_sup_entr"
             },
             {
                 "params": ["CSP_SUBTENANT_MANAGER", true],
@@ -81,11 +81,11 @@
         "tests": [
             {
                 "params": ["CSP_SUPPORT"],
-                "expected": "Support for Faculty SI on Tenant EPFL on Environment TEST"
+                "expected": "Support for Faculty ENT-R on Tenant EPFL on Environment TEST"
             },
             {
                 "params": ["CSP_SUPPORT"],
-                "expected": "Support for Faculty SI on Tenant EPFL on Environment TEST"
+                "expected": "Support for Faculty ENT-R on Tenant EPFL on Environment TEST"
             },
             {
                 "params": ["CSP_SUBTENANT_MANAGER"],
@@ -102,15 +102,15 @@
             },
             {
                 "params": ["CSP_SUPPORT"],
-                "expected": "Support for Faculty SI on Tenant EPFL on Environment TEST"
+                "expected": "Support for Faculty ENT-R on Tenant EPFL on Environment TEST"
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "SI;IDEV-ING"
+                "expected": "ENT-R;IDEV-ING"
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "SI;IDEV-ING"
+                "expected": "ENT-R;IDEV-ING"
             }
         ]
     },
@@ -124,7 +124,7 @@
             },
             {
                 "params": ["CSP_SUPPORT"],
-                "expected": "vra_t_sup_si"
+                "expected": "vra_t_sup_entr"
             }
         ]
     },
@@ -134,7 +134,7 @@
         "tests": [
             {
                 "params": ["CSP_SUPPORT"],
-                "expected": "vra_t_sup_si_AppGrpU"
+                "expected": "vra_t_sup_entr_AppGrpU"
             },
             {
                 "params": ["CSP_SUBTENANT_MANAGER"],
@@ -164,14 +164,14 @@
                 "params":[2, true],
                 "expected": {
                     "onlyForTenant": true,
-                    "name": "vra_t_approval_si@intranet.epfl.ch"
+                    "name": "vra_t_approval_entr@intranet.epfl.ch"
                 }
             },
             {
                 "params":[2, false],
                 "expected": {
                     "onlyForTenant": true,
-                    "name": "vra_t_approval_si"
+                    "name": "vra_t_approval_entr"
                 }
             }
 
@@ -192,7 +192,7 @@
                 "params":[2, false],
                 "expected": {
                     "onlyForTenant": true,
-                    "name": "vra_t_approval_si"
+                    "name": "vra_t_approval_entr"
                 }
             }
         ]
@@ -207,7 +207,7 @@
             },
             {
                 "params":[2],
-                "expected": "vra_t_approval_si@groupes.epfl.ch"
+                "expected": "vra_t_approval_entr@groupes.epfl.ch"
             }
         ]
     },
@@ -221,7 +221,7 @@
             },
             {
                 "params":[2],
-                "expected": "Approval group (level 2) for Faculty: SI"
+                "expected": "Approval group (level 2) for Faculty: ENT-R"
             }
         ]
     },
@@ -235,7 +235,7 @@
             },
             {
                 "params":[2, false],
-                "expected": "vra_t_approval_si_AppGrpU"
+                "expected": "vra_t_approval_entr_AppGrpU"
             }
         ]
     },
@@ -245,11 +245,11 @@
         "tests":[
             {
                 "params":["new"],
-                "expected": ["epfl_si_newItems", "Approval policy for new items for SI Faculty"]
+                "expected": ["epfl_entr_newItems", "Approval policy for new items for ENT-R Faculty"]
             },
             {
                 "params":["reconfigure"],
-                "expected": ["epfl_si_2ndDay", "Approval policy for 2nd day actions for SI Faculty"]
+                "expected": ["epfl_entr_2ndDay", "Approval policy for 2nd day actions for ENT-R Faculty"]
             }
         ]
     },
@@ -259,7 +259,7 @@
         "tests": [
             {
                 "params":[],
-                "expected": ["epfl_si_idev_ing", "Faculty: SI\nUnit: IDEV-ING"]
+                "expected": ["epfl_entr_idev_ing", "Faculty: ENT-R\nUnit: IDEV-ING"]
             }
         ]
     },
@@ -268,8 +268,8 @@
         "name": "getSecurityGroupNameAndDesc",
         "tests":[
             {
-                "params": ["epfl_si_idev_ing"],
-                "expected": ["sg.epfl_SI", "Tenant: epfl\\nFaculty: SI"]
+                "params": ["epfl_entr_idev_ing"],
+                "expected": ["sg.epfl_entr", "Tenant: epfl\\nFaculty: ENT-R"]
             }
         ]
     },
@@ -279,7 +279,7 @@
         "tests":[
             {
                 "params":[],
-                "expected":"st.epfl_si"
+                "expected":"st.epfl_entr"
             }
         ]
     },
@@ -289,7 +289,7 @@
         "tests": [
             {
                 "params":[],
-                "expected": ["epfl_si","Section for Tenant epfl and Faculty SI"]
+                "expected": ["epfl_entr","Section for Tenant epfl and Faculty ENT-R"]
             }
         ]   
     },
@@ -301,20 +301,20 @@
                 "params":[],
                 "expected":[
                     {
-                        "tag": "allow-SI-in",
-                        "name": "allow-SI-in"
+                        "tag": "allow-entr-in",
+                        "name": "allow-entr-in"
                     },
                     {
-                        "tag": "allow-intra-SI-comm",
-                        "name": "allow-intra-SI-comm"
+                        "tag": "allow-intra-entr-comm",
+                        "name": "allow-intra-entr-comm"
                     },
                     {
-                        "tag": "allow-SI-out",
-                        "name": "allow-SI-out"
+                        "tag": "allow-entr-out",
+                        "name": "allow-entr-out"
                     },
                     {
-                        "tag": "deny-SI-all",
-                        "name": "deny-SI-all"
+                        "tag": "deny-entr-all",
+                        "name": "deny-entr-all"
                     }
                 ]
             }
@@ -340,7 +340,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "sitvm"
+                "expected": "entrtvm"
             }
         ]
     },
@@ -350,7 +350,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "Faculty: SI\nUnit: IDEV-ING"
+                "expected": "Faculty: ENT-R\nUnit: IDEV-ING"
             }
         ]
     },
@@ -360,7 +360,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "epfl_si_idev_ing"
+                "expected": "epfl_entr_idev_ing"
             }
         ]
     },
@@ -370,7 +370,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "Faculty: SI\nUnit: IDEV-ING"
+                "expected": "Faculty: ENT-R\nUnit: IDEV-ING"
             }
         ]
     },
@@ -389,8 +389,8 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["SI;IDEV-ING"],
-                "expected": ["SI", "IDEV-ING"]
+                "params": ["ENT-R;IDEV-ING"],
+                "expected": ["ENT-R", "IDEV-ING"]
             }
         ]
     },
@@ -400,7 +400,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "epfl_si_idev_ing"
+                "expected": "epfl_entr_idev_ing"
             }
         ]
     },
@@ -409,8 +409,8 @@
         "name": "getBGResName",
         "tests":[
             {
-                "params": ["epfl_si_idev_ing", "clstr-test-INJ"],
-                "expected": "epfl_si_idev_ing_clstr_test_inj"
+                "params": ["epfl_entr_idev_ing", "clstr-test-INJ"],
+                "expected": "epfl_entr_idev_ing_clstr_test_inj"
             }
         ]
     },
@@ -449,8 +449,8 @@
         "name": "getNASPrivateISOPath",
         "tests":[
             {
-                "params": ["epfl_si_idev_ing"],
-                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_si_idev_ing"
+                "params": ["epfl_entr_idev_ing"],
+                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_entr_idev_ing"
             }
         ]
     },
@@ -469,8 +469,8 @@
         "name": "getNASPrivateISOPathBGName",
         "tests":[
             {
-                "params": ["\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_si_idev_ing"],
-                "expected": "epfl_si_idev_ing"
+                "params": ["\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_entr_idev_ing"],
+                "expected": "epfl_entr_idev_ing"
             }
         ]
     }

@@ -171,6 +171,35 @@ class NameGenerator
         return $str.replace("-", "_").ToLower()
     }
 
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Transforme et renvoie le nom de faculté pour supprimer les caractères indésirables
+                Les - vont être supprimés
+
+        IN  : $facultyName -> Le nom de la faculté
+
+        RET : La chaine corrigée
+    #>
+    hidden [string]sanitizeFacultyName([string]$facultyName)
+    {
+        return $facultyName.replace("-", "")
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Transforme et renvoie le nom de faculté passée pour qu'il corresponde
+                aux attentes du nommage des groupes et autres. 
+                Les - vont être supprimés et tout sera mis en minuscule
+
+        IN  : $facultyName -> Le nom de la faculté
+
+        RET : La chaine corrigée
+    #>
+    hidden [string]transformFacultyForGroupName([string]$facultyName)
+    {
+        return $this.sanitizeFacultyName($facultyName).ToLower()
+    }
     
     <#
         -------------------------------------------------------------------------------------
@@ -303,7 +332,7 @@ class NameGenerator
                 {
                     # Même nom de groupe (court) pour AD et "groups"
                     # vra_<envShort>_sup_<facultyName>
-                    $groupName = "{0}{1}_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('facultyName'))
+                    $groupName = "{0}{1}_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName'))
                     $groupDesc = "Support for Faculty {0} on Tenant {1} on Environment {2}" -f $this.getDetail('facultyName').toUpper(), $this.tenant.ToUpper(), $this.env.ToUpper()
                 }
                 # Shared, Users
@@ -352,7 +381,7 @@ class NameGenerator
                     # <snowServiceId>;<serviceName>
                     # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
                     # réutilisé pour d'autres choses dans la création des éléments dans vRA
-                    $groupDesc = "{0};{1}" -f $this.getDetail('snowServiceId'), $this.getDetail('serviceName')
+                    $groupDesc = "{0};{1}" -f $this.getDetail('snowServiceId').ToUpper(), $this.getDetail('serviceName')
 
                 }
                 # Autre EPFL
@@ -478,7 +507,7 @@ class NameGenerator
 
         Ancienne nomenclature plus utilisée depuis 14.02.2019
         vra_<envShort>_approval_<faculty>
-        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($facultyName)
+        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformFacultyForGroupName($facultyName)
 
         Level 1 -> vra_<envshort>_approval_iaas
         Level 2 -> vra_<envShort>_approval_<faculty>
@@ -514,7 +543,7 @@ class NameGenerator
                 }
                 elseif($level -eq 2)
                 {
-                    $last = $this.transformForGroupName($this.getDetail('facultyName'))
+                    $last = $this.transformFacultyForGroupName($this.getDetail('facultyName'))
                 }
                 else 
                 {
@@ -623,7 +652,7 @@ class NameGenerator
                 # Le premier niveau d'approbation est générique à toutes les facultés donc pas de description "précise" pour celui-ci
                 if($level -gt 1)
                 {
-                    $desc = "{0} for Faculty: {1}" -f $desc, $this.getDetail('facultyName')
+                    $desc = "{0} for Faculty: {1}" -f $desc, $this.getDetail('facultyName').ToUpper()
                 }
             }
 
@@ -703,7 +732,7 @@ class NameGenerator
                     Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
                 }
         
-                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('facultyName')), $name_suffix
+                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName')), $name_suffix
                 $desc = "Approval policy for {0} for {1} Faculty" -f $type_desc, $this.getDetail('facultyName').ToUpper()
             }
 
@@ -785,7 +814,7 @@ class NameGenerator
         {
             $global:VRA_TENANT__EPFL
             {
-                $name = "sg.epfl_{0}" -f $this.getDetail('facultyName')
+                $name = "sg.epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
                 $desc = "Tenant: {0}\nFaculty: {1}" -f $this.tenant, $this.getDetail('facultyName')
             }
 
@@ -823,7 +852,7 @@ class NameGenerator
         {
             $global:VRA_TENANT__EPFL
             {
-                $tagName = "st.epfl_{0}" -f $this.getDetail('facultyName').ToLower()
+                $tagName = "st.epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
             }
 
             
@@ -861,8 +890,8 @@ class NameGenerator
         {
             $global:VRA_TENANT__EPFL
             {
-                $name = "epfl_{0}" -f $this.getDetail('facultyName')
-                $desc = "Section for Tenant {0} and Faculty {1}" -f $this.tenant, $this.getDetail('facultyName')
+                $name = "epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName'))
+                $desc = "Section for Tenant {0} and Faculty {1}" -f $this.tenant, $this.getDetail('facultyName').toUpper()
             }
 
 
@@ -904,7 +933,7 @@ class NameGenerator
 
             $global:VRA_TENANT__EPFL
             {
-                $ruleMiddle = $this.getDetail('facultyName').ToUpper()
+                $ruleMiddle = $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
             }
 
 
@@ -1065,7 +1094,7 @@ class NameGenerator
                 {
                     $envId = $this.getEnvShortName()
                 }
-                return "{0}{1}vm" -f $this.transformForGroupName($facultyNameOrServiceShortName), $envId
+                return "{0}{1}vm" -f $this.transformFacultyForGroupName($facultyNameOrServiceShortName), $envId
             }
             
             $global:VRA_TENANT__ITSERVICES 
@@ -1136,7 +1165,7 @@ class NameGenerator
         {
             $global:VRA_TENANT__EPFL 
             { 
-                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
+                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
             }
 
             $global:VRA_TENANT__ITSERVICES 
@@ -1202,7 +1231,7 @@ class NameGenerator
         {
             $global:VRA_TENANT__EPFL
             {
-                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
+                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
             }
 
             $global:VRA_TENANT__ITSERVICES

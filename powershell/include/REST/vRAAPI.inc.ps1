@@ -544,6 +544,7 @@ class vRAAPI: RESTAPICurl
 
 		if($ent.Count -eq 0){return $null}
 		return $ent[0]
+
 	}
 
 
@@ -573,6 +574,7 @@ class vRAAPI: RESTAPICurl
 		return $this.getEntListQuery(("`$filter=substringof('{0}', name)" -f $str))
 	}
 
+	
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie un entitlement donné par son nom
@@ -880,7 +882,11 @@ class vRAAPI: RESTAPICurl
 		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
+<<<<<<< HEAD
+		IN  : $allowCache	-> $true|$false pour dire si on peut utiliser le cache
+=======
 		IN  : $allowCache	-> $true|$false pour dire si on peut utiliser le cache	
+>>>>>>> 5fed200c226339f72547090a70ba631237f4c8e2
 
 		RET : Liste des Reservations
 	#>
@@ -905,10 +911,6 @@ class vRAAPI: RESTAPICurl
 
 		return $result.content
 		
-	}
-	hidden [Array] getResListQuery()
-	{
-		return $this.getResListQuery($null)
 	}
 
 
