@@ -372,6 +372,11 @@
             "longName":  "IDEV-FIN Fonctionnement",
             "shortName":  "idevfin",
             "snowId":  "SVC0606"
+        },
+        {
+            "longName":  "Online form (InForm)",
+            "shortName":  "inform",
+            "snowId":  "SVC0092"
         }
 
 
