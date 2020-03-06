@@ -14,7 +14,7 @@
         "overwriteExistingVm": true,
         "powerOnAfterRecovery": true,
         "recoverToVmxDatastore": true,
-        "removeBackingInformation": true,
+        "removeBackingInformation": false,
         "removeNetworkInterfaces": false,
         "removeTagAssociations": false,
         "retainHardwareVersion": true,
