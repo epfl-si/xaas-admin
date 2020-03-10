@@ -5,7 +5,7 @@ USAGES:
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action getBackupList -vmName <vmName>
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreBackupId <restoreId>
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreTimestamp <restoreTimestamp>
-    xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action getRestoreStatus -vmName <vmName> -restoreJobId <restoreJobId>
+    xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action getRestoreStatus -restoreJobId <restoreJobId>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -36,7 +36,7 @@ USAGES:
     results -> liste avec un ou plusieurs éléments suivant ce qui est demandé.
 
     Confluence :
-    https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=99188910                                
+    https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=99188910
 
 #>
 param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp, [string]$restoreJobId)
@@ -211,7 +211,8 @@ try
 
         # Récupération du statut d'un restore
         $ACTION_GET_RESTORE_STATUS {
-            
+
+            $status = $nbu.getVMRestoreStatus($restoreJobId)
         }
 
     }
