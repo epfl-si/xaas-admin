@@ -1,0 +1,82 @@
+{
+    "data": {
+        "links": {
+            "self": {
+                "href": "/admin/jobs/4485"
+            },
+            "file-lists": {
+                "href": "https://itsbkp0004.xaas.epfl.ch:1556/netbackup/admin/jobs/4485/file-lists"
+            },
+            "try-logs": {
+                "href": "https://itsbkp0004.xaas.epfl.ch:1556/netbackup/admin/jobs/4485/try-logs"
+            }
+        },
+        "type": "job",
+        "id": "4485",
+        "attributes": {
+            "jobId": 4485,
+            "parentJobId": 4485,
+            "activeProcessId": 41567,
+            "mainProcessId": 41567,
+            "jobType": "RESTORE",
+            "jobSubType": "FULL_VM_RESTORE",
+            "policyType": "VMWARE",
+            "policyName": "",
+            "scheduleType": "FULL",
+            "scheduleName": "",
+            "clientName": "itsbkp0004.xaas.epfl.ch",
+            "controlHost": "",
+            "jobOwner": "root",
+            "jobGroup": "root",
+            "backupId": "",
+            "sourceMediaId": "",
+            "sourceStorageUnitName": "",
+            "sourceMediaServerName": "itsbkp0004",
+            "destinationMediaId": "",
+            "destinationStorageUnitName": "",
+            "destinationMediaServerName": "",
+            "streamNumber": 0,
+            "copyNumber": 0,
+            "priority": 0,
+            "compression": 0,
+            "state": "ACTIVE",
+            "done": 0,
+            "numberOfFiles": 0,
+            "estimatedFiles": 1,
+            "kilobytesTransferred": 400128,
+            "kilobytesToTransfer": 15728640,
+            "transferRate": 36881,
+            "percentComplete": 2,
+            "currentFile": "/VSISSPT-SIO-MA-SO01-01/sitvm0074/sitvm0074.vmdk",
+            "restartable": 0,
+            "suspendable": 0,
+            "resumable": 0,
+            "killable": 1,
+            "frozenImage": 0,
+            "transportType": "LAN",
+            "currentOperation": 14,
+            "robotName": "",
+            "vaultName": "",
+            "profileName": "",
+            "sessionId": 0,
+            "numberOfTapeToEject": 0,
+            "submissionType": 0,
+            "dumpHost": "",
+            "instanceDatabaseName": "",
+            "auditUserName": "root",
+            "auditDomainName": "itsbkp0004",
+            "auditDomainType": 7,
+            "restoreBackupIDs": "sitvm0074_1584082841\n",
+            "startTime": "2020-03-13T08:24:20.000Z",
+            "endTime": "1970-01-01T00:00:00.000Z",
+            "activeTryStartTime": "2020-03-13T08:24:20.000Z",
+            "lastUpdateTime": "2020-03-13T08:24:47.358Z",
+            "initiatorId": "itsbkp0004:nbu-api-svc-t:unixpwd",
+            "retentionLevel": 0,
+            "try": 1,
+            "jobQueueReason": 0,
+            "jobQueueResource": "",
+            "kilobytesDataTransferred": 0
+        }
+    }
+}
