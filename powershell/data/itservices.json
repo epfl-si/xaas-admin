@@ -377,6 +377,11 @@
             "longName":  "Online form (InForm)",
             "shortName":  "inform",
             "snowId":  "SVC0092"
+        },
+        {
+            "longName":  "Archiving of Research Data",
+            "shortName":  "archi",
+            "snowId":  "SVC1203"
         }
 
 
