@@ -382,6 +382,16 @@
             "longName":  "Archiving of Research Data",
             "shortName":  "archi",
             "snowId":  "SVC1203"
+        },
+        {
+            "longName":  "Camipro",
+            "shortName":  "camip",
+            "snowId":  "SVC0117"
+        },
+        {
+            "longName":  "Datacenter hosting",
+            "shortName":  "dchst",
+            "snowId":  "SVC0051"
         }
 
 
