@@ -392,7 +392,13 @@
             "longName":  "Datacenter hosting",
             "shortName":  "dchst",
             "snowId":  "SVC0051"
+        },
+        {
+            "longName":  "CRM",
+            "shortName":  "crm",
+            "snowId":  "SVC0955"
         }
+
 
 
 
