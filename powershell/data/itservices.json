@@ -30,6 +30,11 @@
             "longName":  "Multimedia library",
             "shortName":  "Media",
             "snowId":  "SVC0067"
+        },
+		{
+            "longName":  "Wired Network",
+            "shortName":  "wnet",
+            "snowId":  "SVC0101"
         }
     ],
     "prod": [
