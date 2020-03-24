@@ -865,13 +865,13 @@ class ScalityAPI: APIUtils
                 .storageUtilized    -> Taille utilisée en bytes
                 .numberOfObjects    -> Nombre d'objets
     #>
-    [PSObject]getBucketSizeInfos([string]$bucketName)
+    [PSObject]getBucketUsageInfos([string]$bucketName)
     {
 
         # Si on a une Infra Scality, on récupère les infos d'une certaine manière
         if($null -ne $this.scalityWebConsole)
         {
-            return $this.scalityWebConsole.getBucketSizeInfos($bucketName)
+            return $this.scalityWebConsole.getBucketUsageInfos($bucketName)
         }
         else # Ce n'est pas une infra Scality
         {

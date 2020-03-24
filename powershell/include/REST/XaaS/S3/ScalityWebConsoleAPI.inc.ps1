@@ -137,7 +137,7 @@ class ScalityWebConsoleAPI: RESTAPI
                 .storageUtilized    -> Taille utilisée en bytes
                 .numberOfObjects    -> Nombre d'objets
     #>
-    [PSObject]getBucketSizeInfos([string]$bucketName)
+    [PSObject]getBucketUsageInfos([string]$bucketName)
     {
         $uri = "https://{0}/_/console/utapi/buckets" -f $this.server
 
