@@ -125,4 +125,73 @@ class ScalityWebConsoleAPI: RESTAPI
 
         return $bucketList
     }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie les infos de taille d'un bucket
+
+        IN : $bucketName    -> Le nom du Bucket
+
+        RET : Objet avec les éléments suivants:
+                .storageUtilized    -> Taille utilisée en bytes
+                .numberOfObjects    -> Nombre d'objets
+    #>
+    [PSObject]getBucketSizeInfos([string]$bucketName)
+    {
+        $uri = "https://{0}/_/console/utapi/buckets" -f $this.server
+
+        <# Documentation donnée pour l'appel à l'API dans le cas où on donnerait un "timeRange" incorrect:
+        
+        "Timestamps must be one of the following intervals for any past day/hour (mm:ss:SS) - start must be one of [00:00:000, 15:00:000, 30:00:000, 45:00:000], 
+        end must be one of [14:59:999, 29:59:999, 44:59:999, 59:59:999]. Start must not be greater than end."
+        #>
+
+        $curMin = Get-Date -Format mm
+        if(($curMin -ge 0) -and ($curMin -lt 15))
+        {
+            $startMin = 0
+            $endMin = 14
+        }
+        elseif(($curMin -ge 15) -and ($curMin -lt 30))
+        {
+            $startMin = 15
+            $endMin = 29
+        }
+        elseif(($curMin -ge 30) -and ($curMin -lt 45))
+        {
+            $startMin = 30
+            $endMin = 44
+        }
+        else
+        {
+            $startMin = 45
+            $endMin = 59
+        }
+
+        $year = Get-Date -Format yyyy
+        $month = Get-Date -Format MM
+        $day = Get-Date -Format dd
+        $hour = Get-Date -Format HH
+
+        # Création des 2 timestamp unix (en millisecondes en plus!) pour faire la requête. 
+        $rangeStart = ([double]::Parse((Get-Date -Year $year -Month $month -Day $day -Hour $hour -Minute $startMin -Second 0 -Millisecond 0 -UFormat %s)) *1000)
+        $rangeEnd = ([double]::Parse((Get-Date -Year $year -Month $month -Day $day -Hour $hour -Minute $endMin -Second 59 -Millisecond 999 -UFormat %s)) *1000)
+
+        $body = @{
+                    buckets = @($bucketName)
+                    timeRange = @($rangeStart, $rangeEnd)
+                 }
+
+        
+        $result = $this.callAPI($uri, "POST", $body)
+
+        $this.handleError($result)
+
+        # Retour du résultat 
+        return @{
+                    storageUtilized = $result[0].storageUtilized[1]
+                    numberOfObjects = $result[0].numberOfObjects[1]
+                }
+    }
 }

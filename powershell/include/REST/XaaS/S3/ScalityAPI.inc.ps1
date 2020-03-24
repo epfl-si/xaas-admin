@@ -853,4 +853,31 @@ class ScalityAPI: APIUtils
                              -BucketName $bucketName
     }
 
+
+    
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie les infos de taille d'un bucket
+
+        IN : $bucketName    -> Le nom du Bucket
+
+        RET : Objet avec les éléments suivants:
+                .storageUtilized    -> Taille utilisée en bytes
+                .numberOfObjects    -> Nombre d'objets
+    #>
+    [PSObject]getBucketSizeInfos([string]$bucketName)
+    {
+
+        # Si on a une Infra Scality, on récupère les infos d'une certaine manière
+        if($null -ne $this.scalityWebConsole)
+        {
+            return $this.scalityWebConsole.getBucketSizeInfos($bucketName)
+        }
+        else # Ce n'est pas une infra Scality
+        {
+            Throw "Other infrastructure than Scality must be implemented"    
+        }
+        
+    }
+
 }
