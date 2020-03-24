@@ -402,10 +402,26 @@
             "longName":  "CRM",
             "shortName":  "crm",
             "snowId":  "SVC0955"
+        },
+        {
+            "longName":  "Software support",
+            "shortName":  "softsup",
+            "snowId":  "SVC0006"
+        },
+        {
+            "longName":  "Service Desk",
+            "shortName":  "svcdsk",
+            "snowId":  "SVC0017"
+        },
+        {
+            "longName":  "Poseidon (laptops – support and discount)",
+            "shortName":  "psdn",
+            "snowId":  "SVC0025"
+        },
+        {
+            "longName":  "SSC (Central services) management and support",
+            "shortName":  "sscsup",
+            "snowId":  "SVC0043"
         }
-
-
-
-
     ]
 }
