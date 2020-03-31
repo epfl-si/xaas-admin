@@ -422,6 +422,31 @@
             "longName":  "SSC (Central services) management and support",
             "shortName":  "sscsup",
             "snowId":  "SVC0043"
+        },
+        {
+            "longName":  "Achats - Catalyse",
+            "shortName":  "pur",
+            "snowId":  "SVC0187"
+        },
+        {
+            "longName":  "ServiceNow",
+            "shortName":  "snow",
+            "snowId":  "SVC0048"
+        },
+        {
+            "longName":  "Blogs & Wikis",
+            "shortName":  "blgwk",
+            "snowId":  "SVC0070"
+        },
+        {
+            "longName":  "EPFL's Software Use Conditions & Distrilog",
+            "shortName":  "dstlg",
+            "snowId":  "SVC0084"
+        },
+        {
+            "longName":  "Business Intelligence",
+            "shortName":  "bi",
+            "snowId":  "SVC0647"
         }
     ]
 }
