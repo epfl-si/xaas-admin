@@ -213,6 +213,32 @@ class NetBackupAPI: RESTAPICurl
 	}
 
 
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le status d'un job de backup ou restore
+		
+		IN  : $jobId		-> ID du job
+
+		Documentation:
+		https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/#_admin-admin_jobs_get
+    #>
+    [PSCustomObject] getJobDetails([string]$jobId)
+    {
+
+		$uri = "https://{0}/admin/jobs/{1}" -f $this.server, $jobId
+
+		$res = ($this.callAPI($uri, "Get", $null))
+
+		if($null -eq $res)
+		{
+			return $res
+		}
+		else
+		{
+			return $res.data
+		}
+	}
+
 
 	
 

@@ -5,6 +5,7 @@ USAGES:
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action getBackupList -vmName <vmName>
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreBackupId <restoreId>
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreTimestamp <restoreTimestamp>
+    xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action getRestoreStatus -restoreJobId <restoreJobId>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -35,10 +36,10 @@ USAGES:
     results -> liste avec un ou plusieurs éléments suivant ce qui est demandé.
 
     Confluence :
-    https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=99188910                                
+    https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=99188910
 
 #>
-param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp)
+param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp, [string]$restoreJobId)
 
 
 
@@ -73,9 +74,10 @@ $configXaaSBackup = [ConfigReader]::New("config-xaas-backup.json")
 $ACTION_GET_BACKUP_TAG = "getBackupTag"
 $ACTION_SET_BACKUP_TAG = "setBackupTag"
 
-# Récupérer la liste des backup ou dire à NetBackup d'en restaurer un
+# Récupérer la liste des backup, dire à NetBackup d'en restaurer un ou statut d'un restore existant
 $ACTION_GET_BACKUP_LIST = "getBackupList"
 $ACTION_RESTORE_BACKUP = "restoreBackup"
+$ACTION_GET_RESTORE_STATUS = "getRestoreStatus"
 
 $NBU_CATEGORY = "NBU"
 
@@ -206,6 +208,25 @@ try
             # Ajout à la liste 
             $output.results += $infos
         }
+
+        # Récupération du statut d'un restore
+        $ACTION_GET_RESTORE_STATUS {
+
+            $jobDetails = $nbu.getJobDetails($restoreJobId)
+
+            if($null -eq $jobDetails)
+            {
+                $output.error = ("No job found for id {0}" -f $restoreJobId)
+            }
+            else
+            {
+                $output.results += @{
+                                        restoreJobId = $restoreJobId
+                                        status = $jobDetails.attributes.state.ToLower()
+                                    }
+            }
+        }
+
     }
 
     # Affichage du résultat
