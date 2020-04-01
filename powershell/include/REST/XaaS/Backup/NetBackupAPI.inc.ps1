@@ -215,23 +215,28 @@ class NetBackupAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
-		BUT : Renvoie le status d'un job de restore
+		BUT : Renvoie le status d'un job de backup ou restore
 		
-		IN  : $restoreJobId		-> ID du job de restore.
-
-		REMARQUE: Seuls les $global:NETBACKUP_API_PAGE_LIMIT_MAX derniers backups de la VM seront renvoyés.
-					Dans le cas où il faudrait plus d'infos, il faudra faire plusieurs appels à l'API en 
-					modifiant le paramètre "page[offset]"
+		IN  : $jobId		-> ID du job
 
 		Documentation:
-		https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/#_catalog-catalog_images_get	
+		https://sort.veritas.com/public/documents/nbu/8.1.2/windowsandunix/productguides/html/index/#_admin-admin_jobs_get
     #>
-    [PSCustomObject] getVMRestoreStatus([string]$restoreJobId)
+    [PSCustomObject] getJobDetails([string]$jobId)
     {
 
-		$uri = "https://{0}/admin/jobs/{1}" -f $this.server, $restoreJobId
+		$uri = "https://{0}/admin/jobs/{1}" -f $this.server, $jobId
 
-		return ($this.callAPI($uri, "Get", $null)).data
+		$res = ($this.callAPI($uri, "Get", $null))
+
+		if($null -eq $res)
+		{
+			return $res
+		}
+		else
+		{
+			return $res.data
+		}
 	}
 
 

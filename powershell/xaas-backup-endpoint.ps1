@@ -212,7 +212,19 @@ try
         # Récupération du statut d'un restore
         $ACTION_GET_RESTORE_STATUS {
 
-            $status = $nbu.getVMRestoreStatus($restoreJobId)
+            $jobDetails = $nbu.getJobDetails($restoreJobId)
+
+            if($null -eq $jobDetails)
+            {
+                $output.error = ("No job found for id {0}" -f $restoreJobId)
+            }
+            else
+            {
+                $output.results += @{
+                                        restoreJobId = $restoreJobId
+                                        status = $jobDetails.attributes.state.ToLower()
+                                    }
+            }
         }
 
     }
