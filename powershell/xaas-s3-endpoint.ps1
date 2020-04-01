@@ -10,6 +10,7 @@ USAGES:
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action bucketExists -bucketName <bucketName>
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action bucketIsEmpty -bucketName <bucketName>
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getBuckets 
+    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getBucketsUsage 
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -95,15 +96,16 @@ $configXaaSS3 = [ConfigReader]::New("config-xaas-s3.json")
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
 # Liste des actions possibles
-$ACTION_CREATE          = "create"
-$ACTION_DELETE          = "delete"
-$ACTION_REGEN_KEYS      = "regenKeys"
-$ACTION_VERSIONING      = "versioning"
-$ACTION_LINKED_BUCKETS  = "linkedBuckets"
-$ACTION_GET_USERS       = "getUsers"
-$ACTION_BUCKET_EXISTS   = "bucketExists"
-$ACTION_BUCKET_IS_EMPTY = "bucketIsEmpty"
-$ACTION_GET_BUCKETS     = "getBuckets"
+$ACTION_CREATE              = "create"
+$ACTION_DELETE              = "delete"
+$ACTION_REGEN_KEYS          = "regenKeys"
+$ACTION_VERSIONING          = "versioning"
+$ACTION_LINKED_BUCKETS      = "linkedBuckets"
+$ACTION_GET_USERS           = "getUsers"
+$ACTION_BUCKET_EXISTS       = "bucketExists"
+$ACTION_BUCKET_IS_EMPTY     = "bucketIsEmpty"
+$ACTION_GET_BUCKETS         = "getBuckets"
+$ACTION_GET_BUCKETS_USAGE   = "getBucketsUsage"
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -422,6 +424,21 @@ try
             # Récupération de la list des buckets et on ne prend ensuite que le nom du bucket
             $scality.getBucketList() | ForEach-Object {
                 $output.results += $_.BucketName
+            }
+        }
+
+        #-- Taille des buckets
+        $ACTION_GET_BUCKETS_USAGE {
+
+            # Récupération de la liste des buckets et parcours
+            $scality.getBucketList() | ForEach-Object {
+
+                # Récupération des infos d'utilisation
+                $usageInfos = $scality.getBucketUsageInfos($_.BucketName)
+                # Ajout du nom du bucket
+                $usageInfos.bucketName = $_.BucketName
+
+                $output.results += $usageInfos
             }
         }
     }

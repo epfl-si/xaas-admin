@@ -210,7 +210,9 @@ try
 
     # Affichage du résultat
     displayJSONOutput -output $output
-
+    
+    # Ajout d'informations dans le log
+    $logHistory.addLine("Script result `n{0}" -f ($output | ConvertTo-Json))
 
 }
 catch

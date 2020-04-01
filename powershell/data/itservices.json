@@ -30,6 +30,11 @@
             "longName":  "Multimedia library",
             "shortName":  "Media",
             "snowId":  "SVC0067"
+        },
+		{
+            "longName":  "Wired Network",
+            "shortName":  "wnet",
+            "snowId":  "SVC0101"
         }
     ],
     "prod": [
@@ -377,9 +382,71 @@
             "longName":  "Online form (InForm)",
             "shortName":  "inform",
             "snowId":  "SVC0092"
+        },
+        {
+            "longName":  "Archiving of Research Data",
+            "shortName":  "archi",
+            "snowId":  "SVC1203"
+        },
+        {
+            "longName":  "Camipro",
+            "shortName":  "camip",
+            "snowId":  "SVC0117"
+        },
+        {
+            "longName":  "Datacenter hosting",
+            "shortName":  "dchst",
+            "snowId":  "SVC0051"
+        },
+        {
+            "longName":  "CRM",
+            "shortName":  "crm",
+            "snowId":  "SVC0955"
+        },
+        {
+            "longName":  "Software support",
+            "shortName":  "softsup",
+            "snowId":  "SVC0006"
+        },
+        {
+            "longName":  "Service Desk",
+            "shortName":  "svcdsk",
+            "snowId":  "SVC0017"
+        },
+        {
+            "longName":  "Poseidon (laptops – support and discount)",
+            "shortName":  "psdn",
+            "snowId":  "SVC0025"
+        },
+        {
+            "longName":  "SSC (Central services) management and support",
+            "shortName":  "sscsup",
+            "snowId":  "SVC0043"
+        },
+        {
+            "longName":  "Achats - Catalyse",
+            "shortName":  "pur",
+            "snowId":  "SVC0187"
+        },
+        {
+            "longName":  "ServiceNow",
+            "shortName":  "snow",
+            "snowId":  "SVC0048"
+        },
+        {
+            "longName":  "Blogs & Wikis",
+            "shortName":  "blgwk",
+            "snowId":  "SVC0070"
+        },
+        {
+            "longName":  "EPFL's Software Use Conditions & Distrilog",
+            "shortName":  "dstlg",
+            "snowId":  "SVC0084"
+        },
+        {
+            "longName":  "Business Intelligence",
+            "shortName":  "bi",
+            "snowId":  "SVC0647"
         }
-
-
-
     ]
 }
