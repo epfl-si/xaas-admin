@@ -99,8 +99,6 @@ do
     ssh -q root@${vra} "rm ${RESOURCE_TARGET_DIR}${RESOURCE_ZIP};"
     echo "done"
 
-
-    break
 done
 
 echo -n "Local cleaning... "
