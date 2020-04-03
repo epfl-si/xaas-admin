@@ -1,9 +1,11 @@
 <#
 USAGES:
-    vsphere-update-vm-notes-with-tools-version.ps1 -targetEnv prod|test|dev
+    vsphere-update-vm-notes.ps1 -targetEnv prod|test|dev
 #>
 <#
-	BUT 		: Met à jour les notes des VM en fonction de l'état des VM Tools
+    BUT 		: Met à jour les notes des VM en fonction de:
+                    - l'état des VM Tools
+                    - la date du dernier backup si la VM est backupée
 
 	DATE 		: Mai 2019
 	AUTEUR 	: Lucien Chaboudez
@@ -40,11 +42,20 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
 # Texte qui sépare les notes
-$VM_NOTE_SEPARATOR="## VMware Tools ##"
+$VM_NOTE_SEPARATOR="## VM Infos ##"
+# Texte qui séparait les notes avant, utilisé pour "migrer" d'un texte de séparation à un autre
+$VM_NOTE_SEPARATOR_OLD="## VMware Tools ##"
+
 
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
 
+<#
+-------------------------------------------------------------------------------------
+    BUT : Renvoie la note mise à jour avec les informations à ajouter
+
+    IN  : $vm    -> VM à mettre à jour
+#>
 function getUpdatedNote()
 {
     param([PSObject]$vm)
@@ -55,7 +66,21 @@ function getUpdatedNote()
     if($note -match $VM_NOTE_SEPARATOR)
     {
         # on supprime ceux-ci 
-        $note = $note -replace ("\n?{0}[\n\d\s\w:\-_,\.]*" -f $VM_NOTE_SEPARATOR)
+        $note = $note -replace ("\n?{0}[\n\d\s\w:\-_,\.\+]*" -f $VM_NOTE_SEPARATOR)
+    }
+    elseif($note -match $VM_NOTE_SEPARATOR_OLD)
+    {
+        # on supprime ceux-ci 
+        $note = $note -replace ("\n?{0}[\n\d\s\w:\-_,\.\+]*" -f $VM_NOTE_SEPARATOR_OLD)
+    }
+
+
+    # On recherche la date du dernier backup 
+    $lastBackupDate = "No backup found"
+    $lastBackupInfos = $vm.CustomFields | Where-Object { $_.Key -eq "NB_LAST_BACKUP"}
+    if($null -ne $lastBackupInfos)
+    {
+        $lastBackupDate = $lastBackupInfos.Value.Split(",")[0]
     }
 
     # Définition d'un texte de statut en fonction de celui renvoyé par vSphere
@@ -68,7 +93,7 @@ function getUpdatedNote()
     }
 
     # Ajout des détails
-    return ("{0}`n{1}`nVersion: {2}`nStatus: {3}" -f $note, $VM_NOTE_SEPARATOR, $vm.Guest.ToolsVersion, $status).trim()
+    return ("{0}`n{1}`nTools version: {2}`nTools status: {3}`nLast backup: {4}" -f $note, $VM_NOTE_SEPARATOR, $vm.Guest.ToolsVersion, $status, $lastBackupDate).trim()
 }
 
 
@@ -82,7 +107,7 @@ try
 {
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logName = 'vsphere-update-VM-notes-with-Tools-version-{0}' -f $targetEnv.ToLower()
+    $logName = 'vsphere-update-VM-notes-{0}' -f $targetEnv.ToLower()
     $logHistory = [LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
     
     # On commence par contrôler le prototype d'appel du script
@@ -118,7 +143,7 @@ try
     $logHistory.addLineAndDisplay("Getting VMs...")
 
     # Parcours des VM existantes
-    Foreach($vm in get-vm )
+    Foreach($vm in get-vm)
     {
 
         $logLine = ("VM {0}..." -f $vm.Name)
