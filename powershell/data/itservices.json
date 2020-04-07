@@ -447,6 +447,21 @@
             "longName":  "Business Intelligence",
             "shortName":  "bi",
             "snowId":  "SVC0647"
+        },
+        {
+            "longName":  "Scientific publications (Infoscience)",
+            "shortName":  "infosc",
+            "snowId":  "SVC0089"
+        },
+        {
+            "longName":  "Disclosure of external activities for Professors",
+            "shortName":  "xact",
+            "snowId":  "SVC0723"
+        },
+        {
+            "longName":  "Gestion de la facturation des Alumni",
+            "shortName":  "prjalu",
+            "snowId":  "PRJ0012176"
         }
     ]
 }
