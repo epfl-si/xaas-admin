@@ -32,6 +32,11 @@
             "snowId":  "SVC0067"
         },
 		{
+            "longName":  "Exchange Calendar TEST",
+            "shortName":  "excalt",
+            "snowId":  "SVC0088"
+        },
+		{
             "longName":  "Wired Network",
             "shortName":  "wnet",
             "snowId":  "SVC0101"
