@@ -462,6 +462,11 @@
             "longName":  "Gestion de la facturation des Alumni",
             "shortName":  "prjalu",
             "snowId":  "PRJ0012176"
+        },
+        {
+            "longName":  "Research grants (GrantsDB)",
+            "shortName":  "grants",
+            "snowId":  "SVC0002"
         }
     ]
 }
