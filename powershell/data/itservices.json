@@ -463,6 +463,16 @@
             "shortName":  "xact",
             "snowId":  "SVC0723"
         },
+		{
+            "longName":  "Laboratory Hazards Directory (LHD) Annuaire des dangers des laboratoires",
+            "shortName":  "lhdadl",
+            "snowId":  "SVC1172"
+        },
+		{
+            "longName":  "Exchange Calendar",
+            "shortName":  "excal",
+            "snowId":  "SVC0088"
+        },
         {
             "longName":  "Gestion de la facturation des Alumni",
             "shortName":  "prjalu",
