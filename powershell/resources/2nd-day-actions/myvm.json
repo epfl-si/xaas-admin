@@ -16,6 +16,10 @@
                 "approvals": [] 
             },
             {
+                "name": "Request Scan",
+                "approvals": [] 
+            },
+            {
                 "name": "Request support (VM)",
                 "approvals": []
             },
