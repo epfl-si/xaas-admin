@@ -1,4 +1,10 @@
+# https://github.com/itext/itextsharp/releases
+# https://fransblauw.com/blog/edit-and-read-pdfs-in-powershell-with-itextsharp
+
+
 function convertHTMLtoPDF
+
+# Le code de cette fonction a été repris ici (https://gallery.technet.microsoft.com/scriptcenter/Convertto-PDFFile-dda02118) et a été simplifié
 
 <#
 	.SYNOPSIS
@@ -35,134 +41,96 @@ function convertHTMLtoPDF
 		[string]
         $Destination,
         [string]
-        $binPath
+		$binPath,
+		[string]
+		$author
 	)
 	
 	Begin
 	{
-		# $currentpath = (Get-Location).Path
 		
-		# $binaryPath = Split-Path -Path $MyInvocation.ScriptName
-		
-		# Set-Location -Path $binaryPath
-		
+		# Chargement des DLL
 		Write-Verbose -Message 'Trying to Load the required assemblies'
 		
 		Write-Verbose -Message "Loading assemblies from $binPath..."
 		try
 		{
 			Write-Verbose -Message 'Trying to load the iTextSharp assembly'
-			$itextsharploadstatus = $true
 			Add-Type -Path ([IO.Path]::combine($binPath, 'itextsharp.dll')) -ErrorAction 'Stop'
-			
 		}
-		
 		catch
 		{
-			$itextsharploadstatus = $false
-			
 			Write-Error -Message 'Error loading the iTextSharp Assembly'
-			
 			break
 		}
-		if ($itextsharploadstatus)
-		{
-			Write-Verbose -Message 'Sucessfully loaded the iTextSharp Assembly'
-		}
 		
+		Write-Verbose -Message 'Sucessfully loaded the iTextSharp Assembly'
+				
 		try
 		{
             Write-Verbose -Message 'Trying to load the XMLWorker assembly'
-			$xmlworkerloadstatus = $true
-			Add-Type -Path ([IO.Path]::Combine($binPath, 'itextsharp.xmlworker.dll')) -ErrorAction 'Stop'
-			
-		}
-		
+			Add-Type -Path ([IO.Path]::Combine($binPath, 'itextsharp.xmlworker.dll')) -ErrorAction 'Stop'	
+		}		
 		catch
-		{
-			$xmlworkerloadstatus = $false
-			
+		{	
 			Write-Error -Message 'Error loading the XMLWorker Assembly'
-			
 			break
 		}
-		if ($xmlworkerloadstatus)
-		{
-			Write-Verbose -Message 'Sucessfully loaded the XMLWorker Assembly'
-		}
 		
-		[String]$HTMLCode = $Source
-		
-		#Set-Location -Path $currentpath
+		Write-Verbose -Message 'Sucessfully loaded the XMLWorker Assembly'	
 	}
+
 	Process
 	{
 		
 		Write-Verbose -Message "Creating the Document object"
-		
 		$PDFDocument = New-Object iTextSharp.text.Document
 		
 		Write-Verbose -Message "Loading the reader"
-		
-		$reader = New-Object System.IO.StringReader($HTMLCode)
+		$reader = New-Object System.IO.StringReader($Source)
 		
 		Write-Verbose -Message "Defining the PDF Page Size"
-		
 		$PDFDocument.SetPageSize([iTextSharp.text.PageSize]::A4) | Out-Null
-		
+
 		Write-Verbose -Message "Creating the FileStream"
-		
 		$Stream = [IO.File]::OpenWrite($Destination)
 		
 		Write-Verbose -Message "Defining the Writer Object"
-		
 		$Writer = [itextsharp.text.pdf.PdfWriter]::GetInstance($PDFDocument, $Stream)
 		
 		Write-Verbose -Message "Defining the Initial Lead of the Document, BUGFix"
-		
 		$Writer.InitialLeading = '12.5'
 		
 		Write-Verbose -Message "Opening the document to input the HTML Code"
-		
 		$PDFDocument.Open()
+
+		# Ajout de l'auteur. Ceci ne peut être fait qu'à partir du moment où le document PDF a été ouvert (via 'Open() )
+		Write-Verbose -Message "Setting Author to $author"
+		$dummy = $PDFDocument.AddAuthor($author)
 		
 		Write-Verbose -Message "Trying to parse the HTML into the opened document"
 		Try
-		{
-			$htmlparsestatus = $true
-			
+		{	
 			[iTextSharp.tool.xml.XMLWorkerHelper]::GetInstance().ParseXHtml($writer, $PDFDocument, $reader)
 		}
 		Catch [System.Exception]
 		{
-			
-			$htmlparsestatus = $false
-			
 			Write-Error -Message "Error parsing the HTML code"
-			
 			break
 			
 		}
-		
 	}
 	End
 	{
-        if ($htmlparsestatus)
-		{
+        Write-Verbose -Message "Sucessfully Created the PDF File"
 
-			Write-Verbose -Message "Sucessfully Created the PDF File"
+		Write-Verbose -Message "Closing the Document"
+		$PDFDocument.close()
 
-			Write-Verbose -Message "Closing the Document"
+		Write-Verbose -Message "Disposing the file so it can me moved or deleted"
+		$PDFDocument.Dispose()
 
-			$PDFDocument.close()
-
-			Write-Verbose -Message "Disposing the file so it can me moved or deleted"
-
-			$PDFDocument.Dispose()
-
-			Write-Verbose -Message "Sucessfully finished the operation"
-
-		}
+		Write-Verbose -Message "Sucessfully finished the operation"
 		
 	}
 
@@ -174,7 +142,7 @@ $binPath = ([IO.Path]::Combine("$PSScriptRoot", "bin"))
 
 [String]$HTMLCode = Get-content -path $sourceHtml -Encoding UTF8
 
-ConvertHTMLtoPDF -Source $HTMLCode -Destination $targetPDF -binPath $binPath # -Verbose 
+ConvertHTMLtoPDF -Source $HTMLCode -Destination $targetPDF -binPath $binPath -author "EPFL SI SI-EXOP" # -Verbose 
 
 
 
