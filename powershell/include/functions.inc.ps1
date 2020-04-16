@@ -225,16 +225,8 @@ function convertHTMLtoPDF([string] $Source, [string]$destinationFile, [string] $
 	$dummy = $pdfDocument.AddAuthor($author)
 	
 	# On tente de charger le HTML dans le document PDF 
-	Try
-	{	
-		[iTextSharp.tool.xml.XMLWorkerHelper]::GetInstance().ParseXHtml($writer, $pdfDocument, $reader)
-	}
-	Catch [System.Exception]
-	{
-		Throw "Error parsing the HTML code"
-		
-	}
-
+	[iTextSharp.tool.xml.XMLWorkerHelper]::GetInstance().ParseXHtml($writer, $pdfDocument, $reader)
+	
 	# Fermeture du PDF + nettoyage
 	$pdfDocument.close()
 	$pdfDocument.Dispose()

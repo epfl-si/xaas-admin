@@ -42,9 +42,38 @@ USAGES:
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 
+# Fichiers propres au script courant 
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
+
+
+<#
+	-------------------------------------------------------------------------------------
+    BUT : Prend le contenu de $valToReplace et cherche la chaine de caractère {{<key>}}
+            dans $str puis la remplace par la valeur associée
+
+	IN  : $str				-> Chaîne de caractères dans laquelle effectuer les remplacements
+	IN  : $valToReplace     -> Dictionnaaire avec en clef la chaine de caractères
+								à remplacer dans le code JSON (qui sera mise entre {{ et }} dans
+								la chaîne de caractères). 
+	
+	RET : La chaine de caractères mise à jour
+#>
+function replaceInString([string]$str, [System.Collections.IDictionary] $valToReplace)
+{
+    # Parcours des remplacements à faire
+    foreach($search in $valToReplace.Keys)
+    {
+        $strToSearch = "{{$($search)}}"
+
+        $str = $str -replace  $strToSearch, $valToReplace.Item($search)
+    }
+
+    return $str
+}
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -55,6 +84,9 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 
 try
 {
+    # Création de l'objet pour l'affichage 
+    $output = getObjectForOutput
+
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new('xaas-s3-billing', (Join-Path $PSScriptRoot "logs"), 30)
     
@@ -68,17 +100,54 @@ try
     $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "None", "None")
     
 
+    $billingDocumentPath = ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "billing-document.html"))
+    $billingDocument = Get-content -path $billingDocumentPath -Encoding UTF8
+
+    $billingItemPath = ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "billing-item.html"))
+    $billingItemTemplate = Get-content -path $billingItemPath -Encoding UTF8
 
 
-    $sourceHtml = ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "test.html"))
+    # On commence par créer le code pour les items à facturer
+    $billingItemList = ""
+
+    $dummyItems = @(
+        @{
+            prestationCode = "123456"
+            description = "Magnifique description"
+            quantity = 11.53
+            unitPrice = 20
+            totalPrice = 230.6
+        },
+        @{
+            prestationCode = "654321"
+            description = "Wazaaaa "
+            quantity = 8.25
+            unitPrice = 20
+            totalPrice = 165
+        }
+    )
+
+    foreach($billingItem in $dummyItems)
+    {
+        $billingItemList += (replaceInString -str $billingItemTemplate -valToReplace $billingItem)
+    }
+
+
+    $billingDocumentReplace = @{
+        financeCenter = "2468"
+        billingItems = $billingItemList
+    }
+
+    $billingDocument = replaceInString -str $billingDocument -valToReplace $billingDocumentReplace
+
     $targetPDF = ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "test.pdf"))
     $binPath = ([IO.Path]::Combine("$PSScriptRoot", "bin"))
 
-    $HTMLCode = Get-content -path $sourceHtml -Encoding UTF8
+    # $HTMLCode = Get-content -path $sourceHtml -Encoding UTF8
 
-    ConvertHTMLtoPDF -Source $HTMLCode -Destination $targetPDF -binPath $binPath -author "EPFL SI SI-EXOP" 
+    ConvertHTMLtoPDF -Source $billingDocument -Destination $targetPDF -binPath $binPath -author "EPFL SI SI-EXOP" 
 
-
+    # $output.results =
 
 }
 catch
