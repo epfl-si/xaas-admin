@@ -12,11 +12,11 @@
                 "approvals": [] 
             },
             {
-                "name": "Reconfigure DMZ",
+                "name": "[DMZ] Reconfigure",
                 "approvals": [] 
             },
             {
-                "name": "Request Scan",
+                "name": "[DMZ] Scan Request",
                 "approvals": [] 
             },
             {
