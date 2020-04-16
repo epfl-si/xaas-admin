@@ -162,3 +162,81 @@ function truncateString([string]$str, [int]$maxChars)
 {
 	return $str.subString(0, [System.Math]::Min($maxChars, $str.Length)) 
 }
+
+
+<#
+	-------------------------------------------------------------------------------------
+	BUT : Transforme du code HTML en un fichier PDF
+			Le code de cette fonction a été repris ici (https://gallery.technet.microsoft.com/scriptcenter/Convertto-PDFFile-dda02118) 
+			et a été simplifié
+
+	IN  : $source				-> String avec le code HTML à convertir en PDF
+	IN  : $destinationFileFile	-> Localisation du fichier PDF de sortie
+	IN  : $binPath				-> Chemin jusqu'au dossier où se trouvent les DLL utilisées 
+									la fonction:
+									+ itextsharp.dll
+									+ itextshar.xmlworker.dll
+	IN  : $author				-> Nom de l'auteur à mettre dans le fichier PDF
+
+	REMARQUE : les tags HTML suivants ne sont pas supportés:
+				<br>  (il faut utiliser des <p> mettre des <p>&nbsp;</p> si on veut une ligne vide)
+#>
+function convertHTMLtoPDF([string] $Source, [string]$destinationFile, [string] $binPath, [string] $author )
+{	
+	
+	# Chargement des DLL
+	try
+	{
+		Add-Type -Path ([IO.Path]::combine($binPath, 'itextsharp.dll')) -ErrorAction 'Stop'
+	}
+	catch
+	{
+		Throw 'Error loading the iTextSharp Assembly'
+	}
+			
+	try
+	{
+		Add-Type -Path ([IO.Path]::Combine($binPath, 'itextsharp.xmlworker.dll')) -ErrorAction 'Stop'	
+	}		
+	catch
+	{	
+		Throw 'Error loading the XMLWorker Assembly'
+	}
+
+	
+	# Création du document PDF "logique"
+	$pdfDocument = New-Object iTextSharp.text.Document
+	$pdfDocument.SetPageSize([iTextSharp.text.PageSize]::A4) | Out-Null
+	
+	# Création du lecteur de fichier 
+	$reader = New-Object System.IO.StringReader($Source)
+	
+	# Pour écrire le fichier PDF
+	$stream = [IO.File]::OpenWrite($destinationFile)
+	$writer = [itextsharp.text.pdf.PdfWriter]::GetInstance($pdfDocument, $stream)
+	
+	# Defining the Initial Lead of the Document, BUGFix
+	$writer.InitialLeading = '12.5'
+	
+	# Ouverture du document pour y importer le HTML
+	$pdfDocument.Open()
+
+	# Ajout de l'auteur. Ceci ne peut être fait qu'à partir du moment où le document PDF a été ouvert (via 'Open() )
+	$dummy = $pdfDocument.AddAuthor($author)
+	
+	# On tente de charger le HTML dans le document PDF 
+	Try
+	{	
+		[iTextSharp.tool.xml.XMLWorkerHelper]::GetInstance().ParseXHtml($writer, $pdfDocument, $reader)
+	}
+	Catch [System.Exception]
+	{
+		Throw "Error parsing the HTML code"
+		
+	}
+
+	# Fermeture du PDF + nettoyage
+	$pdfDocument.close()
+	$pdfDocument.Dispose()
+	
+}
