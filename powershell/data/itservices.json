@@ -500,7 +500,7 @@
         },
         {
             "longName":  "Gestion des Alumni",
-            "shortName":  "alumgmt",
+            "shortName":  "prjalumgmt",
             "snowId":  "PRJ0012151"
         }
     ]
