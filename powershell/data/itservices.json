@@ -482,6 +482,26 @@
             "longName":  "Research grants (GrantsDB)",
             "shortName":  "grants",
             "snowId":  "SVC0002"
+        },
+        {
+            "longName":  "Kubernetes",
+            "shortName":  "k8s",
+            "snowId":  "SVC1219"
+        },
+        {
+            "longName":  "Exploitation LINUX",
+            "shortName":  "lnx",
+            "snowId":  "SVC1215"
+        },
+        {
+            "longName":  "Ex MyVM – to be deleted",
+            "shortName":  "exmyvm",
+            "snowId":  "SVC1223"
+        },
+        {
+            "longName":  "Gestion des Alumni",
+            "shortName":  "alumgmt",
+            "snowId":  "PRJ0012151"
         }
     ]
 }
