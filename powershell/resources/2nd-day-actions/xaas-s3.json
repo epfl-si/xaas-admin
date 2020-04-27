@@ -16,11 +16,6 @@
                 "approvals": [] 
             },
             {
-                "name": "Change Owner",
-                "approvals": [] 
-            },
-
-            {
                 "name": "Delete Bucket",
                 "approvals": []
             }
