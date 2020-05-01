@@ -6,6 +6,7 @@ USAGES:
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreBackupId <restoreId>
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreTimestamp <restoreTimestamp>
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action getRestoreStatus -restoreJobId <restoreJobId>
+    xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action VMHasSnap -vmName <vmName>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -78,6 +79,9 @@ $ACTION_SET_BACKUP_TAG = "setBackupTag"
 $ACTION_GET_BACKUP_LIST = "getBackupList"
 $ACTION_RESTORE_BACKUP = "restoreBackup"
 $ACTION_GET_RESTORE_STATUS = "getRestoreStatus"
+
+# Savoir si une VM a un snapshot en cours
+$ACTION_VM_HAS_RUNNING_SNAPSHOT = "VMHasSnap"
 
 $NBU_CATEGORY = "NBU"
 
@@ -225,6 +229,44 @@ try
                                         status = $jobDetails.attributes.state.ToLower()
                                     }
             }
+        }
+
+        # Savoir si la VM a un snapshot en cours
+        $ACTION_VM_HAS_RUNNING_SNAPSHOT {
+
+            # On charge PowerCli que si on a besoin, sans afficher la sortie
+            loadPowerCliModules -displayOutput $false
+
+            # Pour éviter que le script parte en erreur si le certificat vCenter ne correspond pas au nom DNS primaire. On met le résultat dans une variable
+			# bidon sinon c'est affiché à l'écran.
+			$dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
+
+			$credSecurePwd = $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "password") | ConvertTo-SecureString -AsPlainText -Force
+			$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "user"), $credSecurePwd	
+
+			$vCenter = Connect-VIServer -Server $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "server") -Credential $credObject
+
+            # Recherche de la VM
+            $vm = Get-VM $vmName
+            
+            # Si pas trouvée 
+            if($null -eq $vm)
+            {
+                $output.error = ("VM {0} not found" -f $vmName)
+            }
+            else
+            {
+
+                $output.results += @{
+                                        vmName = $vmName
+                                        hasSnapshot = ($null -ne (Get-Snapshot -VM $vm)) 
+                                    }
+
+            } # Fin si la VM a été trouvée 
+
+			
+
+			Disconnect-VIServer -Server $vCenter -Confirm:$false 
         }
 
     }
