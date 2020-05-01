@@ -256,6 +256,16 @@ try
 }
 catch # Dans le cas d'une erreur dans le script
 {
+	# Si on avait ouvert une connexion à vCenter, on la referme 
+	if($null -ne $vcenter)
+	{
+		Disconnect-VIServer -Server $vCenter -Confirm:$false 
+	}
+	if($null -ne $vra)
+    {
+        $vra.disconnect()
+	}
+
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
 	$errorTrace = $_.ScriptStackTrace
