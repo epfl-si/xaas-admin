@@ -882,11 +882,7 @@ class vRAAPI: RESTAPICurl
 		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
-<<<<<<< HEAD
 		IN  : $allowCache	-> $true|$false pour dire si on peut utiliser le cache
-=======
-		IN  : $allowCache	-> $true|$false pour dire si on peut utiliser le cache	
->>>>>>> 5fed200c226339f72547090a70ba631237f4c8e2
 
 		RET : Liste des Reservations
 	#>
