@@ -18,7 +18,11 @@ USAGES:
         Mais il se peut que si le script se trouve sur un share réseau, l'exécution ne passe pas et qu'il 
         soit demandé d'utiliser "Unblock-File" pour permettre l'exécution. Ceci ne fonctionne pas ! A la 
         place il faut à nouveau passer par la commande Set-ExecutionPolicy mais mettre la valeur "ByPass" 
-        en paramètre.                       
+        en paramètre.      
+    
+    PREREQUIS :
+    - Le module PSWritePDF est nécessaire (https://evotec.xyz/merging-splitting-and-creating-pdf-files-with-powershell/)
+        Il peut être installé via la commande: Install-Module PSWritePDF -Force
 
 #>
 # param([string]$targetEnv, 
@@ -48,6 +52,8 @@ USAGES:
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
 
+# Constantes
+$global:BILLING_GRID_PDF_FILE = ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "BillingGrid.pdf"))
 
 <#
 	-------------------------------------------------------------------------------------
@@ -72,6 +78,28 @@ function replaceInString([string]$str, [System.Collections.IDictionary] $valToRe
     }
 
     return $str
+}
+
+
+<#
+	-------------------------------------------------------------------------------------
+    BUT : Ajoute la grille tarifaire au fichier PDF généré
+
+	IN  : $toPDFFile    -> Chemin jusqu'au fichier PDF auquel ajouter la grille tarifaire
+#>
+function addBillingGrid([string]$toPDFFile)
+{
+    # Création d'un fichier temporaire comme cible pour les fichiers "mergés"
+    $tmpPDF = New-TemporaryFile 
+
+    # Merge des 2 fichiers
+    Merge-PDF -InputFile $toPDFFile, $global:BILLING_GRID_PDF_FILE -OutputFile $tmpPDF
+
+    # Suppression du fichier PDF auquel on devait ajouter la grille et déplacement du fichier
+    # temporaire car c'est lui qui contient le résultat maintenant.
+    Remove-Item -Path $toPDFFile
+    Move-Item -Path $tmpPDF -Destination $toPDFFile
+    
 }
 
 
@@ -146,6 +174,8 @@ try
     # $HTMLCode = Get-content -path $sourceHtml -Encoding UTF8
 
     ConvertHTMLtoPDF -Source $billingDocument -Destination $targetPDF -binPath $binPath -author "EPFL SI SI-EXOP" 
+
+    addBillingGrid -toPDFFile $targetPDF
 
     # $output.results =
 
