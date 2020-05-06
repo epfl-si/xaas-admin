@@ -87,20 +87,20 @@ function replaceInString([string]$str, [System.Collections.IDictionary] $valToRe
 
 	IN  : $toPDFFile    -> Chemin jusqu'au fichier PDF auquel ajouter la grille tarifaire
 #>
-function addBillingGrid([string]$toPDFFile)
-{
-    # Création d'un fichier temporaire comme cible pour les fichiers "mergés"
-    $tmpPDF = New-TemporaryFile 
+# function addBillingGrid([string]$toPDFFile)
+# {
+#     # Création d'un fichier temporaire comme cible pour les fichiers "mergés"
+#     $tmpPDF = New-TemporaryFile 
 
-    # Merge des 2 fichiers
-    Merge-PDF -InputFile $toPDFFile, $global:BILLING_GRID_PDF_FILE -OutputFile $tmpPDF
+#     # Merge des 2 fichiers
+#     Merge-PDF -InputFile $toPDFFile, $global:BILLING_GRID_PDF_FILE -OutputFile $tmpPDF
 
-    # Suppression du fichier PDF auquel on devait ajouter la grille et déplacement du fichier
-    # temporaire car c'est lui qui contient le résultat maintenant.
-    Remove-Item -Path $toPDFFile
-    Move-Item -Path $tmpPDF -Destination $toPDFFile
+#     # Suppression du fichier PDF auquel on devait ajouter la grille et déplacement du fichier
+#     # temporaire car c'est lui qui contient le résultat maintenant.
+#     Remove-Item -Path $toPDFFile
+#     Move-Item -Path $tmpPDF -Destination $toPDFFile
     
-}
+# }
 
 
 
@@ -175,7 +175,7 @@ try
 
     ConvertHTMLtoPDF -Source $billingDocument -Destination $targetPDF -binPath $binPath -author "EPFL SI SI-EXOP" 
 
-    addBillingGrid -toPDFFile $targetPDF
+    #addBillingGrid -toPDFFile $targetPDF
 
     # $output.results =
 
