@@ -1,0 +1,82 @@
+{
+	"header": {
+		"ordertype": "ZINT",
+		"ordernr": "{{orderNumber}}",
+		"currency": "CHF",
+		"fictr": "{{financeCenterNo}}",
+		"description": "{{description}}",
+        "changevalidation" : false,
+        "distribution": "MAIL"
+	},
+	"shipper": {
+		"name": "Christophe Simond",
+		"sciper": "287589",
+		"fund": "619142",
+		"email": "christophe.simond@epfl.ch",
+		"tel": "0216931068"
+	},
+	"shipper_imputation": {
+		"opcode": "SVC1057",
+		"ordernr": "",
+		"otp": "SVC1057",
+		"affaire": "",
+		"travelreqnr": "",
+		"travelreqmatnr": ""
+	},
+	"payer_imputation": {
+		"fund": "",
+		"fundrate": ""
+	},
+	"attachment": [
+		{
+            "filename": "{{pdfBillFileName}}",
+            "filetype": "application/pdf",
+            "filesecription": "{{pdfBillFileDescription}}",
+            "filecontent": "{{pdfBillFileBase64}}"
+        },
+        {
+            "filename": "{{pdfPriceGridFileName}}",
+            "filetype": "application/pdf",
+            "filesecription": "{{pdfPriceGridFileDescription}}",
+            "filecontent": "{{pdfPriceGridFileBase64}}"
+	    }
+	],
+	"partners": [
+		{
+            "role": "",
+            "fictr": "{{financeCenterNo}}",
+            "name2": "",
+            "name3": "",
+            "email": ""
+		}
+	],
+	"items": [
+		{
+            "number": "9010135",
+            "qty": 1,
+            "price": "50",
+            "text": "Texte du poste 1",
+            "discounttype": "ZD01",
+            "discountamount": "50",
+            "shipper_imputation": {
+                "opcode": "",
+                "ordernr": "",
+                "otp": "",
+                "travelreqnr": "",
+                "travelreqmatnr": ""
+		    },
+		    "payer_imputation": [
+                {
+                    "fund": "",
+                    "fundrate": "",
+                    "opcode": "",
+                    "ordernr": "",
+                    "otp": "",
+                    "travelreqnr": "",
+                    "travelreqmatnr": ""
+                }
+            ]
+        }
+    ],
+	"execmode": "{{execMode}}"
+}
