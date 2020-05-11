@@ -170,18 +170,21 @@ function truncateString([string]$str, [int]$maxChars)
 			Le code de cette fonction a été repris ici (https://gallery.technet.microsoft.com/scriptcenter/Convertto-PDFFile-dda02118) 
 			et a été simplifié
 
-	IN  : $source				-> String avec le code HTML à convertir en PDF
+	IN  : $source				-> String avec le code HTML à convertir en PDF.
 	IN  : $destinationFileFile	-> Localisation du fichier PDF de sortie
 	IN  : $binPath				-> Chemin jusqu'au dossier où se trouvent les DLL utilisées 
 									la fonction:
 									+ itextsharp.dll
 									+ itextshar.xmlworker.dll
 	IN  : $author				-> Nom de l'auteur à mettre dans le fichier PDF
+	IN  : $landscape			-> $true|$false pour dire si orientation paysage
 
 	REMARQUE : les tags HTML suivants ne sont pas supportés:
 				<br>  (il faut utiliser des <p> mettre des <p>&nbsp;</p> si on veut une ligne vide)
+	
+	Un peu de documentation ici: https://github.com/itext/itextsharp/blob/develop/src/core/iTextSharp/text/Document.cs
 #>
-function convertHTMLtoPDF([string] $Source, [string]$destinationFile, [string] $binPath, [string] $author )
+function convertHTMLtoPDF([string] $source, [string]$destinationFile, [string] $binPath, [string] $author, [bool]$landscape)
 {	
 	
 	# Chargement des DLL
@@ -203,13 +206,22 @@ function convertHTMLtoPDF([string] $Source, [string]$destinationFile, [string] $
 		Throw 'Error loading the XMLWorker Assembly'
 	}
 
-	
 	# Création du document PDF "logique"
 	$pdfDocument = New-Object iTextSharp.text.Document
-	$pdfDocument.SetPageSize([iTextSharp.text.PageSize]::A4) | Out-Null
 	
+	# Doc sur PageSize: https://github.com/itext/itextsharp/blob/develop/src/core/iTextSharp/text/PageSize.cs
+	if($landscape)
+	{
+		$pageSize = [iTextSharp.text.PageSize]::A4.Rotate()
+	}
+	else
+	{
+		$pageSize = [iTextSharp.text.PageSize]::A4
+	}
+	$pdfDocument.SetPageSize($pageSize) | Out-Null
+
 	# Création du lecteur de fichier 
-	$reader = New-Object System.IO.StringReader($Source)
+	$reader = New-Object System.IO.StringReader($source)
 	
 	# Pour écrire le fichier PDF
 	$stream = [IO.File]::OpenWrite($destinationFile)
@@ -223,6 +235,7 @@ function convertHTMLtoPDF([string] $Source, [string]$destinationFile, [string] $
 
 	# Ajout de l'auteur. Ceci ne peut être fait qu'à partir du moment où le document PDF a été ouvert (via 'Open() )
 	$dummy = $pdfDocument.AddAuthor($author)
+	
 	
 	# On tente de charger le HTML dans le document PDF 
 	[iTextSharp.tool.xml.XMLWorkerHelper]::GetInstance().ParseXHtml($writer, $pdfDocument, $reader)
