@@ -1,4 +1,4 @@
-<#
+﻿<#
 USAGES:
     xaas-s3-billing.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -unitOrSvcID <unitOrSvcID> -friendlyName <friendlyName> [-linkedTo <linkedTo>] [-bucketTag <bucketTag>]
 #>
@@ -18,11 +18,12 @@ USAGES:
         Mais il se peut que si le script se trouve sur un share réseau, l'exécution ne passe pas et qu'il 
         soit demandé d'utiliser "Unblock-File" pour permettre l'exécution. Ceci ne fonctionne pas ! A la 
         place il faut à nouveau passer par la commande Set-ExecutionPolicy mais mettre la valeur "ByPass" 
-        en paramètre.      
+        en paramètre.  
+    - Ce script doit être sauvegardé avec l'encodage UTF8-BOM sinon les caractères accentués ne s'afficheront
+        pas correctement dans le PDF si la chaîne de caractère a été générée dans le code PowerShell.     
     
     PREREQUIS :
-    - Le module PSWritePDF est nécessaire (https://evotec.xyz/merging-splitting-and-creating-pdf-files-with-powershell/)
-        Il peut être installé via la commande: Install-Module PSWritePDF -Force
+    
 
 #>
 # param([string]$targetEnv, 
@@ -128,27 +129,32 @@ try
     $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "None", "None")
     
 
-    $billingDocumentPath = ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "billing-document.html"))
+    $billingDocumentPath = ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "PDF-Generation", "billing-document.html"))
     $billingDocument = Get-content -path $billingDocumentPath -Encoding UTF8
 
-    $billingItemPath = ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "billing-item.html"))
+    $billingItemPath = ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "PDF-Generation", "billing-item.html"))
     $billingItemTemplate = Get-content -path $billingItemPath -Encoding UTF8
 
+    $curDateYYYYMMDD = Get-Date -Format "yyyyMMdd"
+    $curDateGoodLooking = Get-Date -Format "dd.MM.yyyy"
+    $financeCenter = 1234
 
     # On commence par créer le code pour les items à facturer
     $billingItemList = ""
 
     $dummyItems = @(
         @{
-            prestationCode = "123456"
-            description = "Magnifique description"
+            prestationCode = "9010330"
+            description = "<p>Object storage S3</p><p>svc1215-b270ef4e49face9fcb7e47b4fa3d7f82</p><p>EXOPGE Satellite Backups Storage</p>"
+            monthYear = "05.2020"
             quantity = 11.53
             unitPrice = 20
             totalPrice = 230.6
         },
         @{
-            prestationCode = "654321"
-            description = "Wazaaaa "
+            prestationCode = "9010330"
+            description = "<p>Object storage S3</p><p>svc1215-8e58e0f9c815c21031ee7032d27539b0</p><p>EXOPGE Restic Backups Repository</p>"
+            monthYear = "05.2020"
             quantity = 8.25
             unitPrice = 20
             totalPrice = 165
@@ -162,20 +168,30 @@ try
 
 
     $billingDocumentReplace = @{
-        financeCenter = "2468"
+        billingFor = 'Unité'
+        element = "IC-IT"
+        billReference = ("S3_{0}_{1}" -f $curDateYYYYMMDD, $financeCenter)
+        financeCenter = $financeCenter
+        reportDate = $curDateGoodLooking
+        periodStartDate ="05.2020"
+        periodEndDate = "05.2020"
         billingItems = $billingItemList
+        quantityTot = 20
+        unitPrice = 20
+        priceTot = 400
     }
 
-    $billingDocument = replaceInString -str $billingDocument -valToReplace $billingDocumentReplace
+    $billingDocument = replaceInString -str $billingDocument -valToReplace $billingDocumentReplace 
 
     $targetPDF = ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "test.pdf"))
     $binPath = ([IO.Path]::Combine("$PSScriptRoot", "bin"))
 
     # $HTMLCode = Get-content -path $sourceHtml -Encoding UTF8
 
-    ConvertHTMLtoPDF -Source $billingDocument -Destination $targetPDF -binPath $binPath -author "EPFL SI SI-EXOP" 
+    ConvertHTMLtoPDF -Source $billingDocument -Destination $targetPDF -binPath $binPath -author "EPFL SI SI-EXOP" -landscape $true
 
-    #addBillingGrid -toPDFFile $targetPDF
+    $billingDocument | Out-File ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "test.pdf.html"))
+
 
     # $output.results =
 

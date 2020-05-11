@@ -1,18 +1,56 @@
-<h1>Facturation S3</h1>
-<h2>Service de stockage objet</h2>
+<h1>Rapport mensuel de consommation de Buckets « Object Storage S3 »</h1>
 
-<p>Pour des informations sur le service, veuillez consulter la <a href="https://support.epfl.ch/epfl?id=epfl_service_status&service=e9bd3320dbb76f40914f9ec4db961914">page suivante</a>.</p>
+<table cellpadding="3px" width="100%">
+    <tr>
+        <td><b>Facturation pour</b></td>
+        <td>{{billingFor}}</td>
+
+        <td><b>Élément concerné</b></td>
+        <td>{{element}}</td>
+    </tr>
+    <tr>
+        <td><b>Référence facture</b></td>
+        <td>{{billReference}}</td>
+
+        <td><b>Destinataire</b></td>
+        <td>CF {{financeCenter}}</td>
+    </tr>
+    <tr>
+        <td><b>Rapport du</b></td>
+        <td>{{reportDate}}</td>
+
+        <td><b>Période</b></td>
+        <td>{{periodStartDate}} au {{periodEndDate}}</td>
+    </tr>
+    <tr>
+        <td><b>Emis par</b></td>
+        <td>VPSI</td>
+
+        <td><b>Référence</b></td>
+        <td>christophe.simond@epfl.ch</td>
+    </tr>
+
+</table>
+
 <p>&nbsp;</p>
-<p>Détail de la facture pour le centre financier {{financeCenter}}</p>
 <p>&nbsp;</p>
 
-<table border="1px" style="border-collapse: collapse" cellpadding="3px" width="100%">
+<table border="1px" style="border-collapse: collapse; white-space:nowrap;" cellpadding="3px" width="100%">
     <tr style="background-color:#DDD; font-weight:bold">
         <td>Code prestation</td>
         <td>Description</td>
-        <td>Quantité [TB]</td>
-        <td>Prix unitaire [CHF]</td>
-        <td>Prix total [CHF]</td>
+        <td>Consommé le [mois]</td>
+        <td>Consommé [TB]</td>
+        <td>Prix unitaire Net [CHF/TB]</td>
+        <td>Prix total Net [CHF]</td>
     </tr>
     {{billingItems}}
+    <tr>
+        <td></td>
+        <td></td>
+        <td><b>Total</b></td>
+        <td><b>{{quantityTot}}</b></td>
+        <td><b>{{unitPrice}}</b></td>
+        <td><b>{{priceTot}}</b></td>
+    </tr>
 </table>
