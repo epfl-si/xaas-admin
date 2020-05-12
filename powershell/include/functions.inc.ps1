@@ -172,7 +172,7 @@ function truncateString([string]$str, [int]$maxChars)
 
 	IN  : $source				-> String avec le code HTML à convertir en PDF.
 	IN  : $destinationFileFile	-> Localisation du fichier PDF de sortie
-	IN  : $binPath				-> Chemin jusqu'au dossier où se trouvent les DLL utilisées 
+	IN  : $binFolder				-> Chemin jusqu'au dossier où se trouvent les DLL utilisées 
 									la fonction:
 									+ itextsharp.dll
 									+ itextshar.xmlworker.dll
@@ -184,13 +184,13 @@ function truncateString([string]$str, [int]$maxChars)
 	
 	Un peu de documentation ici: https://github.com/itext/itextsharp/blob/develop/src/core/iTextSharp/text/Document.cs
 #>
-function convertHTMLtoPDF([string] $source, [string]$destinationFile, [string] $binPath, [string] $author, [bool]$landscape)
+function convertHTMLtoPDF([string] $source, [string]$destinationFile, [string] $binFolder, [string] $author, [bool]$landscape)
 {	
 	
 	# Chargement des DLL
 	try
 	{
-		Add-Type -Path ([IO.Path]::combine($binPath, 'itextsharp.dll')) -ErrorAction 'Stop'
+		Add-Type -Path ([IO.Path]::combine($binFolder, 'itextsharp.dll')) -ErrorAction 'Stop'
 	}
 	catch
 	{
@@ -199,7 +199,7 @@ function convertHTMLtoPDF([string] $source, [string]$destinationFile, [string] $
 			
 	try
 	{
-		Add-Type -Path ([IO.Path]::Combine($binPath, 'itextsharp.xmlworker.dll')) -ErrorAction 'Stop'	
+		Add-Type -Path ([IO.Path]::Combine($binFolder, 'itextsharp.xmlworker.dll')) -ErrorAction 'Stop'	
 	}		
 	catch
 	{	
