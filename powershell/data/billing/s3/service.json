@@ -1,0 +1,20 @@
+{
+    "docTitle": "Rapport mensuel de consommation de Buckets « Object Storage S3 »",
+    "serviceName": "S3",
+    "unitPricePerMonthCHF": 7,
+    "pdfAuthor": "EPFL SI SI-EXOP",
+    "billingFrom": "VPSI",
+    "billingReference": "christophe.simond@epfl.ch",
+    "billingGrid": "billing-grid.pdf",
+    "prestationCode": "9010330",
+    "itemColumns":
+    {
+        "colCode": "Code prestation",
+        "colDesc": "Description",
+        "colMonthYear": "Consommé le [mois]",
+        "colConsumed": "Consommé [TB]",
+        "colUnitPrice": "Prix unitaire net [CHF/TB]",
+        "colTotPrice": "Prix total net [CHF]"
+    }
+    
+}
