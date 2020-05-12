@@ -1,0 +1,14 @@
+{
+    "dev":
+    {
+        "jsonSourceRoot": ""
+    },
+    "test":
+    {
+        "jsonSourceRoot": ""
+    },
+    "prod":
+    {
+        "jsonSourceRoot": ""
+    }
+}
