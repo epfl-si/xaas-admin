@@ -1,12 +1,12 @@
-<h1>Rapport mensuel de consommation de Buckets « Object Storage S3 »</h1>
+<h2>{{docTitle}}</h2>
 
 <table cellpadding="3px" width="100%">
     <tr>
         <td><b>Facturation pour</b></td>
-        <td>{{billingFor}}</td>
+        <td>{{billingForType}}</td>
 
         <td><b>Élément concerné</b></td>
-        <td>{{element}}</td>
+        <td>{{billingForElement}}</td>
     </tr>
     <tr>
         <td><b>Référence facture</b></td>
@@ -24,10 +24,10 @@
     </tr>
     <tr>
         <td><b>Emis par</b></td>
-        <td>VPSI</td>
+        <td>{{billingFrom}}</td>
 
         <td><b>Référence</b></td>
-        <td>christophe.simond@epfl.ch</td>
+        <td>{{billingReference}}</td>
     </tr>
 
 </table>
@@ -37,12 +37,12 @@
 
 <table border="1px" style="border-collapse: collapse; white-space:nowrap;" cellpadding="3px" width="100%">
     <tr style="background-color:#DDD; font-weight:bold">
-        <td>Code prestation</td>
-        <td>Description</td>
-        <td>Consommé le [mois]</td>
-        <td>Consommé [TB]</td>
-        <td>Prix unitaire Net [CHF/TB]</td>
-        <td>Prix total Net [CHF]</td>
+        <td>{{colCode}}</td>
+        <td>{{colDesc}}</td>
+        <td>{{colMonthYear}}</td>
+        <td>{{colConsumed}}</td>
+        <td>{{colUnitPrice}}</td>
+        <td>{{colTotPrice}}</td>
     </tr>
     {{billingItems}}
     <tr>
@@ -50,7 +50,7 @@
         <td></td>
         <td><b>Total</b></td>
         <td><b>{{quantityTot}}</b></td>
-        <td><b>{{unitPrice}}</b></td>
-        <td><b>{{priceTot}}</b></td>
+        <td><b>{{unitPricePerMonthCHF}}</b></td>
+        <td><b>{{totalPrice}}</b></td>
     </tr>
 </table>
