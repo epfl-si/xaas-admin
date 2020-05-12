@@ -97,3 +97,9 @@ $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE = "FORCE_ISO_FOLDER_ACL_
 ## NSX
 # Nom de la section avant laquelle il faut créer les sections de Firewall vide
 $global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME = "Legacy VLAN"
+
+
+## Billing
+$global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-document.html"))
+$global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-item.html"))
+$global:XAAS_BILLING_PDF_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "billing"))
