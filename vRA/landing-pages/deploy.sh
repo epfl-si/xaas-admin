@@ -88,7 +88,7 @@ do
     echo -n "> Updating files... "
     # On extrait les fichiers au bon endroit mais ils seront dans le dossier "bundle" donc il faut les déplacer dans le dossier parent
     # et ensuite supprimer le dossier "bundle"
-    ssh -q root@${vra} "cd ${RESOURCE_TARGET_DIR}; unzip -q -ou ${RESOURCE_ZIP}; mv ${RESOURCE_FOLDER_TO_UPDATE}/* . ; rm -r ${RESOURCE_FOLDER_TO_UPDATE}"
+    ssh -q root@${vra} "cd ${RESOURCE_TARGET_DIR}; unzip -q -ou ${RESOURCE_ZIP}; mv ${RESOURCE_FOLDER_TO_UPDATE}/images/* ./images/ ; rm -r ${RESOURCE_FOLDER_TO_UPDATE}"
     echo "done"
 
     echo -n "> Updating rights... "
