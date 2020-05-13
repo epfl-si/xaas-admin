@@ -37,18 +37,20 @@ class MySQL
         IN  : $db               -> Nom de la base de données à laquelle se connecter
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
-        IN  : $pathToMySQLExe   -> Chemin jusqu'au programme 'mysql.exe' sur le disque dur
+        IN  : $binPath          -> Chemin jusqu'au dossier "bin" dans lequel on peut trouver 'mysql.exe'
         IN  : $port             -> (optionnel) No de port à utiliser
 
 		RET : Instance de l'objet
 	#>
-    MySQL([string]$server, [string]$db, [string]$username, [string]$password, [string]$pathToMySQLExe, [int]$port=3306)
+    MySQL([string]$server, [string]$db, [string]$username, [string]$password, [string]$binPath, [int]$port=3306)
     {
         $this.server    = $server
         $this.db        = $db
         $this.username  = $username
         $this.password  = $password
         $this.port      = $port
+
+        $pathToMySQLExe = ([IO.Path]::Combine($binPath, "mysql.exe"))
 
         # Check de la validité du chemin passé
         if( !(Test-Path $pathToMySQLExe))
