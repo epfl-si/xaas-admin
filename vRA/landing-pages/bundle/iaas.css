@@ -79,15 +79,15 @@ div.tenant img.logo {
 
 
 div.tenant-epfl {
-   background-image: url('images/Background-EPFL.png');
+   background-image: url('images/Panel-EPFL.png');
 }
 
 div.tenant-its {
-   background-image: url('images/Background-ITServices.png');
+   background-image: url('images/Panel-ITServices.png');
 }
 
 div.tenant-research {
-   background-image: url('images/Background-Research.png');
+   background-image: url('images/Panel-Research.png');
    
 }
 
