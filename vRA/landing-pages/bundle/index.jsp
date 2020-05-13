@@ -39,7 +39,7 @@
    <script>
       var userLang = navigator.language || navigator.userLanguage; 
       document.getElementById('its').innerHTML = (userLang.startsWith("fr"))?"Portail Services IT":"IT Service Portal";   
-      document.getElementById('epfl').innerHTML = (userLang.startsWith("fr"))?"Portail Unités EPFL":"EPFL Units Portal";   
+      document.getElementById('epfl').innerHTML = (userLang.startsWith("fr"))?"Portail Unit&eacute;s EPFL":"EPFL Units Portal";   
       document.getElementById('research').innerHTML = (userLang.startsWith("fr"))?"Portail Recherche":"Research Portal";   
    </script>
 
