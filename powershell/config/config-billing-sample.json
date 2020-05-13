@@ -1,14 +1,38 @@
 {
     "dev":
     {
-        "jsonSourceRoot": ""
+        "jsonSourceRoot": "",
+        "db": 
+        {
+            "host":"",
+            "user":"",
+            "password":"",
+            "dbName":"",
+            "port":""
+        }
     },
     "test":
     {
-        "jsonSourceRoot": ""
+        "jsonSourceRoot": "",
+        "db": 
+        {
+            "host":"",
+            "user":"",
+            "password":"",
+            "dbName":"",
+            "port":""
+        }
     },
     "prod":
     {
-        "jsonSourceRoot": ""
+        "jsonSourceRoot": "",
+        "db": 
+        {
+            "host":"",
+            "user":"",
+            "password":"",
+            "dbName":"",
+            "port":""
+        }
     }
 }
