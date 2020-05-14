@@ -1,0 +1,10 @@
+# Configuration pour les différents environnements
+
+SERVER_LIST_DEV=""
+SERVER_LIST_TEST=""
+SERVER_LIST_PROD=""
+
+# Pour reconstruire l'URL d'include de l'image dans le header des mails
+SERVER_MAIN_DEV=""
+SERVER_MAIN_TEST=""
+SERVER_MAIN_PROD=""
