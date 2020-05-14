@@ -33,11 +33,12 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ITServices.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTCurl.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
@@ -616,25 +617,11 @@ try
 		$counters.add('its.serviceProcessed', '# Service processed')
 		$counters.add('its.serviceSkipped', '# Service skipped')
 
-		# Check de l'existence du fichier JSON contenant la liste des services
-		$itServiceJSONFile = ([IO.Path]::Combine($global:DATA_FOLDER, "itservices.json"))
-		if(!(Test-Path $itServiceJSONFile ))
-		{
-			Throw ("JSON file with ITServices not found ! ({0})" -f $itServiceJSONFile)
-		}
-
-		# Chargement des données depuis le fichier 
-		$servicesList = ((Get-Content -Path $itServiceJSONFile) -join "`n") | ConvertFrom-Json
-		
-		# Si on rencontre une erreur, 
-		if(($servicesList -eq $false) -or ($null -eq $servicesList))
-		{
-			Throw ("Error getting Services list for '{0}' tenant" -f $targetTenant)
-		}
+		# Objet pour lire les informations sur le services IT
+		$itServices = [ITServices]::new()
 
 		# On prend la liste correspondant à l'environnement sur lequel on se trouve
-		$servicesList = $servicesList.$targetEnv
-
+		$servicesList = $itServices.getServiceList($targetEnv)
 
 		$serviceNo = 1 
 		# Parcours des services renvoyés par Django
