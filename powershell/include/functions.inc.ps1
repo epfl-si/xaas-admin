@@ -245,3 +245,16 @@ function convertHTMLtoPDF([string] $source, [string]$destinationFile, [string] $
 	$pdfDocument.Dispose()
 	
 }
+
+
+<#
+	-------------------------------------------------------------------------------------
+	BUT : Tronque un nombre à virgule pour avoir un nombre décimales définies (sans arrondir)
+
+	IN  : $number		-> Le nombre à tronquer
+	IN  : $nbDecimals	-> Le nombre de décimales à mettre
+#>
+function truncateToNbDecimal([float]$number, [int]$nbDecimals)
+{
+	return [System.Math]::Floor($number * [Math]::Pow(10, $nbDecimals)) / [Math]::Pow(10, $nbDecimals)
+}

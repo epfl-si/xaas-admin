@@ -48,11 +48,34 @@ class ITServices
         
         IN  : $forTargetEnv    -> Nom de l'environnement pour lequel on veut la liste des services
 
-		RET : Instance de l'objet
+		RET : Tableau avec la liste des services
 	#>
     [Array] getServiceList([string]$forTargetEnv)
     {
         return $this.serviceList.$forTargetEnv
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie les détails d'un service donné par son ID
+        
+        IN  : $forTargetEnv    -> Nom de l'environnement pour lequel on veut la liste des services
+        IN  : $svcID            -> ID du service pour lequel on veut les infos.
+
+		RET : Objet avec les détails du service
+	#>
+    [PSObject] getServiceInfos([string]$forTargetEnv, [string]$svcID)
+    {
+        ForEach($service in $this.getServiceList($forTargetEnv))
+        {
+            if($service.snowId -eq $svcID)
+            {
+                return $service
+            }
+        }
+
+        return $null
     }
 
 }

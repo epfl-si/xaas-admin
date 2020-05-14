@@ -40,6 +40,11 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "Billing.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "BillingS3Bucket.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "ITServices.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
@@ -207,40 +212,64 @@ try
     
     # Objet pour pouvoir envoyer des mails de notification
     $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "None", "None")
+
+    # Pour accéder à la base de données
+    $mysql = [MySQL]::new($configBilling.getConfigValue($targetEnv, "db", "host"), `
+                          $configBilling.getConfigValue($targetEnv, "db", "dbName"), `
+                          $configBilling.getConfigValue($targetEnv, "db", "user"), `
+                          $configBilling.getConfigValue($targetEnv, "db", "password"), `
+                          $global:BINARY_FOLDER, `
+                          $configBilling.getConfigValue($targetEnv, "db", "port"))
+
+    $ldap = [EPFLLDAP]::new()
+
+    # Objet pour lire les informations sur le services IT
+    $itServices = [ITServices]::new()
+
+    # On prend la liste correspondant à l'environnement sur lequel on se trouve
+    $servicesList = $itServices.getServiceList($targetEnv)
+
+    $billingS3Bucket = [BillingS3Bucket]::new($mysql, $ldap, $servicesList, $targetEnv)
+
+    $billingS3Bucket.extractData(4, 2020)
+
     
-    # Templates pour la génération de factures
-    $billingTemplate = Get-content -path $global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE -Encoding UTF8
-    $billingItemTemplate = Get-content -path $global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE -Encoding UTF8
+    
 
-    # Génération de la date courante dans les formats nécessaires
-    $curDateYYYYMMDD = Get-Date -Format "yyyyMMdd"
-    $curDateGoodLooking = Get-Date -Format "dd.MM.yyyy"
 
-    # Dossier dans lequel on pourra trouver les fichiers JSON
-    $jsonFolder = ([IO.Path]::Combine($configBilling.getConfigValue($targetEnv, "jsonSourceRoot"), $targetTenant.ToLower(), $service)) 
+    # # Templates pour la génération de factures
+    # $billingTemplate = Get-content -path $global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE -Encoding UTF8
+    # $billingItemTemplate = Get-content -path $global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE -Encoding UTF8
 
-    # Fichier JSON contenant les détails du service que l'on veut facturer
-    $serviceInfosFile = ([IO.Path]::Combine("$PSScriptRoot", "data", "billing", $service.ToLower(), "service.json"))
+    # # Génération de la date courante dans les formats nécessaires
+    # $curDateYYYYMMDD = Get-Date -Format "yyyyMMdd"
+    # $curDateGoodLooking = Get-Date -Format "dd.MM.yyyy"
 
-    if(!(Test-Path -path $serviceInfosFile))
-    {
-        Throw ("Service file ({0}) for '{1}' not found. Please create it from 'config-sample.json' file." -f $serviceInfosFile, $service)
-    }
+    # # Dossier dans lequel on pourra trouver les fichiers JSON
+    # $jsonFolder = ([IO.Path]::Combine($configBilling.getConfigValue($targetEnv, "jsonSourceRoot"), $targetTenant.ToLower(), $service)) 
 
-    # Chargement des informations (On spécifie UTF8 sinon les caractères spéciaux ne sont pas bien interprétés)
-    $serviceInfos = Get-Content -Path $serviceInfosFile -Encoding:UTF8 | ConvertFrom-Json
+    # # Fichier JSON contenant les détails du service que l'on veut facturer
+    # $serviceInfosFile = ([IO.Path]::Combine("$PSScriptRoot", "data", "billing", $service.ToLower(), "service.json"))
 
-    # SI on doit traiter seulement un élément,
-    if($null -ne $limitToFile)
-    {
-        $logHistory.addLine(("Execution limited to file {0}" -f $limitToFile))
-        $sourceJSON = ([IO.Path]::Combine($jsonFolder, $limitToFile))
-        createBill -sourceJSON $sourceJSON -serviceInfos $serviceInfos
-    }
-    else # On doit traiter tous les éléments
-    {
+    # if(!(Test-Path -path $serviceInfosFile))
+    # {
+    #     Throw ("Service file ({0}) for '{1}' not found. Please create it from 'config-sample.json' file." -f $serviceInfosFile, $service)
+    # }
+
+    # # Chargement des informations (On spécifie UTF8 sinon les caractères spéciaux ne sont pas bien interprétés)
+    # $serviceInfos = Get-Content -Path $serviceInfosFile -Encoding:UTF8 | ConvertFrom-Json
+
+    # # SI on doit traiter seulement un élément,
+    # if($null -ne $limitToFile)
+    # {
+    #     $logHistory.addLine(("Execution limited to file {0}" -f $limitToFile))
+    #     $sourceJSON = ([IO.Path]::Combine($jsonFolder, $limitToFile))
+    #     createBill -sourceJSON $sourceJSON -serviceInfos $serviceInfos
+    # }
+    # else # On doit traiter tous les éléments
+    # {
         
-    }
+    # }
 
 
 

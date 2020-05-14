@@ -249,4 +249,47 @@ class EPFLLDAP
 	}
 
 
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Retourne les informations d'une unité
+
+		IN  : $unitUniqueIdentifier	-> Identifiant unique de l'unité (numérique)
+
+		RET : Objet avec les informations suivantes
+				- description
+				- uniqueidentifier
+				- memberuid
+				- displayname
+				- member
+				- cn
+				- memberuniqueid
+				- adspath
+				- objectclass
+				- gidnumber
+	#>
+	[PSObject] getUnitInfos([string]$unitUniqueIdentifier)
+	{
+		# On ajoute des 0 si besoin au début du no de l'unité pour que ça renvoie bien un résultat après
+		$unitUniqueIdentifier = $unitUniqueIdentifier.PadLeft(5, '0')
+
+		# Parcours des informations que l'on a
+		ForEach($ldapInfos in $this.LDAPconfig.facultyUnits.locations)
+		{
+
+			# Recherche des unités de manière récursive
+			$unit = $this.LDAPSearch($this.LDAPconfig.facultyUnits.server, $ldapInfos.rootDN, "subtree", `
+									("(&(objectClass=organizationalUnit)(uniqueidentifier={0}))" -f $unitUniqueIdentifier), @("*"))
+
+			if($unit.count -eq 1)
+			{
+				return $unit[0].Properties
+			}
+		}
+
+		return $null
+
+	}
+
+
+
 }

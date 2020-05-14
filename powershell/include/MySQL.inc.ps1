@@ -85,18 +85,26 @@ class MySQL
         {
             return $false
         }
-        
-        $result = $MySQLProcess.StandardOutput.ReadToEnd() | ConvertFrom-Csv -Delimiter "`t"
 
-        # Transformation du résultat en tableau s'il n'y a qu'un seul enregistrement renvoyé. Ceci permettra de gérer le retour
-        # de cette fonction d'une manière uniforme sans avoir à contrôler si c'est un tableau ou pas.
+        $result = $null
 
-        # NOTE: Lors du parcours des enregistrements présents dans le tableau, il faudra accéder les champs via $record.<nomDuChamp> et pas
-        # via $record[<nomDuChamp>]
-        if($result -isnot [Array])
+        # Si on a demandé à récupérer des données, 
+        if($query -like "SELECT*" )
         {
-            $result = @($result)
+
+            $result = $MySQLProcess.StandardOutput.ReadToEnd() | ConvertFrom-Csv -Delimiter "`t"
+
+            # Transformation du résultat en tableau s'il n'y a qu'un seul enregistrement renvoyé. Ceci permettra de gérer le retour
+            # de cette fonction d'une manière uniforme sans avoir à contrôler si c'est un tableau ou pas.
+
+            # NOTE: Lors du parcours des enregistrements présents dans le tableau, il faudra accéder les champs via $record.<nomDuChamp> et pas
+            # via $record[<nomDuChamp>]
+            if($result -isnot [Array])
+            {
+                $result = @($result)
+            }
         }
+
         return $result
 
     }
