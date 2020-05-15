@@ -1,6 +1,8 @@
 {
     "docTitle": "Rapport mensuel de consommation de Buckets « Object Storage S3 »",
     "serviceName": "S3",
+    "itemTypeInDB": "S3 Bucket",
+    "itemDescPrefix":"Object Storage S3",
     "unitPricePerMonthCHF": 7,
     "pdfAuthor": "EPFL SI SI-EXOP",
     "billingFrom": "VPSI",
