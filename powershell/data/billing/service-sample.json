@@ -1,6 +1,8 @@
 {
     "docTitle": "", //Titre du document PDF"
     "serviceName": "", // Nom du service que l'on facture
+    "itemTypeInDB": "", // Type de l'item à facturer, pour le classifier dans la DB
+    "itemDescPrefix":"", // Préfix à ajouter à la description de chaque item quand on l'ajoute dans la table BillingItem via la classe enfante dédiée à ça
     "unitPricePerMonthCHF": 0, // prix unitaire, par mois
     "billingFrom": "", // qui a émis la facture, on met normalement "VPSI"
     "billingReference": "", // Adresse mail de la personne de référence pour l'émission de la facture
