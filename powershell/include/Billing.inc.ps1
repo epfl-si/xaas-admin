@@ -242,6 +242,47 @@ class Billing
     }
 
 
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des entités existantes dans la DB
+    #>
+    [Array] getEntityList()
+    {
+        return $this.mysql.execute("SELECT * FROM BillingEntity")
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des items d'une entité qu'il faut encore facturer
+
+        IN  : $entityId -> id de l'entité des items
+        IN  : $itemType -> Type d'item auquel on est intéressé
+    #>
+    [Array] getEntityItemToBeBilledList([string]$entityId, [string]$itemType)
+    {
+        # Recherche des éléments. On trie par chronologie et nom d'élément et on ne prend que ceux qui n'ont pas été facturés.
+        $request = "SELECT * FROM BillingItem WHERE parentEntityId='{0}' AND itemType='{1}' AND itemBillingDate IS NULL ORDER BY itemYear,itemMonth,itemName ASC" -f `
+                     $entityId, $itemType
+
+        return $this.mysql.execute($request)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Initialise un item comme ayant été facturé. On initialise simplement la date 
+                de facturation.
+
+        IN  : $entityId -> id de l'entité des items
+        IN  : $itemType -> Type d'item à noter comme facturés
+    #>
+    [void] setEntityItemTypeAsBilled([string]$entityId, [string]$itemType)
+    {
+        $request = "UPDATE BillingItem SET itemBillingDate=NOW() WHERE parentEntityId='{0}' AND itemType='{1}' AND itemBillingDate IS NULL " -f $entityId, $itemType
+
+        $this.mysql.execute($request)
+    }
 
 
     <#

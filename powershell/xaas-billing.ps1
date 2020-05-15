@@ -188,7 +188,7 @@ try
     $logHistory.addLineAndDisplay("Looking for entities...")
 
     # Recherche des entités à facturer
-    $entityList = $mysql.execute("SELECT * FROM BillingEntity")
+    $entityList = $billingS3Bucket.getEntityList()
 
     $logHistory.addLineAndDisplay(("{0} entities found" -f $entityList.count))
     
@@ -210,10 +210,7 @@ try
         $logHistory.addLineAndDisplay(("> Looking for items for service '{0}' ({1})" -f $service, $serviceBillingInfos.itemTypeInDB))
 
         # Recherche pour les éléments qu'il faut facturer et qui ne l'ont pas encore été
-        $request = "SELECT * FROM BillingItem WHERE parentEntityId='{0}' AND itemType='{1}' AND itemBillingDate IS NULL ORDER BY itemYear,itemMonth,itemName ASC" -f `
-                     $entity.entityId, $serviceBillingInfos.itemTypeInDB
-
-        $itemList = $mysql.execute($request)
+        $itemList = $billingS3Bucket.getEntityItemToBeBilledList($entity.entityId, $serviceBillingInfos.itemTypeInDB)
 
         $logHistory.addLineAndDisplay(("> {0} found = {1}" -f $serviceBillingInfos.itemTypeInDB, $itemList.count))
 
@@ -264,55 +261,64 @@ try
 
         ## 2. On passe maintenant à la facture en elle-même
 
-        # Référence de la facture
-        $billReference = ("{0}_{1}_{2}" -f $serviceBillingInfos.serviceName, $curDateYYYYMMDD, $entity.entityFinanceCenter) 
-
-        # Elements à remplacer dans le document racine permettant de générer le HTML
-        $billingDocumentReplace = @{
-
-            docTitle = $serviceBillingInfos.docTitle
-
-            # Entête
-            billingForType = $entity.entityType
-            billingForElement = $entity.entityElement
-            billReference = $billReference
-            financeCenter = $entity.entityFinanceCenter
-            reportDate = $curDateGoodLooking 
-            periodStartDate = Get-Date -Format "MM.yyyy" -Date $billingBeginDate
-            periodEndDate = Get-Date -Format "MM.yyyy" -Date $billingEndDate
-
-            billingReference = $serviceBillingInfos.billingReference
-            billingFrom = $serviceBillingInfos.billingFrom
-
-            # Nom des colonnes
-            colCode = $serviceBillingInfos.itemColumns.colCode
-            colDesc = $serviceBillingInfos.itemColumns.colDesc
-            colMonthYear = $serviceBillingInfos.itemColumns.colMonthYear
-            colConsumed = $serviceBillingInfos.itemColumns.colConsumed
-            colUnitPrice = $serviceBillingInfos.itemColumns.colUnitPrice
-            colTotPrice = $serviceBillingInfos.itemColumns.colTotPrice
-
-            # Liste des élément facturés 
-            billingItems = $billingItemListHtml
-
-            # Dernière ligne du tableau
-            quantityTot = $quantityTot
-            unitPricePerMonthCHF = $serviceBillingInfos.unitPricePerMonthCHF
-            totalPrice = $totalPrice
-        }
-
-        $billingTemplateHtml= replaceInString -str $billingTemplate -valToReplace $billingDocumentReplace 
-
-        # Génération du nom du fichier PDF de sortie
-        $PDFFilename = "{0}__{1}.pdf" -f ($billReference, $entity.entityElement)
-        $targetPDFPath = ([IO.Path]::Combine($global:XAAS_BILLING_PDF_FOLDER, $PDFFilename))
-
-        $logHistory.addLineAndDisplay(("> Generating PDF '{0}'" -f $targetPDFPath))
-        ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceBillingInfos.pdfAuthor -landscape $true
-
+        
+        # Si on n'a pas atteint le montant minimum pour émettre une facture,
         if($totalPrice -lt $global:BILLING_MIN_MOUNT_CHF)
         {
             $logHistory.addLineAndDisplay(("Entity '{0}' won't be billed this month, bill amount to small ({1} CHF)" -f $entity.entityElement, $totalPrice))
+        }
+        else
+        {
+
+            # Référence de la facture
+            $billReference = ("{0}_{1}_{2}" -f $serviceBillingInfos.serviceName, $curDateYYYYMMDD, $entity.entityFinanceCenter) 
+
+            # Elements à remplacer dans le document racine permettant de générer le HTML
+            $billingDocumentReplace = @{
+
+                docTitle = $serviceBillingInfos.docTitle
+
+                # Entête
+                billingForType = $entity.entityType
+                billingForElement = $entity.entityElement
+                billReference = $billReference
+                financeCenter = $entity.entityFinanceCenter
+                reportDate = $curDateGoodLooking 
+                periodStartDate = Get-Date -Format "MM.yyyy" -Date $billingBeginDate
+                periodEndDate = Get-Date -Format "MM.yyyy" -Date $billingEndDate
+
+                billingReference = $serviceBillingInfos.billingReference
+                billingFrom = $serviceBillingInfos.billingFrom
+
+                # Nom des colonnes
+                colCode = $serviceBillingInfos.itemColumns.colCode
+                colDesc = $serviceBillingInfos.itemColumns.colDesc
+                colMonthYear = $serviceBillingInfos.itemColumns.colMonthYear
+                colConsumed = $serviceBillingInfos.itemColumns.colConsumed
+                colUnitPrice = $serviceBillingInfos.itemColumns.colUnitPrice
+                colTotPrice = $serviceBillingInfos.itemColumns.colTotPrice
+
+                # Liste des élément facturés 
+                billingItems = $billingItemListHtml
+
+                # Dernière ligne du tableau
+                quantityTot = $quantityTot
+                unitPricePerMonthCHF = $serviceBillingInfos.unitPricePerMonthCHF
+                totalPrice = $totalPrice
+            }
+            
+            $billingTemplateHtml= replaceInString -str $billingTemplate -valToReplace $billingDocumentReplace 
+
+            # Génération du nom du fichier PDF de sortie
+            $PDFFilename = "{0}__{1}.pdf" -f ($billReference, $entity.entityElement)
+            $targetPDFPath = ([IO.Path]::Combine($global:XAAS_BILLING_PDF_FOLDER, $PDFFilename))
+
+            $logHistory.addLineAndDisplay(("> Generating PDF '{0}'" -f $targetPDFPath))
+            ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceBillingInfos.pdfAuthor -landscape $true    
+
+            # On dit que tous les items de la facture ont été facturés
+            $billingS3Bucket.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB)
+            
         }
 
     }
