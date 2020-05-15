@@ -31,11 +31,12 @@ class BillingS3Bucket: Billing
         IN  : $mysql        -> Objet de la classe MySQL permettant d'accéder aux données.
         IN  : $ldap         -> Connexion au LDAP pour récupérer les infos sur les unités
         IN  : $serviceList  -> Objet avec la liste de services (chargé depuis le fichier JSON itservices.json)
+        IN  : $serviceBillingInfos  -> Objet avec les informations de facturation pour le service 
         IN  : $targetEnv    -> Nom de l'environnement sur lequel on est.
 
 		RET : Instance de l'objet
 	#>
-    BillingS3Bucket([MySQL]$mysql, [EPFLLDAP]$ldap, [PSObject]$serviceList, [string]$targetEnv) : base($mysql, $ldap, $serviceList, $targetEnv)
+    BillingS3Bucket([MySQL]$mysql, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv) : base($mysql, $ldap, $serviceList, $serviceBillingInfos, $targetEnv)
     {
     }
 
@@ -102,7 +103,7 @@ class BillingS3Bucket: Billing
         $request = "SELECT AVG(storageUtilized)/1024/1024/1024/1024 AS 'usage' FROM BucketsUsage WHERE date like '{0}-{1}-%' AND bucketName='{2}'" -f $year, $monthStr, $bucketName
 
         $res = $this.mysql.execute($request)
-        
+
         # Si aucune utilisation
         if($res[0].usage -eq "NULL")
         {
@@ -165,9 +166,9 @@ class BillingS3Bucket: Billing
             $bucketUsage = truncateToNbDecimal -number $bucketUsage -nbDecimals 2
 
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
-            $itemDesc = "Object Storage S3`n{0}`n({1})" -f $bucket.bucketName, $bucket.friendlyName
+            $itemDesc = "{0}`n{1}`n({2})" -f $this.serviceBillingInfos.itemDescPrefix, $bucket.bucketName, $bucket.friendlyName
 
-            $itemId = $this.addItem($entityId, "S3 Bucket", $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage)
+            $itemId = $this.addItem($entityId, $this.serviceBillingInfos.itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage)
 
 
         }# FIN parcours des buckets

@@ -31,24 +31,29 @@ class Billing
     hidden [string] $targetEnv
     hidden [PSObject] $serviceList
     hidden [EPFLLDAP] $ldap
+    hidden [PSObject] $serviceBillingInfos
 
 
     <#
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
 
-        IN  : $mysql        -> Objet de la classe MySQL permettant d'accéder aux données.
-        IN  : $ldap         -> Connexion au LDAP pour récupérer les infos sur les unités
-        IN  : $serviceList  -> Objet avec la liste de services (chargé depuis le fichier JSON itservices.json)
-        IN  : $targetEnv    -> Nom de l'environnement sur lequel on est.
+        IN  : $mysql                -> Objet de la classe MySQL permettant d'accéder aux données.
+        IN  : $ldap                 -> Connexion au LDAP pour récupérer les infos sur les unités
+        IN  : $serviceList          -> Objet avec la liste de services (chargé depuis le fichier JSON itservices.json)
+        IN  : $serviceBillingInfos  -> Objet avec les informations de facturation pour le service 
+                                        Ces informations se trouvent dans le fichier JSON "service.json" qui sont 
+                                        dans le dossier data/billing/<service>/service.json
+        IN  : $targetEnv            -> Nom de l'environnement sur lequel on est.
 
 		RET : Instance de l'objet
 	#>
-    Billing([MySQL]$mysql, [EPFLLDAP]$ldap, [PSObject]$serviceList, [string]$targetEnv)
+    Billing([MySQL]$mysql, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv)
     {
         $this.mysql = $mysql
         $this.ldap = $ldap
         $this.serviceList = $serviceList
+        $this.serviceBillingInfos = $serviceBillingInfos
         $this.targetEnv = $targetEnv
     }
 
@@ -103,25 +108,7 @@ class Billing
     }
 
 
-    <#
-		-------------------------------------------------------------------------------------
-        BUT : Renvoie la représentation MM.YYYY pour le mois et l'année passés
-        
-        IN  : $month            -> Mois de facturation
-        IN  : $year             -> année de facturation
-
-        RET : Représentation MM.YYYY de ce qui est passé
-    #>
-    hidden [string] getItemDateMonthYear([int]$month, [int]$year)
-    {
-        $monthStr = $month.toString()
-        if($month -lt 10)
-        {
-            # Ajout du 0 initial pour la requête de recherche 
-            $monthStr = "0{0}" -f $monthStr
-        }
-        return ("{0}.{1}" -f $monthStr, $year)
-    }
+    
 
 
     <#
@@ -138,7 +125,7 @@ class Billing
     hidden [PSObject] getItem([string]$itemName, [int]$month, [int]$year)
     {
         
-        $request = "SELECT * FROM BillingItem WHERE itemType='{0}' AND itemMonthYear='{1}'" -f $itemName, ($this.getItemDateMonthYear($month, $year))
+        $request = "SELECT * FROM BillingItem WHERE itemName='{0}' AND itemMonth='{1}' AND itemYear='{2}'" -f $itemName, $month, $year
 
         $item = $this.mysql.execute($request)
 
@@ -173,8 +160,8 @@ class Billing
         }
 
         # L'entité n'existe pas, donc on l'ajoute 
-        $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', NULL)" -f `
-                            $parentEntityId, $type, $name, $desc, ($this.getItemDateMonthYear($month, $year)), $quantity
+        $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', NULL)" -f `
+                            $parentEntityId, $type, $name, $desc, $month, $year, $quantity
 
         $res = $this.mysql.execute($request)
 

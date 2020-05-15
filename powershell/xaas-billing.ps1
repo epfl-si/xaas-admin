@@ -1,6 +1,7 @@
 ﻿<#
 USAGES:
-    xaas-billing.ps1  -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action generatePDF -service <service> [-limitToFile <file>] [-sendToCopernic]
+    xaas-billing.ps1  -targetEnv prod|test|dev -targetTenant test|itservices|epfl -service <service> [-sendToCopernic]
+    
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet de créer une facture pour une unité
@@ -27,9 +28,7 @@ USAGES:
 #>
 param([string]$targetEnv, 
       [string]$targetTenant, 
-      [string]$action, 
       [string]$service, 
-      [string]$limitToFile,
       [switch]$sendToCopernic)
 
 
@@ -54,8 +53,7 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 $configBilling = [ConfigReader]::New("config-billing.json")
 
 # Constantes
-$global:BILLING_TEMP_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "billing"))
-$global:BILLING_GRID_PDF_FILE = ([IO.Path]::Combine("$PSScriptRoot", "resources", "XaaS", "S3", "BillingGrid.pdf"))
+$global:BILLING_MIN_MOUNT_CHF = 5
 
 <#
 	-------------------------------------------------------------------------------------
@@ -79,10 +77,10 @@ function replaceInString([string]$str, [System.Collections.IDictionary] $valToRe
         $replaceWith = $valToReplace.Item($search)
 
         # Si on a des retours à la ligne dans la valeur à remplacer
-        if($replaceWith -like "*`n*")
+        if($replaceWith -like "*\n*")
         {
             # On met le tout dans des paragraphes pour que le HTML soit généré correctement
-            $replaceWith = "<p>{0}</p>" -f ($replaceWith -replace "`n", "</p><p>")
+            $replaceWith = "<p>{0}</p>" -f ($replaceWith -replace "\\n", "</p><p>")
         }
 
         $str = $str -replace  $strToSearch, $replaceWith
@@ -90,104 +88,26 @@ function replaceInString([string]$str, [System.Collections.IDictionary] $valToRe
     return $str
 }
 
-
-
-
 <#
-	-------------------------------------------------------------------------------------
-    BUT : Créé une facture depuis un fichier JSON fourni
-
-    IN  : $sourceJSON   	-> Chemin jusqu'au fichier JSON
-    IN  : $serviceInfos     -> Objet contenant les informations du service pour lequel faire la facturation
-#>
-function createBill([string]$sourceJSON, [PSObject]$serviceInfos)
-{
-
-    if(!(Test-Path -Path $sourceJSON))
-    {
-        Throw ("JSON file {0} doesn't exists" -f $sourceJSON)
-    }
-
-    $logHistory.addLine(("Processing JSON file {0}" -f $sourceJSON))
-
-    # Chargement des données concernant les éléments à facturer
-    # (On spécifie UTF8 sinon les caractères spéciaux ne sont pas bien interprétés)
-    $billingInfos = Get-Content -path $sourceJSON -Encoding:UTF8 | ConvertFrom-Json
-
+    -------------------------------------------------------------------------------------
+    BUT : Renvoie la représentation MM.YYYY pour le mois et l'année passés
     
-    # On commence par créer le code pour les items à facturer
-    $billingItemListHtml = ""
-    $quantityTot = 0
-    $totalPrice = 0
+    IN  : $month            -> Mois de facturation
+    IN  : $year             -> année de facturation
 
-    # Parcours des éléments à facturer
-    ForEach($item in $billingInfos.items)
+    RET : Représentation MM.YYYY de ce qui est passé
+#>
+function getItemDateMonthYear([int]$month, [int]$year)
+{
+    $monthStr = $month.toString()
+    if($month -lt 10)
     {
-        $billingItemReplacements = @{
-            prestationCode = $serviceInfos.prestationCode
-            description = $item.description
-            monthYear = $item.monthYear
-            quantity = $item.quantity
-            unitPrice = $serviceInfos.unitPricePerMonthCHF
-            # On coupe le prix à 2 décimales
-            itemPrice = [System.Math]::Floor($item.quantity * $serviceInfos.unitPricePerMonthCHF * 100) / 100
-        }
-
-        # Mise à jour des totaux pour la facture
-        $totalPrice += $billingItemReplacements.itemPrice
-        $quantityTot += $billingItemReplacements.quantity
-
-        # Création du HTML pour représenter l'item courant et ajout au code HTML représentant tous les items
-        $billingItemListHtml += (replaceInString -str $billingItemTemplate -valToReplace $billingItemReplacements)
+        # Ajout du 0 initial pour la requête de recherche 
+        $monthStr = "0{0}" -f $monthStr
     }
-
-    # Référence de la facture
-    $billReference = ("{0}_{1}_{2}" -f $serviceInfos.serviceName, $curDateYYYYMMDD, $billingInfos.financeCenter) 
-
-    # Elements à remplacer dans le document racine permettant de générer le HTML
-    $billingDocumentReplace = @{
-
-        docTitle = $serviceInfos.docTitle
-
-        # Entête
-        billingForType = $billingInfos.billingForType
-        billingForElement = $billingInfos.billingForElement
-        billReference = $billReference
-        financeCenter = $billingInfos.financeCenter
-        reportDate = $curDateGoodLooking 
-        periodStartDate = $billingInfos.periodStartDate
-        periodEndDate = $billingInfos.periodEndDate
-
-        billingReference = $serviceInfos.billingReference
-        billingFrom = $serviceInfos.billingFrom
-
-        # Nom des colonnes
-        colCode = $serviceInfos.itemColumns.colCode
-        colDesc = $serviceInfos.itemColumns.colDesc
-        colMonthYear = $serviceInfos.itemColumns.colMonthYear
-        colConsumed = $serviceInfos.itemColumns.colConsumed
-        colUnitPrice = $serviceInfos.itemColumns.colUnitPrice
-        colTotPrice = $serviceInfos.itemColumns.colTotPrice
-
-        # Liste des élément facturés 
-        billingItems = $billingItemListHtml
-
-        # Dernière ligne du tableau
-        quantityTot = $quantityTot
-        unitPricePerMonthCHF = $serviceInfos.unitPricePerMonthCHF
-        totalPrice = $totalPrice
-    }
-
-    $billingTemplateHtml= replaceInString -str $billingTemplate -valToReplace $billingDocumentReplace 
-
-    # Génération du nom du fichier PDF de sortie
-    $PDFFilename = "{0}__{1}.pdf" -f ($billReference, [System.IO.Path]::GetFileNameWithoutExtension($sourceJSON))
-    $targetPDFPath = ([IO.Path]::Combine($global:XAAS_BILLING_PDF_FOLDER, $PDFFilename))
-
-    $logHistory.addLine(("> Generating PDF '{0}'" -f $targetPDFPath))
-    ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceInfos.pdfAuthor -landscape $true
-
+    return ("{0}.{1}" -f $monthStr, $year)
 }
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -227,51 +147,175 @@ try
     $itServices = [ITServices]::new()
 
     # On prend la liste correspondant à l'environnement sur lequel on se trouve
-    $servicesList = $itServices.getServiceList($targetEnv)
+    $itServicesList = $itServices.getServiceList($targetEnv)
 
-    $billingS3Bucket = [BillingS3Bucket]::new($mysql, $ldap, $servicesList, $targetEnv)
+    # Fichier JSON contenant les détails du service que l'on veut facturer    
+    $serviceBillingInfosFile = ([IO.Path]::Combine("$PSScriptRoot", "data", "billing", $service.ToLower(), "service.json"))
 
+    if(!(Test-Path -path $serviceBillingInfosFile))
+    {
+        Throw ("Service file ({0}) for '{1}' not found. Please create it from 'config-sample.json' file." -f $serviceBillingInfosFile, $service)
+    }
+
+    # Chargement des informations (On spécifie UTF8 sinon les caractères spéciaux ne sont pas bien interprétés)
+    $serviceBillingInfos = Get-Content -Path $serviceBillingInfosFile -Encoding:UTF8 | ConvertFrom-Json
+
+
+    # Création de l'objet pour faire les opérations pour le service donné
+    $billingS3Bucket = [BillingS3Bucket]::new($mysql, $ldap, $itServicesList, $serviceBillingInfos, $targetEnv)
+
+
+    ########################################################################
+    ##             GENERATION DES DONNEES DE FACTURATION                  ##
+
+
+    # Extraction des données pour les mettre dans la table où tout est formaté la même chose
     $billingS3Bucket.extractData(4, 2020)
 
+
+
+    ########################################################################
+    ##                   GENERATION DE LA FACTURE                         ##
+
+    # Templates pour la génération de factures
+    $billingTemplate = Get-content -path $global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE -Encoding UTF8
+    $billingItemTemplate = Get-content -path $global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE -Encoding UTF8
+
+    # Génération de la date courante dans les formats nécessaires
+    $curDateYYYYMMDD = Get-Date -Format "yyyyMMdd"
+    $curDateGoodLooking = Get-Date -Format "dd.MM.yyyy"
     
+    $logHistory.addLineAndDisplay("Looking for entities...")
+
+    # Recherche des entités à facturer
+    $entityList = $mysql.execute("SELECT * FROM BillingEntity")
+
+    $logHistory.addLineAndDisplay(("{0} entities found" -f $entityList.count))
     
+    # Parcours des entités
+    ForEach($entity in $entityList)
+    {
+        $logHistory.addLineAndDisplay(("Processing entity {0} ({1})..." -f $entity.entityElement, $entity.entityType))
 
+        ## 1. On commence par créer le code pour les items à facturer 
 
-    # # Templates pour la génération de factures
-    # $billingTemplate = Get-content -path $global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE -Encoding UTF8
-    # $billingItemTemplate = Get-content -path $global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE -Encoding UTF8
-
-    # # Génération de la date courante dans les formats nécessaires
-    # $curDateYYYYMMDD = Get-Date -Format "yyyyMMdd"
-    # $curDateGoodLooking = Get-Date -Format "dd.MM.yyyy"
-
-    # # Dossier dans lequel on pourra trouver les fichiers JSON
-    # $jsonFolder = ([IO.Path]::Combine($configBilling.getConfigValue($targetEnv, "jsonSourceRoot"), $targetTenant.ToLower(), $service)) 
-
-    # # Fichier JSON contenant les détails du service que l'on veut facturer
-    # $serviceInfosFile = ([IO.Path]::Combine("$PSScriptRoot", "data", "billing", $service.ToLower(), "service.json"))
-
-    # if(!(Test-Path -path $serviceInfosFile))
-    # {
-    #     Throw ("Service file ({0}) for '{1}' not found. Please create it from 'config-sample.json' file." -f $serviceInfosFile, $service)
-    # }
-
-    # # Chargement des informations (On spécifie UTF8 sinon les caractères spéciaux ne sont pas bien interprétés)
-    # $serviceInfos = Get-Content -Path $serviceInfosFile -Encoding:UTF8 | ConvertFrom-Json
-
-    # # SI on doit traiter seulement un élément,
-    # if($null -ne $limitToFile)
-    # {
-    #     $logHistory.addLine(("Execution limited to file {0}" -f $limitToFile))
-    #     $sourceJSON = ([IO.Path]::Combine($jsonFolder, $limitToFile))
-    #     createBill -sourceJSON $sourceJSON -serviceInfos $serviceInfos
-    # }
-    # else # On doit traiter tous les éléments
-    # {
+        $billingItemListHtml = ""
+        $quantityTot = 0
+        $totalPrice = 0
         
-    # }
+        # Les dates de début et de fin de facturation
+        $billingBeginDate = $null
+        $billingEndDate = $null
+
+        $logHistory.addLineAndDisplay(("> Looking for items for service '{0}' ({1})" -f $service, $serviceBillingInfos.itemTypeInDB))
+
+        # Recherche pour les éléments qu'il faut facturer et qui ne l'ont pas encore été
+        $request = "SELECT * FROM BillingItem WHERE parentEntityId='{0}' AND itemType='{1}' AND itemBillingDate IS NULL ORDER BY itemYear,itemMonth,itemName ASC" -f `
+                     $entity.entityId, $serviceBillingInfos.itemTypeInDB
+
+        $itemList = $mysql.execute($request)
+
+        $logHistory.addLineAndDisplay(("> {0} found = {1}" -f $serviceBillingInfos.itemTypeInDB, $itemList.count))
+
+        # Parcours des éléments à facturer
+        ForEach($item in $itemList)
+        {
+            $monthYear = (getItemDateMonthYear -month $item.itemMonth -year $item.itemYear)
+
+            # Initialisation des dates pour comparaison
+            if($null -eq $billingBeginDate)
+            {
+                $billingBeginDate = $billingEndDate = [datetime]::parseexact($monthYear, 'MM.yyyy', $null)
+            }
+            else # On a les dates donc on peut comparer.
+            {
+                # On essaie de trouver la plus grande et la plus petite date
+                $tmpDate = [datetime]::parseexact($monthYear, 'MM.yyyy', $null)
+                if($tmpDate -lt $billingBeginDate)
+                {
+                    $billingBeginDate = $tmpDate
+                }
+                elseif($tmpDate -gt $billingEndDate)
+                {
+                    $billingEndDate = $tmpDate
+                }
+            }
 
 
+            $logHistory.addLineAndDisplay((">> Processing {0} '{1}'... " -f $serviceBillingInfos.itemTypeInDB, $item.itemName))
+            $billingItemReplacements = @{
+                prestationCode = $serviceBillingInfos.prestationCode
+                description = $item.itemDesc
+                monthYear = $monthYear
+                quantity = $item.itemQuantity
+                unitPrice = $serviceBillingInfos.unitPricePerMonthCHF
+                # On coupe le prix à 2 décimales
+                itemPrice = truncateToNbDecimal -number ([double]($item.itemQuantity) * $serviceBillingInfos.unitPricePerMonthCHF) -nbDecimals 2
+            }
+
+            # Mise à jour des totaux pour la facture
+            $totalPrice += $billingItemReplacements.itemPrice
+            $quantityTot += $billingItemReplacements.quantity
+
+            # Création du HTML pour représenter l'item courant et ajout au code HTML représentant tous les items
+            $billingItemListHtml += (replaceInString -str $billingItemTemplate -valToReplace $billingItemReplacements)
+        }
+
+
+        ## 2. On passe maintenant à la facture en elle-même
+
+        # Référence de la facture
+        $billReference = ("{0}_{1}_{2}" -f $serviceBillingInfos.serviceName, $curDateYYYYMMDD, $entity.entityFinanceCenter) 
+
+        # Elements à remplacer dans le document racine permettant de générer le HTML
+        $billingDocumentReplace = @{
+
+            docTitle = $serviceBillingInfos.docTitle
+
+            # Entête
+            billingForType = $entity.entityType
+            billingForElement = $entity.entityElement
+            billReference = $billReference
+            financeCenter = $entity.entityFinanceCenter
+            reportDate = $curDateGoodLooking 
+            periodStartDate = Get-Date -Format "MM.yyyy" -Date $billingBeginDate
+            periodEndDate = Get-Date -Format "MM.yyyy" -Date $billingEndDate
+
+            billingReference = $serviceBillingInfos.billingReference
+            billingFrom = $serviceBillingInfos.billingFrom
+
+            # Nom des colonnes
+            colCode = $serviceBillingInfos.itemColumns.colCode
+            colDesc = $serviceBillingInfos.itemColumns.colDesc
+            colMonthYear = $serviceBillingInfos.itemColumns.colMonthYear
+            colConsumed = $serviceBillingInfos.itemColumns.colConsumed
+            colUnitPrice = $serviceBillingInfos.itemColumns.colUnitPrice
+            colTotPrice = $serviceBillingInfos.itemColumns.colTotPrice
+
+            # Liste des élément facturés 
+            billingItems = $billingItemListHtml
+
+            # Dernière ligne du tableau
+            quantityTot = $quantityTot
+            unitPricePerMonthCHF = $serviceBillingInfos.unitPricePerMonthCHF
+            totalPrice = $totalPrice
+        }
+
+        $billingTemplateHtml= replaceInString -str $billingTemplate -valToReplace $billingDocumentReplace 
+
+        # Génération du nom du fichier PDF de sortie
+        $PDFFilename = "{0}__{1}.pdf" -f ($billReference, $entity.entityElement)
+        $targetPDFPath = ([IO.Path]::Combine($global:XAAS_BILLING_PDF_FOLDER, $PDFFilename))
+
+        $logHistory.addLineAndDisplay(("> Generating PDF '{0}'" -f $targetPDFPath))
+        ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceBillingInfos.pdfAuthor -landscape $true
+
+        if($totalPrice -lt $global:BILLING_MIN_MOUNT_CHF)
+        {
+            $logHistory.addLineAndDisplay(("Entity '{0}' won't be billed this month, bill amount to small ({1} CHF)" -f $entity.entityElement, $totalPrice))
+        }
+
+    }
 
     # $output.results =
 
