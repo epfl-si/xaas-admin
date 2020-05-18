@@ -1,6 +1,6 @@
 ﻿<#
 USAGES:
-    xaas-billing.ps1  -targetEnv prod|test|dev -targetTenant test|itservices|epfl -service <service> [-sendToCopernic]
+    xaas-billing.ps1  -targetEnv prod|test|dev -targetTenant test|itservices|epfl -service <service> [-redoBill <billReferenc>] [-sendToCopernic]
     
 #>
 <#
@@ -29,6 +29,7 @@ USAGES:
 param([string]$targetEnv, 
       [string]$targetTenant, 
       [string]$service, 
+      [string]$redoBill,
       [switch]$sendToCopernic)
 
 
@@ -133,6 +134,15 @@ try
     # Objet pour pouvoir envoyer des mails de notification
     $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "None", "None")
 
+    # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$counters = [Counters]::new()
+    $counters.add('entityProcessed', '# Entity processed')
+    $counters.add('billDone', '# Bill done')
+    $counters.add('billSkippedToLow', '# Bill skipped (amount to low)')
+    $counters.add('billSkippedNothing', '# Bill skipped (nothing to bill)')
+    $counters.add('billCanceled', '# Bill canceled')
+    
+
     # Pour accéder à la base de données
     $mysql = [MySQL]::new($configBilling.getConfigValue($targetEnv, "db", "host"), `
                           $configBilling.getConfigValue($targetEnv, "db", "dbName"), `
@@ -173,6 +183,14 @@ try
     $billingS3Bucket.extractData(4, 2020)
 
 
+    # SI on doit reset une facture pour l'émettre à nouveau
+    if($redoBill -ne "")
+    {
+        $logHistory.addLineAndDisplay(("Canceling bill with reference {0}" -f $redoBill))
+        $billingS3Bucket.cancelBill($redoBill)
+        $counters.inc('billCanceled')
+    }
+
 
     ########################################################################
     ##                   GENERATION DE LA FACTURE                         ##
@@ -197,7 +215,9 @@ try
     {
         $logHistory.addLineAndDisplay(("Processing entity {0} ({1})..." -f $entity.entityElement, $entity.entityType))
 
-        ## 1. On commence par créer le code pour les items à facturer 
+        $counters.inc('entityProcessed')
+
+        ## 1. On commence par créer le code HTML pour les items à facturer 
 
         $billingItemListHtml = ""
         $quantityTot = 0
@@ -256,74 +276,89 @@ try
 
             # Création du HTML pour représenter l'item courant et ajout au code HTML représentant tous les items
             $billingItemListHtml += (replaceInString -str $billingItemTemplate -valToReplace $billingItemReplacements)
-        }
+
+        } # FIN Boucle de parcours des éléments à facturer 
 
 
-        ## 2. On passe maintenant à la facture en elle-même
+        ## 2. On passe maintenant à création de la facture de l'entité en elle-même
 
-        
-        # Si on n'a pas atteint le montant minimum pour émettre une facture,
-        if($totalPrice -lt $global:BILLING_MIN_MOUNT_CHF)
+        # S'il y a des éléments à facturer
+        if($itemList.count -gt 0)
         {
-            $logHistory.addLineAndDisplay(("Entity '{0}' won't be billed this month, bill amount to small ({1} CHF)" -f $entity.entityElement, $totalPrice))
-        }
-        else
-        {
-
-            # Référence de la facture
-            $billReference = ("{0}_{1}_{2}" -f $serviceBillingInfos.serviceName, $curDateYYYYMMDDHHMM, $entity.entityFinanceCenter) 
-
-            # Elements à remplacer dans le document racine permettant de générer le HTML
-            $billingDocumentReplace = @{
-
-                docTitle = $serviceBillingInfos.docTitle
-
-                # Entête
-                billingForType = $entity.entityType
-                billingForElement = $entity.entityElement
-                billReference = $billReference
-                financeCenter = $entity.entityFinanceCenter
-                reportDate = $curDateGoodLooking 
-                periodStartDate = Get-Date -Format "MM.yyyy" -Date $billingBeginDate
-                periodEndDate = Get-Date -Format "MM.yyyy" -Date $billingEndDate
-
-                billingReference = $serviceBillingInfos.billingReference
-                billingFrom = $serviceBillingInfos.billingFrom
-
-                # Nom des colonnes
-                colCode = $serviceBillingInfos.itemColumns.colCode
-                colDesc = $serviceBillingInfos.itemColumns.colDesc
-                colMonthYear = $serviceBillingInfos.itemColumns.colMonthYear
-                colConsumed = $serviceBillingInfos.itemColumns.colConsumed
-                colUnitPrice = $serviceBillingInfos.itemColumns.colUnitPrice
-                colTotPrice = $serviceBillingInfos.itemColumns.colTotPrice
-
-                # Liste des élément facturés 
-                billingItems = $billingItemListHtml
-
-                # Dernière ligne du tableau
-                quantityTot = $quantityTot
-                unitPricePerMonthCHF = $serviceBillingInfos.unitPricePerMonthCHF
-                totalPrice = $totalPrice
+            
+            # Si on n'a pas atteint le montant minimum pour émettre une facture pour l'entité courante,
+            if($totalPrice -lt $global:BILLING_MIN_MOUNT_CHF)
+            {
+                $logHistory.addLineAndDisplay(("Entity '{0}' won't be billed this month, bill amount to small ({1} CHF)" -f $entity.entityElement, $totalPrice))
+                $counters.inc('billSkippedToLow')
             }
-            
-            $billingTemplateHtml= replaceInString -str $billingTemplate -valToReplace $billingDocumentReplace 
+            else # On a atteint le montant minimum pour facturer 
+            {
 
-            # Génération du nom du fichier PDF de sortie
-            $PDFFilename = "{0}__{1}.pdf" -f ($billReference, $entity.entityElement)
-            $targetPDFPath = ([IO.Path]::Combine($global:XAAS_BILLING_PDF_FOLDER, $PDFFilename))
+                # Référence de la facture
+                $billReference = ("{0}_{1}_{2}" -f $serviceBillingInfos.serviceName, $curDateYYYYMMDDHHMM, $entity.entityFinanceCenter) 
 
-            $logHistory.addLineAndDisplay(("> Generating PDF '{0}'" -f $targetPDFPath))
-            ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceBillingInfos.pdfAuthor -landscape $true    
+                # Elements à remplacer dans le document racine permettant de générer le HTML
+                $billingDocumentReplace = @{
 
-            # On dit que tous les items de la facture ont été facturés
-            $billingS3Bucket.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB, $billReference)
-            
+                    docTitle = $serviceBillingInfos.docTitle
+
+                    # Entête
+                    billingForType = $entity.entityType
+                    billingForElement = $entity.entityElement
+                    billReference = $billReference
+                    financeCenter = $entity.entityFinanceCenter
+                    reportDate = $curDateGoodLooking 
+                    periodStartDate = Get-Date -Format "MM.yyyy" -Date $billingBeginDate
+                    periodEndDate = Get-Date -Format "MM.yyyy" -Date $billingEndDate
+
+                    billingReference = $serviceBillingInfos.billingReference
+                    billingFrom = $serviceBillingInfos.billingFrom
+
+                    # Nom des colonnes
+                    colCode = $serviceBillingInfos.itemColumns.colCode
+                    colDesc = $serviceBillingInfos.itemColumns.colDesc
+                    colMonthYear = $serviceBillingInfos.itemColumns.colMonthYear
+                    colConsumed = $serviceBillingInfos.itemColumns.colConsumed
+                    colUnitPrice = $serviceBillingInfos.itemColumns.colUnitPrice
+                    colTotPrice = $serviceBillingInfos.itemColumns.colTotPrice
+
+                    # Liste des élément facturés 
+                    billingItems = $billingItemListHtml
+
+                    # Dernière ligne du tableau
+                    quantityTot = $quantityTot
+                    unitPricePerMonthCHF = $serviceBillingInfos.unitPricePerMonthCHF
+                    totalPrice = $totalPrice
+                }
+                
+                $billingTemplateHtml= replaceInString -str $billingTemplate -valToReplace $billingDocumentReplace 
+
+                # Génération du nom du fichier PDF de sortie
+                $PDFFilename = "{0}__{1}.pdf" -f ($billReference, $entity.entityElement)
+                $targetPDFPath = ([IO.Path]::Combine($global:XAAS_BILLING_PDF_FOLDER, $PDFFilename))
+
+                $logHistory.addLineAndDisplay(("> Generating PDF '{0}'" -f $targetPDFPath))
+                ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceBillingInfos.pdfAuthor -landscape $true    
+
+                # On dit que tous les items de la facture ont été facturés
+                $billingS3Bucket.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB, $billReference)
+                
+                $counters.inc('billDone')
+
+            }# FIN SI on a atteint le montant minimum pour facturer
+        
+        }
+        else # Il n'y a aucun élément à facturer
+        {
+            $logHistory.addLineAndDisplay(("Nothing left to bill for entity {0}" -f $entity.entityName))
+            $counters.inc('billSkippedNothing')
         }
 
-    }
+    }# FIN BOUCLE de parcours des entités
 
-    # $output.results =
+    # Résumé des actions entreprises
+    $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
 
 }
 catch

@@ -293,6 +293,19 @@ class Billing
 
     <#
 		-------------------------------------------------------------------------------------
+        BUT : Annule la facture dont la référence a été passée, dans le but de la refaire.
+
+        IN  : $billReference    -> No de référence de la facture à annuler
+    #>
+    [void] cancelBill([string]$billReference)
+    {
+        $request = "UPDATE BillingItem SET itemBillReference=NULL WHERE itemBillReference='{0}'" -f $billReference
+        $this.mysql.execute($request)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
         BUT : Extrait les données pour un type d'élément à facturer
 
         IN  : $month    -> Le no du mois pour lequel extraire les infos
