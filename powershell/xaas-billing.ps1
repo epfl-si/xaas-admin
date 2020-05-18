@@ -182,8 +182,8 @@ try
     $billingItemTemplate = Get-content -path $global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE -Encoding UTF8
 
     # Génération de la date courante dans les formats nécessaires
-    $curDateYYYYMMDD = Get-Date -Format "yyyyMMdd"
-    $curDateGoodLooking = Get-Date -Format "dd.MM.yyyy"
+    $curDateYYYYMMDDHHMM = Get-Date -Format "yyyyMMddhhmm"
+    $curDateGoodLooking = Get-Date -Format "dd.MM.yyyy hh:mm"
     
     $logHistory.addLineAndDisplay("Looking for entities...")
 
@@ -271,7 +271,7 @@ try
         {
 
             # Référence de la facture
-            $billReference = ("{0}_{1}_{2}" -f $serviceBillingInfos.serviceName, $curDateYYYYMMDD, $entity.entityFinanceCenter) 
+            $billReference = ("{0}_{1}_{2}" -f $serviceBillingInfos.serviceName, $curDateYYYYMMDDHHMM, $entity.entityFinanceCenter) 
 
             # Elements à remplacer dans le document racine permettant de générer le HTML
             $billingDocumentReplace = @{
