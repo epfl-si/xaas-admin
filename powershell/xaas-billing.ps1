@@ -317,7 +317,7 @@ try
             ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceBillingInfos.pdfAuthor -landscape $true    
 
             # On dit que tous les items de la facture ont été facturés
-            $billingS3Bucket.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB)
+            $billingS3Bucket.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB, $billReference)
             
         }
 

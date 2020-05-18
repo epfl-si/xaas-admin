@@ -147,10 +147,15 @@ class Billing
         IN  : $quantity         -> quantité facturée pour le mois/année 
 
         RET : ID de l'entité
+                $null si pas ajouté car trop quantité de zéro
     #>
     hidden [int] addItem([int]$parentEntityId, [string]$type, [string]$name, [string]$desc, [int]$month, [int]$year, [double]$quantity)
     {
-        
+        if($quantity -eq 0)
+        {
+            return $null
+        }
+
         $item = $this.getItem($name, $month, $year)
 
         # Si l'entité existe déjà dans la DB, on retourne son ID
@@ -262,7 +267,7 @@ class Billing
     [Array] getEntityItemToBeBilledList([string]$entityId, [string]$itemType)
     {
         # Recherche des éléments. On trie par chronologie et nom d'élément et on ne prend que ceux qui n'ont pas été facturés.
-        $request = "SELECT * FROM BillingItem WHERE parentEntityId='{0}' AND itemType='{1}' AND itemBillingDate IS NULL ORDER BY itemYear,itemMonth,itemName ASC" -f `
+        $request = "SELECT * FROM BillingItem WHERE parentEntityId='{0}' AND itemType='{1}' AND itemBillReference IS NULL ORDER BY itemYear,itemMonth,itemName ASC" -f `
                      $entityId, $itemType
 
         return $this.mysql.execute($request)
@@ -271,15 +276,16 @@ class Billing
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Initialise un item comme ayant été facturé. On initialise simplement la date 
-                de facturation.
+        BUT : Initialise un item comme ayant été facturé. On initialise simplement la référence
+                de la facture sur laquelle il se trouve.
 
-        IN  : $entityId -> id de l'entité des items
-        IN  : $itemType -> Type d'item à noter comme facturés
+        IN  : $entityId         -> id de l'entité des items
+        IN  : $itemType         -> Type d'item à noter comme facturés
+        IN  : $billReference    -> référence de la facture auquel l'itemn a été attribué
     #>
-    [void] setEntityItemTypeAsBilled([string]$entityId, [string]$itemType)
+    [void] setEntityItemTypeAsBilled([string]$entityId, [string]$itemType, [string]$billReference)
     {
-        $request = "UPDATE BillingItem SET itemBillingDate=NOW() WHERE parentEntityId='{0}' AND itemType='{1}' AND itemBillingDate IS NULL " -f $entityId, $itemType
+        $request = "UPDATE BillingItem SET itemBillReference='{0}' WHERE parentEntityId='{1}' AND itemType='{2}' AND itemBillReference IS NULL " -f $billReference, $entityId, $itemType
 
         $this.mysql.execute($request)
     }
