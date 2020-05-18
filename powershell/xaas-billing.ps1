@@ -171,23 +171,24 @@ try
     $serviceBillingInfos = Get-Content -Path $serviceBillingInfosFile -Encoding:UTF8 | ConvertFrom-Json
 
 
-    # Création de l'objet pour faire les opérations pour le service donné
-    $billingS3Bucket = [BillingS3Bucket]::new($mysql, $ldap, $itServicesList, $serviceBillingInfos, $targetEnv)
-
+    # Création de l'objet pour faire les opérations pour le service donné. On le créée d'une manière dynamique en utilisant la bonne classe
+    # en fonction du type de service à facturer
+    $expression = '$billingObject = [{0}]::new($mysql, $ldap, $itServicesList, $serviceBillingInfos, $targetEnv)' -f $serviceBillingInfos.billingClassName
+    Invoke-expression $expression
 
     ########################################################################
     ##             GENERATION DES DONNEES DE FACTURATION                  ##
 
 
     # Extraction des données pour les mettre dans la table où tout est formaté la même chose
-    $billingS3Bucket.extractData(4, 2020)
+    $billingObject.extractData(4, 2020)
 
 
     # SI on doit reset une facture pour l'émettre à nouveau
     if($redoBill -ne "")
     {
         $logHistory.addLineAndDisplay(("Canceling bill with reference {0}" -f $redoBill))
-        $billingS3Bucket.cancelBill($redoBill)
+        $billingObject.cancelBill($redoBill)
         $counters.inc('billCanceled')
     }
 
@@ -206,7 +207,7 @@ try
     $logHistory.addLineAndDisplay("Looking for entities...")
 
     # Recherche des entités à facturer
-    $entityList = $billingS3Bucket.getEntityList()
+    $entityList = $billingObject.getEntityList()
 
     $logHistory.addLineAndDisplay(("{0} entities found" -f $entityList.count))
     
@@ -230,7 +231,7 @@ try
         $logHistory.addLineAndDisplay(("> Looking for items for service '{0}' ({1})" -f $service, $serviceBillingInfos.itemTypeInDB))
 
         # Recherche pour les éléments qu'il faut facturer et qui ne l'ont pas encore été
-        $itemList = $billingS3Bucket.getEntityItemToBeBilledList($entity.entityId, $serviceBillingInfos.itemTypeInDB)
+        $itemList = $billingObject.getEntityItemToBeBilledList($entity.entityId, $serviceBillingInfos.itemTypeInDB)
 
         $logHistory.addLineAndDisplay(("> {0} found = {1}" -f $serviceBillingInfos.itemTypeInDB, $itemList.count))
 
@@ -342,7 +343,7 @@ try
                 ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceBillingInfos.pdfAuthor -landscape $true    
 
                 # On dit que tous les items de la facture ont été facturés
-                $billingS3Bucket.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB, $billReference)
+                $billingObject.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB, $billReference)
                 
                 $counters.inc('billDone')
 

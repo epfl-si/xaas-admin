@@ -1,4 +1,5 @@
 {
+    "billingClassName": "", //Nom de la classe (enfant de 'Billing') à utiliser pour la facturation du service
     "docTitle": "", //Titre du document PDF"
     "serviceName": "", // Nom du service que l'on facture
     "itemTypeInDB": "", // Type de l'item à facturer, pour le classifier dans la DB
