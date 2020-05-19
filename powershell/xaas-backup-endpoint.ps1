@@ -224,9 +224,12 @@ try
             }
             else
             {
+
                 $output.results += @{
                                         restoreJobId = $restoreJobId
                                         status = $jobDetails.attributes.state.ToLower()
+                                        # Cette valeur sera à $null si le job de restore est toujours en cours
+                                        code = $jobDetails.attributes.status
                                     }
             }
         }
