@@ -1,6 +1,7 @@
 .vscode/
 ./logs/
 ./billing/
+./errors/
 IaaS.code-workspace
 test.ps1
 test-*.ps1
