@@ -273,9 +273,9 @@ function truncateToNbDecimal([float]$number, [int]$nbDecimals)
 #>
 function saveRESTError([string]$category, [string]$errorId, [string]$errorMsg, [PSObject]$jsonContent)
 {
-    $errorFolder =  ([IO.Path]::Combine($global:XAAS_BILLING_ERROR_ERROR_FOLDERFOLDER, $category, $errorId))
+    $errorFolder =  ([IO.Path]::Combine($global:ERROR_FOLDER, $category, $errorId))
 
-    New-Item -ItemType "directory" -Path $errorFolder
+    $dummy = New-Item -ItemType "directory" -Path $errorFolder
 
     $jsonContent | Out-File ([IO.Path]::Combine($errorFolder, "REST.json"))
 
