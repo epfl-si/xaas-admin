@@ -14,8 +14,7 @@
         {
             "server": "",
             "username": "",
-            "password": "",
-            "execMode": "SIMU" //NE PAS TOUCHER LA VALEUR DE CE CHAMP
+            "password": ""
         }
     },
     "test":
@@ -33,8 +32,7 @@
         {
             "server": "",
             "username": "",
-            "password": "",
-            "execMode": "SIMU" //NE PAS TOUCHER LA VALEUR DE CE CHAMP
+            "password": ""
         }
     },
     "prod":
@@ -52,8 +50,7 @@
         {
             "server": "",
             "username": "",
-            "password": "",
-            "execMode": "REAL" //NE PAS TOUCHER LA VALEUR DE CE CHAMP
+            "password": ""
         }
     }
 }

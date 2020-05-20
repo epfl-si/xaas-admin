@@ -1,6 +1,6 @@
 ﻿<#
 USAGES:
-    xaas-billing.ps1  -targetEnv prod|test|dev -targetTenant test|itservices|epfl -service <service> [-redoBill <billReferenc>] [-sendToCopernic]
+    xaas-billing.ps1  -targetEnv prod|test|dev -targetTenant test|itservices|epfl -service <service> [-redoBill <billReferenc>] [-sendToCopernic] [-copernicRealMode]
     
 #>
 <#
@@ -30,7 +30,8 @@ param([string]$targetEnv,
       [string]$targetTenant, 
       [string]$service, 
       [string]$redoBill,
-      [switch]$sendToCopernic)
+      [switch]$sendToCopernic,
+      [switch]$copernicRealMode)
 
 
 # Inclusion des fichiers nécessaires (génériques)
@@ -160,6 +161,21 @@ try
     # Ajout d'informations dans le log
     $logHistory.addLine("Script executed with following parameters: `n{0}" -f ($PsBoundParameters | ConvertTo-Json))
     
+    # Si on doit ajouter dans Copernic
+    if($sendToCopernic)
+    {
+        if($copernicRealMode)
+        {
+            $logHistory.addLineAndDisplay("Data will be added in Copernic for REAL !!")
+            $execMode = "REAL"
+        }
+        else
+        {
+            $logHistory.addLineAndDisplay("Data WON'T be added in Copernic because script is executed in SIMULATION MODE !!")
+            $execMode = "SIMU"
+        }
+    }
+
     # Objet pour pouvoir envoyer des mails de notification
     $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "None", "None")
 
@@ -399,9 +415,8 @@ try
                 {
                     $billDescription = "{0} - du {1} au {2}" -f $serviceBillingInfos.itemTypeInDB, $periodStartDate, $periodEndDate
 
-                    # Ajout de la facture dans Copernic 
-                    $result = $copernic.addBill($serviceBillingInfos, $billReference, $billDescription, $targetPDFPath, $billingGridPDFFile, $entity, $itemList, `
-                                                $configBilling.getConfigValue($targetEnv, "copernic", "execMode"))
+                    # Ajout de la facture dans Copernic avec le mode d'exécution spécifié
+                    $result = $copernic.addBill($serviceBillingInfos, $billReference, $billDescription, $targetPDFPath, $billingGridPDFFile, $entity, $itemList, $execMode)
 
                     # Si une erreur a eu lieu
                     if($null -ne $result.error)
@@ -416,12 +431,20 @@ try
                     }
                     else # Pas d'erreur
                     {
-                        $logHistory.addLineAndDisplay(("> Bill sent to Copernic (Doc number: {0})" -f $result.docNumber))
+                        # Si on est en mode d'exéution réel et que la facture a bel et bien été envoyée dans Copernic 
+                        if($copernicRealMode)
+                        {
+                            $logHistory.addLineAndDisplay(("> Bill sent to Copernic (Doc number: {0})" -f $result.docNumber))
 
-                        # On dit que tous les items de la facture ont été facturés
-                        $billingObject.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB, $billReference)
-                        $logHistory.addLineAndDisplay(("> Items '{0}' set as billed for entity '{1}'" -f $serviceBillingInfos.itemTypeInDB, $entity.entityElement))
+                            # On dit que tous les items de la facture ont été facturés
+                            $billingObject.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB, $billReference)
+                        }
+                        else # On est en mode "simulation" donc pas d'envoi réel de facture
+                        {
+                            $logHistory.addLineAndDisplay("> Bill sent to Copernic in SIMULATION MODE without any error")
+                        }
 
+                        $logHistory.addLineAndDisplay(("> {0} items '{1}' set as billed for entity '{2}'" -f $itemList.count, $serviceBillingInfos.itemTypeInDB, $entity.entityElement))
                         $counters.inc('billSentToCopernic')    
 
                     } # Fin si pas d'erreur
