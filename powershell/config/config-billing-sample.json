@@ -9,6 +9,13 @@
             "password":"",
             "dbName":"",
             "port":""
+        },
+        "copernic":
+        {
+            "server": "",
+            "username": "",
+            "password": "",
+            "execMode": "SIMU" //NE PAS TOUCHER LA VALEUR DE CE CHAMP
         }
     },
     "test":
@@ -21,6 +28,13 @@
             "password":"",
             "dbName":"",
             "port":""
+        },
+        "copernic":
+        {
+            "server": "",
+            "username": "",
+            "password": "",
+            "execMode": "SIMU" //NE PAS TOUCHER LA VALEUR DE CE CHAMP
         }
     },
     "prod":
@@ -33,6 +47,13 @@
             "password":"",
             "dbName":"",
             "port":""
+        },
+        "copernic":
+        {
+            "server": "",
+            "username": "",
+            "password": "",
+            "execMode": "REAL" //NE PAS TOUCHER LA VALEUR DE CE CHAMP
         }
     }
 }
