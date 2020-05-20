@@ -105,4 +105,4 @@ $global:XAAS_BILLING_DATA_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "d
 $global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-document.html"))
 $global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-item.html"))
 $global:XAAS_BILLING_PDF_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "billing"))
-$global:XAAS_BILLING_ERROR_FOLDER = ([IO.Path]::Combine($global:ERROR_FOLDER, "billing"))
+

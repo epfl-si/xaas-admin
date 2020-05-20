@@ -258,3 +258,29 @@ function truncateToNbDecimal([float]$number, [int]$nbDecimals)
 {
 	return [System.Math]::Floor($number * [Math]::Pow(10, $nbDecimals)) / [Math]::Pow(10, $nbDecimals)
 }
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Enregistre une erreur d'appel REST dans un dossier avec quelques fichiers
+    
+    IN  : $category     -> Catégorie de l'erreur
+    IN  : $errorId      -> ID de l'erreur
+    IN  : $errorMsg     -> Message d'erreur
+    IN  : $jsonContent  -> Contenu du fichier JSON
+
+    RET : Chemin jusqu'au dossier où seront les informations de l'erreur
+#>
+function saveRESTError([string]$category, [string]$errorId, [string]$errorMsg, [PSObject]$jsonContent)
+{
+    $errorFolder =  ([IO.Path]::Combine($global:XAAS_BILLING_ERROR_ERROR_FOLDERFOLDER, $category, $errorId))
+
+    New-Item -ItemType "directory" -Path $errorFolder
+
+    $jsonContent | Out-File ([IO.Path]::Combine($errorFolder, "REST.json"))
+
+    $errorMsg | Out-File ([IO.Path]::Combine($errorFolder, "error.txt"))
+
+    return $errorFolder
+
+}

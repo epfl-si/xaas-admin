@@ -116,31 +116,6 @@ function getItemDateMonthYear([int]$month, [int]$year)
 }
 
 
-<#
-    -------------------------------------------------------------------------------------
-    BUT : Enregistre une erreur dans un dossier avec quelques fichiers
-    
-    IN  : $errorId      -> ID de l'erreur
-    IN  : $errorMsg     -> Message d'erreur
-    IN  : $jsonContent  -> Contenu du fichier JSON
-
-    RET : Chemin jusqu'au dossier où seront les informations de l'erreur
-#>
-function saveRESTError([string]$errorId, [string]$errorMsg, [PSObject]$jsonContent)
-{
-    $errorFolder =  ([IO.Path]::Combine($global:XAAS_BILLING_ERROR_FOLDER, $errorId))
-
-    New-Item -ItemType "directory" -Path $errorFolder
-
-    $jsonContent | Out-File ([IO.Path]::Combine($errorFolder, "REST.json"))
-
-    $errorMsg | Out-File ([IO.Path]::Combine($errorFolder, "error.txt"))
-
-    return $errorFolder
-
-}
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -424,7 +399,7 @@ try
                         # Enregistrement de l'erreur
                         $errorId = "{0}_{1}" -f (Get-Date -Format "yyyyMMdd_hhmm"), $entity.entityId
                         $errorMsg = "Error adding Copernic Bill for entity '{0}'`nError message was: {1}" -f $entity.entityElement, $result.error
-                        $errorFolder = saveRESTError -errorId $errorId -errorMsg $errorMsg -jsonContent $copernic.getLastBodyJSON()
+                        $errorFolder = saveRESTError -category "billing" -errorId $errorId -errorMsg $errorMsg -jsonContent $copernic.getLastBodyJSON()
                         $logHistory.addLineAndDisplay(("> Error sending bill to Copernic for entity ID (error: {0}). Details can be found in folder '{1}'" -f $result.error, $errorFolder))
 
                         $counters.inc('billCopernicError')
