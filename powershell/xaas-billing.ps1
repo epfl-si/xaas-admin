@@ -1,6 +1,6 @@
 ﻿<#
 USAGES:
-    xaas-billing.ps1  -targetEnv prod|test|dev -targetTenant test|itservices|epfl -service <service> [-redoBill <billReferenc>] [-sendToCopernic] [-copernicRealMode]
+    xaas-billing.ps1  -targetEnv prod|test|dev -service <service> [-redoBill <billReferenc>] [-sendToCopernic] [-copernicRealMode]
     
 #>
 <#
@@ -27,7 +27,6 @@ USAGES:
 
 #>
 param([string]$targetEnv, 
-      [string]$targetTenant, 
       [string]$service, 
       [string]$redoBill,
       [switch]$sendToCopernic,
@@ -115,6 +114,60 @@ function getItemDateMonthYear([int]$month, [int]$year)
     return ("{0}.{1}" -f $monthStr, $year)
 }
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Parcours les différentes notification qui ont été ajoutées dans le tableau
+		  durant l'exécution et effectue un traitement si besoin.
+
+		  La liste des notifications possibles peut être trouvée dans la déclaration
+		  de la variable $notifications plus bas dans le caode.
+
+	IN  : $notifications-> Dictionnaire
+	IN  : $targetEnv	-> Environnement courant
+#>
+function handleNotifications([System.Collections.IDictionary] $notifications, [string]$targetEnv)
+{
+
+	# Parcours des catégories de notifications
+	ForEach($notif in $notifications.Keys)
+	{
+		# S'il y a des notifications de ce type
+		if($notifications[$notif].count -gt 0)
+		{
+			# Suppression des doublons 
+			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
+
+			$valToReplace = @{}
+
+			switch($notif)
+			{
+				# ---------------------------------------
+				# Préfixes de machine non trouvés
+				'copernicBillNotSent'
+				{
+					$valToReplace.entityList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Entity bill not sent to Copernic"
+					$templateName = "copernic-bill-send-error"
+				}
+
+
+				default
+				{
+					# Passage à l'itération suivante de la boucle
+					$logHistory.addWarningAndDisplay(("Notification '{0}' not handled in code !" -f $notif))
+					continue
+				}
+
+			}
+
+			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
+			$notificationMail.send($mailSubject, $templateName, $valToReplace)
+
+		} # FIN S'il y a des notifications pour la catégorie courante
+
+	}# FIN BOUCLE de parcours des catégories de notifications
+}
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -152,7 +205,7 @@ try
     }
 
     # Objet pour pouvoir envoyer des mails de notification
-    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "None", "None")
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, "None")
 
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
@@ -165,6 +218,17 @@ try
     $counters.add('billCopernicError', '# Bill not sent to Copernic because of an error')
     $counters.add('PDFGenerated', '# PDF generated')
     
+    <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
+	aux administrateurs du service
+	!! Attention !!
+	A chaque fois qu'un élément est ajouté dans le IDictionnary ci-dessous, il faut aussi penser à compléter la
+	fonction 'handleNotifications()'
+
+	(cette liste sera accédée en variable globale même si c'est pas propre XD)
+	#>
+    $notifications=@{
+        copernicBillError = @()
+    }
     
 
     # Pour accéder à la base de données
@@ -392,17 +456,20 @@ try
 
                     # Ajout de la facture dans Copernic avec le mode d'exécution spécifié
                     $result = $copernic.addBill($serviceBillingInfos, $billReference, $billDescription, $targetPDFPath, $billingGridPDFFile, $entity, $itemList, $execMode)
-
+                    
                     # Si une erreur a eu lieu
                     if($null -ne $result.error)
                     {
                         # Enregistrement de l'erreur
-                        $errorId = "{0}_{1}" -f (Get-Date -Format "yyyyMMdd_hhmm"), $entity.entityId
+                        $errorId = "{0}_{1}" -f (Get-Date -Format "yyyyMMdd_hhmmss"), $entity.entityId
                         $errorMsg = "Error adding Copernic Bill for entity '{0}'`nError message was: {1}" -f $entity.entityElement, $result.error
                         $errorFolder = saveRESTError -category "billing" -errorId $errorId -errorMsg $errorMsg -jsonContent $copernic.getLastBodyJSON()
                         $logHistory.addLineAndDisplay(("> Error sending bill to Copernic for entity ID (error: {0}). Details can be found in folder '{1}'" -f $result.error, $errorFolder))
 
                         $counters.inc('billCopernicError')
+
+                        # Ajout du nécessaire pour les notifications
+                        $notifications.copernicBillNotSent += "{0} ({1}) - Error logs are on {2} in folder {3} " -f $entity.entityElement, $entity.entityType, $env:computername, $errorFolder
                     }
                     else # Pas d'erreur
                     {
@@ -438,6 +505,9 @@ try
         }
 
     }# FIN BOUCLE de parcours des entités
+
+    # Gestion des erreurs s'il y en a
+	handleNotifications -notifications $notifications -targetEnv $targetEnv
 
     # Résumé des actions entreprises
     $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
