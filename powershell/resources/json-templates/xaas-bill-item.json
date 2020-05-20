@@ -1,0 +1,26 @@
+{
+    "number": "{{prestationCode}}",
+    "qty": "{{itemQuantity}}",
+    "price": "{{unitPricePerMonthCHF}}",
+    "text": "{{itemNameAndDesc}}",
+    "discounttype": "",
+    "discountamount": "",
+    "shipper_imputation": {
+        "opcode": "",
+        "ordernr": "",
+        "otp": "",
+        "travelreqnr": "",
+        "travelreqmatnr": ""
+    },
+    "payer_imputation": [
+        {
+            "fund": "",
+            "fundrate": "",
+            "opcode": "",
+            "ordernr": "",
+            "otp": "",
+            "travelreqnr": "",
+            "travelreqmatnr": ""
+        }
+    ]
+}

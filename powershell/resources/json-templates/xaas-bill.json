@@ -9,16 +9,16 @@
         "distribution": "MAIL"
 	},
 	"shipper": {
-		"name": "Christophe Simond",
-		"sciper": "287589",
-		"fund": "619142",
-		"email": "christophe.simond@epfl.ch",
-		"tel": "0216931068"
+		"name": "{{shipperName}}",
+		"sciper": "{{shipperSciper}}",
+		"fund": "{{shipperFund}}",
+		"email": "{{shipperMail}}",
+		"tel": "{{shipperPhone}}"
 	},
 	"shipper_imputation": {
-		"opcode": "SVC1057",
+		"opcode": "{{shipperImputationNoBilledSVC}}",
 		"ordernr": "",
-		"otp": "SVC1057",
+		"otp": "{{shipperImputationNoBilledSVC}}",
 		"affaire": "",
 		"travelreqnr": "",
 		"travelreqmatnr": ""
@@ -51,32 +51,7 @@
 		}
 	],
 	"items": [
-		{
-            "number": "9010135",
-            "qty": 1,
-            "price": "50",
-            "text": "Texte du poste 1",
-            "discounttype": "ZD01",
-            "discountamount": "50",
-            "shipper_imputation": {
-                "opcode": "",
-                "ordernr": "",
-                "otp": "",
-                "travelreqnr": "",
-                "travelreqmatnr": ""
-		    },
-		    "payer_imputation": [
-                {
-                    "fund": "",
-                    "fundrate": "",
-                    "opcode": "",
-                    "ordernr": "",
-                    "otp": "",
-                    "travelreqnr": "",
-                    "travelreqmatnr": ""
-                }
-            ]
-        }
+		
     ],
 	"execmode": "{{execMode}}"
 }
