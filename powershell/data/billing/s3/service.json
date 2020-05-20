@@ -9,7 +9,7 @@
     "billingFrom": "VPSI",
     "billingReference": "christophe.simond@epfl.ch",
     "billingGrid": "billing-grid.pdf",
-    "prestationCode": "9010330",
+    "prestationCode": "9010390",
     "itemColumns":
     {
         "colCode": "Code prestation",
@@ -18,6 +18,17 @@
         "colConsumed": "Consommé [TB]",
         "colUnitPrice": "Prix unitaire net [CHF/TB]",
         "colTotPrice": "Prix total net [CHF]"
+    },
+    "copernic":
+    {
+        "shipperName": "Christophe Simond",
+        "shipperSciper": "287589",
+        "shipperFund": "619142",
+        "shipperMail": "christophe.simond@epfl.ch",
+        "shipperPhone": "0216931068",
+
+        "shipperImputationNoBilledSVC": "SVC1057"
+        
     }
     
 }
