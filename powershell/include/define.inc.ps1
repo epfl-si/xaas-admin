@@ -12,12 +12,12 @@
 
 # ---------------------------------------------------------
 # Global
-$global:RESOURCES_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources"))
-$global:BINARY_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "bin"))
-$global:CONFIG_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "config"))
-$global:DATA_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "data"))
-$global:MAIL_TEMPLATE_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "mail-templates"))
-$global:JSON_TEMPLATE_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "json-templates"))
+$global:RESOURCES_FOLDER            = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources"))
+$global:BINARY_FOLDER               = ([IO.Path]::Combine("$PSScriptRoot", "..", "bin"))
+$global:CONFIG_FOLDER               = ([IO.Path]::Combine("$PSScriptRoot", "..", "config"))
+$global:DATA_FOLDER                 = ([IO.Path]::Combine("$PSScriptRoot", "..", "data"))
+$global:MAIL_TEMPLATE_FOLDER        = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "mail-templates"))
+$global:JSON_TEMPLATE_FOLDER        = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "json-templates"))
 $global:JSON_2ND_DAY_ACTIONS_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "2nd-day-actions"))
 
 $global:ENV_FILE = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", ".env"))
@@ -34,44 +34,46 @@ $global:TARGET_ENV_LIST = @($global:TARGET_ENV__DEV
 					        $global:TARGET_ENV__PROD)
 
 # Nom du tenant par défaut
-$global:VRA_TENANT__DEFAULT = "vsphere.local"
-$global:VRA_TENANT__EPFL = "EPFL"
-$global:VRA_TENANT__ITSERVICES = "ITServices"
+$global:VRA_TENANT__DEFAULT      = "vsphere.local"
+$global:VRA_TENANT__EPFL         = "EPFL"
+$global:VRA_TENANT__ITSERVICES   = "ITServices"
+$global:VRA_TENANT__RESEARCH     = "Research"
 
 # Nom des tenants que l'on devra traiter
-$global:TARGET_TENANT_LIST = @($global:VRA_TENANT__EPFL, $global:VRA_TENANT__ITSERVICES<#, $global:VRA_TENANT__DEFAULT #>)
+$global:TARGET_TENANT_LIST = @($global:VRA_TENANT__EPFL, $global:VRA_TENANT__ITSERVICES, $global:VRA_TENANT__RESEARCH<#, $global:VRA_TENANT__DEFAULT #>)
 
 # Les types d'approval policies
-$global:APPROVE_POLICY_TYPE__ITEM_REQ = 'new'
-$global:APPROVE_POLICY_TYPE__ACTION_REQ = 'reconfigure'
+$global:APPROVE_POLICY_TYPE__ITEM_REQ     = 'new'
+$global:APPROVE_POLICY_TYPE__ACTION_REQ   = 'reconfigure'
 
 # Information sur les services au sens vRA
 $global:VRA_SERVICE_SUFFIX__PUBLIC  =" (Public)"
 $global:VRA_SERVICE_SUFFIX__PRIVATE =" (Private)"
 
 # Nom des custom properties à utiliser.
-$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID = "ch.epfl.unit.id"
-$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID = "ch.epfl.snow.svc.id"
-$global:VRA_CUSTOM_PROP_VRA_BG_TYPE = "ch.epfl.vra.bg.type"
-$global:VRA_CUSTOM_PROP_VRA_BG_STATUS = "ch.epfl.vra.bg.status"
-$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE = "ch.epfl.vra.bg.res.manage"
+$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID               = "ch.epfl.unit.id"
+$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID           = "ch.epfl.snow.svc.id"
+$global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID            = "ch.epfl.project.id"
+$global:VRA_CUSTOM_PROP_VRA_BG_TYPE                = "ch.epfl.vra.bg.type"
+$global:VRA_CUSTOM_PROP_VRA_BG_STATUS              = "ch.epfl.vra.bg.status"
+$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE          = "ch.epfl.vra.bg.res.manage"
 $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE = "ch.epfl.vra.bg.roles.support.manage"
-$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME = "ch.epfl.vra.tenant.name"
-$global:VRA_CUSTOM_PROP_VRA_BG_NAME = "ch.epfl.vra.bg.name"
+$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME            = "ch.epfl.vra.tenant.name"
+$global:VRA_CUSTOM_PROP_VRA_BG_NAME                = "ch.epfl.vra.bg.name"
 
 
 # Types de Business Group possibles
-$global:VRA_BG_TYPE__ADMIN 	 = "admin"
-$global:VRA_BG_TYPE__SERVICE = "service"
-$global:VRA_BG_TYPE__UNIT 	 = "unit"
+$global:VRA_BG_TYPE__ADMIN 	= "admin"
+$global:VRA_BG_TYPE__SERVICE  = "service"
+$global:VRA_BG_TYPE__UNIT 	   = "unit"
 
 # Statuts de Business Group possibles
 $global:VRA_BG_STATUS__ALIVE = "alive"
 $global:VRA_BG_STATUS__GHOST = "ghost"
 
 # Valeurs possibles pour la gestion des Réservations du Business Group
-$global:VRA_BG_RES_MANAGE__AUTO = "auto"
-$global:VRA_BG_RES_MANAGE__MAN = "man"
+$global:VRA_BG_RES_MANAGE__AUTO  = "auto"
+$global:VRA_BG_RES_MANAGE__MAN   = "man"
 
 # Pour filtrer et ne prendre que les groupes AD modifiés durant les X derniers jours pour la création des éléments dans vRA
 $global:AD_GROUP_MODIFIED_LAST_X_DAYS = 2
@@ -88,10 +90,10 @@ $global:PRIVATE_ISO_LIFETIME_DAYS = 30
 
 ## Fonctionnement alternatif
 # Fichiers utilisés pour "altérer" le fonctionnement des scripts
-$global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES = "RECREATE_APPROVAL_POLICIES"
-$global:SCRIPT_ACTION_FILE__SIMULATION_MODE = "SIMULATION_MODE"
-$global:SCRIPT_ACTION_FILE__TEST_MODE = "TEST_MODE"
-$global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE = "FORCE_ISO_FOLDER_ACL_UPDATE"
+$global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES   = "RECREATE_APPROVAL_POLICIES"
+$global:SCRIPT_ACTION_FILE__SIMULATION_MODE              = "SIMULATION_MODE"
+$global:SCRIPT_ACTION_FILE__TEST_MODE                    = "TEST_MODE"
+$global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE  = "FORCE_ISO_FOLDER_ACL_UPDATE"
 
 
 ## NSX
