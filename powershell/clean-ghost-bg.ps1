@@ -1,6 +1,6 @@
 <#
 USAGES:
-	clean-ghost-bg.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+	clean-ghost-bg.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research
 #>
 <#
     BUT 		: Supprime les Business Groups qui sont en mode "ghost" s'ils sont vides.

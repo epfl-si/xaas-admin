@@ -1,6 +1,6 @@
 <#
 USAGES:
-	clean-iso-folders.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+	clean-iso-folders.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research
 #>
 <#
     BUT 		: Fait du nettoyage dans les dossiers où se trouvent les ISO privées des différents

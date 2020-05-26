@@ -1,6 +1,6 @@
 <#
 USAGES:
-	sync-ad-groups-from-ldap-or-django.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+	sync-ad-groups-from-ldap-or-django.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research
 #>
 <#
 	BUT 		: Crée/met à jour les groupes AD pour l'environnement donné et le tenant EPFL.
@@ -485,7 +485,7 @@ try
 						$counters.inc('epfl.LDAPUnitsEmpty')
 						$adGroupExists = $false
 					}
-				}
+				}# FIN CATCH le groupe n'existe pas
 
 				# Si le groupe AD existe
 				if($adGroupExists)

@@ -1,6 +1,6 @@
 <#
 USAGES:
-	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl [-fullSync] [-resume]
+	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research [-fullSync] [-resume]
 #>
 <#
 	BUT 		: Crée/met à jour les Business groupes en fonction des groupes AD existant
