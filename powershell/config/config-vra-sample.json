@@ -12,6 +12,10 @@
         "epfl": {
             "user":"",
             "password":""
+        },
+        "research": {
+            "user":"",
+            "password":""
         }
     },
     "test": {
@@ -27,6 +31,10 @@
         "epfl": {
             "user":"",
             "password":""
+        },
+        "research": {
+            "user":"",
+            "password":""
         }
     },
     "prod": {
@@ -40,6 +48,10 @@
             "password":""
         },
         "epfl": {
+            "user":"",
+            "password":""
+        },
+        "research": {
             "user":"",
             "password":""
         }

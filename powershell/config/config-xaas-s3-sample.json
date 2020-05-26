@@ -16,6 +16,11 @@
             "credentialProfile": "",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
+        },
+        "research": {
+            "credentialProfile": "",
+            "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
+            "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         }
     },
     "test": {
@@ -35,6 +40,11 @@
             "credentialProfile": "",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
+        },
+        "research": {
+            "credentialProfile": "",
+            "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
+            "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         }
     },
     "prod": {
@@ -51,6 +61,11 @@
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         },
         "itservices": {
+            "credentialProfile": "",
+            "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
+            "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
+        },
+        "research": {
             "credentialProfile": "",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
