@@ -296,6 +296,8 @@ function createOrUpdateBG
 	if(($bgUnitID -ne "") -and ($bgSnowSvcID -eq ""))
 	{
 		$tenantName = $global:VRA_TENANT__EPFL
+
+		$bgIdProp = $bgUnitID
 		
 		# Recherche du BG par son no d'unité.
 		$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgUnitID
@@ -339,6 +341,8 @@ function createOrUpdateBG
 	elseif(($bgUnitID -eq "") -and ($bgSnowSvcID -ne "")) 
 	{
 		$tenantName = $global:VRA_TENANT__ITSERVICES
+
+		$bgIdProp = $bgSnowSvcID
 
 		# Recherche du BG par son ID de service dans ServiceNow
 		$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgSnowSvcID
@@ -390,24 +394,12 @@ function createOrUpdateBG
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
 		# les BG existants avec la nouvelle "Custom Property"
-		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE))
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID))
 		{
 			# Ajout de la custom Property avec la valeur par défaut 
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE" = $global:VRA_BG_RES_MANAGE__AUTO})
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BG_ID" = $bgIdProp})
 		}
 
-		
-		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_TENANT_NAME))
-		{
-			# Ajout de la custom Property avec la valeur par défaut 
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME" = $tenantName})
-		}
-
-		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_NAME))
-		{
-			# Ajout de la custom Property avec la valeur par défaut 
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $bgName})
-		}
 
 
 		# ==========================================================================================
@@ -1482,7 +1474,8 @@ try
 			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
 			# Custom properties du Buisness Group
-			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $unitID}
+			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $unitID
+									"$global:VRA_CUSTOM_PROP_EPFL_BG_ID" = $unitID}
 	
 		}
 		# Si Tenant ITServices
@@ -1509,7 +1502,8 @@ try
 			$machinePrefixName = ""
 			
 			# Custom properties du Buisness Group
-			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID" = $snowServiceId}
+			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID" = $snowServiceId
+									"$global:VRA_CUSTOM_PROP_EPFL_BG_ID" = $snowServiceId}
 
 		}# FIN Si Tenant ITServices
 
