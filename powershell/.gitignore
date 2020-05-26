@@ -1,6 +1,5 @@
 .vscode/
-./logs/
-./billing/
+logs/
 errors
 IaaS.code-workspace
 test.ps1
