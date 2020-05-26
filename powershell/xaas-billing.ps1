@@ -476,7 +476,7 @@ try
                         # Si on est en mode d'exéution réel et que la facture a bel et bien été envoyée dans Copernic 
                         if($copernicRealMode)
                         {
-                            $logHistory.addLineAndDisplay(("> Bill sent to Copernic (Doc number: {0})" -f $result.docNumber))
+                            $logHistory.addLineAndDisplay(("> Bill sent to Copernic (Doc number: {0}, bill ref: {1})" -f $result.docNumber, $billReference))
 
                             # On dit que tous les items de la facture ont été facturés
                             $billingObject.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB, $billReference)
