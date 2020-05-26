@@ -8,6 +8,10 @@
                 "approvals": []
             },
             {
+                "name": "Bucket Usage Stats",
+                "approvals": []
+            },
+            {
                 "name": "Regenerate Keys",
                 "approvals": [] 
             },
