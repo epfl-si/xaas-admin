@@ -57,8 +57,12 @@ param([string]$targetEnv,
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configBilling = [ConfigReader]::New("config-billing.json")
 
-# Constantes
+##### Constantes
+
+# Montant minimmum à partir duquel on facture
 $global:BILLING_MIN_MOUNT_CHF = 5
+# Nombre de jours pendant lesquels on garde les fichiers PDF générés avant de les effacer.
+$global:BILLING_KEEP_PDF_NB_DAYS = 30
 
 <#
 	-------------------------------------------------------------------------------------
@@ -158,7 +162,7 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 					continue
 				}
 
-			}
+			}# FIN EN FONCTION de la notif
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
 			$notificationMail.send($mailSubject, $templateName, $valToReplace)
@@ -167,6 +171,8 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 
 	}# FIN BOUCLE de parcours des catégories de notifications
 }
+
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -217,6 +223,7 @@ try
     $counters.add('billSentToCopernic', '# Bill sent to Copernic')
     $counters.add('billCopernicError', '# Bill not sent to Copernic because of an error')
     $counters.add('PDFGenerated', '# PDF generated')
+    $counters.add('PDFOldCleaned', '# Old PDF cleaned')
     
     <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -505,6 +512,15 @@ try
         }
 
     }# FIN BOUCLE de parcours des entités
+
+    $logHistory.addLineAndDisplay(("Cleaning PDF files older than {0} day(s)..." -f $global:BILLING_KEEP_PDF_NB_DAYS))
+    # Suppression des fichiers PDF trop "vieux"
+    ForEach($pdfFile in (Get-ChildItem -Path $global:XAAS_BILLING_PDF_FOLDER -Filter "*.pdf" | Where-Object {$_.CreationTime -lt (Get-Date).addDays(-$global:BILLING_KEEP_PDF_NB_DAYS)}))
+    {
+        Remove-Item $pdfFile.FullName -Force
+        $logHistory.addLineAndDisplay(("> PDF file deleted: {0}" -f $pdfFile.FullName))
+        $counters.inc('PDFOldCleaned')
+    }
 
     # Gestion des erreurs s'il y en a
 	handleNotifications -notifications $notifications -targetEnv $targetEnv
