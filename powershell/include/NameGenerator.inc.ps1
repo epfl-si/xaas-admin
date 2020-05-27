@@ -1042,13 +1042,15 @@ class NameGenerator
     #>
     hidden [string] getTenantShortName()
     {
-        switch($this.tenant)
+        $res = switch($this.tenant)
         {
-            $global:VRA_TENANT__DEFAULT { return 'def'}
-            $global:VRA_TENANT__EPFL { return 'epfl'}
-            $global:VRA_TENANT__ITSERVICES { return 'its'}
+            $global:VRA_TENANT__DEFAULT { 'def' }
+            $global:VRA_TENANT__EPFL { 'epfl' }
+            $global:VRA_TENANT__ITSERVICES { 'its' }
+            default { '' }
         }
-        return ""
+        
+        return $res
     } 
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>

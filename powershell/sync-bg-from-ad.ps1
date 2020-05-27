@@ -292,7 +292,8 @@ function createOrUpdateBG
 	switch($tenantName)
 	{
 		# ---- EPFL ----
-		$global:VRA_TENANT__EPFL {
+		$global:VRA_TENANT__EPFL 
+		{
 			# Recherche du BG par son no d'unité.
 			$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgUnitID
 
@@ -327,7 +328,8 @@ function createOrUpdateBG
 
 
 		# ---- ITServices ----
-		$global:VRA_TENANT__ITSERVICES {
+		$global:VRA_TENANT__ITSERVICES 
+		{
 			# Recherche du BG par son ID de service dans ServiceNow
 			$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgSnowSvcID
 
@@ -335,7 +337,8 @@ function createOrUpdateBG
 			$machinePrefixId = $null
 		}
 
-		default {
+		default 
+		{
 			Throw ("Incorrect value given for tenant name ({0})" -f $tenantName)
 		}
 	}
@@ -780,26 +783,37 @@ function setBGAsGhostIfNot
 
 		$counters.inc('BGGhost')
 
-		# Si Tenant EPFL
-		if($bg.tenant -eq $global:VRA_TENANT__EPFL)
+		# En fonction du tenant
+		switch($bg.tenant)
 		{
-			# Récupération du contenu du rôle des admins de faculté pour le BG
-			$facAdmins = $vra.getBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER") 
-			
-			# Ajout des admins de la faculté de l'unité du BG afin qu'ils puissent gérer les élments du BG.
-			createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $facAdmins
-		}
-		# Si Tenant ITServices
-		elseif($bg.tenant -eq $global:VRA_TENANT__ITSERVICES)
-		{
-			$tenantAdmins = $vra.getTenantAdminGroupList($bg.tenant)
-			# Ajout des admins LOCAUX du tenant comme pouvant gérer les éléments du BG
-			createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $tenantAdmins
-		}
-		else # Tenant non géré
-		{
-			$logHistory.addErrorAndDisplay(("!!! Tenant '{0}' not supported in this script" -f $bg.tenant))
-			exit
+			# ---- EPFL ----
+			$global:VRA_TENANT__EPFL 
+			{
+				# Récupération du contenu du rôle des admins de faculté pour le BG
+				$facAdmins = $vra.getBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER") 
+				
+				# Ajout des admins de la faculté de l'unité du BG afin qu'ils puissent gérer les élments du BG.
+				createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $facAdmins
+			}
+
+			# ---- ITServices ----
+			$global:VRA_TENANT__ITSERVICES 
+			{
+				$tenantAdmins = $vra.getTenantAdminGroupList($bg.tenant)
+				# Ajout des admins LOCAUX du tenant comme pouvant gérer les éléments du BG
+				createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $tenantAdmins
+			}
+
+			# ---- Research ----
+			$global:VRA_TENANT__RESEARCH 
+			{
+				Throw "to implement"
+			}
+
+			default 
+			{
+				Throw ("!!! Tenant '{0}' not supported in this script" -f $bg.tenant)
+			}
 		}
 
 		$setAsGhost = $true
@@ -1423,59 +1437,67 @@ try
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group
-		# Si Tenant EPFL
-		if($targetTenant -eq $global:VRA_TENANT__EPFL)
+		
+		switch($targetTenant)
 		{
-			# Pour signifier à la fonction createOrUpdateBG qu'on n'est pas dans le tenant ITServices.
-			$snowServiceId = ""
-
-			# Eclatement de la description et du nom pour récupérer le informations
-			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
-			$faculty, $unit = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
-
-			# Initialisation des détails pour le générateur de noms
-			$nameGenerator.initDetails(@{facultyName = $faculty
-										 facultyID = $facultyID
-										 unitName = $unit
-										 unitID = $unitID})
-
-			# Création du nom/description du business group
-			$bgDesc = $nameGenerator.getBGDescription()
-
-			# Nom du préfix de machine
-			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
-
-			# Custom properties du Buisness Group
-			$bgEPFLID = $unitID
+			# ---- EPFL ----
+			$global:VRA_TENANT__EPFL 
+			{
+				# Pour signifier à la fonction createOrUpdateBG qu'on n'est pas dans le tenant ITServices.
+				$snowServiceId = ""
 	
+				# Eclatement de la description et du nom pour récupérer le informations
+				$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
+				$faculty, $unit = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+	
+				# Initialisation des détails pour le générateur de noms
+				$nameGenerator.initDetails(@{facultyName = $faculty
+											 facultyID = $facultyID
+											 unitName = $unit
+											 unitID = $unitID})
+	
+				# Création du nom/description du business group
+				$bgDesc = $nameGenerator.getBGDescription()
+	
+				# Nom du préfix de machine
+				$machinePrefixName = $nameGenerator.getVMMachinePrefix()
+	
+				# Custom properties du Buisness Group
+				$bgEPFLID = $unitID
+			}
+
+			# ---- ITServices ----
+			$global:VRA_TENANT__ITSERVICES
+			{
+				# Pour signifier à la fonction createOrUpdateBG qu'on n'est pas dans le tenant EPFL.
+				$unitID = ""
+	
+				# Eclatement de la description et du nom pour récupérer le informations 
+				# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
+				$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
+				$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+	
+				# Initialisation des détails pour le générateur de noms
+				$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
+					serviceName = $serviceLongName
+					snowServiceId = $snowServiceId})
+	
+				# Création du nom/description du business group
+				$bgDesc = $serviceLongName
+				
+				# Nom du préfix de machine
+				# NOTE ! Il n'y a pas de préfix de machine pour les Business Group du tenant ITServices.
+				$machinePrefixName = ""
+				
+				# Custom properties du Buisness Group
+				$bgEPFLID = $snowServiceId
+			}
+
+			default
+			{
+				Throw ("Tenant {0} not handled" -f $targetTenant)
+			}
 		}
-		# Si Tenant ITServices
-		elseif($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
-		{
-			# Pour signifier à la fonction createOrUpdateBG qu'on n'est pas dans le tenant EPFL.
-			$unitID = ""
-
-			# Eclatement de la description et du nom pour récupérer le informations 
-			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
-			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-			$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
-
-			# Initialisation des détails pour le générateur de noms
-			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
-				serviceName = $serviceLongName
-				snowServiceId = $snowServiceId})
-
-			# Création du nom/description du business group
-			$bgDesc = $serviceLongName
-			
-			# Nom du préfix de machine
-			# NOTE ! Il n'y a pas de préfix de machine pour les Business Group du tenant ITServices.
-			$machinePrefixName = ""
-			
-			# Custom properties du Buisness Group
-			$bgEPFLID = $snowServiceId
-
-		}# FIN Si Tenant ITServices
 
 		# Récupération du nom du BG
 		$bgName = $nameGenerator.getBGName()
