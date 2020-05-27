@@ -50,9 +50,7 @@ $global:APPROVE_POLICY_TYPE__ACTION_REQ   = 'reconfigure'
 $global:VRA_SERVICE_SUFFIX__PUBLIC  =" (Public)"
 $global:VRA_SERVICE_SUFFIX__PRIVATE =" (Private)"
 
-# Nom des custom properties à utiliser.
-$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID               = "ch.epfl.unit.id"
-$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID           = "ch.epfl.snow.svc.id"
+# Nom des custom properties à utiliser
 $global:VRA_CUSTOM_PROP_EPFL_BG_ID                 = "ch.epfl.vra.bg.id"
 $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID            = "ch.epfl.project.id"
 $global:VRA_CUSTOM_PROP_VRA_BG_TYPE                = "ch.epfl.vra.bg.type"
