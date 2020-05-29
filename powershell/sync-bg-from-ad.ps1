@@ -337,6 +337,13 @@ function createOrUpdateBG
 			$machinePrefixId = $null
 		}
 
+		# ---- Research ----
+		$global:VRA_TENANT__RESEARCH
+		{
+			# TODO: Implémenter la chose
+			Throw "Research to implement"
+		}
+
 		default 
 		{
 			Throw ("Incorrect value given for tenant name ({0})" -f $tenantName)
@@ -1492,6 +1499,13 @@ try
 				# Custom properties du Buisness Group
 				$bgEPFLID = $snowServiceId
 			}
+
+			# ---- Research ----
+            $global:VRA_TENANT__RESEARCH
+            {
+                # TODO: Implémenter la chose
+                Throw "Research to implement"
+            }
 
 			default
 			{
