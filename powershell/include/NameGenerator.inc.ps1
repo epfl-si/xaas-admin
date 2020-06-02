@@ -881,7 +881,7 @@ class NameGenerator
                 }
         
                 $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('projectId')), $suffix
-                $desc = "Approval policy for {0} for Project: {1}" -f $type_desc, $this.getDetail('serviceName')
+                $desc = "Approval policy for {0} for Project: {1}" -f $type_desc, $this.getDetail('projectId')
             }
 
 
@@ -948,7 +948,7 @@ class NameGenerator
             $global:VRA_TENANT__RESEARCH
             {
                 $name = "sg.rsrch_{0}" -f $this.getDetail('projectId')
-                $desc = "Tenant: {0}\nBusiness Group: {1}\Project ID: {2}" -f $this.tenant, $bgName, $this.getDetail('projectId')
+                $desc = "Tenant: {0}\nBusiness Group: {1}\nProject ID: {2}" -f $this.tenant, $bgName, $this.getDetail('projectId')
             }
 
 

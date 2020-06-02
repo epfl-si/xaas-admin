@@ -1,0 +1,463 @@
+[
+    {
+        "name": "initDetails",
+        "tests": [
+            {
+                "params": [
+                    {
+                        "projectId": "123456",
+                        "projectDesc": "This is my project description",
+                        "financeCenter": "F9876"
+                    }
+                ],
+                "expected": null
+            }
+        ]
+    },
+    {
+        "name": "getADGroupNameRegEx",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "^vra_t_adm_sup_rsrch$"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "^vra_t_adm_sup_rsrch$"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "^vra_t(?!_approval)_[0-9]+(?\u003c!_adm_sup_rsrch)$"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "^vra_t(?!_approval)_[0-9]+(?\u003c!_adm_sup_rsrch)$"
+            }
+
+        ]
+    },
+    {
+        "name": "getRoleADGroupName",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER", true],
+                "expected": "vra_t_adm_sup_rsrch@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_SUBTENANT_MANAGER", false],
+                "expected": "vra_t_adm_sup_rsrch"
+            },
+            {
+                "params": ["CSP_SUPPORT", true],
+                "expected": "vra_t_adm_sup_rsrch@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_SUPPORT", false],
+                "expected": "vra_t_adm_sup_rsrch"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", true],
+                "expected": "vra_t_123456@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", false],
+                "expected": "vra_t_123456"
+            },
+            {
+                "params": ["CSP_CONSUMER", true],
+                "expected": "vra_t_123456@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_CONSUMER", false],
+                "expected": "vra_t_123456"
+            }
+        ]
+    },
+
+    {
+        "name": "getRoleADGroupDesc",
+        "tests": [
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "F9876;This is my project description"
+            },
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "F9876;This is my project description"
+            }
+        ]
+    },
+
+    {
+        "name": "getRoleGroupsGroupName",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "vra_t_adm_sup_rsrch"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "vra_t_123456"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "vra_t_123456"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "vra_t_adm_sup_rsrch"
+            }
+        ]
+    },
+    {
+        "name": "getRoleGroupsADGroupName",
+        "tests": [
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "vra_t_adm_sup_rsrch_AppGrpU"
+            },
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "vra_t_adm_sup_rsrch_AppGrpU"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "vra_t_123456_AppGrpU"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "vra_t_123456_AppGrpU"
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveADGroupName",
+        "tests": [
+            {
+                "params":[1, true],
+                "expected": {
+                    "onlyForTenant": false,
+                    "name": "vra_t_approval_service_manager@intranet.epfl.ch"
+                }
+            },
+            {
+                "params":[1, false],
+                "expected": {
+                    "onlyForTenant": false,
+                    "name": "vra_t_approval_service_manager"
+                }
+            },
+            {
+                "params":[2, true],
+                "expected": {
+                    "onlyForTenant": true,
+                    "name": "vra_t_approval_123456@intranet.epfl.ch"
+                }
+            },
+            {
+                "params":[2, false],
+                "expected": {
+                    "onlyForTenant": true,
+                    "name": "vra_t_approval_123456"
+                }
+            }
+
+        ]
+    },
+
+    {
+        "name": "getApproveGroupsGroupName",
+        "tests": [
+             {
+                "params":[1, false],
+                "expected": {
+                    "onlyForTenant": false,
+                    "name": "vra_t_approval_service_manager"
+                }
+            },
+            {
+                "params":[2, false],
+                "expected": {
+                    "onlyForTenant": true,
+                    "name": "vra_t_approval_123456"
+                }
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveGroupsEmail",
+        "tests":[
+            {
+                "params":[1],
+                "expected": "vra_t_approval_service_manager@groupes.epfl.ch"
+            },
+            {
+                "params":[2],
+                "expected": "vra_t_approval_123456@groupes.epfl.ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveGroupsADGroupName",
+        "tests": [
+            {
+                "params":[1, false],
+                "expected": "vra_t_approval_service_manager_AppGrpU"
+            },
+            {
+                "params":[2, false],
+                "expected": "vra_t_approval_123456_AppGrpU"
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveADGroupDesc",
+        "tests":[
+            {
+                "params":[1],
+                "expected": "Approval group (level 1)"
+            },
+            {
+                "params":[2],
+                "expected": "Approval group (level 2) for Project: 123456"
+            }
+        ]
+    },
+
+    {
+        "name": "getApprovalPolicyNameAndDesc",
+        "tests":[
+            {
+                "params":["new"],
+                "expected": ["rsrch_123456_newItems", "Approval policy for new items for Project: 123456"]
+            },
+            {
+                "params":["reconfigure"],
+                "expected": ["rsrch_123456_2ndDay", "Approval policy for 2nd day actions for Project: 123456"]
+            }
+        ]
+    },
+
+    {
+        "name": "getBGEntNameAndDesc",
+        "tests": [
+            {
+                "params":[],
+                "expected": ["rsrch_123456", "Project: 123456"]
+            }
+        ]
+    },
+
+    {
+        "name": "getSecurityGroupNameAndDesc",
+        "tests":[
+            {
+                "params": ["rsrch_123456"],
+                "expected": ["sg.rsrch_123456", "Tenant: research\\nBusiness Group: rsrch_123456\\nProject ID: 123456"]
+            }
+        ]
+    },
+
+    {
+        "name": "getSecurityTagName",
+        "tests":[
+            {
+                "params":[],
+                "expected":"st.rsrch_123456"
+            }
+        ]
+    },
+
+    {
+        "name": "getFirewallSectionNameAndDesc",
+        "tests": [
+            {
+                "params":[],
+                "expected": ["rsrch_123456","Section for Tenant research and Project 123456"]
+            }
+        ]   
+    },
+
+    {
+        "name": "getFirewallRuleNames",
+        "tests":[
+            {
+                "params":[],
+                "expected":[
+                    {
+                        "tag": "allow-123456-in",
+                        "name": "allow-123456-in"
+                    },
+                    {
+                        "tag": "allow-intra-123456-comm",
+                        "name": "allow-intra-123456-comm"
+                    },
+                    {
+                        "tag": "allow-123456-out",
+                        "name": "allow-123456-out"
+                    },
+                    {
+                        "tag": "deny-123456-all",
+                        "name": "deny-123456-all"
+                    }
+                ]
+            }
+        ]
+    },
+
+    {
+        "name": "getADGroupsOUDN",
+        "tests":[
+            {
+                "params": [true],
+                "expected": "OU=Research,OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            },
+            {
+                "params": [false],
+                "expected": "OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getVMMachinePrefix",
+        "tests":[
+            {
+                "params": [],
+                "expected": "123456-t-"
+            }
+        ]
+    },
+
+    {
+        "name": "getEntName",
+        "tests":[
+            {
+                "params": [],
+                "expected": "rsrch_123456"
+            }
+        ]
+    },
+
+    {
+        "name": "getEntDescription",
+        "tests":[
+            {
+                "params": [],
+                "expected": "Project: 123456"
+            }
+        ]
+    },
+
+    {
+        "name": "extractInfosFromADGroupName",
+        "tests":[
+            {
+                "params": ["vra_t_123456"],
+                "expected": ["123456"]
+            }
+        ]
+    },
+    
+    {
+        "name": "extractInfosFromADGroupDesc",
+        "tests":[
+            {
+                "params": ["123456;This is my project description"],
+                "expected": ["123456", "This is my project description"]
+            }
+        ]
+    },
+    
+    {
+        "name": "getBGName",
+        "tests":[
+            {
+                "params": [],
+                "expected": "rsrch_123456"
+            }
+        ]
+    },
+
+    {
+        "name": "getBGResName",
+        "tests":[
+            {
+                "params": ["rsrch_123456", "clstr-test-INJ"],
+                "expected": "rsrch_123456_clstr_test_inj"
+            }
+        ]
+    },
+
+    {
+        "name": "getADGroupFQDN",
+        "tests":[
+            {
+                "params": ["vra_t_123456"],
+                "expected": "vra_t_123456@intranet.epfl.ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getDirectoryName",
+        "tests":[
+            {
+                "params": [],
+                "expected": "intranet.epfl.ch"
+            }
+        ]
+    },
+
+    {
+        "name": "getReservationTemplatePrefix",
+        "tests":[
+            {
+                "params": [],
+                "expected": "template_rsrch_"
+            }
+        ]
+    },
+    
+    {
+        "name": "getNASPrivateISOPath",
+        "tests":[
+            {
+                "params": ["rsrch_123456"],
+                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\research\\rsrch_123456"
+            }
+        ]
+    },
+
+    {
+        "name": "getNASPrivateISORootPath",
+        "tests":[
+            {
+                "params": [],
+                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\research"
+            }
+        ]
+    },
+
+    {
+        "name": "getNASPrivateISOPathBGName",
+        "tests":[
+            {
+                "params": ["\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\research\\rsrch_123456"],
+                "expected": "rsrch_123456"
+            }
+        ]
+    }
+]
