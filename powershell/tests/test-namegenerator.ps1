@@ -26,20 +26,20 @@ USAGES:
 $classTester = [ClassTester]::new()
 
 # ------------------------------------------
-# Tests pour le tenant EPFL
+Tests pour le tenant EPFL
 
-# $nameGenerator = [NameGenerator]::new('test', 'epfl')
+$nameGenerator = [NameGenerator]::new('test', 'epfl')
 
-# $jsonFile = ([IO.Path]::Combine("$PSScriptRoot", "test-namegenerator-epfl.json"))
-# $classTester.runTests($jsonFile, $nameGenerator)
+$jsonFile = ([IO.Path]::Combine("$PSScriptRoot", "test-namegenerator-epfl.json"))
+$classTester.runTests($jsonFile, $nameGenerator)
 
-# # ------------------------------------------
-# # Tests pour le tenant ITServices
+# ------------------------------------------
+# Tests pour le tenant ITServices
 
-# $nameGenerator = [NameGenerator]::new('test', 'itservices')
+$nameGenerator = [NameGenerator]::new('test', 'itservices')
 
-# $jsonFile = ([IO.Path]::Combine("$PSScriptRoot", "test-namegenerator-itservices.json"))
-# $classTester.runTests($jsonFile, $nameGenerator)
+$jsonFile = ([IO.Path]::Combine("$PSScriptRoot", "test-namegenerator-itservices.json"))
+$classTester.runTests($jsonFile, $nameGenerator)
 
 # ------------------------------------------
 # Tests pour le tenant Reserach
