@@ -113,7 +113,7 @@ class NameGenerator
 
             $global:VRA_TENANT__RESEARCH
             {
-                $keysToCheck = @('projectName', 'projectId')
+                $keysToCheck = @('projectId', 'financeCenter', 'projectDesc')
             }
 
             # Tenant pas géré
@@ -277,8 +277,24 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                if($role -eq "CSP_SUBTENANT_MANAGER" -or `
+                    $role -eq "CSP_SUPPORT")
+                {
+                    # vra_<envShort>_adm_sup_<tenantShort>
+                    return "^{0}{1}_adm_sup_{2}$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+                }
+                # Shared, Users
+                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
+                        $role -eq "CSP_CONSUMER")
+                {
+                    # vra_<envShort>_<projectId>
+                    # On ajoute une exclusion à la fin pour être sûr de ne pas prendre aussi les éléments qui sont pour les 2 rôles ci-dessus
+                    return "^{0}{1}(?!_approval)_[0-9]+(?<!_adm_sup_{2})$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+                }  
+                else
+                {
+                    Throw ("Incorrect role given ({0})" -f $role)
+                }
             }
 
             # Tenant pas géré
@@ -406,8 +422,32 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                # Admin, Support
+                if($role -eq "CSP_SUBTENANT_MANAGER" -or `
+                    $role -eq "CSP_SUPPORT")
+                {
+                    # vra_<envShort>_adm_sup_rsrch
+                    $groupName = "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+                    $groupDesc = "Administrators/Support for Tenant {0} on Environment {1}" -f $this.tenant.ToUpper(), $this.env.ToUpper()
+                    
+                }
+                # Shared, Users
+                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
+                        $role -eq "CSP_CONSUMER")
+                {
+                    # vra_<envShort>_<projectId>
+                    $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('projectId'))
+                    # <financeCenter>;<projectDesc>
+                    # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
+                    # réutilisé pour d'autres choses dans la création des éléments dans vRA
+                    $groupDesc = "{0};{1}" -f $this.getDetail('financeCenter').ToUpper(), $this.getDetail('projectDesc')
+
+                }
+                # Autre EPFL
+                else
+                {
+                    Throw ("Incorrect value for role : '{0}'" -f $role)
+                }
             }
 
             # Tenant pas géré
@@ -592,8 +632,19 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                if($level -eq 1)
+                {
+                    $last = "service_manager"
+                    $onlyForTenant = $false
+                }
+                elseif($level -eq 2)
+                {
+                    $last = $this.getDetail('projectId')
+                }
+                else 
+                {
+                    return $null   
+                }
             }
 
 
@@ -693,8 +744,11 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                # Le premier niveau d'approbation est générique à toutes les facultés donc pas de description "précise" pour celui-ci
+                if($level -gt 1)
+                {
+                    $desc = "{0} for Project: {1}" -f $desc, $this.getDetail('projectId')
+                }
             }
 
             # Tenant pas géré
@@ -803,8 +857,31 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                $type_desc = ""
+                $suffix = ""
+                switch($approvalPolicyType)
+                {
+                    $global:APPROVE_POLICY_TYPE__ITEM_REQ
+                    {
+                        $suffix = "newItems"
+                        $type_desc = "new items"
+                    }
+
+                    $global:APPROVE_POLICY_TYPE__ACTION_REQ
+                    {
+                        $suffix = "2ndDay"
+                        $type_desc = "2nd day actions"
+                    }
+
+                    default
+                    {
+                        Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
+                    }
+
+                }
+        
+                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('projectId')), $suffix
+                $desc = "Approval policy for {0} for Project: {1}" -f $type_desc, $this.getDetail('serviceName')
             }
 
 
@@ -870,8 +947,8 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                $name = "sg.rsrch_{0}" -f $this.getDetail('projectId')
+                $desc = "Tenant: {0}\nBusiness Group: {1}\Project ID: {2}" -f $this.tenant, $bgName, $this.getDetail('projectId')
             }
 
 
@@ -914,8 +991,7 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                $tagName = "st.rsrch_{0}" -f $this.getDetail('projectId')
             }
 
             # Tenant pas géré
@@ -962,8 +1038,8 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                $name = "rsrch_{0}" -f $this.getDetail('projectId')
+                $desc = "Section for Tenant {0} and Project {1}" -f $this.tenant, $this.getDetail('projectId')
             }
 
 
@@ -1012,8 +1088,7 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                $ruleMiddle = $this.getDetail('projectId')
             }
 
             # Tenant pas géré
@@ -1140,34 +1215,33 @@ class NameGenerator
     #>
     [string] getVMMachinePrefix()
     {
-        $facultyNameOrServiceShortName = ""
+        $detailToUse = ""
         switch($this.tenant)
         {
             # Tenant EPFL
             $global:VRA_TENANT__EPFL 
             { 
-                $facultyNameOrServiceShortName = $this.getDetail('facultyName')
+                $detailToUse = $this.getDetail('facultyName')
             }
 
             # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES 
             { 
-                $facultyNameOrServiceShortName = $this.getDetail('serviceShortName')
+                $detailToUse = $this.getDetail('serviceShortName')
             }
 
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                $detailToUse = $this.getDetail('projectId')
             }
         }
 
         # Suppression de tous les caractères non alpha numériques
-        $facultyNameOrServiceShortName = $facultyNameOrServiceShortName -replace '[^a-z0-9]', ''
+        $detailToUse = $detailToUse -replace '[^a-z0-9]', ''
 
         # On raccourci à 6 caractères pour ne pas avoir des préfixes trop longs
-        $facultyNameOrServiceShortName = $facultyNameOrServiceShortName.Substring(0, [System.Math]::Min(6, $facultyNameOrServiceShortName.length))
+        $detailToUse = $detailToUse.Substring(0, [System.Math]::Min(6, $detailToUse.length))
 
         # Pour l'ID court de l'environnement 
         $envId = ""
@@ -1181,7 +1255,7 @@ class NameGenerator
                 {
                     $envId = $this.getEnvShortName()
                 }
-                return "{0}{1}vm" -f $this.transformFacultyForGroupName($facultyNameOrServiceShortName), $envId
+                return "{0}{1}vm" -f $this.transformFacultyForGroupName($detailToUse), $envId
             }
             
             $global:VRA_TENANT__ITSERVICES 
@@ -1191,14 +1265,18 @@ class NameGenerator
                 {
                     $envId = "-{0}" -f $this.getEnvShortName()
                 }
-                return "{0}{1}-" -f $this.transformForGroupName($facultyNameOrServiceShortName) , $envId
+                return "{0}{1}-" -f $this.transformForGroupName($detailToUse) , $envId
             }
 
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
+                if($this.env -ne $global:TARGET_ENV__PROD)
+                {
+                    $envId = "-{0}" -f $this.getEnvShortName()
+                }
+                return "{0}{1}-" -f $this.transformForGroupName($detailToUse) , $envId
             }
 
             # Tenant pas géré
@@ -1237,8 +1315,7 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                $desc = $this.getDetail('projectDesc')
             }
 
             # Tenant pas géré
@@ -1277,8 +1354,7 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('projectId')) 
             }
 
             # Tenant pas géré
@@ -1319,8 +1395,7 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                $desc = "Project: {0}" -f $this.getDetail('projectId')
             }
 
             # Tenant pas géré
@@ -1357,8 +1432,7 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('projectId'))
             }
 
             default
@@ -1426,8 +1500,15 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                # Le nom du groupe devait avoir la forme :
+                # vra_<envShort>_<projectId>
+                
+                if($partList.Count -lt 3)
+                {
+                    Throw ("Incorrect group name ({0}) for Tenant {1}" -f $ADGroupName, $this.tenant)
+                }
+
+                $result = @($partList[2])
             }
 
             # Tenant pas géré
@@ -1488,8 +1569,15 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                # Le nom du groupe devait avoir la forme :
+                # <financeCenter>;<description>
+                
+                if($partList.Count -lt 2)
+                {
+                    Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
+                }
+
+                $partList = @($partList)
             }
 
             default
@@ -1535,7 +1623,7 @@ class NameGenerator
                 # its_<serviceShortName>
 
                 # Le nom de la Reservation est généré comme suit
-                # <tenantShort>_<serviceShortName>_<cluster>
+                # its_<serviceShortName>_<cluster>
                 
                 $resName = "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
             }
@@ -1543,8 +1631,13 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                # Le nom du BG a la structure suivante :
+                # rsrch_<projectId>
+
+                # Le nom de la Reservation est généré comme suit
+                # rsrch_<projectId>_<cluster>
+                
+                $resName = "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
             }
 
             default
