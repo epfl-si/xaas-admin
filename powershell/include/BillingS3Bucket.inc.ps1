@@ -168,7 +168,7 @@ class BillingS3Bucket: Billing
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
             $itemDesc = "{0}`n{1}`n({2})" -f $this.serviceBillingInfos.itemDescPrefix, $bucket.bucketName, $bucket.friendlyName
 
-            $itemId = $this.addItem($entityId, $this.serviceBillingInfos.itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage)
+            $itemId = $this.addItem($entityId, $this.serviceBillingInfos.itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB")
 
 
         }# FIN parcours des buckets

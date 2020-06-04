@@ -15,9 +15,10 @@
         "colCode": "Code prestation",
         "colDesc": "Description",
         "colMonthYear": "Consommé le [mois]",
-        "colConsumed": "Consommé [TB]",
-        "colUnitPrice": "Prix unitaire net [CHF/TB]",
-        "colTotPrice": "Prix total net [CHF]"
+        "colConsumed": "Quantité",
+        "colUnit": "Unité",
+        "colUnitPrice": "Prix unitaire HT [CHF]",
+        "colTotPrice": "Prix total HT [CHF]"
     },
     "copernic":
     {

@@ -318,8 +318,8 @@ try
             $billingItemTemplate = Get-content -path $global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE -Encoding UTF8
 
             # Génération de la date courante dans les formats nécessaires
-            $curDateYYYYMMDDHHMM = Get-Date -Format "yyyyMMddhhmm"
-            $curDateGoodLooking = Get-Date -Format "dd.MM.yyyy hh:mm"
+            $curDateYYYYMMDDHHMM = Get-Date -Format "yyyyMMddHHmm"
+            $curDateGoodLooking = Get-Date -Format "dd.MM.yyyy HH:mm"
             
             $logHistory.addLineAndDisplay("Looking for entities...")
 
@@ -385,11 +385,18 @@ try
 
 
                     $logHistory.addLineAndDisplay((">> Processing {0} '{1}'... " -f $serviceBillingInfos.itemTypeInDB, $item.itemName))
+
+                    <# On ajoute l'unité à la description car passe celle-ci à Copernic en tant que "vraie" unité implique d'avoir déclaré 
+                        celle-ci au préalable dans Copernic et si elle n'existe pas, l'erreur est mal gérée. Quentin Estoppey conseille de 
+                        plutôt mettre l'unité dans la description de l'élément, ce qu'on fait donc ici #>
+                    $descriptionWithUnit = "{0} [{1}]" -f $item.itemDesc, $item.itemUnit
+
                     $billingItemReplacements = @{
                         prestationCode = $serviceBillingInfos.prestationCode
-                        description = $item.itemDesc
+                        description = $descriptionWithUnit
                         monthYear = $monthYear
                         quantity = $item.itemQuantity
+                        unit = $item.itemUnit
                         unitPrice = $serviceBillingInfos.unitPricePerMonthCHF
                         # On coupe le prix à 2 décimales
                         itemPrice = truncateToNbDecimal -number ([double]($item.itemQuantity) * $serviceBillingInfos.unitPricePerMonthCHF) -nbDecimals 2
@@ -448,6 +455,7 @@ try
                             colDesc = $serviceBillingInfos.itemColumns.colDesc
                             colMonthYear = $serviceBillingInfos.itemColumns.colMonthYear
                             colConsumed = $serviceBillingInfos.itemColumns.colConsumed
+                            colUnit = $serviceBillingInfos.itemColumns.colUnit
                             colUnitPrice = $serviceBillingInfos.itemColumns.colUnitPrice
                             colTotPrice = $serviceBillingInfos.itemColumns.colTotPrice
 

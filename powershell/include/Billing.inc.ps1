@@ -149,7 +149,7 @@ class Billing
         RET : ID de l'entité
                 $null si pas ajouté car trop quantité de zéro
     #>
-    hidden [int] addItem([int]$parentEntityId, [string]$type, [string]$name, [string]$desc, [int]$month, [int]$year, [double]$quantity)
+    hidden [int] addItem([int]$parentEntityId, [string]$type, [string]$name, [string]$desc, [int]$month, [int]$year, [double]$quantity, [string]$unit)
     {
         if($quantity -eq 0)
         {
@@ -165,8 +165,8 @@ class Billing
         }
 
         # L'entité n'existe pas, donc on l'ajoute 
-        $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', NULL)" -f `
-                            $parentEntityId, $type, $name, $desc, $month, $year, $quantity
+        $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', NULL)" -f `
+                            $parentEntityId, $type, $name, $desc, $month, $year, $quantity, $unit
 
         $res = $this.mysql.execute($request)
 
