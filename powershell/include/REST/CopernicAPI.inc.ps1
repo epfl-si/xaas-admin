@@ -18,7 +18,8 @@ class CopernicAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
 
-        IN  : $server           -> adresse IP ou nom IP du serveur 
+        IN  : $server           -> Nom IP du serveur, avec le début de l'URL à utiliser car
+                                   c'est différent entre prod (/pop/) et test (/poq/)
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
         
@@ -117,7 +118,7 @@ class CopernicAPI: RESTAPICurl
         # Pour le debug
         #$body | ConvertTo-JSON -Depth 20 | Out-file "D:\IDEVING\IaaS\git\xaas-admin\powershell\billing\JSON.json"
 
-        $uri = "https://{0}/poq/RESTAdapter/api/sd/facture" -f $this.server
+        $uri = "https://{0}/RESTAdapter/api/sd/facture" -f $this.server
 
         # Exécution de la requête et transformation en objet
         $callRes = $this.callAPI($uri, "Post", $body) 
