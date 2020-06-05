@@ -68,6 +68,7 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$r
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ResumeOnFail.inc.ps1"))
 
 # Chargement des fichiers pour API REST
@@ -235,6 +236,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 											au sein de la fonction
 											Les autres paramètres n'ont pas besoin d'être passés par référence car ce sont des objets et 
 											il semblerait que sur PowerShell, les objets soient par défaut passés en IN/OUT 
+	
 #>
 function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$secondDayActions, [string]$baseName, [string]$desc, [Array]$approverGroupAtDomainList, [ref] $processedApprovalPoliciesIDs)
 {
@@ -296,9 +298,13 @@ function createOrUpdateBG
 	if(($bgUnitID -ne "") -and ($bgSnowSvcID -eq ""))
 	{
 		$tenantName = $global:VRA_TENANT__EPFL
-
-		$bgIdProp = $bgUnitID
 		
+		# Recherche du centre financier
+		$ldap = [EPFLLDAP]::new()
+		$unitInfos = $ldap.getUnitInfos($bgUnitID)
+
+		$financeCenter = $unitInfos.accountingnumber 
+
 		# Recherche du BG par son no d'unité.
 		$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgUnitID
 
@@ -307,6 +313,7 @@ function createOrUpdateBG
 		{
 			# Ajout des customs properties en vue de sa création
 			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__UNIT
+			$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER"] = $financeCenter
 		}
 
 		# Tentative de recherche du préfix de machine
@@ -342,7 +349,7 @@ function createOrUpdateBG
 	{
 		$tenantName = $global:VRA_TENANT__ITSERVICES
 
-		$bgIdProp = $bgSnowSvcID
+		$financeCenter = ""
 
 		# Recherche du BG par son ID de service dans ServiceNow
 		$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgSnowSvcID
@@ -352,6 +359,7 @@ function createOrUpdateBG
 		{
 			# Création des propriété custom
 			$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] = $global:VRA_BG_TYPE__SERVICE
+			$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER"] = $financeCenter
 			
 		}
 		# Pas d'ID de machine pour ce Tenant
@@ -394,12 +402,11 @@ function createOrUpdateBG
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
 		# les BG existants avec la nouvelle "Custom Property"
-		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID))
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
 		{
 			# Ajout de la custom Property avec la valeur par défaut 
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BG_ID" = $bgIdProp})
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
 		}
-
 
 
 		# ==========================================================================================
@@ -775,63 +782,119 @@ function createOrUpdateBGReservations
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Met un BG en mode "ghost" dans le but qu'il soit effacé par la suite.
-			On change aussi les droits d'accès
+	BUT : Efface un BG et tous ses composants (s'il ne contient aucun item).
+		  Il faut effacer les composants dans l'ordre inverse dans lequel ils ont été créés, ce qui donne donc :
+		  1. Reservations
+		  2. Entitlement
+		  3. Business Group
+
+		  Si le BG contient des items, on va simplement le marquer comme "ghost" et changer les droits d'accès
 
 	IN  : $vra 		-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $bg		-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
 					   par un appel à une méthode de la classe vRAAPI
 
-	RET : $true si mis en ghost
-		  $false si pas mis en ghost
+	RET : $true si effacé
+		  $false si pas effacé (mis en ghost)
 #>
-function setBGAsGhostIfNot
+function deleteBGAndComponentsIfPossible
 {
 	param([vRAAPI]$vra, [PSObject]$bg)
 
-	# Si le BG est toujours actif
-	if(isBGAlive -bg $bg)
+	# Recherche des items potentiellement présents dans le BG
+	$bgItemList = $vra.getBGItemList($bg)
+
+	# S'il y a des items,
+	if($bgItemList.Count -gt 0)
 	{
-		$notifications['bgSetAsGhost'] += $bg.name
 
-		# On marque le BG comme "Ghost"
-		$vra.updateBG($bg, $null, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__GHOST})
+		$logHistory.addLineAndDisplay(("--> Contains {0} items..." -f $bgItemList.Count))
 
-		$counters.inc('BGGhost')
-
-		# Si Tenant EPFL
-		if($bg.tenant -eq $global:VRA_TENANT__EPFL)
+		# Si le BG est toujours actif
+		if(isBGAlive -bg $bg)
 		{
-			# Récupération du contenu du rôle des admins de faculté pour le BG
-			$facAdmins = $vra.getBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER") 
-			
-			# Ajout des admins de la faculté de l'unité du BG afin qu'ils puissent gérer les élments du BG.
-			createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $facAdmins
-		}
-		# Si Tenant ITServices
-		elseif($bg.tenant -eq $global:VRA_TENANT__ITSERVICES)
-		{
-			$tenantAdmins = $vra.getTenantAdminGroupList($bg.tenant)
-			# Ajout des admins LOCAUX du tenant comme pouvant gérer les éléments du BG
-			createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $tenantAdmins
-		}
-		else # Tenant non géré
-		{
-			$logHistory.addErrorAndDisplay(("!!! Tenant '{0}' not supported in this script" -f $bg.tenant))
-			exit
-		}
+			$logHistory.addLineAndDisplay("--> Setting as 'ghost'...")
 
-		$setAsGhost = $true
+			$notifications['bgSetAsGhost'] += $bg.name
 
-	} 
-	else # Le BG est déjà en "ghost"
+			# On marque le BG comme "Ghost"
+			$vra.updateBG($bg, $null, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__GHOST})
+
+			$counters.inc('BGGhost')
+
+			# Si Tenant EPFL
+			if($bg.tenant -eq $global:VRA_TENANT__EPFL)
+			{
+				# Récupération du contenu du rôle des admins de faculté pour le BG
+				$facAdmins = $vra.getBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER") 
+				
+				# Ajout des admins de la faculté de l'unité du BG afin qu'ils puissent gérer les élments du BG.
+				createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $facAdmins
+			}
+			# Si Tenant ITServices
+			elseif($bg.tenant -eq $global:VRA_TENANT__ITSERVICES)
+			{
+				$tenantAdmins = $vra.getTenantAdminGroupList($bg.tenant)
+				# Ajout des admins LOCAUX du tenant comme pouvant gérer les éléments du BG
+				createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $tenantAdmins
+			}
+			else # Tenant non géré
+			{
+				$logHistory.addErrorAndDisplay(("!!! Tenant '{0}' not supported in this script" -f $bg.tenant))
+				exit
+			}
+
+		} # FIN si le BG est toujours actif
+
+		$deleted = $false
+
+	}
+	else # Il n'y a aucun item dans le BG
 	{
-		$setAsGhost = $false
+		# Récupération des informations nécessaires pour les éléments à supprimer (afin de les filtrer)
+		$resNameBase = $nameGenerator.getBGResName($bg.name, "")
 
-		$logHistory.addLineAndDisplay("--> Already in 'ghost' status...")
+		# --------------
+		# Reservations
+		# Parcours des Reservations trouvées et suppression
+		$vra.getResListMatch($resNameBase, $false) | ForEach-Object {
+
+			$logHistory.addLineAndDisplay(("--> Deleting Reservation '{0}'..." -f $_.Name))
+			$vra.deleteRes($_.id)
+		}
+
+
+		# --------------
+		# Entitlement
+		# Si le BG a un entitlement,
+		$bgEnt = $vra.getBGEnt($bg.id)
+		if($null -ne $bgEnt)
+		{
+
+			# Suppression de l'entitlement (on le désactive au préalable)
+			$logHistory.addLineAndDisplay(("--> Deleting Entitlement '{0}'..." -f $bgEnt.name))
+			# Désactivation
+			$dummy = $vra.updateEnt($bgEnt, $false)
+			$vra.deleteEnt($bgEnt.id)
+		}
+
+
+		$notifications['bgDeleted'] += $bg.name
+
+		# --------------
+		# Business Group
+		$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}'..." -f $bg.name))
+		$vra.deleteBG($bg.id)
+
+
+
+		# Incrémentation du compteur
+		$counters.inc('BGDeleted')
+
+		$deleted = $true
 	}
 
-	return $setAsGhost
+	return $deleted
 }
 
 
@@ -848,10 +911,11 @@ function isBGOfType
 {
 	param([PSCustomObject]$bg, [string] $type)
 
-	$bgType = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_TYPE
+	# Recherche de la custom property enregistrant l'information recherchée
+	$entry = $bg.extensionData.entries | Where-Object { $_.key -eq $global:VRA_CUSTOM_PROP_VRA_BG_TYPE}
 
 	# Si custom property PAS trouvée,
-	if($null -eq $bgType)
+	if($null -eq $entry)
 	{
 		$notifications['bgWithoutCustomPropType'] += $bg.name
 		return $false
@@ -859,7 +923,7 @@ function isBGOfType
 	else # Custom property trouvée
 	{
 		# On regarde si la valeur correspond.
-		return $bgType -eq $type
+		return ($entry.value.values.entries | Where-Object {$_.key -eq "value"}).value.value -eq $type
 	}
 
 
@@ -877,12 +941,12 @@ function isBGAlive
 {
 	param([PSCustomObject]$bg)
 
-	$bgStatus = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS
+	$customProp = $bg.extensionData.entries | Where-Object { $_.key -eq $global:VRA_CUSTOM_PROP_VRA_BG_STATUS}
 
 	# Si la "Custom property" a été trouvée,
-	if($null -ne $bgStatus)
+	if($null -ne $customProp)
 	{
-		return $bgStatus -eq $global:VRA_BG_STATUS__ALIVE
+		return ($customProp.value.values.entries | Where-Object {$_.key -eq "value"}).value.value -eq $global:VRA_BG_STATUS__ALIVE
 	}
 
 	<# Si on arrive ici, c'est qu'on n'a pas défini de clef (pour une raison inconnue) pour enregistrer le statut
@@ -927,7 +991,7 @@ function handleNotifications
 				{
 					$valToReplace.prefixList = ($uniqueNotifications -join "</li>`n<li>")
 					$mailSubject = "Error - Machine prefixes not found"
-					$templateName = "bg-machine-prefix-not-found"
+					$templateName = "new-bg-machine-prefix-not-found"
 				}
 
 				# ---------------------------------------
@@ -959,6 +1023,14 @@ function handleNotifications
 					$templateName = "bg-set-as-ghost"
 				}
 
+				# ---------------------------------------
+				# BG effacés
+				'bgDeleted'
+				{
+					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Info - Business Group deleted"
+					$templateName = "bg-deleted"
+				}
 
 				# ---------------------------------------
 				# Préfix de machine non trouvé pour un renommage de faculté
@@ -1321,6 +1393,7 @@ try
 	$counters.add('BGNotCreated', '# Business Group not created (because of an error)')
 	$counters.add('BGNotRenamed', '# Business Group not renamed')
 	$counters.add('BGResumeSkipped', '# Business Group skipped because of resume')
+	$counters.add('BGDeleted', '# Business Group deleted')
 	$counters.add('BGGhost',	'# Business Group set as "ghost"')
 	# Entitlements
 	$counters.add('EntCreated', '# Entitlements created')
@@ -1364,6 +1437,7 @@ try
 					bgWithoutCustomPropStatus = @()
 					bgWithoutCustomPropType = @()
 					bgSetAsGhost = @()
+					bgDeleted = @()
 					emptyADGroups = @()
 					adGroupsNotFound = @()
 					ISOFolderNotRenamed = @()}
@@ -1417,6 +1491,23 @@ try
 		}
 	}
 	
+	$doneBGList = @()
+
+	# Si on doit tenter de reprendre une exécution foirée ET qu'un fichier de progression existait, on charge son contenu
+	if($resume)
+	{
+		$logHistory.addLineAndDisplay("Trying to resume from previous failed execution...")
+		$progress = $resumeOnFail.load()
+		if($null -ne $progress)
+		{
+			$doneBGList = $progress
+			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed" -f $doneBGList.Count))
+		}
+		else
+		{
+			$logHistory.addLineAndDisplay("No progress file found :-(")
+		}
+	}
 
 	<# Recherche des groupes pour lesquels il faudra créer des OUs
 	 On prend tous les groupes de l'OU et on fait ensuite un filtre avec une expression régulière sur le nom. Au début, on prenait le début du nom du
@@ -1474,8 +1565,7 @@ try
 			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
 			# Custom properties du Buisness Group
-			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $unitID
-									"$global:VRA_CUSTOM_PROP_EPFL_BG_ID" = $unitID}
+			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_UNIT_ID" = $unitID}
 	
 		}
 		# Si Tenant ITServices
@@ -1502,8 +1592,7 @@ try
 			$machinePrefixName = ""
 			
 			# Custom properties du Buisness Group
-			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID" = $snowServiceId
-									"$global:VRA_CUSTOM_PROP_EPFL_BG_ID" = $snowServiceId}
+			$bgCustomProperties = @{"$global:VRA_CUSTOM_PROP_EPFL_SNOW_SVC_ID" = $snowServiceId}
 
 		}# FIN Si Tenant ITServices
 
@@ -1770,9 +1859,21 @@ try
 		if(((isBGOfType -bg $_ -type $global:VRA_BG_TYPE__SERVICE) -or (isBGOfType -bg $_ -type $global:VRA_BG_TYPE__UNIT)) -and `
 			($doneBGList -notcontains $_.name))
 		{
-			$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
-			$setAsGhost = setBGAsGhostIfNot -vra $vra -bg $_
+			$logHistory.addLineAndDisplay(("-> Deleting Business Group '{0}'..." -f $_.name))
+			$deleted = deleteBGAndComponentsIfPossible -vra $vra -bg $_
 
+
+			# Si le BG a pu être complètement effacé, c'est qu'il n'y avait plus d'items dedans et que donc forcément aucune
+			# ISO ne pouvait être montée nulle part.
+			if($deleted)
+			{	
+				$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}' ISO folder '{1}'... " -f $_.name, $bgISOFolder))
+				# Recherche de l'UNC jusqu'au dossier où se trouvent les ISO pour le BG
+				$bgISOFolder = $nameGenerator.getNASPrivateISOPath($_.name)
+				
+				# Suppression du dossier
+				Remove-Item -Path $bgISOFolder -Recurse -Force
+			}
 		}
 
 	}
