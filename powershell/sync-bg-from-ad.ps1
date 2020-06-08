@@ -991,7 +991,7 @@ function handleNotifications
 				{
 					$valToReplace.prefixList = ($uniqueNotifications -join "</li>`n<li>")
 					$mailSubject = "Error - Machine prefixes not found"
-					$templateName = "new-bg-machine-prefix-not-found"
+					$templateName = "bg-machine-prefix-not-found"
 				}
 
 				# ---------------------------------------
