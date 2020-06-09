@@ -387,7 +387,7 @@ try
                     $logHistory.addLineAndDisplay((">> Processing {0} '{1}'... " -f $serviceBillingInfos.itemTypeInDB, $item.itemName))
 
                     $billingItemReplacements = @{
-                        prestationCode = $serviceBillingInfos.prestationCode
+                        prestationCode = $serviceBillingInfos.prestationCode.$targetEnv
                         description = $item.itemDesc
                         monthYear = $monthYear
                         quantity = $item.itemQuantity

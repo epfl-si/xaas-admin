@@ -8,7 +8,11 @@
     "billingFrom": "", // qui a émis la facture, on met normalement "VPSI"
     "billingReference": "", // Adresse mail de la personne de référence pour l'émission de la facture
     "billingGrid": "", // Nom du fichier PDF contenant la grille tarifaire, relatif à là où sera le fichier config.json généré de puis le fichier courant.
-    "prestationCode": "", // nom de code de l'article dans Copernic, varie entre prod et test.
+    "prestationCode":  // nom de code de l'article dans Copernic, peut varier entre prod et test.
+    {
+        "test": "",
+        "prod": ""
+    },
     "itemColumns": // noms exacts des colonnes du tableau listant les éléments
     {
         "colCode": "",

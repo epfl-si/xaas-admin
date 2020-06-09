@@ -9,7 +9,11 @@
     "billingFrom": "VPSI",
     "billingReference": "christophe.simond@epfl.ch",
     "billingGrid": "billing-grid.pdf",
-    "prestationCode": "9010390",
+    "prestationCode": 
+    {
+        "test": "9010390",
+        "prod": "9010390"
+    },
     "itemColumns":
     {
         "colCode": "Code prestation",
