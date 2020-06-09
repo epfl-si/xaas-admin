@@ -479,7 +479,7 @@ try
                             $billDescription = "{0} - du {1} au {2}" -f $serviceBillingInfos.itemTypeInDB, $periodStartDate, $periodEndDate
 
                             # Ajout de la facture dans Copernic avec le mode d'exécution spécifié
-                            $result = $copernic.addBill($serviceBillingInfos, $billReference, $billDescription, $targetPDFPath, $billingGridPDFFile, $entity, $itemList, $execMode)
+                            $result = $copernic.addBill($serviceBillingInfos, $targetEnv, $billReference, $billDescription, $targetPDFPath, $billingGridPDFFile, $entity, $itemList, $execMode)
                             
                             # Si une erreur a eu lieu
                             if($null -ne $result.error)

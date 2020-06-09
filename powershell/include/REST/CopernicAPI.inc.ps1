@@ -46,6 +46,7 @@ class CopernicAPI: RESTAPICurl
         IN  : $serviceInfos         -> Objet avec les informations sur le service qui fait la facturation
                                         Le contenu de cet objet vient d'un fichier JSON qui se trouve dans
                                         le dossier "data/billing/<service>/service.json"
+        IN  : $targetEnv            -> Environnement sur lequel on tourne pour savoir quel numéro d'article récupérer
         IN  : $billRef              -> Référence de la facture    
         IN  : $billDesc             -> Description de la facture
         IN  : $billPDFFile          -> Chemin jusqu'au fichier PDF qui représente la facture
@@ -60,7 +61,7 @@ class CopernicAPI: RESTAPICurl
                 .error  -> message d'erreur éventuel (si tout OK, il y a $null ici)
                 .docNumber -> le numéro de l'élément ajouté dans Copernic
 	#>
-    [PSObject] addBill([PSObject]$serviceInfos, [string]$billRef, [string]$billDesc, [string]$billPDFFile, [string]$billingGridPDFFile, [PSObject]$entityInfos, [Array]$itemList, [string]$execMode)
+    [PSObject] addBill([PSObject]$serviceInfos, [string]$targetEnv, [string]$billRef, [string]$billDesc, [string]$billPDFFile, [string]$billingGridPDFFile, [PSObject]$entityInfos, [Array]$itemList, [string]$execMode)
     {
         # On commence par créer le nécessaire pour les items
         $formattedItemList = @()
@@ -76,7 +77,8 @@ class CopernicAPI: RESTAPICurl
             $itemDesc = "{0} [{1}]" -f $itemDesc, $item.itemUnit
 
             $replace = @{
-                prestationCode = $serviceInfos.prestationCode
+                # numéro d'article en fonction de l'environnement
+                prestationCode = $serviceInfos.prestationCode.$targetEnv
                 itemQuantity = $item.itemQuantity
                 unitPricePerMonthCHF = $serviceInfos.unitPricePerMonthCHF
                 itemNameAndDesc = $itemDesc
