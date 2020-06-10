@@ -3,22 +3,22 @@
         "server": "",
         "isScality": false,
         "test": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         },
         "epfl": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         },
         "itservices": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         },
         "research": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         }
@@ -27,22 +27,22 @@
         "server": "",
         "isScality": false,
         "test": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         },
         "epfl": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         },
         "itservices": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         },
         "research": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         }
@@ -51,22 +51,22 @@
         "server": "",
         "isScality": false,
         "test": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         },
         "epfl": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         },
         "itservices": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         },
         "research": {
-            "credentialProfile": "",
+            "credentialProfile": "Nom du profil AWS défini en local avec SecretKey et AccessKey. Voir https://confluence.epfl.ch:8443/display/SIAC/PowerShell+CLI#PowerShellCLI-AWS(Amazon)",
             "webConsoleUser": "Ne remplir que si 'isScality'==true, sinon, laisser vide",
             "webConsolePassword": "Ne remplir que si 'isScality'==true, sinon, laisser vide"
         }
