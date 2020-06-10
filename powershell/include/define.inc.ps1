@@ -59,12 +59,14 @@ $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE          = "ch.epfl.vra.bg.res.manage"
 $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE = "ch.epfl.vra.bg.roles.support.manage"
 $global:VRA_CUSTOM_PROP_VRA_TENANT_NAME            = "ch.epfl.vra.tenant.name"
 $global:VRA_CUSTOM_PROP_VRA_BG_NAME                = "ch.epfl.vra.bg.name"
+$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER = "ch.epfl.billing.financecenter"
 
 
 # Types de Business Group possibles
 $global:VRA_BG_TYPE__ADMIN 	= "admin"
 $global:VRA_BG_TYPE__SERVICE  = "service"
 $global:VRA_BG_TYPE__UNIT 	   = "unit"
+$global:VRA_BG_TYPE__PROJECT  = "project"
 
 # Statuts de Business Group possibles
 $global:VRA_BG_STATUS__ALIVE = "alive"

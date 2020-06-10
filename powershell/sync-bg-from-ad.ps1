@@ -69,6 +69,7 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$r
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ResumeOnFail.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -274,20 +275,31 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 	IN  : $bgDesc				-> Description du BG
 	IN  : $machinePrefixName	-> Nom du préfixe de machine à utiliser.
 								   Peut être "" si le BG doit être créé dans le tenant ITServices.
+	IN  : $financeCenter		-> Centre financier
 	IN  : $capacityAlertsEmail	-> Adresse mail où envoyer les mails de "capacity alert"
 	
 	RET : Objet représentant la Business Group
 #>
 function createOrUpdateBG
 {
-	param([vRAAPI]$vra, [Hashtable]$existingBGList, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$capacityAlertsEmail)
+	param([vRAAPI]$vra, [Hashtable]$existingBGList, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$financeCenter, [string]$capacityAlertsEmail)
 
 	# Recherche du BG par son no identifiant (no d'unité, no de service Snow, etc... ).
 	$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgEPFLID
 
+
 	# ---- EPFL ---- ou ---- Research ----
 	if( ($tenantName -eq $global:VRA_TENANT__EPFL) -or ($tenantName -eq $global:VRA_TENANT__RESEARCH))
 	{
+		# Définition du type de BG
+		if($tenantName -eq $global:VRA_TENANT__EPFL)
+		{
+			$bgType = $global:VRA_BG_TYPE__UNIT
+		}
+		else
+		{
+			$bgType = $global:VRA_BG_TYPE__PROJECT
+		}
 		
 		# Tentative de recherche du préfix de machine
 		$machinePrefix = $vra.getMachinePrefix($machinePrefixName)
@@ -323,6 +335,8 @@ function createOrUpdateBG
 	{
 		# Pas d'ID de machine pour ce Tenant
 		$machinePrefixId = $null
+
+		$bgType = $global:VRA_BG_TYPE__SERVICE
 	}
 	else
 	{
@@ -343,6 +357,9 @@ function createOrUpdateBG
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE"] 			= $global:VRA_BG_RES_MANAGE__AUTO
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
 		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BG_ID"] 				= $bgEPFLID
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] 				= $bgType
+		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER"]= $financeCenter
+		
 
 		# Ajout aussi des informations sur le Tenant et le BG car les mettre ici, c'est le seul moyen que l'on pour récupérer cette information
 		# pour la génération des mails personnalisée... 
@@ -832,8 +849,6 @@ function isBGOfType
 		# On regarde si la valeur correspond.
 		return $bgType -eq $type
 	}
-
-
 }
 
 <#
@@ -1393,6 +1408,9 @@ try
 	# Création de l'objet pour récupérer les informations sur les approval policies à créer pour les demandes de nouveaux éléments
 	$newItems = [NewItems]::new("vra-new-items.json")
 
+	# Pour rechercher dans LDAP
+	$ldap = [EPFLLDAP]::new()
+
 	# Création de l'objet pour gérer les 2nd day actions
 	$secondDayActions = [SecondDayActions]::new()
 
@@ -1414,75 +1432,80 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group
 		
-		switch($targetTenant)
+		# ---- EPFL ----
+		if($targetTenant -eq $global:VRA_TENANT__EPFL )
 		{
-			# ---- EPFL ----
-			$global:VRA_TENANT__EPFL 
-			{
-				# Eclatement de la description et du nom pour récupérer le informations
-				$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
-				$faculty, $unit = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
-	
-				# Initialisation des détails pour le générateur de noms
-				$nameGenerator.initDetails(@{facultyName = $faculty
-											 facultyID = $facultyID
-											 unitName = $unit
-											 unitID = $unitID})
-	
-				# Création du nom/description du business group
-				$bgDesc = $nameGenerator.getBGDescription()
-	
-				# Custom properties du Buisness Group
-				$bgEPFLID = $unitID
-			}
+			# Eclatement de la description et du nom pour récupérer le informations
+			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
+			$faculty, $unit = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
-			# ---- ITServices ----
-			$global:VRA_TENANT__ITSERVICES
-			{
-				# Eclatement de la description et du nom pour récupérer le informations 
-				# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
-				$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-				$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
-	
-				# Initialisation des détails pour le générateur de noms
-				$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
-					serviceName = $serviceLongName
-					snowServiceId = $snowServiceId})
-	
-				# Création du nom/description du business group
-				$bgDesc = $serviceLongName
-								
-				# Custom properties du Buisness Group
-				$bgEPFLID = $snowServiceId
-			}
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{facultyName = $faculty
+											facultyID = $facultyID
+											unitName = $unit
+											unitID = $unitID})
 
-			# ---- Research ----
-            $global:VRA_TENANT__RESEARCH
-            {
-                # Eclatement de la description et du nom pour récupérer le informations 
-				# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
-				$projectId = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-				$projectFinanceCenter, $projectAcronym  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
-	
-				# Initialisation des détails pour le générateur de noms
-				$nameGenerator.initDetails(@{
-					projectId = $projectId
-					financeCenter = $projectFinanceCenter
-					projectAcronym = $projectAcronym})
-	
-				# Création du nom/description du business group
-				$bgDesc = $projectAcronym
-				
-				# Custom properties du Buisness Group
-				$bgEPFLID = $projectId
-            }
+			# Création du nom/description du business group
+			$bgDesc = $nameGenerator.getBGDescription()
 
-			default
-			{
-				Throw ("Tenant {0} not handled" -f $targetTenant)
-			}
+			# Custom properties du Buisness Group
+			$bgEPFLID = $unitID
+
+			# Recherche du centre financier
+			$unitInfos = $ldap.getUnitInfos($bgUnitID)
+
+			$financeCenter = $unitInfos.accountingnumber
 		}
 
+
+		# ---- ITServices ----
+		elseif($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
+		{
+			# Eclatement de la description et du nom pour récupérer le informations 
+			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
+			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
+			$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
+				serviceName = $serviceLongName
+				snowServiceId = $snowServiceId})
+
+			# Création du nom/description du business group
+			$bgDesc = $serviceLongName
+							
+			# Custom properties du Buisness Group
+			$bgEPFLID = $snowServiceId
+
+			$financeCenter = "0000"
+		}
+
+		# ---- Research ----
+		elseif($targetTenant -eq $global:VRA_TENANT__RESEARCH)
+		{
+			# Eclatement de la description et du nom pour récupérer le informations 
+			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
+			$projectId = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
+			$financeCenter, $projectAcronym  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			# Initialisation des détails pour le générateur de noms
+			$nameGenerator.initDetails(@{
+				projectId = $projectId
+				financeCenter = $financeCenter
+				projectAcronym = $projectAcronym})
+
+			# Création du nom/description du business group
+			$bgDesc = $projectAcronym
+			
+			# Custom properties du Buisness Group
+			$bgEPFLID = $projectId
+		}
+
+		else
+		{
+			Throw ("Tenant {0} not handled" -f $targetTenant)
+		}
+		
 		# Récupération du nom du BG
 		$bgName = $nameGenerator.getBGName()
 		# Nom du préfix de machine
@@ -1609,7 +1632,7 @@ try
 
 		# Création ou mise à jour du Business Group
 		$bg = createOrUpdateBG -vra $vra -existingBGList $customPropToExistingBGMapping -bgEPFLID $bgEPFLID -tenantName $targetTenant -bgName $bgName -bgDesc $bgDesc `
-									-machinePrefixName $machinePrefixName -capacityAlertsEmail ($capacityAlertMails -join ",") 
+									-machinePrefixName $machinePrefixName -financeCenter $financeCenter -capacityAlertsEmail ($capacityAlertMails -join ",") 
 
 		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
 		if($null -eq $bg)
@@ -1745,7 +1768,9 @@ try
 	$vra.getBGList() | ForEach-Object {
 
 		# Si c'est un BG d'unité ou de service et s'il faut l'effacer
-		if(((isBGOfType -bg $_ -type $global:VRA_BG_TYPE__SERVICE) -or (isBGOfType -bg $_ -type $global:VRA_BG_TYPE__UNIT)) -and `
+		if(((isBGOfType -bg $_ -type $global:VRA_BG_TYPE__SERVICE) -or `
+			(isBGOfType -bg $_ -type $global:VRA_BG_TYPE__UNIT) -or `
+			(isBGOfType -bg $_ -type $global:VRA_BG_TYPE__PROJECT) ) -and `
 			($doneBGList -notcontains $_.name))
 		{
 			$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
