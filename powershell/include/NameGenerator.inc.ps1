@@ -437,10 +437,10 @@ class NameGenerator
                 {
                     # vra_<envShort>_<projectId>
                     $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('projectId'))
-                    # <financeCenter>;<projectAcronym>
+                    # <projectAcronym>;<financeCenter>
                     # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
                     # réutilisé pour d'autres choses dans la création des éléments dans vRA
-                    $groupDesc = "{0};{1}" -f $this.getDetail('financeCenter'), $this.getDetail('projectAcronym')
+                    $groupDesc = "{0};{1}" -f $this.getDetail('projectAcronym'), $this.getDetail('financeCenter')
 
                 }
                 # Autre EPFL

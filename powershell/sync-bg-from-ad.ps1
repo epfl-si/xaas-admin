@@ -1459,7 +1459,7 @@ try
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 			$projectId = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-			$financeCenter, $projectAcronym  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$projectAcronym, $financeCenter  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{
