@@ -7,7 +7,8 @@
                     {
                         "serviceShortName": "vs",
                         "serviceName": "Virtualization Service",
-                        "snowServiceId": "SVC0007"
+                        "snowServiceId": "SVC0007",
+                        "financeCenter": "1234"
                     }
                 ],
                 "expected": null
@@ -83,7 +84,7 @@
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "SVC0007;Virtualization Service"
+                "expected": "SVC0007;Virtualization Service;1234"
             },
             {
                 "params": ["CSP_SUBTENANT_MANAGER"],
@@ -91,7 +92,7 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "SVC0007;Virtualization Service"
+                "expected": "SVC0007;Virtualization Service;1234"
             }
         ]
     },
@@ -375,8 +376,8 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["SVC0007;Virtualization Service"],
-                "expected": ["SVC0007", "Virtualization Service"]
+                "params": ["SVC0007;Virtualization Service;1234"],
+                "expected": ["SVC0007", "Virtualization Service", "1234"]
             }
         ]
     },
