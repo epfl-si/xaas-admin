@@ -6,7 +6,7 @@
                 "params": [
                     {
                         "projectId": "123456",
-                        "projectDesc": "This is my project description",
+                        "projectAcronym": "rsrchprjx",
                         "financeCenter": "F9876"
                     }
                 ],
@@ -83,7 +83,7 @@
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "F9876;This is my project description"
+                "expected": "F9876;rsrchprjx"
             },
             {
                 "params": ["CSP_SUBTENANT_MANAGER"],
@@ -91,7 +91,7 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "F9876;This is my project description"
+                "expected": "F9876;rsrchprjx"
             }
         ]
     },

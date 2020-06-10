@@ -336,7 +336,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "vs-t-"
+                "expected": ""
             }
         ]
     },

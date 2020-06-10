@@ -113,7 +113,7 @@ class NameGenerator
 
             $global:VRA_TENANT__RESEARCH
             {
-                $keysToCheck = @('projectId', 'financeCenter', 'projectDesc')
+                $keysToCheck = @('projectId', 'financeCenter', 'projectAcronym')
             }
 
             # Tenant pas géré
@@ -437,10 +437,10 @@ class NameGenerator
                 {
                     # vra_<envShort>_<projectId>
                     $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('projectId'))
-                    # <financeCenter>;<projectDesc>
+                    # <financeCenter>;<projectAcronym>
                     # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
                     # réutilisé pour d'autres choses dans la création des éléments dans vRA
-                    $groupDesc = "{0};{1}" -f $this.getDetail('financeCenter').ToUpper(), $this.getDetail('projectDesc')
+                    $groupDesc = "{0};{1}" -f $this.getDetail('financeCenter'), $this.getDetail('projectAcronym')
 
                 }
                 # Autre EPFL
@@ -1227,7 +1227,9 @@ class NameGenerator
             # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES 
             { 
-                $detailToUse = $this.getDetail('serviceShortName')
+                # On ne créé pas de préfixe de VM pour ce tenant, c'est vRA qui s'occupera de faire le job
+                # en utilisant le nom du BG comme base pour le préfixe de VM
+                return ""
             }
 
             # Tenant Research
@@ -1260,12 +1262,7 @@ class NameGenerator
             
             $global:VRA_TENANT__ITSERVICES 
             { 
-                # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
-                if($this.env -ne $global:TARGET_ENV__PROD)
-                {
-                    $envId = "-{0}" -f $this.getEnvShortName()
-                }
-                return "{0}{1}-" -f $this.transformForGroupName($detailToUse) , $envId
+                # Pas besoin de traiter les choses ici car on a déjà fait un "return" précédemment pour sortir de la fonction                
             }
 
             # Tenant Research
@@ -1274,9 +1271,9 @@ class NameGenerator
                 # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
                 if($this.env -ne $global:TARGET_ENV__PROD)
                 {
-                    $envId = "-{0}" -f $this.getEnvShortName()
+                    $envId = $this.getEnvShortName()
                 }
-                return "{0}{1}-" -f $this.transformForGroupName($detailToUse) , $envId
+                return "{0}{1}vm" -f $this.transformForGroupName($detailToUse) , $envId
             }
 
             # Tenant pas géré
@@ -1315,7 +1312,7 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                $desc = $this.getDetail('projectDesc')
+                $desc = $this.getDetail('projectAcronym')
             }
 
             # Tenant pas géré
