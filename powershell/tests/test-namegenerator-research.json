@@ -83,7 +83,7 @@
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "F9876;rsrchprjx"
+                "expected": "rsrchprjx;F9876"
             },
             {
                 "params": ["CSP_SUBTENANT_MANAGER"],
@@ -91,7 +91,7 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "F9876;rsrchprjx"
+                "expected": "rsrchprjx;F9876"
             }
         ]
     },
