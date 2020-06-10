@@ -282,74 +282,52 @@ function createOrUpdateBG
 {
 	param([vRAAPI]$vra, [Hashtable]$existingBGList, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$capacityAlertsEmail)
 
-	# On transforme à null si "" pour que ça passe correctement plus loin
-	if($machinePrefixName -eq "")
-	{
-		$machinePrefixName = $null
-	}
-	$customProperties = @{}
+	# Recherche du BG par son no identifiant (no d'unité, no de service Snow, etc... ).
+	$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgEPFLID
 
-	switch($tenantName)
+	# ---- EPFL ---- ou ---- Research ----
+	if( ($tenantName -eq $global:VRA_TENANT__EPFL) -or ($tenantName -eq $global:VRA_TENANT__RESEARCH))
 	{
-		# ---- EPFL ----
-		$global:VRA_TENANT__EPFL 
+		
+		# Tentative de recherche du préfix de machine
+		$machinePrefix = $vra.getMachinePrefix($machinePrefixName)
+
+		# Si on ne trouve pas de préfixe de machine pour le nouveau BG,
+		if($null -eq $machinePrefix)
 		{
-			# Recherche du BG par son no d'unité.
-			$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgUnitID
-
-			# Tentative de recherche du préfix de machine
-			$machinePrefix = $vra.getMachinePrefix($machinePrefixName)
-
-			# Si on ne trouve pas de préfixe de machine pour le nouveau BG,
-			if($null -eq $machinePrefix)
+			# Si le BG n'existe pas, 
+			if($null -eq $bg)
 			{
-				# Si le BG n'existe pas, 
-				if($null -eq $bg)
-				{
-					$logHistory.addWarningAndDisplay(("No machine prefix found for {0}, skipping" -f $machinePrefixName))
-					# On enregistre le préfixe de machine inexistant
-					$notifications['newBGMachinePrefixNotFound'] += $machinePrefixName
+				$logHistory.addWarningAndDisplay(("No machine prefix found for {0}, skipping" -f $machinePrefixName))
+				# On enregistre le préfixe de machine inexistant
+				$notifications['newBGMachinePrefixNotFound'] += $machinePrefixName
 
-					$counters.inc('BGNotCreated')
-				}
-				else # Le BG existe, il s'agit donc d'un renommage 
-				{
-					$logHistory.addWarningAndDisplay(("No machine prefix found for new faculty name ({0})" -f $machinePrefixName))
-					# On enregistre le préfixe de machine inexistant
-					$notifications['facRenameMachinePrefixNotFound'] += $machinePrefixName
-
-					$counters.inc('BGNotRenamed')
-				}
-				# on sort
-				return $null
+				$counters.inc('BGNotCreated')
 			}
-			$machinePrefixId = $machinePrefix.id
+			else # Le BG existe, il s'agit donc d'un renommage 
+			{
+				$logHistory.addWarningAndDisplay(("No machine prefix found for new faculty name ({0})" -f $machinePrefixName))
+				# On enregistre le préfixe de machine inexistant
+				$notifications['facRenameMachinePrefixNotFound'] += $machinePrefixName
+
+				$counters.inc('BGNotRenamed')
+			}
+			# on sort
+			return $null
 		}
-
-
-		# ---- ITServices ----
-		$global:VRA_TENANT__ITSERVICES 
-		{
-			# Recherche du BG par son ID de service dans ServiceNow
-			$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgSnowSvcID
-
-			# Pas d'ID de machine pour ce Tenant
-			$machinePrefixId = $null
-		}
-
-		# ---- Research ----
-		$global:VRA_TENANT__RESEARCH
-		{
-			# TODO: Implémenter la chose
-			Throw "Research to implement"
-		}
-
-		default 
-		{
-			Throw ("Incorrect value given for tenant name ({0})" -f $tenantName)
-		}
+		$machinePrefixId = $machinePrefix.id
+	
 	}
-
+	# ---- ITServices ----
+	elseif($tenantName -eq $global:VRA_TENANT__ITSERVICES )
+	{
+		# Pas d'ID de machine pour ce Tenant
+		$machinePrefixId = $null
+	}
+	else
+	{
+		Throw ("Incorrect value given for tenant name ({0})" -f $tenantName)
+	}
 
 	<# Si le BG n'existe pas, ce qui peut arriver dans les cas suivants :
 		Tenant EPFL:
@@ -359,6 +337,8 @@ function createOrUpdateBG
 	#>
 	if($null -eq $bg)
 	{
+		$customProperties = @{}
+
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] 				= $global:VRA_BG_STATUS__ALIVE
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE"] 			= $global:VRA_BG_RES_MANAGE__AUTO
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
@@ -790,39 +770,28 @@ function setBGAsGhostIfNot
 
 		$counters.inc('BGGhost')
 
-		# En fonction du tenant
-		switch($bg.tenant)
+		# ---- EPFL ----
+		if($bg.tenant -eq $global:VRA_TENANT__EPFL )
 		{
-			# ---- EPFL ----
-			$global:VRA_TENANT__EPFL 
-			{
+			
 				# Récupération du contenu du rôle des admins de faculté pour le BG
 				$facAdmins = $vra.getBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER") 
 				
 				# Ajout des admins de la faculté de l'unité du BG afin qu'ils puissent gérer les élments du BG.
 				createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $facAdmins
-			}
-
-			# ---- ITServices ----
-			$global:VRA_TENANT__ITSERVICES 
-			{
-				$tenantAdmins = $vra.getTenantAdminGroupList($bg.tenant)
-				# Ajout des admins LOCAUX du tenant comme pouvant gérer les éléments du BG
-				createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $tenantAdmins
-			}
-
-			# ---- Research ----
-			$global:VRA_TENANT__RESEARCH 
-			{
-				Throw "to implement"
-			}
-
-			default 
-			{
-				Throw ("!!! Tenant '{0}' not supported in this script" -f $bg.tenant)
-			}
 		}
-
+		# ITServices ou Research
+		elseif( ($bg.tenant -eq $global:VRA_TENANT__ITSERVICES) -or ($bg.tenant -eq $global:VRA_TENANT__RESEARCH) )
+		{
+			$tenantAdmins = $vra.getTenantAdminGroupList($bg.tenant)
+			# Ajout des admins LOCAUX du tenant comme pouvant gérer les éléments du BG
+			createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $tenantAdmins
+		}
+		else
+		{
+			Throw ("!!! Tenant '{0}' not supported in this script" -f $bg.tenant)
+		}
+		
 		$setAsGhost = $true
 
 	} 
@@ -1450,9 +1419,6 @@ try
 			# ---- EPFL ----
 			$global:VRA_TENANT__EPFL 
 			{
-				# Pour signifier à la fonction createOrUpdateBG qu'on n'est pas dans le tenant ITServices.
-				$snowServiceId = ""
-	
 				# Eclatement de la description et du nom pour récupérer le informations
 				$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
 				$faculty, $unit = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
@@ -1466,9 +1432,6 @@ try
 				# Création du nom/description du business group
 				$bgDesc = $nameGenerator.getBGDescription()
 	
-				# Nom du préfix de machine
-				$machinePrefixName = $nameGenerator.getVMMachinePrefix()
-	
 				# Custom properties du Buisness Group
 				$bgEPFLID = $unitID
 			}
@@ -1476,9 +1439,6 @@ try
 			# ---- ITServices ----
 			$global:VRA_TENANT__ITSERVICES
 			{
-				# Pour signifier à la fonction createOrUpdateBG qu'on n'est pas dans le tenant EPFL.
-				$unitID = ""
-	
 				# Eclatement de la description et du nom pour récupérer le informations 
 				# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 				$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
@@ -1491,11 +1451,7 @@ try
 	
 				# Création du nom/description du business group
 				$bgDesc = $serviceLongName
-				
-				# Nom du préfix de machine
-				# NOTE ! Il n'y a pas de préfix de machine pour les Business Group du tenant ITServices.
-				$machinePrefixName = ""
-				
+								
 				# Custom properties du Buisness Group
 				$bgEPFLID = $snowServiceId
 			}
@@ -1503,8 +1459,22 @@ try
 			# ---- Research ----
             $global:VRA_TENANT__RESEARCH
             {
-                # TODO: Implémenter la chose
-                Throw "Research to implement"
+                # Eclatement de la description et du nom pour récupérer le informations 
+				# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
+				$projectId = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
+				$projectFinanceCenter, $projectAcronym  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+	
+				# Initialisation des détails pour le générateur de noms
+				$nameGenerator.initDetails(@{
+					projectId = $projectId
+					financeCenter = $projectFinanceCenter
+					projectAcronym = $projectAcronym})
+	
+				# Création du nom/description du business group
+				$bgDesc = $projectAcronym
+				
+				# Custom properties du Buisness Group
+				$bgEPFLID = $projectId
             }
 
 			default
@@ -1515,6 +1485,8 @@ try
 
 		# Récupération du nom du BG
 		$bgName = $nameGenerator.getBGName()
+		# Nom du préfix de machine
+		$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
 		# Si on a déjà traité le BG
 		if($doneBGList -contains $bgName)
