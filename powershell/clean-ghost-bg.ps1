@@ -266,9 +266,7 @@ try
 		$logHistory.addLineAndDisplay(("Checking Business Group '{0}'..." -f $_.name))
 
 		# Si c'est un BG d'unité ou de service et s'il est déjà en Ghost
-		if(((isBGOfType -bg $_ -type $global:VRA_BG_TYPE__SERVICE) -or `
-			(isBGOfType -bg $_ -type $global:VRA_BG_TYPE__UNIT) -or `
-			(isBGOfType -bg $_ -type $global:VRA_BG_TYPE__PROJECT)) -and `
+		if((isBGOfType -bg $_ -typeList @($global:VRA_BG_TYPE__SERVICE, $global:VRA_BG_TYPE__UNIT, $global:VRA_BG_TYPE__PROJECT)) -and `
 			((getBGCustomPropValue -bg $_ -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS) -eq $global:VRA_BG_STATUS__GHOST))
 		{
 			$logHistory.addLineAndDisplay(("-> Business Group '{0}' is Ghost, deleting..." -f $_.name))
