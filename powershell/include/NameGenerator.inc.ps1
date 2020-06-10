@@ -1336,9 +1336,9 @@ class NameGenerator
             $global:VRA_TENANT__EPFL
             {
                 # Le nom du groupe devait avoir la forme :
-                # <facultyNam>;<unitName>
+                # <facultyNam>;<unitName>;<financeCenter>
 
-                if($partList.Count -lt 2)
+                if($partList.Count -lt 3)
                 {
                     Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
                 }
@@ -1348,9 +1348,9 @@ class NameGenerator
             $global:VRA_TENANT__ITSERVICES
             {
                 # Le nom du groupe devait avoir la forme :
-                # <snowServiceId>;<serviceName>
+                # <snowServiceId>;<serviceName>;<financeCenter>
                 
-                if($partList.Count -lt 2)
+                if($partList.Count -lt 3)
                 {
                     Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
                 }
