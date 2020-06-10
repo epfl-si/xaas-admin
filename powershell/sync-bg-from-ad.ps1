@@ -835,35 +835,6 @@ function setBGAsGhostIfNot
 }
 
 
-<#
--------------------------------------------------------------------------------------
-	BUT : Permet de savoir si le Business Group passé est du type donné
-
-	IN  : $bg		-> Business Group dont on veut savoir s'il est du type donné
-	IN  : $type		-> Type duquel le BG doit être
-
-	RET : $true|$false
-#>
-function isBGOfType
-{
-	param([PSCustomObject]$bg, [string] $type)
-
-	$bgType = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_TYPE
-
-	# Si custom property PAS trouvée,
-	if($null -eq $bgType)
-	{
-		$notifications['bgWithoutCustomPropType'] += $bg.name
-		return $false
-	}
-	else # Custom property trouvée
-	{
-		# On regarde si la valeur correspond.
-		return $bgType -eq $type
-	}
-
-
-}
 
 <#
 -------------------------------------------------------------------------------------
@@ -1766,9 +1737,15 @@ try
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
 	$vra.getBGList() | ForEach-Object {
 
-		# Si c'est un BG d'unité ou de service et s'il faut l'effacer
-		if(((isBGOfType -bg $_ -type $global:VRA_BG_TYPE__SERVICE) -or (isBGOfType -bg $_ -type $global:VRA_BG_TYPE__UNIT)) -and `
-			($doneBGList -notcontains $_.name))
+		# Recherche si le BG est d'un des types donné
+		$isBGOfType = isBGOfType -bg $_ -typeList @($global:VRA_BG_TYPE__SERVICE, $global:VRA_BG_TYPE__UNIT)
+
+		# Si la custom property qui donne les infos n'a pas été trouvée
+		if($null -eq $isBGOfType)
+		{
+			$notifications['bgWithoutCustomPropType'] += $bg.name
+		}
+		elseif($isBGOfType -and ($doneBGList -notcontains $_.name))
 		{
 			$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
 			$setAsGhost = setBGAsGhostIfNot -vra $vra -bg $_
