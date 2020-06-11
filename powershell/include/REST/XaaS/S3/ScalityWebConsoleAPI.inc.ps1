@@ -16,7 +16,7 @@
 #>
 Add-Type -AssemblyName System.Web
 
-class ScalityWebConsoleAPI: RESTAPI
+class ScalityWebConsoleAPI: RESTAPICurl
 {
 
     hidden [string]$server
@@ -44,8 +44,15 @@ class ScalityWebConsoleAPI: RESTAPI
 
         $uri = "https://{0}/_/console/authenticate" -f $this.server
 
+        $result = $this.callAPI($uri, "Post",  $body)
+        
+        if($result.success -eq $false)
+        {
+            Throw $result.error
+        }
+
         # Ajout du token pour les requêtes futures 
-        $this.headers.Add('x-access-token', ($this.callAPI($uri, "Post",  $body)).token)
+        $this.headers.Add('x-access-token', $result.token)
     }
 
 
@@ -55,11 +62,15 @@ class ScalityWebConsoleAPI: RESTAPI
 
         IN  : $requestResult    -> Résultat d'une requête.
     #>
-    hidden [void]handleError([string]$requestResult)
+    hidden [void]handleError([PSObject]$requestResult)
     {
         if($null -ne $requestResult.error)
         {
             Throw $requestResult.error
+        }
+        elseif($requestResult.success -eq $false)
+        {
+            Throw $requestResult.message
         }
     }
 

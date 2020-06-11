@@ -433,6 +433,7 @@ try
             # Récupération de la liste des buckets et parcours
             $scality.getBucketList() | ForEach-Object {
 
+                $logHistory.addLine( ("Processing bucket {0}" -f $_.bucketName) )
                 # Récupération des infos d'utilisation
                 $usageInfos = $scality.getBucketUsageInfos($_.BucketName)
                 # Ajout du nom du bucket
@@ -445,8 +446,12 @@ try
 
     $logHistory.addLine("Script execution done!")
 
+
     # Affichage du résultat
     displayJSONOutput -output $output
+
+    # Ajout du résultat dans les logs 
+    $logHistory.addLine(($output | ConvertTo-Json -Depth 100))
 
 }
 catch

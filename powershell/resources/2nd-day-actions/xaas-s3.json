@@ -8,6 +8,10 @@
                 "approvals": []
             },
             {
+                "name": "Bucket Usage Stats",
+                "approvals": []
+            },
+            {
                 "name": "Regenerate Keys",
                 "approvals": [] 
             },
@@ -15,11 +19,6 @@
                 "name": "Modify Bucket",
                 "approvals": [] 
             },
-            {
-                "name": "Change Owner",
-                "approvals": [] 
-            },
-
             {
                 "name": "Delete Bucket",
                 "approvals": []
