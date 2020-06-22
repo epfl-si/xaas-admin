@@ -1766,7 +1766,7 @@ try
 	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")
 	
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
-	$vra.getBGList() | ForEach-Object {F
+	$vra.getBGList() | ForEach-Object {
 
 		# Recherche si le BG est d'un des types donné
 		$isBGOfType = isBGOfType -bg $_ -typeList @($global:VRA_BG_TYPE__SERVICE, $global:VRA_BG_TYPE__UNIT)
