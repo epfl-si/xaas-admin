@@ -375,8 +375,8 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["SVC0007;Virtualization Service;1234"],
-                "expected": ["SVC0007", "Virtualization Service", "1234"]
+                "params": ["SVC0007;Virtualization Service"],
+                "expected": ["SVC0007", "Virtualization Service"]
             }
         ]
     },

@@ -4,604 +4,504 @@
         {
             "longName":  "Antivirus",
             "shortName":  "Antivirus",
-            "snowId":  "SVC0062",
-            "financeCenter": ""
+            "snowId":  "SVC0062"
         },
         {
             "longName":  "MySQL hosting",
             "shortName":  "MySQL",
-            "snowId":  "SVC0020",
-            "financeCenter": ""
+            "snowId":  "SVC0020"
         },
         {
             "longName":  "Virtualization Servers",
             "shortName":  "vs",
-            "snowId":  "SVC0080",
-            "financeCenter": ""
+            "snowId":  "SVC0080"
         },
         {
             "longName":  "Service for server backup TEST",
             "shortName":  "bkpt",
-            "snowId":  "SVC0003",
-            "financeCenter": ""
+            "snowId":  "SVC0003"
         },
         {
             "longName":  "Stockage Objet-S3 TEST",
             "shortName":  "s3t",
-            "snowId":  "SVC1057",
-            "financeCenter": ""
+            "snowId":  "SVC1057"
         },
         {
             "longName":  "Multimedia library",
             "shortName":  "Media",
-            "snowId":  "SVC0067",
-            "financeCenter": ""
+            "snowId":  "SVC0067"
         },
 		{
             "longName":  "Exchange Calendar TEST",
             "shortName":  "excalt",
-            "snowId":  "SVC0088",
-            "financeCenter": ""
+            "snowId":  "SVC0088"
         },
 		{
             "longName":  "Wired Network",
             "shortName":  "wnet",
-            "snowId":  "SVC0101",
-            "financeCenter": ""
+            "snowId":  "SVC0101"
         }
     ],
     "prod": [
         {
             "longName":  "Antivirus",
             "shortName":  "Antivirus",
-            "snowId":  "SVC0062",
-            "financeCenter": ""
+            "snowId":  "SVC0062"
         },
         {
             "longName":  "AntiSpam",
             "shortName":  "aspam",
-            "snowId":  "SVC0058",
-            "financeCenter": ""
+            "snowId":  "SVC0058"
         },
         {
             "longName":  "IT security audit",
             "shortName":  "audit",
-            "snowId":  "SVC0091",
-            "financeCenter": ""
+            "snowId":  "SVC0091"
         },
         {
             "longName":  "Service for server backup",
             "shortName":  "bkp",
-            "snowId":  "SVC0003",
-            "financeCenter": ""
+            "snowId":  "SVC0003"
         },
         {
             "longName":  "Certificates",
             "shortName":  "cert",
-            "snowId":  "SVC0011",
-            "financeCenter": ""
+            "snowId":  "SVC0011"
         },
         {
             "longName":  "Confluence",
             "shortName":  "cnfl",
-            "snowId":  "SVC0108",
-            "financeCenter": ""
+            "snowId":  "SVC0108"
         },
         {
             "longName":  "Hardware repair and recycling",
             "shortName":  "CRI",
-            "snowId":  "SVC0069",
-            "financeCenter": ""
+            "snowId":  "SVC0069"
         },
         {
             "longName":  "Diode Network Security",
             "shortName":  "diod",
-            "snowId":  "SVC0040",
-            "financeCenter": ""
+            "snowId":  "SVC0040"
         },
         {
             "longName":  "End to End monitoring",
             "shortName":  "e2e",
-            "snowId":  "SVC0345",
-            "financeCenter": ""
+            "snowId":  "SVC0345"
         },
         {
             "longName":  "ERP exploitation",
             "shortName":  "erpe",
-            "snowId":  "SVC0642",
-            "financeCenter": ""
+            "snowId":  "SVC0642"
         },
         {
             "longName":  "LDAP Directory",
             "shortName":  "ldap",
-            "snowId":  "SVC0052",
-            "financeCenter": ""
+            "snowId":  "SVC0052"
         },
         {
             "longName":  "Email at EPFL",
             "shortName":  "mail",
-            "snowId":  "SVC0082",
-            "financeCenter": ""
+            "snowId":  "SVC0082"
         },
         {
             "longName":  "Multimedia library",
             "shortName":  "Media",
-            "snowId":  "SVC0067",
-            "financeCenter": ""
+            "snowId":  "SVC0067"
         },
         {
             "longName":  "Mailing lists",
             "shortName":  "mlist",
-            "snowId":  "SVC0004",
-            "financeCenter": ""
+            "snowId":  "SVC0004"
         },
         {
             "longName":  "moodle",
             "shortName":  "moodle",
-            "snowId":  "SVC0060",
-            "financeCenter": ""
+            "snowId":  "SVC0060"
         },
         {
             "longName":  "MS-SQL",
             "shortName":  "mssql",
-            "snowId":  "SVC0021",
-            "financeCenter": ""
+            "snowId":  "SVC0021"
         },
         {
             "longName":  "Individual storage",
             "shortName":  "MyNAS",
-            "snowId":  "SVC0047",
-            "financeCenter": ""
+            "snowId":  "SVC0047"
         },
         {
             "longName":  "MySQL hosting",
             "shortName":  "MySQL",
-            "snowId":  "SVC0020",
-            "financeCenter": ""
+            "snowId":  "SVC0020"
         },
         {
             "longName":  "File storage services",
             "shortName":  "NAS",
-            "snowId":  "SVC0075",
-            "financeCenter": ""
+            "snowId":  "SVC0075"
         },
         {
             "longName":  "Project Cloud Microsoft AZURE",
             "shortName":  "prjcma",
-            "snowId":  "PRJ0016078",
-            "financeCenter": ""
+            "snowId":  "PRJ0016078"
         },
         {
             "longName":  "Project Data Repository",
             "shortName":  "prjdr",
-            "snowId":  "PRJ0011973",
-            "financeCenter": ""
+            "snowId":  "PRJ0011973"
         },
         {
             "longName":  "Stockage Objet-S3",
             "shortName":  "S3",
-            "snowId":  "SVC1057",
-            "financeCenter": ""
+            "snowId":  "SVC1057"
         },
         {
             "longName":  "SafeNet",
             "shortName":  "safenet",
-            "snowId":  "SVC0094",
-            "financeCenter": ""
+            "snowId":  "SVC0094"
         },
         {
             "longName":  "SAP",
             "shortName":  "sap",
-            "snowId":  "SVC0196",
-            "financeCenter": ""
+            "snowId":  "SVC0196"
         },
         {
             "longName":  "SAP FInance",
             "shortName":  "sapf",
-            "snowId":  "SVC0649",
-            "financeCenter": ""
+            "snowId":  "SVC0649"
         },
         {
             "longName":  "SAP Hosting",
             "shortName":  "saph",
-            "snowId":  "SVC0099",
-            "financeCenter": ""
+            "snowId":  "SVC0099"
         },
         {
             "longName":  "SAP RH",
             "shortName":  "sapr",
-            "snowId":  "SVC0651",
-            "financeCenter": ""
+            "snowId":  "SVC0651"
         },
         {
             "longName":  "Search engines management",
             "shortName":  "search",
-            "snowId":  "SVC0012",
-            "financeCenter": ""
+            "snowId":  "SVC0012"
         },
         {
             "longName":  "SharePoint",
             "shortName":  "shrp",
-            "snowId":  "SVC0128",
-            "financeCenter": ""
+            "snowId":  "SVC0128"
         },
         {
             "longName":  "Support in case of hacking",
             "shortName":  "suphack",
-            "snowId":  "SVC0015",
-            "financeCenter": ""
+            "snowId":  "SVC0015"
         },
         {
             "longName":  "Unified communication",
             "shortName":  "uc",
-            "snowId":  "SVC0029",
-            "financeCenter": ""
+            "snowId":  "SVC0029"
         },
         {
             "longName":  "Virtual Desktop for courses",
             "shortName":  "vdic",
-            "snowId":  "SVC0116",
-            "financeCenter": ""
+            "snowId":  "SVC0116"
         },
         {
             "longName":  "Virtual Desktop for employees",
             "shortName":  "vdie",
-            "snowId":  "SVC0019",
-            "financeCenter": ""
+            "snowId":  "SVC0019"
         },
         {
             "longName":  "Virtualization Servers",
             "shortName":  "vs",
-            "snowId":  "SVC0080",
-            "financeCenter": ""
+            "snowId":  "SVC0080"
         },
         {
             "longName":  "Windows Operation",
             "shortName":  "winop",
-            "snowId":  "SVC1168",
-            "financeCenter": ""
+            "snowId":  "SVC1168"
         },
         {
             "longName":  "Wired Network",
             "shortName":  "wnet",
-            "snowId":  "SVC0101",
-            "financeCenter": ""
+            "snowId":  "SVC0101"
         },
         {
             "longName":  "Web Proxy",
             "shortName":  "wproxy",
-            "snowId":  "SVC0066",
-            "financeCenter": ""
+            "snowId":  "SVC0066"
         },
         {
             "longName":  "IS-Academia",
             "shortName":  "isa",
-            "snowId":  "SVC0034",
-            "financeCenter": ""
+            "snowId":  "SVC0034"
         },
         {
             "longName":  "Oracle hosting",
             "shortName":  "ora",
-            "snowId":  "SVC0072",
-            "financeCenter": ""
+            "snowId":  "SVC0072"
         },
         {
             "longName":  "Online news publication",
             "shortName":  "actu",
-            "snowId":  "SVC0016",
-            "financeCenter": ""
+            "snowId":  "SVC0016"
         },
         {
             "longName":  "Map (Plan.epfl)",
             "shortName":  "plan",
-            "snowId":  "SVC0028",
-            "financeCenter": ""
+            "snowId":  "SVC0028"
         },
         {
             "longName":  "Web hosting at the EPFL",
             "shortName":  "wbhst",
-            "snowId":  "SVC0041",
-            "financeCenter": ""
+            "snowId":  "SVC0041"
         },
         {
             "longName":  "PocketCampus",
             "shortName":  "pktcmp",
-            "snowId":  "SVC0086",
-            "financeCenter": ""
+            "snowId":  "SVC0086"
         },
         {
             "longName":  "Online events publication (Memento)",
             "shortName":  "memto",
-            "snowId":  "SVC0095",
-            "financeCenter": ""
+            "snowId":  "SVC0095"
         },
         {
             "longName":  "EXHEB Fonctionnement",
             "shortName":  "exheb",
-            "snowId":  "SVC0166",
-            "financeCenter": ""
+            "snowId":  "SVC0166"
         },
         {
             "longName":  "MyPrint",
             "shortName":  "mprnt",
-            "snowId":  "SVC0056",
-            "financeCenter": ""
+            "snowId":  "SVC0056"
         },
         {
             "longName":  "Press review",
             "shortName":  "press",
-            "snowId":  "SVC0046",
-            "financeCenter": ""
+            "snowId":  "SVC0046"
         },
         {
             "longName":  "EPFL directory (People, CV)",
             "shortName":  "peopl",
-            "snowId":  "SVC0033",
-            "financeCenter": ""
+            "snowId":  "SVC0033"
         },
         {
             "longName":  "AD directory",
             "shortName":  "ad",
-            "snowId":  "SVC0026",
-            "financeCenter": ""
+            "snowId":  "SVC0026"
         },
         {
             "longName":  "Identity & Accreditation management",
             "shortName":  "accred",
-            "snowId":  "SVC0055",
-            "financeCenter": ""
+            "snowId":  "SVC0055"
         },
         {
             "longName":  "Shared documents & agenda my.epfl.ch",
             "shortName":  "my",
-            "snowId":  "SVC0024",
-            "financeCenter": ""
+            "snowId":  "SVC0024"
         },
         {
             "longName":  "Cadi 2.0",
             "shortName":  "cadi",
-            "snowId":  "SVC0074",
-            "financeCenter": ""
+            "snowId":  "SVC0074"
         },
         {
             "longName":  "Passwords management",
             "shortName":  "gaspar",
-            "snowId":  "SVC0085",
-            "financeCenter": ""
+            "snowId":  "SVC0085"
         },
         {
             "longName":  "Authentication & authorisation Tequila",
             "shortName":  "tequila",
-            "snowId":  "SVC0018",
-            "financeCenter": ""
+            "snowId":  "SVC0018"
         },
         {
             "longName":  "GOUV-GE Fonctionnement",
             "shortName":  "gouvge",
-            "snowId":  "SVC0141",
-            "financeCenter": ""
+            "snowId":  "SVC0141"
         },
         {
             "longName":  "VPSI Fonctionnement",
             "shortName":  "vpsi",
-            "snowId":  "SVC0173",
-            "financeCenter": ""
+            "snowId":  "SVC0173"
         },
         {
             "longName":  "IDEVAM Fonctionnement",
             "shortName":  "idevam",
-            "snowId":  "SVC0174",
-            "financeCenter": ""
+            "snowId":  "SVC0174"
         },
         {
             "longName":  "IDEV-FSD Fonctionnement",
             "shortName":  "idevfsd",
-            "snowId":  "SVC0176",
-            "financeCenter": ""
+            "snowId":  "SVC0176"
         },
         {
             "longName":  "IDEVING Fonctionnement",
             "shortName":  "ideving",
-            "snowId":  "SVC0177",
-            "financeCenter": ""
+            "snowId":  "SVC0177"
         },
         {
             "longName":  "EXDESK Fonctionnement",
             "shortName":  "exdesk",
-            "snowId":  "SVC0178",
-            "financeCenter": ""
+            "snowId":  "SVC0178"
         },
         {
             "longName":  "EXTERP Fonctionnement",
             "shortName":  "exterp",
-            "snowId":  "SVC0179",
-            "financeCenter": ""
+            "snowId":  "SVC0179"
         },
         {
             "longName":  "EXINFR Fonctionnement",
             "shortName":  "exinfr",
-            "snowId":  "SVC0181",
-            "financeCenter": ""
+            "snowId":  "SVC0181"
         },
         {
             "longName":  "GIF-GE Fonctionnement",
             "shortName":  "gifge",
-            "snowId":  "SVC0182",
-            "financeCenter": ""
+            "snowId":  "SVC0182"
         },
         {
             "longName":  "EXAPP Fonctionnement",
             "shortName":  "exapp",
-            "snowId":  "SVC0183",
-            "financeCenter": ""
+            "snowId":  "SVC0183"
         },
         {
             "longName":  "IDEV-GE Fonctionnement",
             "shortName":  "idevge",
-            "snowId":  "SVC0184",
-            "financeCenter": ""
+            "snowId":  "SVC0184"
         },
         {
             "longName":  "EXOP-GE Fonctionnement",
             "shortName":  "exopge",
-            "snowId":  "SVC0185",
-            "financeCenter": ""
+            "snowId":  "SVC0185"
         },
         {
             "longName":  "IDEV-RH Fonctionnement",
             "shortName":  "idevrh",
-            "snowId":  "SVC0602",
-            "financeCenter": ""
+            "snowId":  "SVC0602"
         },
         {
             "longName":  "IDEV-FIN Fonctionnement",
             "shortName":  "idevfin",
-            "snowId":  "SVC0606",
-            "financeCenter": ""
+            "snowId":  "SVC0606"
         },
         {
             "longName":  "Online form (InForm)",
             "shortName":  "inform",
-            "snowId":  "SVC0092",
-            "financeCenter": ""
+            "snowId":  "SVC0092"
         },
         {
             "longName":  "Archiving of Research Data",
             "shortName":  "archi",
-            "snowId":  "SVC1203",
-            "financeCenter": ""
+            "snowId":  "SVC1203"
         },
         {
             "longName":  "Camipro",
             "shortName":  "camip",
-            "snowId":  "SVC0117",
-            "financeCenter": ""
+            "snowId":  "SVC0117"
         },
         {
             "longName":  "Datacenter hosting",
             "shortName":  "dchst",
-            "snowId":  "SVC0051",
-            "financeCenter": ""
+            "snowId":  "SVC0051"
         },
         {
             "longName":  "CRM",
             "shortName":  "crm",
-            "snowId":  "SVC0955",
-            "financeCenter": ""
+            "snowId":  "SVC0955"
         },
         {
             "longName":  "Software support",
             "shortName":  "softsup",
-            "snowId":  "SVC0006",
-            "financeCenter": ""
+            "snowId":  "SVC0006"
         },
         {
             "longName":  "Service Desk",
             "shortName":  "svcdsk",
-            "snowId":  "SVC0017",
-            "financeCenter": ""
+            "snowId":  "SVC0017"
         },
         {
             "longName":  "Poseidon (laptops – support and discount)",
             "shortName":  "psdn",
-            "snowId":  "SVC0025",
-            "financeCenter": ""
+            "snowId":  "SVC0025"
         },
         {
             "longName":  "SSC (Central services) management and support",
             "shortName":  "sscsup",
-            "snowId":  "SVC0043",
-            "financeCenter": ""
+            "snowId":  "SVC0043"
         },
         {
             "longName":  "Achats - Catalyse",
             "shortName":  "pur",
-            "snowId":  "SVC0187",
-            "financeCenter": ""
+            "snowId":  "SVC0187"
         },
         {
             "longName":  "ServiceNow",
             "shortName":  "snow",
-            "snowId":  "SVC0048",
-            "financeCenter": ""
+            "snowId":  "SVC0048"
         },
         {
             "longName":  "Blogs & Wikis",
             "shortName":  "blgwk",
-            "snowId":  "SVC0070",
-            "financeCenter": ""
+            "snowId":  "SVC0070"
         },
         {
             "longName":  "EPFL's Software Use Conditions & Distrilog",
             "shortName":  "dstlg",
-            "snowId":  "SVC0084",
-            "financeCenter": ""
+            "snowId":  "SVC0084"
         },
         {
             "longName":  "Business Intelligence",
             "shortName":  "bi",
-            "snowId":  "SVC0647",
-            "financeCenter": ""
+            "snowId":  "SVC0647"
         },
         {
             "longName":  "Scientific publications (Infoscience)",
             "shortName":  "infosc",
-            "snowId":  "SVC0089",
-            "financeCenter": ""
+            "snowId":  "SVC0089"
         },
         {
             "longName":  "Disclosure of external activities for Professors",
             "shortName":  "xact",
-            "snowId":  "SVC0723",
-            "financeCenter": ""
+            "snowId":  "SVC0723"
         },
 		{
             "longName":  "Laboratory Hazards Directory (LHD) Annuaire des dangers des laboratoires",
             "shortName":  "lhdadl",
-            "snowId":  "SVC1172",
-            "financeCenter": ""
+            "snowId":  "SVC1172"
         },
 		{
             "longName":  "Exchange Calendar",
             "shortName":  "excal",
-            "snowId":  "SVC0088",
-            "financeCenter": ""
+            "snowId":  "SVC0088"
         },
         {
             "longName":  "Gestion de la facturation des Alumni",
             "shortName":  "prjalu",
-            "snowId":  "PRJ0012176",
-            "financeCenter": ""
+            "snowId":  "PRJ0012176"
         },
         {
             "longName":  "Research grants (GrantsDB)",
             "shortName":  "grants",
-            "snowId":  "SVC0002",
-            "financeCenter": ""
+            "snowId":  "SVC0002"
         },
         {
             "longName":  "Kubernetes",
             "shortName":  "k8s",
-            "snowId":  "SVC1219",
-            "financeCenter": ""
+            "snowId":  "SVC1219"
         },
         {
             "longName":  "Exploitation LINUX",
             "shortName":  "lnx",
-            "snowId":  "SVC1215",
-            "financeCenter": ""
+            "snowId":  "SVC1215"
         },
         {
             "longName":  "Ex MyVM – to be deleted",
             "shortName":  "exmyvm",
-            "snowId":  "SVC1223",
-            "financeCenter": ""
+            "snowId":  "SVC1223"
         },
         {
             "longName":  "Gestion des Alumni",
             "shortName":  "prjalumgmt",
-            "snowId":  "PRJ0012151",
-            "financeCenter": ""
+            "snowId":  "PRJ0012151"
         }
     ]
 }

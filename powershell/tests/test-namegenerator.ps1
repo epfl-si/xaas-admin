@@ -28,10 +28,10 @@ $classTester = [ClassTester]::new()
 # ------------------------------------------
 # Tests pour le tenant EPFL
 
-# $nameGenerator = [NameGenerator]::new('test', 'epfl')
+$nameGenerator = [NameGenerator]::new('test', 'epfl')
 
-# $jsonFile = ([IO.Path]::Combine("$PSScriptRoot", "test-namegenerator-epfl.json"))
-# $classTester.runTests($jsonFile, $nameGenerator)
+$jsonFile = ([IO.Path]::Combine("$PSScriptRoot", "test-namegenerator-epfl.json"))
+$classTester.runTests($jsonFile, $nameGenerator)
 
 # ------------------------------------------
 # Tests pour le tenant ITServices
