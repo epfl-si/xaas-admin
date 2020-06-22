@@ -80,7 +80,7 @@ class CopernicAPI: RESTAPICurl
                 # numéro d'article en fonction de l'environnement
                 prestationCode = $serviceInfos.prestationCode.$targetEnv
                 itemQuantity = $item.itemQuantity
-                unitPricePerMonthCHF = $serviceInfos.unitPricePerMonthCHF
+                unitPricePerMonthCHF = $serviceInfos.unitPricePerMonthCHF.($entityInfos.entityType)
                 itemNameAndDesc = $itemDesc
             }
 

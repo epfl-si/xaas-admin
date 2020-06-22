@@ -4,7 +4,11 @@
     "serviceName": "S3",
     "itemTypeInDB": "S3 Bucket",
     "itemDescPrefix":"Object Storage S3",
-    "unitPricePerMonthCHF": 7,
+    "unitPricePerMonthCHF": 
+    {
+        "Unit": 2.42,
+        "Project": 7
+    },
     "pdfAuthor": "EPFL SI SI-EXOP",
     "billingFrom": "VPSI",
     "billingReference": "christophe.simond@epfl.ch",
@@ -28,7 +32,7 @@
     {
         "shipperName": "Christophe Simond",
         "shipperSciper": "287589",
-        "shipperFund": "619142",
+        "shipperFund": "1914-1",
         "shipperMail": "christophe.simond@epfl.ch",
         "shipperPhone": "0216931068",
 

@@ -226,6 +226,7 @@ try
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
     $counters.add('entityProcessed', '# Entity processed')
+    $counters.add('entitySkipped', '# Entity skipped (not billable)')
     $counters.add('billDone', '# Bill done')
     $counters.add('billSkippedToLow', '# Bill skipped (amount to low)')
     $counters.add('billSkippedNothing', '# Bill skipped (nothing to bill)')
@@ -340,6 +341,17 @@ try
             {
                 $logHistory.addLineAndDisplay(("Processing entity {0} ({1})..." -f $entity.entityElement, $entity.entityType))
 
+                # Si on n'a pas d'infos de facturation pour le type d'entité courante, on passe à la suivante
+                if((($serviceBillingInfos.unitPricePerMonthCHF).PSobject.Properties | Select-Object -ExpandProperty "Name") -notcontains $entity.entityType )
+                {
+                    $logHistory.addLineAndDisplay("> Skipping because not billable")
+                    $counters.inc('entitySkipped')
+                    continue
+                }
+
+                # Extraction du prix de l'item pour l'entity courante
+                $unitPricePerMonthCHF = $serviceBillingInfos.unitPricePerMonthCHF.($entity.entityType)
+
                 $counters.inc('entityProcessed')
 
                 ## 1. On commence par créer le code HTML pour les items à facturer 
@@ -392,9 +404,9 @@ try
                         monthYear = $monthYear
                         quantity = $item.itemQuantity
                         unit = $item.itemUnit
-                        unitPrice = $serviceBillingInfos.unitPricePerMonthCHF
+                        unitPrice = $unitPricePerMonthCHF
                         # On coupe le prix à 2 décimales
-                        itemPrice = truncateToNbDecimal -number ([double]($item.itemQuantity) * $serviceBillingInfos.unitPricePerMonthCHF) -nbDecimals 2
+                        itemPrice = truncateToNbDecimal -number ([double]($item.itemQuantity) * $unitPricePerMonthCHF) -nbDecimals 2
                     }
 
                     # Mise à jour des totaux pour la facture
@@ -459,7 +471,7 @@ try
 
                             # Dernière ligne du tableau
                             quantityTot = $quantityTot
-                            unitPricePerMonthCHF = $serviceBillingInfos.unitPricePerMonthCHF
+                            unitPricePerMonthCHF = $unitPricePerMonthCHF
                             totalPrice = $totalPrice
                         }
                         
