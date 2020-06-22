@@ -339,6 +339,8 @@ function createOrUpdateBG
 			return $null
 		}
 		$machinePrefixId = $machinePrefix.id
+
+		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER"] = $financeCenter
 	}
 	# On doit gérer le tenant ITServices
 	elseif(($bgUnitID -eq "") -and ($bgSnowSvcID -ne "")) 
@@ -376,8 +378,6 @@ function createOrUpdateBG
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS__ALIVE
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
-
-		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER"] = $financeCenter
 
 		# Ajout aussi des informations sur le Tenant et le BG car les mettre ici, c'est le seul moyen que l'on pour récupérer cette information
 		# pour la génération des mails personnalisée... 
