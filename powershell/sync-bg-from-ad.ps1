@@ -343,8 +343,6 @@ function createOrUpdateBG
 	{
 		$tenantName = $global:VRA_TENANT__ITSERVICES
 
-		$financeCenter = ""
-
 		# Recherche du BG par son ID de service dans ServiceNow
 		$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgSnowSvcID
 
@@ -1541,17 +1539,17 @@ try
 		{
 			# Pour signifier à la fonction createOrUpdateBG qu'on n'est pas dans le tenant EPFL.
 			$unitID = ""
+			$financeCenter = ""
 
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-			$snowServiceId, $serviceLongName, $financeCenter  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
 				serviceName = $serviceLongName
-				snowServiceId = $snowServiceId
-				financeCenter = $financeCenter})
+				snowServiceId = $snowServiceId})
 
 			# Création du nom/description du business group
 			$bgDesc = $serviceLongName
