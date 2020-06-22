@@ -1399,24 +1399,7 @@ try
 			$logHistory.addLineAndDisplay("No progress file found :-(")
 		}
 	}
-	
-	$doneBGList = @()
 
-	# Si on doit tenter de reprendre une exécution foirée ET qu'un fichier de progression existait, on charge son contenu
-	if($resume)
-	{
-		$logHistory.addLineAndDisplay("Trying to resume from previous failed execution...")
-		$progress = $resumeOnFail.load()
-		if($null -ne $progress)
-		{
-			$doneBGList = $progress
-			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed" -f $doneBGList.Count))
-		}
-		else
-		{
-			$logHistory.addLineAndDisplay("No progress file found :-(")
-		}
-	}
 
 	<# Recherche des groupes pour lesquels il faudra créer des OUs
 	 On prend tous les groupes de l'OU et on fait ensuite un filtre avec une expression régulière sur le nom. Au début, on prenait le début du nom du
