@@ -93,7 +93,6 @@ class NameGenerator
                                         unitID           -> ID de l'unité du Business Group
                                     
                                     ITServices:
-                                        financeCenter       -> no du centre financier du service
                                         serviceShortName    -> Nom court du service
                                         serviceName         -> Nom long du service
                                         snowServiceId       -> ID du service dans ServiceNow
@@ -110,7 +109,7 @@ class NameGenerator
 
             $global:VRA_TENANT__ITSERVICES
             {
-                $keysToCheck = @('financeCenter', 'serviceShortName', 'serviceName', 'snowServiceId')
+                $keysToCheck = @('serviceShortName', 'serviceName', 'snowServiceId')
             } 
 
             # Tenant pas géré
@@ -383,7 +382,7 @@ class NameGenerator
                     # <snowServiceId>;<serviceName>
                     # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
                     # réutilisé pour d'autres choses dans la création des éléments dans vRA
-                    $groupDesc = "{0};{1};{2}" -f $this.getDetail('snowServiceId').ToUpper(), $this.getDetail('serviceName'), $this.getDetail('financeCenter')
+                    $groupDesc = "{0};{1}" -f $this.getDetail('snowServiceId').ToUpper(), $this.getDetail('serviceName')
 
                 }
                 # Autre EPFL
@@ -1348,9 +1347,9 @@ class NameGenerator
             $global:VRA_TENANT__ITSERVICES
             {
                 # Le nom du groupe devait avoir la forme :
-                # <snowServiceId>;<serviceName>;<financeCenter>
+                # <snowServiceId>;<serviceName>
                 
-                if($partList.Count -lt 3)
+                if($partList.Count -lt 2)
                 {
                     Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
                 }
