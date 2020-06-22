@@ -8,7 +8,8 @@
                         "facultyName": "ENT-R",
                         "facultyID": "12635",
                         "unitName": "IDEV-ING",
-                        "unitID": "13031"
+                        "unitID": "13031",
+                        "financeCenter": "1907"
                     }
                 ],
                 "expected": null
@@ -106,11 +107,11 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "ENT-R;IDEV-ING"
+                "expected": "ENT-R;IDEV-ING;1907"
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "ENT-R;IDEV-ING"
+                "expected": "ENT-R;IDEV-ING;1907"
             }
         ]
     },
@@ -389,8 +390,8 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["ENT-R;IDEV-ING"],
-                "expected": ["ENT-R", "IDEV-ING"]
+                "params": ["ENT-R;IDEV-ING;1907"],
+                "expected": ["ENT-R", "IDEV-ING", "1907"]
             }
         ]
     },
