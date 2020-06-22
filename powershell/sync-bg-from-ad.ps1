@@ -299,6 +299,8 @@ function createOrUpdateBG
 	if(($bgUnitID -ne "") -and ($bgSnowSvcID -eq ""))
 	{
 		$tenantName = $global:VRA_TENANT__EPFL
+
+		$bgIdProp = $bgUnitID
 		
 		# Recherche du BG par son no d'unité.
 		$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgUnitID
@@ -342,6 +344,8 @@ function createOrUpdateBG
 	elseif(($bgUnitID -eq "") -and ($bgSnowSvcID -ne "")) 
 	{
 		$tenantName = $global:VRA_TENANT__ITSERVICES
+
+		$bgIdProp = $bgSnowSvcID
 
 		# Recherche du BG par son ID de service dans ServiceNow
 		$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgSnowSvcID
@@ -401,6 +405,15 @@ function createOrUpdateBG
 		{
 			# Ajout de la custom Property avec la valeur par défaut 
 			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
+		}
+
+		# Si le BG n'a pas la custom property donnée, on l'ajoute
+		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
+		# les BG existants avec la nouvelle "Custom Property"
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID))
+		{
+			# Ajout de la custom Property avec la valeur par défaut 
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BG_ID" = $bgIdProp})
 		}
 
 
@@ -1753,11 +1766,17 @@ try
 	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")
 	
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
-	$vra.getBGList() | ForEach-Object {
+	$vra.getBGList() | ForEach-Object {F
 
-		# Si c'est un BG d'unité ou de service et s'il faut l'effacer
-		if(((isBGOfType -bg $_ -type $global:VRA_BG_TYPE__SERVICE) -or (isBGOfType -bg $_ -type $global:VRA_BG_TYPE__UNIT)) -and `
-			($doneBGList -notcontains $_.name))
+		# Recherche si le BG est d'un des types donné
+		$isBGOfType = isBGOfType -bg $_ -typeList @($global:VRA_BG_TYPE__SERVICE, $global:VRA_BG_TYPE__UNIT)
+
+		# Si la custom property qui donne les infos n'a pas été trouvée
+		if($null -eq $isBGOfType)
+		{
+			$notifications['bgWithoutCustomPropType'] += $bg.name
+		}
+		elseif($isBGOfType -and ($doneBGList -notcontains $_.name))
 		{
 			$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
 			$setAsGhost = setBGAsGhostIfNot -vra $vra -bg $_
