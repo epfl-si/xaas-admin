@@ -75,8 +75,8 @@ class BillingS3Bucket: Billing
         {
             switch($bucketInfos.targetTenant)
             {
-                $global:VRA_TENANT__EPFL { return Unit }
-                $global:VRA_TENANT__ITSERVICES { return Service}
+                $global:VRA_TENANT__EPFL { return [EntityType]::Unit }
+                $global:VRA_TENANT__ITSERVICES { return [EntityType]::Service}
             }
             Throw ("Tenant '{0}' not handled" -f $bucketInfos.targetTenant)
         }
@@ -143,7 +143,7 @@ class BillingS3Bucket: Billing
             # On skip les entité "Service"
             if($entityType -eq [EntityType]::Service)
             {
-                Write-Warning ("Skipping Service entity ({0})" -f $bucket.bucketName)
+                Write-Warning ("Skipping Service entity ({0}) because not billed" -f $bucket.bucketName)
                 Continue
             }
 
