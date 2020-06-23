@@ -206,14 +206,15 @@ class EPFLLDAP
 			$facDN = "OU={0},{1}" -f $facName, $ldapInfos.rootDN
 
 			# Recherche des unités de manière récursive
-			$allUnits = $this.LDAPList($this.LDAPconfig.facultyUnits.server, $facDN, "(&(objectClass=organizationalUnit)(uniqueidentifier=*))", @("OU", "uniqueidentifier"), $nbLevels-1)
+			$allUnits = $this.LDAPList($this.LDAPconfig.facultyUnits.server, $facDN, "(&(objectClass=organizationalUnit)(uniqueidentifier=*))", @("OU", "uniqueidentifier", "accountingnumber"), $nbLevels-1)
 
 			# Parcours des résultats pour reformater,
 			ForEach($curUnit in $allUnits)
 			{
 				# Création de l'objet
 				$unitList += @{name = $curUnit.Properties['ou'][0]
-								uniqueidentifier = $curUnit.Properties['uniqueidentifier'][0] }
+								uniqueidentifier = $curUnit.Properties['uniqueidentifier'][0]
+								accountingnumber = $curUnit.Properties['accountingnumber'][0] }
 			} # FIN BOUCLE de parcours des résultats
 		}
 		return $unitList
@@ -248,5 +249,43 @@ class EPFLLDAP
 		return $allMembers.Properties['memberuid']
 	}
 
+		<#
+	-------------------------------------------------------------------------------------
+		BUT : Retourne les informations d'une unité
+		IN  : $unitUniqueIdentifier	-> Identifiant unique de l'unité (numérique)
+		RET : Objet avec les informations suivantes
+				- description
+				- uniqueidentifier
+				- memberuid
+				- displayname
+				- member
+				- cn
+				- memberuniqueid
+				- adspath
+				- objectclass
+				- gidnumber
+	#>
+	[PSObject] getUnitInfos([string]$unitUniqueIdentifier)
+	{
+		# On ajoute des 0 si besoin au début du no de l'unité pour que ça renvoie bien un résultat après
+		$unitUniqueIdentifier = $unitUniqueIdentifier.PadLeft(5, '0')
+
+		# Parcours des informations que l'on a
+		ForEach($ldapInfos in $this.LDAPconfig.facultyUnits.locations)
+		{
+
+			# Recherche des unités de manière récursive
+			$unit = $this.LDAPSearch($this.LDAPconfig.facultyUnits.server, $ldapInfos.rootDN, "subtree", `
+									("(&(objectClass=organizationalUnit)(uniqueidentifier={0}))" -f $unitUniqueIdentifier), @("*"))
+
+			if($unit.count -eq 1)
+			{
+				return $unit[0].Properties
+			}
+		}
+
+		return $null
+
+	}
 
 }
