@@ -43,6 +43,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 # Chargement des fichiers de configuration
 $configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
+$configGrants = [ConfigReader]::New("config-grants.json")
 
 <#
 -------------------------------------------------------------------------------------
@@ -747,6 +748,15 @@ try
 		# -------------------------------------------------------------------------------------------------------------------------------------
 		$global:VRA_TENANT__RESEARCH
 		{
+			$logHistory.addLineAndDisplay("Processing data for Research Tenant")
+	
+			# Ajout du nécessaire pour gérer les notifications pour ce Tenant
+			$notifications.missingRsrchADGroups = @()
+	
+			# Ajout des compteurs propres au tenant
+			$counters.add('rsrch.projectProcessed', '# Projects processed')
+			$counters.add('rsrch.projectSkipped', '# Projects skipped')
+
 			# TODO: Implémenter la chose
 			Throw "Research to implement"
 		}
