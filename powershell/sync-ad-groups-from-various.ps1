@@ -757,6 +757,14 @@ try
 			$counters.add('rsrch.projectProcessed', '# Projects processed')
 			$counters.add('rsrch.projectSkipped', '# Projects skipped')
 
+			# Pour accéder à la base de données
+			$mysqlGrants = [MySQL]::new($configGrants.getConfigValue($targetEnv, "host"), `
+										$configGrants.getConfigValue($targetEnv, "dbName"), `
+										$configGrants.getConfigValue($targetEnv, "user"), `
+										$configGrants.getConfigValue($targetEnv, "password"), `
+										$global:BINARY_FOLDER, `
+										$configGrants.getConfigValue($targetEnv, "port"))
+
 			# TODO: Implémenter la chose
 			Throw "Research to implement"
 		}
