@@ -68,6 +68,7 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$r
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ResumeOnFail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 
@@ -236,6 +237,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 											au sein de la fonction
 											Les autres paramètres n'ont pas besoin d'être passés par référence car ce sont des objets et 
 											il semblerait que sur PowerShell, les objets soient par défaut passés en IN/OUT 
+	
 #>
 function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$secondDayActions, [string]$baseName, [string]$desc, [Array]$approverGroupAtDomainList, [ref] $processedApprovalPoliciesIDs)
 {
@@ -365,6 +367,7 @@ function createOrUpdateBG
 		# pour la génération des mails personnalisée... 
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME"] = $tenantName
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_NAME"] = $bgName
+		
 
 		$logHistory.addLineAndDisplay("-> BG doesn't exists, creating...")
 		# Création du BG
@@ -382,12 +385,20 @@ function createOrUpdateBG
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
 		# les BG existants avec la nouvelle "Custom Property"
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
+		{
+			# Ajout de la custom Property avec la valeur par défaut 
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
+		}
+
+		# Si le BG n'a pas la custom property donnée, on l'ajoute
+		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
+		# les BG existants avec la nouvelle "Custom Property"
 		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID))
 		{
 			# Ajout de la custom Property avec la valeur par défaut 
 			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BG_ID" = $bgEPFLID})
 		}
-
 
 
 		# ==========================================================================================
@@ -765,11 +776,9 @@ function createOrUpdateBGReservations
 -------------------------------------------------------------------------------------
 	BUT : Met un BG en mode "ghost" dans le but qu'il soit effacé par la suite.
 			On change aussi les droits d'accès
-
 	IN  : $vra 		-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $bg		-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
 					   par un appel à une méthode de la classe vRAAPI
-
 	RET : $true si mis en ghost
 		  $false si pas mis en ghost
 #>
@@ -917,7 +926,6 @@ function handleNotifications
 					$mailSubject = "Info - Business Group marked as 'ghost'"
 					$templateName = "bg-set-as-ghost"
 				}
-
 
 				# ---------------------------------------
 				# Préfix de machine non trouvé pour un renommage de faculté
@@ -1366,7 +1374,7 @@ try
 			$logHistory.addLineAndDisplay("No progress file found :-(")
 		}
 	}
-	
+
 
 	<# Recherche des groupes pour lesquels il faudra créer des OUs
 	 On prend tous les groupes de l'OU et on fait ensuite un filtre avec une expression régulière sur le nom. Au début, on prenait le début du nom du
@@ -1410,13 +1418,14 @@ try
 		{
 			# Eclatement de la description et du nom pour récupérer le informations
 			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
-			$faculty, $unit = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$faculty, $unit, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{facultyName = $faculty
-											facultyID = $facultyID
-											unitName = $unit
-											unitID = $unitID})
+										 facultyID = $facultyID
+										 unitName = $unit
+										 unitID = $unitID
+										 financeCenter = $financeCenter})
 
 			# Création du nom/description du business group
 			$bgDesc = $nameGenerator.getBGDescription()
@@ -1434,6 +1443,9 @@ try
 		# ---- ITServices ----
 		elseif($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
 		{
+			# Pas de centre financier pour le tenant ITServices
+			$financeCenter = ""
+
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
@@ -1450,7 +1462,6 @@ try
 			# Custom properties du Buisness Group
 			$bgEPFLID = $snowServiceId
 
-			$financeCenter = "0000"
 		}
 
 		# ---- Research ----

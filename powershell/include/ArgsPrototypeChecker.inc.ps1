@@ -409,7 +409,10 @@ class ArgsPrototypeChecker
                 # Si l'argument est OK dans l'appel qui a été fait au script
                 if($this.callArgIsCorrect($allowedUsageArgInfos))
                 {
-                    $nbArgsOK += 1
+                    if($allowedUsageArgInfos.Mandatory)
+                    {
+                        $nbArgsOK += 1
+                    }
                 }
             } # FIN boucle parcours des arguments possibles 
 

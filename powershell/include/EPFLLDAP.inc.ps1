@@ -206,14 +206,15 @@ class EPFLLDAP
 			$facDN = "OU={0},{1}" -f $facName, $ldapInfos.rootDN
 
 			# Recherche des unités de manière récursive
-			$allUnits = $this.LDAPList($this.LDAPconfig.facultyUnits.server, $facDN, "(&(objectClass=organizationalUnit)(uniqueidentifier=*))", @("OU", "uniqueidentifier"), $nbLevels-1)
+			$allUnits = $this.LDAPList($this.LDAPconfig.facultyUnits.server, $facDN, "(&(objectClass=organizationalUnit)(uniqueidentifier=*))", @("OU", "uniqueidentifier", "accountingnumber"), $nbLevels-1)
 
 			# Parcours des résultats pour reformater,
 			ForEach($curUnit in $allUnits)
 			{
 				# Création de l'objet
 				$unitList += @{name = $curUnit.Properties['ou'][0]
-								uniqueidentifier = $curUnit.Properties['uniqueidentifier'][0] }
+								uniqueidentifier = $curUnit.Properties['uniqueidentifier'][0]
+								accountingnumber = $curUnit.Properties['accountingnumber'][0] }
 			} # FIN BOUCLE de parcours des résultats
 		}
 		return $unitList

@@ -86,6 +86,7 @@ class NameGenerator
                                     passé lors de l'instanciation de l'objet.
 
                                     EPFL:
+                                        financeCenter    -> no du centre financier de l'unité
                                         facultyName      -> Le nom de la faculté du Business Group
                                         facultyID        -> ID de la faculté du Business Group
                                         unitName         -> Nom de l'unité
@@ -103,7 +104,7 @@ class NameGenerator
         {
             $global:VRA_TENANT__EPFL 
             {
-                $keysToCheck = @('facultyName', 'facultyID', 'unitName', 'unitID')
+                $keysToCheck = @('financeCenter', 'facultyName', 'facultyID', 'unitName', 'unitID')
             }
 
             $global:VRA_TENANT__ITSERVICES
@@ -372,8 +373,8 @@ class NameGenerator
                     {
                         # vra_<envShort>_<facultyID>_<unitID>
                         $groupName = "{0}{1}_{2}_{3}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getDetail('facultyID'), $this.getDetail('unitID')
-                        # <facultyName>;<unitName>
-                        $groupDesc = "{0};{1}" -f $this.getDetail('facultyName').toUpper(), $this.getDetail('unitName').toUpper()
+                        # <facultyName>;<unitName>;<financeCenter>
+                        $groupDesc = "{0};{1};{2}" -f $this.getDetail('facultyName').toUpper(), $this.getDetail('unitName').toUpper(), $this.getDetail('financeCenter')
                     }
                     # Groupe "groups"
                     else
@@ -1541,9 +1542,9 @@ class NameGenerator
             $global:VRA_TENANT__EPFL
             {
                 # Le nom du groupe devait avoir la forme :
-                # <facultyNam>;<unitName>
+                # <facultyNam>;<unitName>;<financeCenter>
 
-                if($partList.Count -lt 2)
+                if($partList.Count -lt 3)
                 {
                     Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
                 }
