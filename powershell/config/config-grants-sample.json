@@ -2,6 +2,8 @@
     "dev" :
     {
         "host": "",
+        "dbName":"",
+        "port":0,
         "user": "",
         "password":""
     },
@@ -9,6 +11,8 @@
     "test" :
     {
         "host": "",
+        "dbName":"",
+        "port":0,
         "user": "",
         "password":""
     },
@@ -16,6 +20,8 @@
     "prod" :
     {
         "host": "",
+        "dbName":"",
+        "port":0,
         "user": "",
         "password":""
     }
