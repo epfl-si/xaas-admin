@@ -68,6 +68,7 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$r
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ResumeOnFail.inc.ps1"))
 
 # Chargement des fichiers pour API REST
@@ -235,6 +236,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 											au sein de la fonction
 											Les autres paramètres n'ont pas besoin d'être passés par référence car ce sont des objets et 
 											il semblerait que sur PowerShell, les objets soient par défaut passés en IN/OUT 
+	
 #>
 function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$secondDayActions, [string]$baseName, [string]$desc, [Array]$approverGroupAtDomainList, [ref] $processedApprovalPoliciesIDs)
 {
@@ -276,6 +278,7 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 	IN  : $bgDesc				-> Description du BG
 	IN  : $machinePrefixName	-> Nom du préfixe de machine à utiliser.
 								   Peut être "" si le BG doit être créé dans le tenant ITServices.
+	IN  : $financeCenter		-> NO du centre financier
 	IN  : $capacityAlertsEmail	-> Adresse mail où envoyer les mails de "capacity alert"
 	IN  : $customProperties		-> Tableau associatif avec les custom properties à mettre pour le BG. Celles-ci seront
 								   complétées avec d'autres avant la création.
@@ -284,7 +287,7 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 #>
 function createOrUpdateBG
 {
-	param([vRAAPI]$vra, [Hashtable]$existingBGList, [string]$bgUnitID, [string]$bgSnowSvcID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$capacityAlertsEmail,[System.Collections.Hashtable]$customProperties)
+	param([vRAAPI]$vra, [Hashtable]$existingBGList, [string]$bgUnitID, [string]$bgSnowSvcID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$financeCenter, [string]$capacityAlertsEmail,[System.Collections.Hashtable]$customProperties)
 
 	# On transforme à null si "" pour que ça passe correctement plus loin
 	if($machinePrefixName -eq "")
@@ -336,6 +339,8 @@ function createOrUpdateBG
 			return $null
 		}
 		$machinePrefixId = $machinePrefix.id
+
+		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER"] = $financeCenter
 	}
 	# On doit gérer le tenant ITServices
 	elseif(($bgUnitID -eq "") -and ($bgSnowSvcID -ne "")) 
@@ -373,10 +378,12 @@ function createOrUpdateBG
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] = $global:VRA_BG_STATUS__ALIVE
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
+
 		# Ajout aussi des informations sur le Tenant et le BG car les mettre ici, c'est le seul moyen que l'on pour récupérer cette information
 		# pour la génération des mails personnalisée... 
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME"] = $tenantName
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_NAME"] = $bgName
+		
 
 		$logHistory.addLineAndDisplay("-> BG doesn't exists, creating...")
 		# Création du BG
@@ -394,12 +401,20 @@ function createOrUpdateBG
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
 		# les BG existants avec la nouvelle "Custom Property"
+		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
+		{
+			# Ajout de la custom Property avec la valeur par défaut 
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
+		}
+
+		# Si le BG n'a pas la custom property donnée, on l'ajoute
+		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
+		# les BG existants avec la nouvelle "Custom Property"
 		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID))
 		{
 			# Ajout de la custom Property avec la valeur par défaut 
 			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BG_ID" = $bgIdProp})
 		}
-
 
 
 		# ==========================================================================================
@@ -777,11 +792,9 @@ function createOrUpdateBGReservations
 -------------------------------------------------------------------------------------
 	BUT : Met un BG en mode "ghost" dans le but qu'il soit effacé par la suite.
 			On change aussi les droits d'accès
-
 	IN  : $vra 		-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $bg		-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
 					   par un appel à une méthode de la classe vRAAPI
-
 	RET : $true si mis en ghost
 		  $false si pas mis en ghost
 #>
@@ -835,35 +848,6 @@ function setBGAsGhostIfNot
 }
 
 
-<#
--------------------------------------------------------------------------------------
-	BUT : Permet de savoir si le Business Group passé est du type donné
-
-	IN  : $bg		-> Business Group dont on veut savoir s'il est du type donné
-	IN  : $type		-> Type duquel le BG doit être
-
-	RET : $true|$false
-#>
-function isBGOfType
-{
-	param([PSCustomObject]$bg, [string] $type)
-
-	$bgType = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_TYPE
-
-	# Si custom property PAS trouvée,
-	if($null -eq $bgType)
-	{
-		$notifications['bgWithoutCustomPropType'] += $bg.name
-		return $false
-	}
-	else # Custom property trouvée
-	{
-		# On regarde si la valeur correspond.
-		return $bgType -eq $type
-	}
-
-
-}
 
 <#
 -------------------------------------------------------------------------------------
@@ -958,7 +942,6 @@ function handleNotifications
 					$mailSubject = "Info - Business Group marked as 'ghost'"
 					$templateName = "bg-set-as-ghost"
 				}
-
 
 				# ---------------------------------------
 				# Préfix de machine non trouvé pour un renommage de faculté
@@ -1416,7 +1399,7 @@ try
 			$logHistory.addLineAndDisplay("No progress file found :-(")
 		}
 	}
-	
+
 
 	<# Recherche des groupes pour lesquels il faudra créer des OUs
 	 On prend tous les groupes de l'OU et on fait ensuite un filtre avec une expression régulière sur le nom. Au début, on prenait le début du nom du
@@ -1459,13 +1442,14 @@ try
 
 			# Eclatement de la description et du nom pour récupérer le informations
 			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
-			$faculty, $unit = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$faculty, $unit, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{facultyName = $faculty
 										 facultyID = $facultyID
 										 unitName = $unit
-										 unitID = $unitID})
+										 unitID = $unitID
+										 financeCenter = $financeCenter})
 
 			# Création du nom/description du business group
 			$bgDesc = $nameGenerator.getBGDescription()
@@ -1483,6 +1467,7 @@ try
 		{
 			# Pour signifier à la fonction createOrUpdateBG qu'on n'est pas dans le tenant EPFL.
 			$unitID = ""
+			$financeCenter = ""
 
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
@@ -1631,7 +1616,7 @@ try
 
 		# Création ou mise à jour du Business Group
 		$bg = createOrUpdateBG -vra $vra -existingBGList $customPropToExistingBGMapping -bgUnitID $unitID -bgSnowSvcID $snowServiceId -bgName $bgName -bgDesc $bgDesc `
-									-machinePrefixName $machinePrefixName -capacityAlertsEmail ($capacityAlertMails -join ",") -customProperties $bgCustomProperties
+									-machinePrefixName $machinePrefixName -financeCenter $financeCenter -capacityAlertsEmail ($capacityAlertMails -join ",") -customProperties $bgCustomProperties
 
 		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
 		if($null -eq $bg)
@@ -1766,9 +1751,15 @@ try
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
 	$vra.getBGList() | ForEach-Object {
 
-		# Si c'est un BG d'unité ou de service et s'il faut l'effacer
-		if(((isBGOfType -bg $_ -type $global:VRA_BG_TYPE__SERVICE) -or (isBGOfType -bg $_ -type $global:VRA_BG_TYPE__UNIT)) -and `
-			($doneBGList -notcontains $_.name))
+		# Recherche si le BG est d'un des types donné
+		$isBGOfType = isBGOfType -bg $_ -typeList @($global:VRA_BG_TYPE__SERVICE, $global:VRA_BG_TYPE__UNIT)
+
+		# Si la custom property qui donne les infos n'a pas été trouvée
+		if($null -eq $isBGOfType)
+		{
+			$notifications['bgWithoutCustomPropType'] += $bg.name
+		}
+		elseif($isBGOfType -and ($doneBGList -notcontains $_.name))
 		{
 			$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
 			$setAsGhost = setBGAsGhostIfNot -vra $vra -bg $_

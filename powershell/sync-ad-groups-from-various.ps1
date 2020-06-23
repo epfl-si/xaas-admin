@@ -285,7 +285,6 @@ try
 	$notifications = @{}
 
 
-
 	# -------------------------------------------------------------------------------------------------------------------------------------
 	# -------------------------------------------------------------------------------------------------------------------------------------
 	# --------------------------------------------------------- TENANT EPFL ---------------------------------------------------------------
@@ -330,7 +329,8 @@ try
 			$nameGenerator.initDetails(@{facultyName = $faculty['name']
 										facultyID = $faculty['uniqueidentifier']
 										unitName = ''
-										unitID = ''})
+										unitID = ''
+										financeCenter = ''})
 			
 			# --------------------------------- APPROVE
 
@@ -430,7 +430,8 @@ try
 				$nameGenerator.initDetails(@{facultyName = $faculty['name']
 											facultyID = $faculty['uniqueidentifier']
 											unitName = $unit['name']
-											unitID = $unit['uniqueidentifier']})
+											unitID = $unit['uniqueidentifier']
+											financeCenter = $unit['accountingnumber']})
 
 				# Création du nom du groupe AD et de la description
 				$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)

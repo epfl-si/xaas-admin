@@ -6,6 +6,7 @@ USAGES:
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreBackupId <restoreId>
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action restoreBackup -vmName <vmName> -restoreTimestamp <restoreTimestamp>
     xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -action getRestoreStatus -restoreJobId <restoreJobId>
+    xaas-backup-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices -action VMHasSnap -vmName <vmName>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -39,7 +40,14 @@ USAGES:
     https://confluence.epfl.ch:8443/pages/viewpage.action?pageId=99188910
 
 #>
-param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag, [string]$restoreBackupId, [string]$restoreTimestamp, [string]$restoreJobId)
+param ( [string]$targetEnv, 
+        [string]$targetTenant,
+        [string]$action, 
+        [string]$vmName, 
+        [string]$backupTag, 
+        [string]$restoreBackupId, 
+        [string]$restoreTimestamp, 
+        [string]$restoreJobId)
 
 
 
@@ -48,6 +56,7 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 
@@ -60,6 +69,7 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vSphereAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "Backup", "NetBackupAPI.inc.ps1"))
 
@@ -67,6 +77,7 @@ param ( [string]$targetEnv, [string]$action, [string]$vmName, [string]$backupTag
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configXaaSBackup = [ConfigReader]::New("config-xaas-backup.json")
+$configVra = [ConfigReader]::New("config-vra.json")
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
@@ -78,6 +89,9 @@ $ACTION_SET_BACKUP_TAG = "setBackupTag"
 $ACTION_GET_BACKUP_LIST = "getBackupList"
 $ACTION_RESTORE_BACKUP = "restoreBackup"
 $ACTION_GET_RESTORE_STATUS = "getRestoreStatus"
+
+# Savoir si une VM a un snapshot en cours
+$ACTION_VM_HAS_RUNNING_SNAPSHOT = "VMHasSnap"
 
 $NBU_CATEGORY = "NBU"
 
@@ -103,21 +117,43 @@ try
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
    
 
-    # -------------------------------------------------------------------------------------------
-
-    <# Connexion à l'API Rest de vSphere. On a besoin de cette connxion aussi (en plus de celle du dessus) parce que les opérations sur les tags ne fonctionnent
-    pas via les CMDLet Get-TagAssignement et autre...  #>
-    $vsphereApi = [vSphereAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "vSphere", "server"), 
-                                    $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "user"), 
-                                    $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "password"))
-
-    # Connexion à l'API REST de NetBackup
-    $nbu = [NetBackupAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "backup", "server"), 
-                               $configXaaSBackup.getConfigValue($targetEnv, "backup", "user"), 
-                               $configXaaSBackup.getConfigValue($targetEnv, "backup", "password"))   
-
     # Objet pour pouvoir envoyer des mails de notification
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, "")
+
+    # -------------------------------------------------------------------------------------------
+
+
+    # En fonction de l'action demandée, on ouvre les connexions nécessaire sur les différents éléments, on les 
+    # fermera de la même manière à la fin du script.
+    # On fait de cette manière pour optimiser un peu le temps d'exécution du script et éviter de se connecter
+    # à des éléments inutiles et perdre du temps...
+    switch ($action)
+    {
+        { ($_ -eq $ACTION_GET_BACKUP_TAG) -or ($_ -eq $ACTION_SET_BACKUP_TAG) }  {
+            <# Connexion à l'API Rest de vSphere. On a besoin de cette connxion aussi (en plus de celle du dessus) parce que les opérations sur les tags ne fonctionnent
+                pas via les CMDLet Get-TagAssignement et autre...  #>
+            $vsphereApi = [vSphereAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "vSphere", "server"), 
+            $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "user"), 
+            $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "password"))
+        }
+
+        { ($_ -eq $ACTION_GET_BACKUP_LIST) -or ($_ -eq $ACTION_RESTORE_BACKUP) -or ($_ -eq $ACTION_GET_RESTORE_STATUS)} {
+            # Connexion à l'API REST de NetBackup
+            $nbu = [NetBackupAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "backup", "server"), 
+            $configXaaSBackup.getConfigValue($targetEnv, "backup", "user"), 
+            $configXaaSBackup.getConfigValue($targetEnv, "backup", "password"))   
+        }
+
+        $ACTION_VM_HAS_RUNNING_SNAPSHOT {
+            # Création d'une connexion au serveur vRA pour accéder à ses API REST
+            $vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+                                $targetTenant, 
+                                $configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
+                                $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
+        }
+    }
+
+
 
     # Ajout d'informations dans le log
     $logHistory.addLine("Script executed with following parameters: `n{0}" -f ($PsBoundParameters | ConvertTo-Json))
@@ -220,11 +256,36 @@ try
             }
             else
             {
+
                 $output.results += @{
                                         restoreJobId = $restoreJobId
                                         status = $jobDetails.attributes.state.ToLower()
+                                        # Cette valeur sera à $null si le job de restore est toujours en cours
+                                        code = $jobDetails.attributes.status
                                     }
             }
+        }
+
+        # Savoir si la VM a un snapshot en cours
+        $ACTION_VM_HAS_RUNNING_SNAPSHOT {
+
+            $vm = $vra.getItem('Virtual Machine', $vmName)
+
+            # Si pas trouvée 
+            if($null -eq $vm)
+            {
+                $output.error = ("VM {0} not found" -f $vmName)
+            }
+            else
+            {
+
+                $output.results += @{
+                                        vmName = $vmName
+                                        hasSnapshot = ($vm.resourceData.entries | Where-Object { $_.key -eq "SNAPSHOT_LIST"}).value.items.length -gt 0
+                                    }
+
+            } # Fin si la VM a été trouvée 
+
         }
 
     }
@@ -234,6 +295,24 @@ try
     
     # Ajout d'informations dans le log
     $logHistory.addLine("Script result `n{0}" -f ($output | ConvertTo-Json))
+
+
+    # En fonction de l'action demandée, on referme les connexions
+    switch ($action)
+    {
+        { ($_ -eq $ACTION_GET_BACKUP_TAG) -or ($_ -eq $ACTION_SET_BACKUP_TAG) }  {
+            $vsphereApi.disconnect()
+        }
+
+        { ($_ -eq $ACTION_GET_BACKUP_LIST) -or ($_ -eq $ACTION_RESTORE_BACKUP) -or ($_ -eq $ACTION_GET_RESTORE_STATUS)} {
+            $nbu.disconnect()
+        }
+
+        $ACTION_VM_HAS_RUNNING_SNAPSHOT {
+            $vra.disconnect()
+        }
+    }
+
 
 }
 catch
@@ -259,10 +338,3 @@ catch
     # Envoi d'un message d'erreur aux admins 
     $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 }
-
-
-# Déconnexion de l'API de backup
-$nbu.disconnect()
-
-# Déconnexion de l'API vSphere
-$vsphereApi.disconnect()
