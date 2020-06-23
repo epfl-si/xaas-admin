@@ -12,7 +12,10 @@
     "pdfAuthor": "EPFL SI SI-EXOP",
     "billingFrom": "VPSI",
     "billingReference": "christophe.simond@epfl.ch",
-    "billingGrid": "billing-grid.pdf",
+    "billingGrid": 
+    {
+        "Project": "billing-grid.pdf"
+    },
     "prestationCode": 
     {
         "test": "9010390",
