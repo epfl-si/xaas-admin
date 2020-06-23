@@ -1,0 +1,22 @@
+{
+    "dev" :
+    {
+        "host": "",
+        "user": "",
+        "password":""
+    },
+
+    "test" :
+    {
+        "host": "",
+        "user": "",
+        "password":""
+    },
+
+    "prod" :
+    {
+        "host": "",
+        "user": "",
+        "password":""
+    }
+}
