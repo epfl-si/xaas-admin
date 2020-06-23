@@ -28,18 +28,6 @@
 		"fundrate": ""
 	},
 	"attachment": [
-		{
-            "filename": "{{pdfBillFileName}}",
-            "filetype": "application/pdf",
-            "filesecription": "{{pdfBillFileDescription}}",
-            "filecontent": "{{pdfBillFileBase64}}"
-        },
-        {
-            "filename": "{{pdfPriceGridFileName}}",
-            "filetype": "application/pdf",
-            "filesecription": "{{pdfPriceGridFileDescription}}",
-            "filecontent": "{{pdfPriceGridFileBase64}}"
-	    }
 	],
 	"partners": [
 		{

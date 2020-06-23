@@ -294,6 +294,8 @@ try
         ##             GENERATION DES DONNEES DE FACTURATION                  ##
         $global:ACTION_EXTRACT_DATA
         {
+            $logHistory.addLineAndDisplay("Action => Data extraction")
+
             $month = [int](Get-Date -Format "MM")
             $year = [int](Get-Date -Format "yyyy")
 
@@ -314,6 +316,7 @@ try
         ##                   GENERATION DES FACTURES                          ##
         $global:ACTION_BILLING
         {
+            $logHistory.addLineAndDisplay("Action => Bill generation")
             # Templates pour la génération de factures
             $billingTemplate = Get-content -path $global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE -Encoding UTF8
             $billingItemTemplate = Get-content -path $global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE -Encoding UTF8
@@ -323,13 +326,6 @@ try
             $curDateGoodLooking = Get-Date -Format "dd.MM.yyyy HH:mm"
             
             $logHistory.addLineAndDisplay("Looking for entities...")
-
-            # Chemin jusqu'à la grille tarifaire et on regarde qu'elle existe bien.
-            $billingGridPDFFile = ([IO.Path]::Combine($global:XAAS_BILLING_DATA_FOLDER, $service, $serviceBillingInfos.billingGrid))
-            if(!(Test-Path $billingGridPDFFile))
-            {
-                Throw ("Billing grid file not found for service ({0})" -f $billingGridPDFFile)
-            }
 
             # Recherche des entités à facturer
             $entityList = $billingObject.getEntityList()
@@ -490,8 +486,32 @@ try
                         {
                             $billDescription = "{0} - du {1} au {2}" -f $serviceBillingInfos.itemTypeInDB, $periodStartDate, $periodEndDate
 
+                             # Facture de base
+                             $PDFFiles = @( @{
+                                file = $targetPDFPath
+                                desc = $billDescription
+                            } )
+
+                            # Si on a une grille tarifaire pour le type d'entité que l'on est en train de traiter,
+                            if((($serviceBillingInfos.billingGrid).PSobject.Properties | Select-Object -ExpandProperty "Name") -contains $entity.entityType )
+                            {
+                                # Chemin jusqu'à la grille tarifaire et on regarde qu'elle existe bien.
+                                $billingGridPDFFile = ([IO.Path]::Combine($global:XAAS_BILLING_DATA_FOLDER, $service, $serviceBillingInfos.billingGrid.($entity.entityType)))
+                                if(!(Test-Path $billingGridPDFFile))
+                                {
+                                    Throw ("Billing grid file not found for service ({0})" -f $billingGridPDFFile)
+                                }
+
+                                # On ajoute la grille tarifaire
+                                $PDFFiles += @{
+                                    file = $billingGridPDFFile
+                                    desc = "Grille tarifaire"
+                                }
+                            }
+           
+                           
                             # Ajout de la facture dans Copernic avec le mode d'exécution spécifié
-                            $result = $copernic.addBill($serviceBillingInfos, $targetEnv, $billReference, $billDescription, $targetPDFPath, $billingGridPDFFile, $entity, $itemList, $execMode)
+                            $result = $copernic.addBill($serviceBillingInfos, $targetEnv, $billReference, $billDescription, $PDFFiles, $entity, $itemList, $execMode)
                             
                             # Si une erreur a eu lieu
                             if($null -ne $result.error)

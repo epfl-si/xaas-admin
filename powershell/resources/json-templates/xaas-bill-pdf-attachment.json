@@ -1,0 +1,6 @@
+{
+    "filename": "{{pdfBillFileName}}",
+    "filetype": "application/pdf",
+    "filesecription": "{{pdfBillFileDescription}}",
+    "filecontent": "{{pdfBillFileBase64}}"
+}
