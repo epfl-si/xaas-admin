@@ -1,6 +1,6 @@
 <#
 USAGES:
-	sync-ad-groups-from-ldap-or-django.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
+	sync-ad-groups-from-various.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl
 #>
 <#
 	BUT 		: Crée/met à jour les groupes AD pour l'environnement donné et le tenant EPFL.
@@ -286,7 +286,6 @@ try
 	$notifications = @{}
 
 
-
 	# -------------------------------------------------------------------------------------------------------------------------------------
 	# -------------------------------------------------------------------------------------------------------------------------------------
 	# --------------------------------------------------------- TENANT EPFL ---------------------------------------------------------------
@@ -331,7 +330,8 @@ try
 			$nameGenerator.initDetails(@{facultyName = $faculty['name']
 										facultyID = $faculty['uniqueidentifier']
 										unitName = ''
-										unitID = ''})
+										unitID = ''
+										financeCenter = ''})
 			
 			# --------------------------------- APPROVE
 
@@ -431,7 +431,8 @@ try
 				$nameGenerator.initDetails(@{facultyName = $faculty['name']
 											facultyID = $faculty['uniqueidentifier']
 											unitName = $unit['name']
-											unitID = $unit['uniqueidentifier']})
+											unitID = $unit['uniqueidentifier']
+											financeCenter = $unit['accountingnumber']})
 
 				# Création du nom du groupe AD et de la description
 				$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)

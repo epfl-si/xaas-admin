@@ -335,7 +335,9 @@ class vSphereAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
-        BUT : Renvoie la liste des tags d'une catégorie donnée
+		BUT : Renvoie la liste des tags d'une catégorie donnée
+		
+		IN  : $categoryName	-> Nom de la catégorie pour laquelle on veut les tags
 	#>
 	[Array] getTagList([string]$categoryName)
 	{
@@ -343,10 +345,5 @@ class vSphereAPI: RESTAPICurl
 
 		return $this.callAPI($uri, "Get", $null).value
 	}
-
-	
-	
-
-	
 
 }

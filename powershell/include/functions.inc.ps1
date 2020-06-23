@@ -31,6 +31,36 @@ function getBGCustomPropValue([object]$bg, [string]$customPropName)
 }
 
 <#
+-------------------------------------------------------------------------------------
+	BUT : Permet de savoir si le Business Group passé est du type donné
+
+	IN  : $bg		-> Business Group dont on veut savoir s'il est du type donné
+	IN  : $type		-> Type duquel le BG doit être
+
+	RET : $true|$false
+			$null si custom property pas trouvée
+#>
+function isBGOfType
+{
+	param([PSCustomObject]$bg, [Array] $typeList)
+
+	$bgType = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_TYPE
+
+	# Si custom property PAS trouvée,
+	if($null -eq $bgType)
+	{
+		return $null
+	}
+	else # Custom property trouvée
+	{
+		# On regarde si la valeur est dans la liste
+		return $typeList -contains $bgType
+	}
+
+
+}
+
+<#
 	-------------------------------------------------------------------------------------
 	BUT : Renvoie le Business Group qui a une "Custom Property" avec une valeur donnée, 
 		  ceci à partir d'une liste de Business Group
