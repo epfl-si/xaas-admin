@@ -166,9 +166,9 @@ class BillingS3Bucket: Billing
             $bucketUsage = truncateToNbDecimal -number $bucketUsage -nbDecimals 2
 
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
-            $itemDesc = "{0}`n{1}`n({2})" -f $this.serviceBillingInfos.itemDescPrefix, $bucket.bucketName, $bucket.friendlyName
+            $itemDesc = "{0}`n{1}`n({2})" -f $this.serviceBillingInfos.billedItems[0].itemDescPrefix, $bucket.bucketName, $bucket.friendlyName
 
-            $itemId = $this.addItem($entityId, $this.serviceBillingInfos.itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB")
+            $itemId = $this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB" ,"default")
 
 
         }# FIN parcours des buckets

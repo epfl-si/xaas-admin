@@ -145,11 +145,13 @@ class Billing
         IN  : $month            -> Mois de facturation
         IN  : $year             -> année de facturation
         IN  : $quantity         -> quantité facturée pour le mois/année 
+        IN  : $unit             -> L'unité dans laquelle la quantité est exprimée
+        IN  : $priceLevel       -> le nom du niveau à appliquer de la grille de prix
 
         RET : ID de l'entité
                 $null si pas ajouté car trop quantité de zéro
     #>
-    hidden [int] addItem([int]$parentEntityId, [string]$type, [string]$name, [string]$desc, [int]$month, [int]$year, [double]$quantity, [string]$unit)
+    hidden [int] addItem([int]$parentEntityId, [string]$type, [string]$name, [string]$desc, [int]$month, [int]$year, [double]$quantity, [string]$unit, [string]$priceLevel)
     {
         if($quantity -eq 0)
         {
@@ -165,8 +167,8 @@ class Billing
         }
 
         # L'entité n'existe pas, donc on l'ajoute 
-        $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', NULL)" -f `
-                            $parentEntityId, $type, $name, $desc, $month, $year, $quantity, $unit
+        $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', NULL)" -f `
+                            $parentEntityId, $type, $name, $desc, $month, $year, $quantity, $unit, $priceLevel
 
         $res = $this.mysql.execute($request)
 

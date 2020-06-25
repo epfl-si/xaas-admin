@@ -75,14 +75,14 @@ class CopernicAPI: RESTAPICurl
 
             <# On ajoute l'unité à la description car passe celle-ci à Copernic en tant que "vraie" unité implique d'avoir déclaré 
             celle-ci au préalable dans Copernic et si elle n'existe pas, l'erreur est mal gérée. Quentin Estoppey conseille de 
-            plutôt mettre l'unité dans la description de l'élément, ce qu'on fait donc ici #>
+            plutôt mettre l'unité dans la description de l'élément, ce qu'on fait donc ici #> 
             $itemDesc = "{0} [{1}]" -f $itemDesc, $item.itemUnit
 
             $replace = @{
                 # numéro d'article en fonction de l'environnement
-                prestationCode = $serviceInfos.prestationCode.$targetEnv
+                prestationCode = $item.prestationCode
                 itemQuantity = $item.itemQuantity
-                unitPricePerMonthCHF = $serviceInfos.unitPricePerMonthCHF.($entityInfos.entityType)
+                unitPricePerMonthCHF = $item.unitPricePerMonthCHF
                 itemNameAndDesc = $itemDesc
             }
 

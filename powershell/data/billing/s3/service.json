@@ -1,25 +1,36 @@
 {
     "billingClassName": "BillingS3Bucket",
-    "docTitle": "Rapport mensuel de consommation de Buckets « Object Storage S3 »",
+    "docTitle": "Rapport mensuel de consommation du service « Object Storage S3 »",
     "serviceName": "S3",
-    "itemTypeInDB": "S3 Bucket",
-    "itemDescPrefix":"Object Storage S3",
-    "unitPricePerMonthCHF": 
-    {
-        "Unit": 2.42,
-        "Project": 7
-    },
+    "billedItems":
+    [
+        {
+            "itemTypeInDB": "S3 Bucket",
+            "itemDescPrefix":"Object Storage S3",
+            "copernicPrestationCode":
+            {
+                "test": "9010390",
+                "prod": "9010390"
+            },
+            "entityTypesPriceLevels":
+            {
+                "Unit":
+                {
+                    "default": 2.42
+                },
+                "Project":
+                {
+                    "default": 7
+                }
+            }
+        }
+    ],
     "pdfAuthor": "EPFL SI SI-EXOP",
     "billingFrom": "VPSI",
     "billingReference": "christophe.simond@epfl.ch",
     "billingGrid": 
     {
         "Project": "billing-grid.pdf"
-    },
-    "prestationCode": 
-    {
-        "test": "9010390",
-        "prod": "9010390"
     },
     "itemColumns":
     {
