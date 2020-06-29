@@ -155,7 +155,7 @@ class Billing
     {
         if($quantity -eq 0)
         {
-           # return $null
+           return $null
         }
 
         $item = $this.getItem($name, $month, $year)
