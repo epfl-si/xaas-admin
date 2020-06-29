@@ -137,9 +137,10 @@ function getItemDateMonthYear([int]$month, [int]$year)
 		  de la variable $notifications plus bas dans le caode.
 
 	IN  : $notifications-> Dictionnaire
-	IN  : $targetEnv	-> Environnement courant
+    IN  : $targetEnv	-> Environnement courant
+    IN  : $serviceName  -> Le nom du service pour lequel le script est en train de tourner
 #>
-function handleNotifications([System.Collections.IDictionary] $notifications, [string]$targetEnv)
+function handleNotifications([System.Collections.IDictionary] $notifications, [string]$targetEnv, [string]$serviceName)
 {
 
 	# Parcours des catégories de notifications
@@ -151,7 +152,9 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 			# Suppression des doublons 
 			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
 
-			$valToReplace = @{}
+			$valToReplace = @{
+                serviceName = $serviceName
+            }
 
 			switch($notif)
 			{
@@ -173,6 +176,9 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				}
 
 			}# FIN EN FONCTION de la notif
+
+            # Ajout du nom du service à la fin du sujet du mail pour pouvoir plus facilement retrouver les choses.
+            $mailSubject = "{0} [Service: {1}]" -f $mailSubject, $serviceName
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
 			$notificationMail.send($mailSubject, $templateName, $valToReplace)
@@ -226,8 +232,6 @@ try
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
     $counters.add('entityProcessed', '# Entity processed')
-    $counters.add('entitySkipped', '# Entity skipped (not billable)')
-    $counters.add('itemSkipped', '# Items skipped (no information to bill it)')
     $counters.add('billDone', '# Bill done')
     $counters.add('billSkippedToLow', '# Bill skipped (amount to low)')
     $counters.add('billSkippedNothing', '# Bill skipped (nothing to bill)')
@@ -247,6 +251,7 @@ try
 	#>
     $notifications=@{
         copernicBillError = @()
+
     }
     
 
@@ -340,6 +345,9 @@ try
 
                 $counters.inc('entityProcessed')
 
+                # Récupération des types d'items à facturer selon ce qui se trouve dans la DB
+                $itemTypesToBillList = $billingObject.getEntityItemTypeToBeBilledList($entity.entityId) 
+
                 ## 1. On commence par créer le code HTML pour les items à facturer 
 
                 $billingItemListHtml = ""
@@ -354,16 +362,14 @@ try
                 $totItems = 0
                 $itemsLevels = @()
 
-                # Parcours des types d'items à facturer
+                # Parcours des types d'items à facturer selon la configuration
                 ForEach($billedItemInfos in $serviceBillingInfos.billedItems)
                 {
 
                     # Si on n'a pas d'infos de facturation pour le type d'entité courante, on passe à la suivante
-                    if((($billedItemInfos.entityTypesPriceLevels).PSobject.Properties | Select-Object -ExpandProperty "Name") -notcontains $entity.entityType )
+                    if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels -propertyName $entity.entityType))
                     {
-                        $logHistory.addLineAndDisplay(("> Skipping item type '{0}' because not billable for entity '{1}'" -f $billedItemInfos.itemTypeInDB, $entity.entityType))
-                        $counters.inc('entitySkipped')
-                        continue
+                        Throw ("Error for item type '{0}' because no billing info found for entity '{1}'. Have a look at billing JSON configuration file for service '{2}'" -f $billedItemInfos.itemTypeInDB, $entity.entityType, $service)
                     }
 
                     $logHistory.addLineAndDisplay(("> Looking for items '{0}' in service '{1}'" -f $billedItemInfos.itemTypeInDB, $service))
@@ -378,13 +384,12 @@ try
                     {
 
                         # Si on n'a pas d'infos de niveau de facturation (niveau de prix) pour l'item courant, on passe au suivant
-                        if((($billedItemInfos.entityTypesPriceLevels.($entity.entityType)).PSobject.Properties | Select-Object -ExpandProperty "Name") -notcontains $item.itemPriceLevel )
+                        if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels.($entity.entityType) -propertyName $item.itemPriceLevel))
                         {
-                            $logHistory.addLineAndDisplay(("> Skipping item '{0}' because price level '{1}' not found" -f $item.itemName, $item.itemPriceLevel))
-                            $counters.inc('itemSkipped')
-                            continue
+                            Throw ("Error for item type '{0}' because price level '{1}' not found in JSON configuration file for service '{2}'" -f $item.itemType, $item.itemPriceLevel, $service)
                         }
 
+                        # On enregistre les différents niveau de facturation qu'on traite
                         if($itemsLevels -notcontains $item.itemPriceLevel)
                         {
                             $itemsLevels += $item.itemPriceLevel
@@ -393,8 +398,10 @@ try
                         $totItems += 1
 
                         # Extraction du prix de l'item pour l'entity courante et on l'ajoute comme information à l'item, afin que ça puisse
-                        # être réutilisé plus loin dans le code qui ajoute la facture dans Copernic
-                        $unitPricePerMonthCHF = $billedItemInfos.entityTypesPriceLevels.($entity.entityType).($item.itemPriceLevel)
+                        # être réutilisé plus loin dans le code qui ajoute la facture dans Copernic.
+                        # On récupère la valeur via "Select-Object" car le nom du niveau peut contenir des caractères non alphanumériques qui sont
+                        # donc incompatibles avec un nom de propriété accessible de manière "standard" ($obj.<propertyName>)
+                        $unitPricePerMonthCHF = $billedItemInfos.entityTypesPriceLevels.($entity.entityType) | Select-Object -ExpandProperty $item.itemPriceLevel
                         $item | Add-member -NotePropertyName "unitPricePerMonthCHF" -NotePropertyValue $unitPricePerMonthCHF
 
                         $monthYear = (getItemDateMonthYear -month $item.itemMonth -year $item.itemYear)
@@ -443,9 +450,17 @@ try
 
                     }# FIN BOUCLE de parcours des items à facturer 
 
+                    # On "enlève" le type d'item que l'on vient de facturer de la liste des types trouvés dans la DB
+                    $itemTypesToBillList = $itemTypesToBillList | Where-Object { $_ -ne $billedItemInfos.itemTypeInDB }
 
                 }# FIN BOUCLE de parcours des types d'items à facturer
 
+
+                # S'il y a dans la DB des types d'items pour lesquels on n'a pas d'information de facturation,
+                if($itemTypesToBillList.Count -gt 0)
+                {
+                    Throw ("No billing information found for types ('{0}'). Add them in billing JSON configuration file." -f ($itemTypesToBillList -join "', '"))
+                }
 
                 ## 2. On passe maintenant à création de la facture de l'entité en elle-même
 
@@ -541,7 +556,7 @@ try
                             } )
 
                             # Si on a une grille tarifaire pour le type d'entité que l'on est en train de traiter,
-                            if((($serviceBillingInfos.billingGrid).PSobject.Properties | Select-Object -ExpandProperty "Name") -contains $entity.entityType )
+                            if(objectPropertyExists -obj $serviceBillingInfos.billingGrid -propertyName $entity.entityType)
                             {
                                 # Chemin jusqu'à la grille tarifaire et on regarde qu'elle existe bien.
                                 $billingGridPDFFile = ([IO.Path]::Combine($global:XAAS_BILLING_DATA_FOLDER, $service, $serviceBillingInfos.billingGrid.($entity.entityType)))
@@ -623,15 +638,8 @@ try
 
     
 
-    
-
-
-    
-
-    
-
     # Gestion des erreurs s'il y en a
-	handleNotifications -notifications $notifications -targetEnv $targetEnv
+	handleNotifications -notifications $notifications -targetEnv $targetEnv -serviceName $service
 
     # Résumé des actions entreprises
     $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
