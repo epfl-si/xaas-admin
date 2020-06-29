@@ -314,3 +314,18 @@ function saveRESTError([string]$category, [string]$errorId, [string]$errorMsg, [
     return $errorFolder
 
 }
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Permet de savoir si un objet contient une propriété d'un nom donné.
+    
+    IN  : $obj     		-> L'objet concerné
+    IN  : $propertyName -> Nom de la propriété que l'on cherche
+
+    RET : $true ou $false
+#>
+function objectPropertyExists([PSCustomObject]$obj, [string]$propertyName)
+{
+	return ((($obj).PSobject.Properties | Select-Object -ExpandProperty "Name") -contains $propertyName)
+}

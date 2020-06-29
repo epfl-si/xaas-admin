@@ -145,15 +145,17 @@ class Billing
         IN  : $month            -> Mois de facturation
         IN  : $year             -> année de facturation
         IN  : $quantity         -> quantité facturée pour le mois/année 
+        IN  : $unit             -> L'unité dans laquelle la quantité est exprimée
+        IN  : $priceLevel       -> le nom du niveau à appliquer de la grille de prix
 
         RET : ID de l'entité
                 $null si pas ajouté car trop quantité de zéro
     #>
-    hidden [int] addItem([int]$parentEntityId, [string]$type, [string]$name, [string]$desc, [int]$month, [int]$year, [double]$quantity, [string]$unit)
+    hidden [int] addItem([int]$parentEntityId, [string]$type, [string]$name, [string]$desc, [int]$month, [int]$year, [double]$quantity, [string]$unit, [string]$priceLevel)
     {
         if($quantity -eq 0)
         {
-            return $null
+           return $null
         }
 
         $item = $this.getItem($name, $month, $year)
@@ -165,8 +167,8 @@ class Billing
         }
 
         # L'entité n'existe pas, donc on l'ajoute 
-        $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', NULL)" -f `
-                            $parentEntityId, $type, $name, $desc, $month, $year, $quantity, $unit
+        $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', NULL)" -f `
+                            $parentEntityId, $type, $name, $desc, $month, $year, $quantity, $unit, $priceLevel
 
         $res = $this.mysql.execute($request)
 
@@ -273,6 +275,21 @@ class Billing
         return $this.mysql.execute($request)
     }
 
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des types d'items d'une entité qu'il faut encore facturer
+
+        IN  : $entityId -> id de l'entité des items
+    #>
+    [Array] getEntityItemTypeToBeBilledList([string]$entityId)
+    {
+        # Recherche des éléments. On trie par chronologie et nom d'élément et on ne prend que ceux qui n'ont pas été facturés.
+        $request = "SELECT DISTINCT(itemType) AS 'itemType' FROM BillingItem WHERE parentEntityId='{0}' AND itemBillReference IS NULL" -f `
+                     $entityId
+
+        return $this.mysql.execute($request) | Select-Object -ExpandProperty itemType
+    }
+
 
     <#
 		-------------------------------------------------------------------------------------
@@ -280,14 +297,17 @@ class Billing
                 de la facture sur laquelle il se trouve.
 
         IN  : $entityId         -> id de l'entité des items
-        IN  : $itemType         -> Type d'item à noter comme facturés
-        IN  : $billReference    -> référence de la facture auquel l'itemn a été attribué
+        IN  : $itemTypeList     -> Liste des types d'item à noter comme facturés pour l'entité
+        IN  : $billReference    -> référence de la facture auquel l'item a été attribué
     #>
-    [void] setEntityItemTypeAsBilled([string]$entityId, [string]$itemType, [string]$billReference)
+    [void] setEntityItemTypesAsBilled([string]$entityId, [Array]$itemTypeList, [string]$billReference)
     {
-        $request = "UPDATE BillingItem SET itemBillReference='{0}' WHERE parentEntityId='{1}' AND itemType='{2}' AND itemBillReference IS NULL " -f $billReference, $entityId, $itemType
+        ForEach($itemType in $itemTypeList)
+        {
+            $request = "UPDATE BillingItem SET itemBillReference='{0}' WHERE parentEntityId='{1}' AND itemType='{2}' AND itemBillReference IS NULL " -f $billReference, $entityId, $itemType
 
-        $this.mysql.execute($request)
+            $this.mysql.execute($request)
+        }   
     }
 
 

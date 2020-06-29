@@ -137,9 +137,10 @@ function getItemDateMonthYear([int]$month, [int]$year)
 		  de la variable $notifications plus bas dans le caode.
 
 	IN  : $notifications-> Dictionnaire
-	IN  : $targetEnv	-> Environnement courant
+    IN  : $targetEnv	-> Environnement courant
+    IN  : $serviceName  -> Le nom du service pour lequel le script est en train de tourner
 #>
-function handleNotifications([System.Collections.IDictionary] $notifications, [string]$targetEnv)
+function handleNotifications([System.Collections.IDictionary] $notifications, [string]$targetEnv, [string]$serviceName)
 {
 
 	# Parcours des catégories de notifications
@@ -151,7 +152,9 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 			# Suppression des doublons 
 			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
 
-			$valToReplace = @{}
+			$valToReplace = @{
+                serviceName = $serviceName
+            }
 
 			switch($notif)
 			{
@@ -173,6 +176,9 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				}
 
 			}# FIN EN FONCTION de la notif
+
+            # Ajout du nom du service à la fin du sujet du mail pour pouvoir plus facilement retrouver les choses.
+            $mailSubject = "{0} [Service: {1}]" -f $mailSubject, $serviceName
 
 			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
 			$notificationMail.send($mailSubject, $templateName, $valToReplace)
@@ -226,7 +232,6 @@ try
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
     $counters.add('entityProcessed', '# Entity processed')
-    $counters.add('entitySkipped', '# Entity skipped (not billable)')
     $counters.add('billDone', '# Bill done')
     $counters.add('billSkippedToLow', '# Bill skipped (amount to low)')
     $counters.add('billSkippedNothing', '# Bill skipped (nothing to bill)')
@@ -246,6 +251,7 @@ try
 	#>
     $notifications=@{
         copernicBillError = @()
+
     }
     
 
@@ -337,18 +343,10 @@ try
             {
                 $logHistory.addLineAndDisplay(("Processing entity {0} ({1})..." -f $entity.entityElement, $entity.entityType))
 
-                # Si on n'a pas d'infos de facturation pour le type d'entité courante, on passe à la suivante
-                if((($serviceBillingInfos.unitPricePerMonthCHF).PSobject.Properties | Select-Object -ExpandProperty "Name") -notcontains $entity.entityType )
-                {
-                    $logHistory.addLineAndDisplay("> Skipping because not billable")
-                    $counters.inc('entitySkipped')
-                    continue
-                }
-
-                # Extraction du prix de l'item pour l'entity courante
-                $unitPricePerMonthCHF = $serviceBillingInfos.unitPricePerMonthCHF.($entity.entityType)
-
                 $counters.inc('entityProcessed')
+
+                # Récupération des types d'items à facturer selon ce qui se trouve dans la DB
+                $itemTypesToBillList = $billingObject.getEntityItemTypeToBeBilledList($entity.entityId) 
 
                 ## 1. On commence par créer le code HTML pour les items à facturer 
 
@@ -360,65 +358,120 @@ try
                 $billingBeginDate = $null
                 $billingEndDate = $null
 
-                $logHistory.addLineAndDisplay(("> Looking for items for service '{0}' ({1})" -f $service, $serviceBillingInfos.itemTypeInDB))
+                # Nombre total des items à facturer
+                $totItems = 0
+                $itemsLevels = @()
 
-                # Recherche pour les éléments qu'il faut facturer et qui ne l'ont pas encore été
-                $itemList = $billingObject.getEntityItemToBeBilledList($entity.entityId, $serviceBillingInfos.itemTypeInDB)
+                # Pour enregistrer les types d'item que l'on aura facturé
+                $billedItemTypes = @()
 
-                $logHistory.addLineAndDisplay(("> {0} found = {1}" -f $serviceBillingInfos.itemTypeInDB, $itemList.count))
-
-                # Parcours des éléments à facturer
-                ForEach($item in $itemList)
+                # Parcours des types d'items à facturer selon la configuration
+                ForEach($billedItemInfos in $serviceBillingInfos.billedItems)
                 {
-                    $monthYear = (getItemDateMonthYear -month $item.itemMonth -year $item.itemYear)
 
-                    # Initialisation des dates pour comparaison
-                    if($null -eq $billingBeginDate)
+                    # Si on n'a pas d'infos de facturation pour le type d'entité courante, on ne va pas plus loin, on traite ça comme une erreur
+                    if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels -propertyName $entity.entityType))
                     {
-                        $billingBeginDate = $billingEndDate = [datetime]::parseexact($monthYear, 'MM.yyyy', $null)
+                        Throw ("Error for item type '{0}' because no billing info found for entity '{1}'. Have a look at billing JSON configuration file for service '{2}'" -f $billedItemInfos.itemTypeInDB, $entity.entityType, $service)
                     }
-                    else # On a les dates donc on peut comparer.
+
+                    $logHistory.addLineAndDisplay(("> Looking for items '{0}' in service '{1}'" -f $billedItemInfos.itemTypeInDB, $service))
+
+                    # Recherche pour les éléments qu'il faut facturer et qui ne l'ont pas encore été
+                    $itemList = $billingObject.getEntityItemToBeBilledList($entity.entityId, $billedItemInfos.itemTypeInDB)
+
+                    $logHistory.addLineAndDisplay(("> {0} found = {1}" -f $billedItemInfos.itemTypeInDB, $itemList.count))
+
+                    # Parcours des items à facturer
+                    ForEach($item in $itemList)
                     {
-                        # On essaie de trouver la plus grande et la plus petite date
-                        $tmpDate = [datetime]::parseexact($monthYear, 'MM.yyyy', $null)
-                        if($tmpDate -lt $billingBeginDate)
+
+                        # Si on n'a pas d'infos de niveau de facturation (niveau de prix) pour l'item courant, on passe au suivant
+                        if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels.($entity.entityType) -propertyName $item.itemPriceLevel))
                         {
-                            $billingBeginDate = $tmpDate
+                            Throw ("Error for item type '{0}' because price level '{1}' not found in JSON configuration file for service '{2}'" -f $item.itemType, $item.itemPriceLevel, $service)
                         }
-                        elseif($tmpDate -gt $billingEndDate)
+
+                        # On enregistre les différents niveau de facturation qu'on traite
+                        if($itemsLevels -notcontains $item.itemPriceLevel)
                         {
-                            $billingEndDate = $tmpDate
+                            $itemsLevels += $item.itemPriceLevel
                         }
-                    }
+
+                        $totItems += 1
+
+                        # Extraction du prix de l'item pour l'entity courante et on l'ajoute comme information à l'item, afin que ça puisse
+                        # être réutilisé plus loin dans le code qui ajoute la facture dans Copernic.
+                        # On récupère la valeur via "Select-Object" car le nom du niveau peut contenir des caractères non alphanumériques qui sont
+                        # donc incompatibles avec un nom de propriété accessible de manière "standard" ($obj.<propertyName>)
+                        $unitPricePerMonthCHF = $billedItemInfos.entityTypesPriceLevels.($entity.entityType) | Select-Object -ExpandProperty $item.itemPriceLevel
+                        $item | Add-member -NotePropertyName "unitPricePerMonthCHF" -NotePropertyValue $unitPricePerMonthCHF
+
+                        $monthYear = (getItemDateMonthYear -month $item.itemMonth -year $item.itemYear)
+
+                        # Initialisation des dates pour comparaison
+                        if($null -eq $billingBeginDate)
+                        {
+                            $billingBeginDate = $billingEndDate = [datetime]::parseexact($monthYear, 'MM.yyyy', $null)
+                        }
+                        else # On a les dates donc on peut comparer.
+                        {
+                            # On essaie de trouver la plus grande et la plus petite date
+                            $tmpDate = [datetime]::parseexact($monthYear, 'MM.yyyy', $null)
+                            if($tmpDate -lt $billingBeginDate)
+                            {
+                                $billingBeginDate = $tmpDate
+                            }
+                            elseif($tmpDate -gt $billingEndDate)
+                            {
+                                $billingEndDate = $tmpDate
+                            }
+                        }
+
+                        $logHistory.addLineAndDisplay((">> Processing {0} '{1}'... " -f $billedItemInfos.itemTypeInDB, $item.itemName))
+
+                        # On sauvegarde le no d'article pour pouvoir l'utiliser plus tard dans la facturation
+                        $item | Add-Member -NotePropertyName "prestationCode" -NotePropertyValue $billedItemInfos.copernicPrestationCode.$targetEnv
+
+                        $billingItemReplacements = @{
+                            prestationCode = $item.prestationCode
+                            description = $item.itemDesc
+                            monthYear = $monthYear
+                            quantity = $item.itemQuantity
+                            unit = $item.itemUnit
+                            unitPrice = $item.unitPricePerMonthCHF
+                            # On coupe le prix à 2 décimales
+                            itemPrice = truncateToNbDecimal -number ([double]($item.itemQuantity) * $item.unitPricePerMonthCHF) -nbDecimals 2
+                        }
+
+                        # Mise à jour des totaux pour la facture
+                        $totalPrice += $billingItemReplacements.itemPrice
+                        $quantityTot += $billingItemReplacements.quantity
+
+                        # Création du HTML pour représenter l'item courant et ajout au code HTML représentant tous les items
+                        $billingItemListHtml += (replaceInString -str $billingItemTemplate -valToReplace $billingItemReplacements)
+
+                    }# FIN BOUCLE de parcours des items à facturer 
+
+                    # On "enlève" le type d'item que l'on vient de facturer de la liste des types trouvés dans la DB
+                    $itemTypesToBillList = $itemTypesToBillList | Where-Object { $_ -ne $billedItemInfos.itemTypeInDB }
+
+                    # On enregistre le type d'item qu'on vient de traiter
+                    $billedItemTypes += $billedItemInfos.itemTypeInDB
+
+                }# FIN BOUCLE de parcours des types d'items à facturer
 
 
-                    $logHistory.addLineAndDisplay((">> Processing {0} '{1}'... " -f $serviceBillingInfos.itemTypeInDB, $item.itemName))
-
-                    $billingItemReplacements = @{
-                        prestationCode = $serviceBillingInfos.prestationCode.$targetEnv
-                        description = $item.itemDesc
-                        monthYear = $monthYear
-                        quantity = $item.itemQuantity
-                        unit = $item.itemUnit
-                        unitPrice = $unitPricePerMonthCHF
-                        # On coupe le prix à 2 décimales
-                        itemPrice = truncateToNbDecimal -number ([double]($item.itemQuantity) * $unitPricePerMonthCHF) -nbDecimals 2
-                    }
-
-                    # Mise à jour des totaux pour la facture
-                    $totalPrice += $billingItemReplacements.itemPrice
-                    $quantityTot += $billingItemReplacements.quantity
-
-                    # Création du HTML pour représenter l'item courant et ajout au code HTML représentant tous les items
-                    $billingItemListHtml += (replaceInString -str $billingItemTemplate -valToReplace $billingItemReplacements)
-
-                } # FIN Boucle de parcours des éléments à facturer 
-
+                # S'il y a dans la DB des types d'items pour lesquels on n'a pas d'information de facturation,
+                if($itemTypesToBillList.Count -gt 0)
+                {
+                    Throw ("No billing information found for types ('{0}'). Add them in billing JSON configuration file." -f ($itemTypesToBillList -join "', '"))
+                }
 
                 ## 2. On passe maintenant à création de la facture de l'entité en elle-même
 
                 # S'il y a des éléments à facturer
-                if($itemList.count -gt 0)
+                if($totItems -gt 0)
                 {
                     
                     # Si on n'a pas atteint le montant minimum pour émettre une facture pour l'entité courante,
@@ -466,11 +519,27 @@ try
                             billingItems = $billingItemListHtml
 
                             # Dernière ligne du tableau
-                            quantityTot = $quantityTot
-                            unitPricePerMonthCHF = $unitPricePerMonthCHF
                             totalPrice = $totalPrice
                         }
-                        
+
+                        # S'il y a un seul type d'élément à facturer
+                        # ET
+                        # un seul niveau de facturation
+                        if(($serviceBillingInfos.billedItems.Count -eq 1) -and ($itemsLevels.Count -eq 1))
+                        {
+                            # On peut mettre la valeur pour la quantité totale et le prix par mois car
+                            # c'est une addition de même types d'éléments pour le premier et le même prix
+                            # partout pour le 2e
+                            $billingDocumentReplace.quantityTot = $quantityTot
+                            $billingDocumentReplace.unitPricePerMonthCHF = $unitPricePerMonthCHF
+                        }
+                        else # Plusieurs types d'éléments à facturer
+                        {
+                            # On n'affiche pas de valeur pour les 2 cases car ça serait incohérent
+                            $billingDocumentReplace.quantityTot = ""
+                            $billingDocumentReplace.unitPricePerMonthCHF = ""
+                        }
+
                         $billingTemplateHtml= replaceInString -str $billingTemplate -valToReplace $billingDocumentReplace 
 
                         # Génération du nom du fichier PDF de sortie
@@ -478,13 +547,13 @@ try
                         $targetPDFPath = ([IO.Path]::Combine($global:XAAS_BILLING_PDF_FOLDER, $PDFFilename))
 
                         $logHistory.addLineAndDisplay(("> Generating PDF '{0}'" -f $targetPDFPath))
-                        ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceBillingInfos.pdfAuthor -landscape $true    
+                        ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceBillingInfos.pdfAuthor -landscape $serviceBillingInfos.landscapePDF    
                         $counters.inc('PDFGenerated')
 
                         # S'il faut envoyer à Copernic,
                         if($sendToCopernic)
                         {
-                            $billDescription = "{0} - du {1} au {2}" -f $serviceBillingInfos.itemTypeInDB, $periodStartDate, $periodEndDate
+                            $billDescription = "{0} - du {1} au {2}" -f $serviceBillingInfos.serviceName, $periodStartDate, $periodEndDate
 
                              # Facture de base
                              $PDFFiles = @( @{
@@ -493,7 +562,7 @@ try
                             } )
 
                             # Si on a une grille tarifaire pour le type d'entité que l'on est en train de traiter,
-                            if((($serviceBillingInfos.billingGrid).PSobject.Properties | Select-Object -ExpandProperty "Name") -contains $entity.entityType )
+                            if(objectPropertyExists -obj $serviceBillingInfos.billingGrid -propertyName $entity.entityType)
                             {
                                 # Chemin jusqu'à la grille tarifaire et on regarde qu'elle existe bien.
                                 $billingGridPDFFile = ([IO.Path]::Combine($global:XAAS_BILLING_DATA_FOLDER, $service, $serviceBillingInfos.billingGrid.($entity.entityType)))
@@ -507,7 +576,7 @@ try
                                     file = $billingGridPDFFile
                                     desc = "Grille tarifaire"
                                 }
-                            }
+                            }# FIN SI on a une grille tarifaire pour le type d'entité
            
                            
                             # Ajout de la facture dans Copernic avec le mode d'exécution spécifié
@@ -535,14 +604,14 @@ try
                                     $logHistory.addLineAndDisplay(("> Bill sent to Copernic (Doc number: {0}, bill ref: {1})" -f $result.docNumber, $billReference))
 
                                     # On dit que tous les items de la facture ont été facturés
-                                    $billingObject.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB, $billReference)
+                                    $billingObject.setEntityItemTypesAsBilled($entity.entityId, $billedItemTypes, $billReference)
                                 }
                                 else # On est en mode "simulation" donc pas d'envoi réel de facture
                                 {
                                     $logHistory.addLineAndDisplay("> Bill sent to Copernic in SIMULATION MODE without any error")
                                 }
 
-                                $logHistory.addLineAndDisplay(("> {0} items '{1}' set as billed for entity '{2}'" -f $itemList.count, $serviceBillingInfos.itemTypeInDB, $entity.entityElement))
+                                $logHistory.addLineAndDisplay(("> {0} items '{1}' set as billed for entity '{2}'" -f $itemList.count, ($billedItemTypes -join "', '"), $entity.entityElement))
                                 $counters.inc('billSentToCopernic')    
 
                             } # Fin si pas d'erreur
@@ -570,20 +639,15 @@ try
                 $logHistory.addLineAndDisplay(("> PDF file deleted: {0}" -f $pdfFile.FullName))
                 $counters.inc('PDFOldCleaned')
             }
-        }
-    }
 
-    
+        } # FIN CASE action billing
 
-    
-
-
-    
+    }# FIN SWITCH en fonction de l'action
 
     
 
     # Gestion des erreurs s'il y en a
-	handleNotifications -notifications $notifications -targetEnv $targetEnv
+	handleNotifications -notifications $notifications -targetEnv $targetEnv -serviceName $service
 
     # Résumé des actions entreprises
     $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
