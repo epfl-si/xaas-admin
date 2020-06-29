@@ -155,7 +155,7 @@ class Billing
     {
         if($quantity -eq 0)
         {
-            return $null
+           # return $null
         }
 
         $item = $this.getItem($name, $month, $year)
@@ -273,6 +273,21 @@ class Billing
                      $entityId, $itemType
 
         return $this.mysql.execute($request)
+    }
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des types d'items d'une entité qu'il faut encore facturer
+
+        IN  : $entityId -> id de l'entité des items
+    #>
+    [Array] getEntityItemTypeToBeBilledList([string]$entityId)
+    {
+        # Recherche des éléments. On trie par chronologie et nom d'élément et on ne prend que ceux qui n'ont pas été facturés.
+        $request = "SELECT DISTINCT(itemType) AS 'itemType' FROM BillingItem WHERE parentEntityId='{0}' AND itemBillReference IS NULL" -f `
+                     $entityId
+
+        return $this.mysql.execute($request) | Select-Object -ExpandProperty itemType
     }
 
 
