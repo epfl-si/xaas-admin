@@ -297,14 +297,17 @@ class Billing
                 de la facture sur laquelle il se trouve.
 
         IN  : $entityId         -> id de l'entité des items
-        IN  : $itemType         -> Type d'item à noter comme facturés
-        IN  : $billReference    -> référence de la facture auquel l'itemn a été attribué
+        IN  : $itemTypeList     -> Liste des types d'item à noter comme facturés pour l'entité
+        IN  : $billReference    -> référence de la facture auquel l'item a été attribué
     #>
-    [void] setEntityItemTypeAsBilled([string]$entityId, [string]$itemType, [string]$billReference)
+    [void] setEntityItemTypesAsBilled([string]$entityId, [Array]$itemTypeList, [string]$billReference)
     {
-        $request = "UPDATE BillingItem SET itemBillReference='{0}' WHERE parentEntityId='{1}' AND itemType='{2}' AND itemBillReference IS NULL " -f $billReference, $entityId, $itemType
+        ForEach($itemType in $itemTypeList)
+        {
+            $request = "UPDATE BillingItem SET itemBillReference='{0}' WHERE parentEntityId='{1}' AND itemType='{2}' AND itemBillReference IS NULL " -f $billReference, $entityId, $itemType
 
-        $this.mysql.execute($request)
+            $this.mysql.execute($request)
+        }   
     }
 
 

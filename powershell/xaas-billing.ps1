@@ -362,6 +362,9 @@ try
                 $totItems = 0
                 $itemsLevels = @()
 
+                # Pour enregistrer les types d'item que l'on aura facturé
+                $billedItemTypes = @()
+
                 # Parcours des types d'items à facturer selon la configuration
                 ForEach($billedItemInfos in $serviceBillingInfos.billedItems)
                 {
@@ -452,6 +455,9 @@ try
 
                     # On "enlève" le type d'item que l'on vient de facturer de la liste des types trouvés dans la DB
                     $itemTypesToBillList = $itemTypesToBillList | Where-Object { $_ -ne $billedItemInfos.itemTypeInDB }
+
+                    # On enregistre le type d'item qu'on vient de traiter
+                    $billedItemTypes += $billedItemInfos.itemTypeInDB
 
                 }# FIN BOUCLE de parcours des types d'items à facturer
 
@@ -598,14 +604,14 @@ try
                                     $logHistory.addLineAndDisplay(("> Bill sent to Copernic (Doc number: {0}, bill ref: {1})" -f $result.docNumber, $billReference))
 
                                     # On dit que tous les items de la facture ont été facturés
-                                    $billingObject.setEntityItemTypeAsBilled($entity.entityId, $serviceBillingInfos.itemTypeInDB, $billReference)
+                                    $billingObject.setEntityItemTypesAsBilled($entity.entityId, $billedItemTypes, $billReference)
                                 }
                                 else # On est en mode "simulation" donc pas d'envoi réel de facture
                                 {
                                     $logHistory.addLineAndDisplay("> Bill sent to Copernic in SIMULATION MODE without any error")
                                 }
 
-                                $logHistory.addLineAndDisplay(("> {0} items '{1}' set as billed for entity '{2}'" -f $itemList.count, $serviceBillingInfos.itemTypeInDB, $entity.entityElement))
+                                $logHistory.addLineAndDisplay(("> {0} items '{1}' set as billed for entity '{2}'" -f $itemList.count, ($billedItemTypes -join "', '"), $entity.entityElement))
                                 $counters.inc('billSentToCopernic')    
 
                             } # Fin si pas d'erreur
