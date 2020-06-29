@@ -95,6 +95,8 @@ class RESTAPICurl: RESTAPI
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
+		$this.lastBody = $body
+		
 		# Si la requête est de la lecture
 		if($method.ToLower() -eq "get")
 		{

@@ -192,3 +192,140 @@ function truncateString([string]$str, [int]$maxChars)
 {
 	return $str.subString(0, [System.Math]::Min($maxChars, $str.Length)) 
 }
+
+
+<#
+	-------------------------------------------------------------------------------------
+	BUT : Transforme du code HTML en un fichier PDF
+			Le code de cette fonction a été repris ici (https://gallery.technet.microsoft.com/scriptcenter/Convertto-PDFFile-dda02118) 
+			et a été simplifié
+
+	IN  : $source				-> String avec le code HTML à convertir en PDF.
+	IN  : $destinationFileFile	-> Localisation du fichier PDF de sortie
+	IN  : $binFolder				-> Chemin jusqu'au dossier où se trouvent les DLL utilisées 
+									la fonction:
+									+ itextsharp.dll
+									+ itextshar.xmlworker.dll
+	IN  : $author				-> Nom de l'auteur à mettre dans le fichier PDF
+	IN  : $landscape			-> $true|$false pour dire si orientation paysage
+
+	REMARQUE : les tags HTML suivants ne sont pas supportés:
+				<br>  (il faut utiliser des <p> mettre des <p>&nbsp;</p> si on veut une ligne vide)
+	
+	Un peu de documentation ici: https://github.com/itext/itextsharp/blob/develop/src/core/iTextSharp/text/Document.cs
+#>
+function convertHTMLtoPDF([string] $source, [string]$destinationFile, [string] $binFolder, [string] $author, [bool]$landscape)
+{	
+	
+	# Chargement des DLL
+	try
+	{
+		Add-Type -Path ([IO.Path]::combine($binFolder, 'itextsharp.dll')) -ErrorAction 'Stop'
+	}
+	catch
+	{
+		Throw 'Error loading the iTextSharp Assembly'
+	}
+			
+	try
+	{
+		Add-Type -Path ([IO.Path]::Combine($binFolder, 'itextsharp.xmlworker.dll')) -ErrorAction 'Stop'	
+	}		
+	catch
+	{	
+		Throw 'Error loading the XMLWorker Assembly'
+	}
+
+	# Création du document PDF "logique"
+	$pdfDocument = New-Object iTextSharp.text.Document
+	
+	# Doc sur PageSize: https://github.com/itext/itextsharp/blob/develop/src/core/iTextSharp/text/PageSize.cs
+	if($landscape)
+	{
+		$pageSize = [iTextSharp.text.PageSize]::A4.Rotate()
+	}
+	else
+	{
+		$pageSize = [iTextSharp.text.PageSize]::A4
+	}
+	$pdfDocument.SetPageSize($pageSize) | Out-Null
+
+	# Création du lecteur de fichier 
+	$reader = New-Object System.IO.StringReader($source)
+	
+	# Pour écrire le fichier PDF
+	$stream = [IO.File]::OpenWrite($destinationFile)
+	$writer = [itextsharp.text.pdf.PdfWriter]::GetInstance($pdfDocument, $stream)
+	
+	# Defining the Initial Lead of the Document, BUGFix
+	$writer.InitialLeading = '12.5'
+	
+	# Ouverture du document pour y importer le HTML
+	$pdfDocument.Open()
+
+	# Ajout de l'auteur. Ceci ne peut être fait qu'à partir du moment où le document PDF a été ouvert (via 'Open() )
+	$dummy = $pdfDocument.AddAuthor($author)
+	
+	
+	# On tente de charger le HTML dans le document PDF 
+	[iTextSharp.tool.xml.XMLWorkerHelper]::GetInstance().ParseXHtml($writer, $pdfDocument, $reader)
+	
+	# Fermeture du PDF + nettoyage
+	$pdfDocument.close()
+	$pdfDocument.Dispose()
+	
+}
+
+
+<#
+	-------------------------------------------------------------------------------------
+	BUT : Tronque un nombre à virgule pour avoir un nombre décimales définies (sans arrondir)
+
+	IN  : $number		-> Le nombre à tronquer
+	IN  : $nbDecimals	-> Le nombre de décimales à mettre
+#>
+function truncateToNbDecimal([float]$number, [int]$nbDecimals)
+{
+	return [System.Math]::Floor($number * [Math]::Pow(10, $nbDecimals)) / [Math]::Pow(10, $nbDecimals)
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Enregistre une erreur d'appel REST dans un dossier avec quelques fichiers
+    
+    IN  : $category     -> Catégorie de l'erreur
+    IN  : $errorId      -> ID de l'erreur
+    IN  : $errorMsg     -> Message d'erreur
+    IN  : $jsonContent  -> Contenu du fichier JSON
+
+    RET : Chemin jusqu'au dossier où seront les informations de l'erreur
+#>
+function saveRESTError([string]$category, [string]$errorId, [string]$errorMsg, [PSObject]$jsonContent)
+{
+    $errorFolder =  ([IO.Path]::Combine($global:ERROR_FOLDER, $category, $errorId))
+
+    $dummy = New-Item -ItemType "directory" -Path $errorFolder
+
+    $jsonContent | Out-File ([IO.Path]::Combine($errorFolder, "REST.json"))
+
+    $errorMsg | Out-File ([IO.Path]::Combine($errorFolder, "error.txt"))
+
+    return $errorFolder
+
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Permet de savoir si un objet contient une propriété d'un nom donné.
+    
+    IN  : $obj     		-> L'objet concerné
+    IN  : $propertyName -> Nom de la propriété que l'on cherche
+
+    RET : $true ou $false
+#>
+function objectPropertyExists([PSCustomObject]$obj, [string]$propertyName)
+{
+	return ((($obj).PSobject.Properties | Select-Object -ExpandProperty "Name") -contains $propertyName)
+}

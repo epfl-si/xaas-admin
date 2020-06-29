@@ -16,6 +16,7 @@ $global:RESOURCES_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources
 $global:BINARY_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "bin"))
 $global:CONFIG_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "config"))
 $global:DATA_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "data"))
+$global:ERROR_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "errors"))
 $global:MAIL_TEMPLATE_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "mail-templates"))
 $global:JSON_TEMPLATE_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "json-templates"))
 $global:JSON_2ND_DAY_ACTIONS_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "2nd-day-actions"))
@@ -99,3 +100,11 @@ $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE = "FORCE_ISO_FOLDER_ACL_
 ## NSX
 # Nom de la section avant laquelle il faut créer les sections de Firewall vide
 $global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME = "Legacy VLAN"
+
+
+## Billing
+$global:XAAS_BILLING_DATA_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "data", "billing"))
+$global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-document.html"))
+$global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-item.html"))
+$global:XAAS_BILLING_PDF_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "billing"))
+

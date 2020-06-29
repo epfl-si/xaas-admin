@@ -1,5 +1,6 @@
 .vscode/
 logs/
+errors
 IaaS.code-workspace
 test.ps1
 test-*.ps1

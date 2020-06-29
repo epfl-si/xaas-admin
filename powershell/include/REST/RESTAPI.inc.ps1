@@ -23,6 +23,7 @@ class RESTAPI: APIUtils
 {
 	hidden [string]$server
 	hidden [System.Collections.Hashtable]$headers
+	hidden [System.Object] $lastBody
 
     <#
 	-------------------------------------------------------------------------------------
@@ -36,6 +37,17 @@ class RESTAPI: APIUtils
 		$this.headers = @{}
     }
 
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Retourne le dernier "body" (en JSON) qui a été utilisé pour faire une requête.
+				Permet par exemple de savoir ce qui a été envoyé pour une requête qui 
+				aurait planté
+	#>
+	[System.Object] getLastBodyJSON()
+	{
+		return $this.lastBody | ConvertTo-Json -Depth 20
+	}
 
     
 	<#
@@ -54,7 +66,8 @@ class RESTAPI: APIUtils
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
-		
+		$this.lastBody = $body
+
 		# Si la requête est de la lecture
 		if($method.ToLower() -eq "get")
 		{

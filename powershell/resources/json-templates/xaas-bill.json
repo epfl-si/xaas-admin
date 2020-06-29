@@ -1,0 +1,45 @@
+{
+	"header": {
+		"ordertype": "ZINT",
+		"ordernr": "{{orderNumber}}",
+		"currency": "CHF",
+		"fictr": "{{financeCenterNo}}",
+		"description": "{{description}}",
+        "changevalidation" : false,
+        "distribution": "MAIL"
+	},
+	"shipper": {
+		"name": "{{shipperName}}",
+		"sciper": "{{shipperSciper}}",
+		"fund": "{{shipperFund}}",
+		"email": "{{shipperMail}}",
+		"tel": "{{shipperPhone}}"
+	},
+	"shipper_imputation": {
+		"opcode": "{{shipperImputationNoBilledSVC}}",
+		"ordernr": "",
+		"otp": "{{shipperImputationNoBilledSVC}}",
+		"affaire": "",
+		"travelreqnr": "",
+		"travelreqmatnr": ""
+	},
+	"payer_imputation": {
+		"fund": "",
+		"fundrate": ""
+	},
+	"attachment": [
+	],
+	"partners": [
+		{
+            "role": "",
+            "fictr": "{{financeCenterNo}}",
+            "name2": "",
+            "name3": "",
+            "email": ""
+		}
+	],
+	"items": [
+		
+    ],
+	"execmode": "{{execMode}}"
+}

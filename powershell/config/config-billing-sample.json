@@ -1,0 +1,53 @@
+{
+    "dev":
+    {
+        "db": 
+        {
+            "host":"",
+            "user":"",
+            "password":"",
+            "dbName":"",
+            "port":""
+        },
+        "copernic":
+        {
+            "server": "",
+            "username": "",
+            "password": ""
+        }
+    },
+    "test":
+    {
+        "db": 
+        {
+            "host":"",
+            "user":"",
+            "password":"",
+            "dbName":"",
+            "port":""
+        },
+        "copernic":
+        {
+            "server": "",
+            "username": "",
+            "password": ""
+        }
+    },
+    "prod":
+    {
+        "db": 
+        {
+            "host":"",
+            "user":"",
+            "password":"",
+            "dbName":"",
+            "port":""
+        },
+        "copernic":
+        {
+            "server": "",
+            "username": "",
+            "password": ""
+        }
+    }
+}
