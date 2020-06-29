@@ -2,6 +2,7 @@
     "billingClassName": "", //Nom de la classe (enfant de 'Billing') à utiliser pour la facturation du service
     "docTitle": "", //Titre du document PDF"
     "serviceName": "", // Nom du service que l'on facture
+    "landscapePDF": true, // bool pour dire si on veut générer le PDF en mode paysage ou pas.
     "billedItems": // liste des items que l'on veut facturer
     [
         {

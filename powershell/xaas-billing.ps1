@@ -369,7 +369,7 @@ try
                 ForEach($billedItemInfos in $serviceBillingInfos.billedItems)
                 {
 
-                    # Si on n'a pas d'infos de facturation pour le type d'entité courante, on passe à la suivante
+                    # Si on n'a pas d'infos de facturation pour le type d'entité courante, on ne va pas plus loin, on traite ça comme une erreur
                     if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels -propertyName $entity.entityType))
                     {
                         Throw ("Error for item type '{0}' because no billing info found for entity '{1}'. Have a look at billing JSON configuration file for service '{2}'" -f $billedItemInfos.itemTypeInDB, $entity.entityType, $service)
@@ -547,7 +547,7 @@ try
                         $targetPDFPath = ([IO.Path]::Combine($global:XAAS_BILLING_PDF_FOLDER, $PDFFilename))
 
                         $logHistory.addLineAndDisplay(("> Generating PDF '{0}'" -f $targetPDFPath))
-                        ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceBillingInfos.pdfAuthor -landscape $true    
+                        ConvertHTMLtoPDF -Source $billingTemplateHtml -Destination $targetPDFPath -binFolder $global:BINARY_FOLDER -author $serviceBillingInfos.pdfAuthor -landscape $serviceBillingInfos.landscapePDF    
                         $counters.inc('PDFGenerated')
 
                         # S'il faut envoyer à Copernic,

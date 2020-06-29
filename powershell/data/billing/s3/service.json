@@ -2,6 +2,7 @@
     "billingClassName": "BillingS3Bucket",
     "docTitle": "Rapport mensuel de consommation de Buckets « Object Storage S3 »",
     "serviceName": "S3",
+    "landscapePDF": true,
     "billedItems":
     [
         {
