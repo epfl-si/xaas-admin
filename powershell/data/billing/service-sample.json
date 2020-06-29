@@ -1,0 +1,58 @@
+{
+    "billingClassName": "", //Nom de la classe (enfant de 'Billing') à utiliser pour la facturation du service
+    "docTitle": "", //Titre du document PDF"
+    "serviceName": "", // Nom du service que l'on facture
+    "landscapePDF": true, // bool pour dire si on veut générer le PDF en mode paysage ou pas.
+    "billedItems": // liste des items que l'on veut facturer
+    [
+        {
+            "itemTypeInDB": "", // Type de l'item à facturer, pour le classifier dans la DB
+            "itemDescPrefix":"", // Préfix à ajouter à la description de chaque item quand on l'ajoute dans la table BillingItem via la classe enfante dédiée à ça
+            "copernicPrestationCode": // nom de code de l'article dans Copernic, peut varier entre prod et test.
+            {
+                "test": "",
+                "prod": ""
+            },
+            "entityTypesPriceLevels": // prix unitaire, par mois, pour chaque type d'entité défini dans ../../include/Billing.inc.ps1. Si un type d'entité n'est pas présent ici, il ne sera pas facturé
+            {
+                "Unit":
+                {
+                    // Liste des niveaux pour la facturation dans le cas où il y en a plusieurs. En clef on met le nom du niveau (pas d'espace autorisé!)
+                    "default": 0
+                },
+                "Project":
+                {
+                    "default": 0
+                }
+            }
+        }
+    ],
+    "pdfAuthor": "", // Texte à mettre en tant qu'auteur du fichier PDF (ça se voit dans les détails de celui-ci)
+    "billingFrom": "", // qui a émis la facture, on met normalement "VPSI"
+    "billingReference": "", // Adresse mail de la personne de référence pour l'émission de la facture
+    "billingGrid":  // Nom du fichier PDF contenant la grille tarifaire, relatif à là où sera le fichier config.json généré de puis le fichier courant. Il faut mettre la grille pour chaque type d'entité défini dans ../../include/Billing.inc.ps1. Si un type d'entité n'est pas présent ici, la grille tarifaire ne sera pas ajoutée
+    {
+        "Project": ""  
+    },
+    "itemColumns": // noms exacts des colonnes du tableau listant les éléments
+    {
+        "colCode": "",
+        "colDesc": "",
+        "colMonthYear": "",
+        "colConsumed": "",
+        "colUnitPrice": "",
+        "colTotPrice": ""
+    },
+    "copernic":
+    {
+        "shipperName": "", // Nom de la personne qui émet la facture (Nom du service manager du service facturé)
+        "shipperSciper": "", // Sciper de la personne qui émet la facture
+        "shipperFund": "", // fond sur lequel l'argent de la facture sera versé
+        "shipperMail": "", // Adresse mail de la personne qui émet les factures
+        "shipperPhone": "", // no de téléphone de la personne qui émet les factures
+
+        "shipperImputationNoBilledSVC": "" // no du service (niveau Snow) qui est facturé
+        
+    }
+    
+}

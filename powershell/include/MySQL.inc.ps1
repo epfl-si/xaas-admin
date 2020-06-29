@@ -37,18 +37,20 @@ class MySQL
         IN  : $db               -> Nom de la base de données à laquelle se connecter
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
-        IN  : $pathToMySQLExe   -> Chemin jusqu'au programme 'mysql.exe' sur le disque dur
+        IN  : $binPath          -> Chemin jusqu'au dossier "bin" dans lequel on peut trouver 'mysql.exe'
         IN  : $port             -> (optionnel) No de port à utiliser
 
 		RET : Instance de l'objet
 	#>
-    MySQL([string]$server, [string]$db, [string]$username, [string]$password, [string]$pathToMySQLExe, [int]$port=3306)
+    MySQL([string]$server, [string]$db, [string]$username, [string]$password, [string]$binPath, [int]$port=3306)
     {
         $this.server    = $server
         $this.db        = $db
         $this.username  = $username
         $this.password  = $password
         $this.port      = $port
+
+        $pathToMySQLExe = ([IO.Path]::Combine($binPath, "mysql.exe"))
 
         # Check de la validité du chemin passé
         if( !(Test-Path $pathToMySQLExe))
@@ -83,18 +85,26 @@ class MySQL
         {
             return $false
         }
-        
-        $result = $MySQLProcess.StandardOutput.ReadToEnd() | ConvertFrom-Csv -Delimiter "`t"
 
-        # Transformation du résultat en tableau s'il n'y a qu'un seul enregistrement renvoyé. Ceci permettra de gérer le retour
-        # de cette fonction d'une manière uniforme sans avoir à contrôler si c'est un tableau ou pas.
+        $result = $null
 
-        # NOTE: Lors du parcours des enregistrements présents dans le tableau, il faudra accéder les champs via $record.<nomDuChamp> et pas
-        # via $record[<nomDuChamp>]
-        if($result -isnot [Array])
+        # Si on a demandé à récupérer des données, 
+        if($query -like "SELECT*" )
         {
-            $result = @($result)
+
+            $result = $MySQLProcess.StandardOutput.ReadToEnd() | ConvertFrom-Csv -Delimiter "`t"
+
+            # Transformation du résultat en tableau s'il n'y a qu'un seul enregistrement renvoyé. Ceci permettra de gérer le retour
+            # de cette fonction d'une manière uniforme sans avoir à contrôler si c'est un tableau ou pas.
+
+            # NOTE: Lors du parcours des enregistrements présents dans le tableau, il faudra accéder les champs via $record.<nomDuChamp> et pas
+            # via $record[<nomDuChamp>]
+            if($result -isnot [Array])
+            {
+                $result = @($result)
+            }
         }
+
         return $result
 
     }
