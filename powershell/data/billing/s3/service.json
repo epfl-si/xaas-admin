@@ -1,6 +1,6 @@
 {
     "billingClassName": "BillingS3Bucket",
-    "docTitle": "Rapport mensuel de consommation du service « Object Storage S3 »",
+    "docTitle": "Rapport mensuel de consommation de Buckets « Object Storage S3 »",
     "serviceName": "S3",
     "billedItems":
     [
@@ -16,11 +16,13 @@
             {
                 "Unit":
                 {
-                    "default": 2.42
+                    "U.1": 2.42
                 },
                 "Project":
                 {
-                    "default": 7
+                    "U.1": 7,
+                    "U.2": 9.3,
+                    "U.3": 10.3
                 }
             }
         }
