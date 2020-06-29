@@ -576,7 +576,7 @@ try
                                     file = $billingGridPDFFile
                                     desc = "Grille tarifaire"
                                 }
-                            }
+                            }# FIN SI on a une grille tarifaire pour le type d'entité
            
                            
                             # Ajout de la facture dans Copernic avec le mode d'exécution spécifié
@@ -639,8 +639,10 @@ try
                 $logHistory.addLineAndDisplay(("> PDF file deleted: {0}" -f $pdfFile.FullName))
                 $counters.inc('PDFOldCleaned')
             }
-        }
-    }
+
+        } # FIN CASE action billing
+
+    }# FIN SWITCH en fonction de l'action
 
     
 
