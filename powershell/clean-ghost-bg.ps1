@@ -250,10 +250,10 @@ try
 	
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
-	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
 						 $targetTenant, 
-						 $configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
-						 $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
+						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
+						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
 
 
 

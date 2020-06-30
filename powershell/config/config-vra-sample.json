@@ -1,47 +1,74 @@
 {
     "dev": {
-        "server": "",
-        "default": {
-            "user":"",
-            "password":""
+        "infra": {
+            "server": "",
+            "default": {
+                "user":"",
+                "password":""
+            },
+            "itservices": {
+                "user":"",
+                "password":"" 
+            },
+            "epfl": {
+                "user":"",
+                "password":""
+            }
         },
-        "itservices": {
+        "db": {
+            "host":"",
             "user":"",
-            "password":"" 
-        },
-        "epfl": {
-            "user":"",
-            "password":""
+            "password":"",
+            "dbName":"",
+            "port":""
         }
     },
     "test": {
-        "server": "",
-        "default": {
-            "user":"",
-            "password":""
+        "infra": {
+            "server": "",
+            "default": {
+                "user":"",
+                "password":""
+            },
+            "itservices": {
+                "user":"",
+                "password":"" 
+            },
+            "epfl": {
+                "user":"",
+                "password":""
+            }
         },
-        "itservices": {
+        "db": {
+            "host":"",
             "user":"",
-            "password":""
-        },
-        "epfl": {
-            "user":"",
-            "password":""
+            "password":"",
+            "dbName":"",
+            "port":""
         }
     },
     "prod": {
-        "server": "",
-        "default": {
-            "user":"",
-            "password":""
+        "infra": {
+            "server": "",
+            "default": {
+                "user":"",
+                "password":""
+            },
+            "itservices": {
+                "user":"",
+                "password":"" 
+            },
+            "epfl": {
+                "user":"",
+                "password":""
+            }
         },
-        "itservices": {
+        "db": {
+            "host":"",
             "user":"",
-            "password":""
-        },
-        "epfl": {
-            "user":"",
-            "password":""
+            "password":"",
+            "dbName":"",
+            "port":""
         }
     }
 }

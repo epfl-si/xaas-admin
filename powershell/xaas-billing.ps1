@@ -62,6 +62,7 @@ param([string]$targetEnv,
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configBilling = [ConfigReader]::New("config-billing.json")
+$configVra = [ConfigReader]::New("config-vra.json")
 
 ##### Constantes
 
@@ -256,12 +257,12 @@ try
     
 
     # Pour accéder à la base de données
-    $mysql = [MySQL]::new($configBilling.getConfigValue($targetEnv, "db", "host"), `
-                          $configBilling.getConfigValue($targetEnv, "db", "dbName"), `
-                          $configBilling.getConfigValue($targetEnv, "db", "user"), `
-                          $configBilling.getConfigValue($targetEnv, "db", "password"), `
+    $mysql = [MySQL]::new($configVra.getConfigValue($targetEnv, "db", "host"), `
+                          $configVra.getConfigValue($targetEnv, "db", "dbName"), `
+                          $configVra.getConfigValue($targetEnv, "db", "user"), `
+                          $configVra.getConfigValue($targetEnv, "db", "password"), `
                           $global:BINARY_FOLDER, `
-                          $configBilling.getConfigValue($targetEnv, "db", "port"))
+                          $configVra.getConfigValue($targetEnv, "db", "port"))
 
     $ldap = [EPFLLDAP]::new()
 

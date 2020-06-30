@@ -747,10 +747,10 @@ try
 		Start-Sleep -Seconds $sleepDurationSec
 		try {
 			# Création d'une connexion au serveur
-			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
 								 $targetTenant, 
-								 $configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
-								 $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
+								 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
+								 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
 		}
 		catch {
 			Write-Error "Error connecting to vRA API !"
