@@ -18,6 +18,7 @@ $global:CONFIG_FOLDER               = ([IO.Path]::Combine("$PSScriptRoot", "..",
 $global:DATA_FOLDER                 = ([IO.Path]::Combine("$PSScriptRoot", "..", "data"))
 $global:MAIL_TEMPLATE_FOLDER        = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "mail-templates"))
 $global:JSON_TEMPLATE_FOLDER        = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "json-templates"))
+$global:ERROR_FOLDER                = ([IO.Path]::Combine("$PSScriptRoot", "..", "errors"))
 $global:JSON_2ND_DAY_ACTIONS_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "2nd-day-actions"))
 
 $global:ENV_FILE = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", ".env"))
@@ -51,15 +52,15 @@ $global:VRA_SERVICE_SUFFIX__PUBLIC  =" (Public)"
 $global:VRA_SERVICE_SUFFIX__PRIVATE =" (Private)"
 
 # Nom des custom properties à utiliser
-$global:VRA_CUSTOM_PROP_EPFL_BG_ID                 = "ch.epfl.vra.bg.id"
-$global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID            = "ch.epfl.project.id"
-$global:VRA_CUSTOM_PROP_VRA_BG_TYPE                = "ch.epfl.vra.bg.type"
-$global:VRA_CUSTOM_PROP_VRA_BG_STATUS              = "ch.epfl.vra.bg.status"
-$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE          = "ch.epfl.vra.bg.res.manage"
-$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE = "ch.epfl.vra.bg.roles.support.manage"
-$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME            = "ch.epfl.vra.tenant.name"
-$global:VRA_CUSTOM_PROP_VRA_BG_NAME                = "ch.epfl.vra.bg.name"
-$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER = "ch.epfl.billing.financecenter"
+$global:VRA_CUSTOM_PROP_EPFL_BG_ID                    = "ch.epfl.vra.bg.id"
+$global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID               = "ch.epfl.project.id"
+$global:VRA_CUSTOM_PROP_VRA_BG_TYPE                   = "ch.epfl.vra.bg.type"
+$global:VRA_CUSTOM_PROP_VRA_BG_STATUS                 = "ch.epfl.vra.bg.status"
+$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE             = "ch.epfl.vra.bg.res.manage"
+$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE    = "ch.epfl.vra.bg.roles.support.manage"
+$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME               = "ch.epfl.vra.tenant.name"
+$global:VRA_CUSTOM_PROP_VRA_BG_NAME                   = "ch.epfl.vra.bg.name"
+$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER   = "ch.epfl.billing.financecenter"
 
 
 # Types de Business Group possibles
@@ -100,3 +101,11 @@ $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE  = "FORCE_ISO_FOLDER_ACL
 ## NSX
 # Nom de la section avant laquelle il faut créer les sections de Firewall vide
 $global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME = "Legacy VLAN"
+
+
+## Billing
+$global:XAAS_BILLING_DATA_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "data", "billing"))
+$global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-document.html"))
+$global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-item.html"))
+$global:XAAS_BILLING_PDF_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "billing"))
+

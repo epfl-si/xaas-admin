@@ -1,0 +1,58 @@
+<h2>{{docTitle}}</h2>
+
+<table cellpadding="3px" width="100%">
+    <tr>
+        <td><b>Facturation pour</b></td>
+        <td>{{billingForType}}</td>
+
+        <td><b>Élément concerné</b></td>
+        <td>{{billingForElement}}</td>
+    </tr>
+    <tr>
+        <td><b>Référence facture</b></td>
+        <td>{{billReference}}</td>
+
+        <td><b>Destinataire</b></td>
+        <td>CF {{financeCenter}}</td>
+    </tr>
+    <tr>
+        <td><b>Rapport du</b></td>
+        <td>{{reportDate}}</td>
+
+        <td><b>Période</b></td>
+        <td>{{periodStartDate}} au {{periodEndDate}}</td>
+    </tr>
+    <tr>
+        <td><b>Emis par</b></td>
+        <td>{{billingFrom}}</td>
+
+        <td><b>Référence</b></td>
+        <td>{{billingReference}}</td>
+    </tr>
+
+</table>
+
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+<table border="1px" style="border-collapse: collapse; white-space:nowrap;" cellpadding="3px" width="100%">
+    <tr style="background-color:#DDD; font-weight:bold">
+        <td>{{colCode}}</td>
+        <td>{{colDesc}}</td>
+        <td>{{colMonthYear}}</td>
+        <td>{{colConsumed}}</td>
+        <td>{{colUnit}}</td>
+        <td>{{colUnitPrice}}</td>
+        <td>{{colTotPrice}}</td>
+    </tr>
+    {{billingItems}}
+    <tr>
+        <td></td>
+        <td></td>
+        <td><b>Total</b></td>
+        <td><b>{{quantityTot}}</b></td>
+        <td></td>
+        <td><b>{{unitPricePerMonthCHF}}</b></td>
+        <td><b>{{totalPrice}}</b></td>
+    </tr>
+</table>

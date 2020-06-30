@@ -1,0 +1,60 @@
+{
+    "billingClassName": "BillingS3Bucket",
+    "docTitle": "Rapport mensuel de consommation de Buckets « Object Storage S3 »",
+    "serviceName": "S3",
+    "landscapePDF": true,
+    "billedItems":
+    [
+        {
+            "itemTypeInDB": "S3 Bucket",
+            "itemDescPrefix":"Object Storage S3",
+            "copernicPrestationCode":
+            {
+                "test": "9010390",
+                "prod": "9010390"
+            },
+            "entityTypesPriceLevels":
+            {
+                "Unit":
+                {
+                    "U.1": 2.42
+                },
+                "Project":
+                {
+                    "U.1": 7,
+                    "U.2": 9.3,
+                    "U.3": 10.3
+                }
+            }
+        }
+    ],
+    "pdfAuthor": "EPFL SI SI-EXOP",
+    "billingFrom": "VPSI",
+    "billingReference": "christophe.simond@epfl.ch",
+    "billingGrid": 
+    {
+        "Project": "billing-grid.pdf"
+    },
+    "itemColumns":
+    {
+        "colCode": "Code prestation",
+        "colDesc": "Description",
+        "colMonthYear": "Consommé le [mois]",
+        "colConsumed": "Quantité",
+        "colUnit": "Unité",
+        "colUnitPrice": "Prix unitaire HT [CHF]",
+        "colTotPrice": "Prix total HT [CHF]"
+    },
+    "copernic":
+    {
+        "shipperName": "Christophe Simond",
+        "shipperSciper": "287589",
+        "shipperFund": "1914-1",
+        "shipperMail": "christophe.simond@epfl.ch",
+        "shipperPhone": "0216931068",
+
+        "shipperImputationNoBilledSVC": "SVC1057"
+        
+    }
+    
+}
