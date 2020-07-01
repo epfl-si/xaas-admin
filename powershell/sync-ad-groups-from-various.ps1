@@ -34,6 +34,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ITServices.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -60,9 +61,8 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 		  $false -> le groupe ($groupMemberGroup) à ajouter dans le groupe $groupName 
 		  			n'existe pas.
 #>
-function createADGroupWithContent
+function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation)
 {
-	param([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation)
 
 	# Si le groupe n'existe pas encore 
 	if((ADGroupExists -groupName $groupName) -eq $false)
@@ -107,9 +107,8 @@ function createADGroupWithContent
 	IN  : $targetEnv	-> Environnement courant
 	IN  : $targetTenant	-> Tenant courant
 #>
-function handleNotifications
+function handleNotifications([System.Collections.IDictionary] $notifications, [string]$targetEnv, [string]$targetTenant)
 {
-	param([System.Collections.IDictionary] $notifications, [string]$targetEnv, [string]$targetTenant)
 
 	# Parcours des catégories de notifications
 	ForEach($notif in $notifications.Keys)
@@ -173,10 +172,9 @@ function handleNotifications
 
 	RET : Tableau avec la liste des comptes sans ceux qui n'existent pas dans AD
 #>
-function removeInexistingADAccounts
+function removeInexistingADAccounts([Array] $accounts)
 {
-	param([Array] $accounts)
-
+	
 	$validAccounts = @()
 
 	ForEach($acc in $accounts)
@@ -196,6 +194,22 @@ function removeInexistingADAccounts
 	}
 
 	return $validAccounts
+}
+
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Ajoute le contenu d'un groupe AD dans la table des utilisateurs vRA qui est
+			utilisée pour gérer les accès à l'application Tableau
+
+	IN  : $mysql	-> Objet permettant d'accéder à la DB
+	IN  : $ADGroup	-> Groupe AD avec les utilisateurs à ajouter
+	IN  : $role		-> Role à donner aux utilisateurs du groupe
+	IN  : $bgName	-> Nom du Business Group qui est accessible
+#>
+function addADGroupContentInVRAUsers([MySQL]$mysql, [PSObject]$ADGroup, [string]$role, [string]$bgName)
+{
+	
 }
 
 
@@ -246,6 +260,14 @@ try
 	# Objet pour pouvoir envoyer des mails de notification
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 	
+	# Pour accéder à la base de données
+	$mysql = [MySQL]::new($configVra.getConfigValue($targetEnv, "db", "host"), `
+							$configVra.getConfigValue($targetEnv, "db", "dbName"), `
+							$configVra.getConfigValue($targetEnv, "db", "user"), `
+							$configVra.getConfigValue($targetEnv, "db", "password"), `
+							$global:BINARY_FOLDER, `
+							$configVra.getConfigValue($targetEnv, "db", "port"))
+
 	Import-Module ActiveDirectory
 
 	if($SIMULATION_MODE)
