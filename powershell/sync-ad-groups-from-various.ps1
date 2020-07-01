@@ -200,16 +200,67 @@ function removeInexistingADAccounts([Array] $accounts)
 <#
 -------------------------------------------------------------------------------------
 	BUT : Ajoute le contenu d'un groupe AD dans la table des utilisateurs vRA qui est
-			utilisée pour gérer les accès à l'application Tableau
+			utilisée pour gérer les accès à l'application Tableau.
+			Pour le moment, on ne fait ceci que pour le tenant EPFL car c'est le seul
+			qui est facturé
 
 	IN  : $mysql	-> Objet permettant d'accéder à la DB
 	IN  : $ADGroup	-> Groupe AD avec les utilisateurs à ajouter
 	IN  : $role		-> Role à donner aux utilisateurs du groupe
 	IN  : $bgName	-> Nom du Business Group qui est accessible
+					   Peut être de la forme basique epfl_<faculty>_<unit>
+					   Ou alors simplement un seul élément si c'est un nom de faculté
 #>
-function addADGroupContentInVRAUsers([MySQL]$mysql, [PSObject]$ADGroup, [string]$role, [string]$bgName)
+function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [string]$role, [string]$bgName)
 {
+
+	# Extraction des infos ($dummy va contenir le nom complte du BG, dont on n'a pas besoin)
+	$dummy, $criteriaList = [regex]::Match($bgName, '^([a-z]+)_([a-z]+)_(\w+)').Groups | Select-Object -ExpandProperty value
+
+	# Ajout de critères vides pour avoir les 3 critères demandés
+	While($criteriaList.Count -lt 3)
+	{
+		$criteriaList += ""
+	}
+
+	$criteriaConditions = @()
+	For($i=0 ; $i -lt 3 ; $i++)
+	{
+		$criteriaConditions += "crit{0} = '{1}'" -f ($i+1), $criteriaList[$i]
+	}
+
+	# On commence par supprimer tous les utilisateurs du role donné pour le BG
+	$request = "DELETE FROM vraUsers WHERE role='{0}' AND {1}" -f $role, ($criteriaConditions -join " AND ")
+	$mysql.execute($request)
+
+	$baseRequest = "INSERT INTO vraUsers VALUES"
+	$rows = @()
+	# Boucle sur les utilisateurs à ajouter
+	ForEach($user in $userList)
+	{
+		$rows += "('{0}', '{1}', '{2}' )" -f $user, $role, ($criteriaList -join "', '")
+		$counters.inc('membersAddedTovRAUsers')
+
+		# Si on arrive à un groupe de 10 éléments
+		if($rows.Count -eq 20)
+		{
+			# On créé la requête et on l'exécute
+			$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
+			$mysql.execute($request)
+			$rows = @()
+		}
+		
+	}
+
+	# S'il reste des éléments à ajouter
+	if($rows.Count -gt 0)
+	{
+		$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
+		$mysql.execute($request)
+	}
+
 	
+
 }
 
 
@@ -296,6 +347,7 @@ try
 	$counters.add('ADGroupsMembersAdded', '# AD Group members added')
 	$counters.add('ADGroupsMembersRemoved', '# AD Group members removed')
 	$counters.add('ADMembersNotFound', '# AD members not found')
+	$counters.add('membersAddedTovRAUsers', '# Users added to vraUsers table (Tableau)')
 
 	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -573,11 +625,20 @@ try
 						$counters.inc('ADGroupsContentModified')
 					}
 
+
 					# On enregistre le nom du groupe AD traité
 					$doneADGroupList += $adGroupName
 
 				} # FIN SI le groupe AD existe
 
+				# Gestion des utilisateurs pour TABLEAU
+
+				# Si l'unité courante a des membres
+				if($ldapMemberList.Count -gt 0)
+				{
+					$logHistory.addLineAndDisplay(("--> Adding {0} members to vraUsers table " -f $ldapMemberList.Count))
+					updateVRAUsersForBG -mysql $mysql -userList $ldapMemberList -role "User" -bgName $nameGenerator.getBGName()
+				}
 
 
 				$counters.inc('epfl.LDAPUnitsProcessed')
