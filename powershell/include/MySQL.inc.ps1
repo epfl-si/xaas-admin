@@ -27,6 +27,8 @@ class MySQL
     hidden [string]$password
     hidden [int]$port
 
+    hidden [PSObject]$credFile
+
     hidden [System.Diagnostics.ProcessStartInfo]$processStartInfo
 
     <#
@@ -64,6 +66,21 @@ class MySQL
         $this.processStartInfo.UseShellExecute = $false
         $this.processStartInfo.CreateNoWindow = $false
         $this.processStartInfo.RedirectStandardOutput = $true
+
+        # Afin d'éviter des warning à répétition lorsque l'on exécute une requête MySQL avec le mot de passe en paramètre, on créé
+        # un fichier temporaire avec les credentials.
+        $this.credFile = New-TemporaryFile
+        ("[client]`nuser = {0}`npassword = {1}`nhost = {2}" -f $this.username, $this.password, $this.server ) | Out-File $this.credFile.FullName -Encoding:ascii
+    }
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Fait du ménage en supprimant le fichier temporaire
+	#>
+    [void]Dispose()
+    {
+        Remove-Item $this.credFile.FullName
     }
 
     <#
@@ -77,8 +94,9 @@ class MySQL
 	#>
     [PSCustomObject] execute([string]$query)
     {
-        $this.processStartInfo.Arguments = ('--host={0} --port={1} --user={2} {3} --password="{4}" --execute "{5}"' -f `
-                                            $this.server, $this.port, $this.username, $this.db, $this.password, $query)
+
+        $this.processStartInfo.Arguments = ('--defaults-extra-file={0} --port={1} --database={2} --execute "{3}"' -f `
+                                            $this.credFile.FullName, $this.port, $this.db, $query)
         $MySQLProcess = [System.Diagnostics.Process]::Start($this.processStartInfo)
 
         if($MySQLProcess.ExitCode -gt 0)
