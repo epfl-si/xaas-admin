@@ -52,34 +52,18 @@ class BillingS3Bucket: Billing
     #>
     hidden [PSObject] getEntityType([PSObject]$bucketInfos)
     {
-        <# 
-            Du fait qu'on a un environnement de test qui est sur la production et que les données ne sont pas
-            "propres" par rapport à ce qu'on a défini en production car tout est affecté au tenant "test", même
-            si c'est de la "prod". La définition du type de l'entity va se faire de manière différente
-        #>
-        if($this.targetEnv -eq $global:TARGET_ENV__TEST)
+
+        # On va utiliser le champ "unitOrSvcID"
+        if($bucketInfos.unitOrSvcID -match $this.entityMatchUnit)
         {
-            # On va utiliser le champ "unitOrSvcID"
-            if($bucketInfos.unitOrSvcID -match $this.entityMatchUnit)
-            {
-                return [EntityType]::Unit
-            }
-            if($bucketInfos.unitOrSvcID -match $this.entityMatchSvc)
-            {
-                return [EntityType]::Service
-            }
-            # Si on arrive ici, c'est que ce n'est pas géré donc on renvoie $null
-            return $null
+            return [EntityType]::Unit
         }
-        else # Production
+        if($bucketInfos.unitOrSvcID -match $this.entityMatchSvc)
         {
-            switch($bucketInfos.targetTenant)
-            {
-                $global:VRA_TENANT__EPFL { return [EntityType]::Unit }
-                $global:VRA_TENANT__ITSERVICES { return [EntityType]::Service}
-            }
-            Throw ("Tenant '{0}' not handled" -f $bucketInfos.targetTenant)
+            return [EntityType]::Service
         }
+        # Si on arrive ici, c'est que ce n'est pas géré donc on renvoie $null
+        return $null
     }
 
     <#
