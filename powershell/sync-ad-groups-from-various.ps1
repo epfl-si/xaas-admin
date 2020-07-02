@@ -182,7 +182,6 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 #>
 function removeInexistingADAccounts([Array] $accounts)
 {
-	
 	$validAccounts = @()
 
 	ForEach($acc in $accounts)
@@ -201,7 +200,9 @@ function removeInexistingADAccounts([Array] $accounts)
 		}
 	}
 
-	return $validAccounts
+	# On met une virgule pour forcer ce con de PowerShell a vraiment retourner un tableau. Si on ne fait pas ça et qu'on
+	# a un tableau vide, ça sera transformé en $null ...
+	return ,$validAccounts
 }
 
 
@@ -241,7 +242,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 		AdminEPFL
 		{
 			# Pas besoin d'extraire les infos, car dans ce cas-là, $bgName contiendra juste "all"
-			$criteriaList = $bgName
+			$criteriaList = @($bgName)
 		}
 	}
 	
@@ -412,7 +413,7 @@ try
 		$ldap = [EPFLLDAP]::new()
 
 		# Recherche de toutes les facultés
-		$facultyList = $ldap.getLDAPFacultyList()
+		$facultyList = $ldap.getLDAPFacultyList() # | Where-Object { $_['name'] -eq "ASSOCIATIONS" } # Décommenter et modifier pour limiter à une faculté donnée
 
 		$exitFacLoop = $false
 
@@ -519,7 +520,7 @@ try
 			# ----------------------------------------------------------------------------------
 
 			# Recherche des unités pour la facultés
-			$unitList = $ldap.getFacultyUnitList($faculty['name'], $EPFL_FAC_UNIT_NB_LEVEL)
+			$unitList = $ldap.getFacultyUnitList($faculty['name'], $EPFL_FAC_UNIT_NB_LEVEL) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et modifier pour limiter à une unité donnée
 
 			$unitNo = 1
 			# Parcours des unités de la faculté
@@ -529,6 +530,9 @@ try
 
 				# Recherche des membres de l'unité
 				$ldapMemberList = $ldap.getUnitMembers($unit['uniqueidentifier'])
+
+				# On commence par filtrer les comptes pour savoir s'ils existent tous
+				$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
 
 				# Initialisation des détails pour le générateur de noms
 				$nameGenerator.initDetails(@{facultyName = $faculty['name']
@@ -595,8 +599,7 @@ try
 				# Si le groupe AD existe
 				if($adGroupExists)
 				{
-					# On commence par filtrer les comptes pour savoir s'ils existent tous
-					$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
+					
 
 					# S'il n'y a aucun membre dans le groupe AD,
 					if($null -eq $adMemberList)
