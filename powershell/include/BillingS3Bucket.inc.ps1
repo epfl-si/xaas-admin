@@ -109,8 +109,9 @@ class BillingS3Bucket: Billing
     [void] extractData([int]$month, [int]$year)
     {
         
-        # On commence par récupérer la totalité des Buckets qui existent
-        $request = "SELECT * FROM Buckets"
+        # On commence par récupérer la totalité des Buckets qui existent. Ceci est fait en interrogeant une table spéciale
+        # dans laquelle on a tous les buckets, y compris ceux qui ont été effacés
+        $request = "SELECT * FROM BucketsArchive"
         $bucketList = $this.mysql.execute($request)
 
         # Parcours de la liste des buckets
