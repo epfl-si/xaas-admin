@@ -46,6 +46,14 @@ param ( [string]$targetEnv, [string]$targetTenant)
 $configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 
+# Les types de rôles pour l'application Tableau
+enum TableauRoles 
+{
+	User
+	AdminFac
+	AdminEPFL
+}
+
 <#
 -------------------------------------------------------------------------------------
 	BUT : Regarde si un groupe Active Directory existe et si ce n'est pas le cas, il 
@@ -211,11 +219,32 @@ function removeInexistingADAccounts([Array] $accounts)
 					   Peut être de la forme basique epfl_<faculty>_<unit>
 					   Ou alors simplement un seul élément si c'est un nom de faculté
 #>
-function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [string]$role, [string]$bgName)
+function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$role, [string]$bgName)
 {
 
-	# Extraction des infos ($dummy va contenir le nom complte du BG, dont on n'a pas besoin)
-	$dummy, $criteriaList = [regex]::Match($bgName, '^([a-z]+)_([a-z]+)_(\w+)').Groups | Select-Object -ExpandProperty value
+	switch($role)
+	{
+		User
+		{
+			# Extraction des infos ($dummy va contenir le nom complte du BG, dont on n'a pas besoin)
+			# Gère les noms  de BG au format epfl_<fac>_<unit>
+			$dummy, $criteriaList = [regex]::Match($bgName, '^([a-z]+)_([a-z]+)_(\w+)').Groups | Select-Object -ExpandProperty value
+		}
+
+		AdminFac
+		{
+			# Extraction des infos ($dummy va contenir le nom complte du BG, dont on n'a pas besoin)
+			# Gère les noms  de BG au format epfl_<fac>
+			$dummy, $criteriaList = [regex]::Match($bgName, '^([a-z]+)_([a-z]+)').Groups | Select-Object -ExpandProperty value
+		}
+
+		AdminEPFL
+		{
+			# Pas besoin d'extraire les infos, car dans ce cas-là, $bgName contiendra juste "all"
+			$criteriaList = $bgName
+		}
+	}
+	
 
 	# Ajout de critères vides pour avoir les 3 critères demandés
 	While($criteriaList.Count -lt 3)
@@ -238,7 +267,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [string]$role, [st
 	# Boucle sur les utilisateurs à ajouter
 	ForEach($user in $userList)
 	{
-		$rows += "('{0}', '{1}', '{2}' )" -f $user, $role, ($criteriaList -join "', '")
+		$rows += "('{0}', '{1}', '{2}' )" -f $user, $role.ToString(), ($criteriaList -join "', '")
 		$counters.inc('membersAddedTovRAUsers')
 
 		# Si on arrive à un groupe de 10 éléments
@@ -566,6 +595,9 @@ try
 				# Si le groupe AD existe
 				if($adGroupExists)
 				{
+					# On commence par filtrer les comptes pour savoir s'ils existent tous
+					$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
+
 					# S'il n'y a aucun membre dans le groupe AD,
 					if($null -eq $adMemberList)
 					{
@@ -578,9 +610,6 @@ try
 						$toAdd = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '<=' } | ForEach-Object {$_.InputObject}
 						$toRemove = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '=>' }  | ForEach-Object {$_.InputObject}
 					}
-
-					# On commence par filtrer les comptes AD à ajouter pour savoir s'ils existent tous
-					$toAdd = removeInexistingADAccounts -accounts $toAdd
 
 					# Ajout des nouveaux membres s'il y en a
 					if($toAdd.Count -gt 0)
@@ -625,20 +654,20 @@ try
 						$counters.inc('ADGroupsContentModified')
 					}
 
-
 					# On enregistre le nom du groupe AD traité
 					$doneADGroupList += $adGroupName
 
 				} # FIN SI le groupe AD existe
 
-				# Gestion des utilisateurs pour TABLEAU
-
+				
+				###### Roles pour Tablean --> Utilisateurs dans les Business Groups
 				# Si l'unité courante a des membres
 				if($ldapMemberList.Count -gt 0)
 				{
-					$logHistory.addLineAndDisplay(("--> Adding {0} members to vraUsers table " -f $ldapMemberList.Count))
-					updateVRAUsersForBG -mysql $mysql -userList $ldapMemberList -role "User" -bgName $nameGenerator.getBGName()
+					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
+					updateVRAUsersForBG -mysql $mysql -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName()
 				}
+
 
 
 				$counters.inc('epfl.LDAPUnitsProcessed')
@@ -653,12 +682,43 @@ try
 
 			}# FIN BOUCLE de parcours des unités de la faculté
 
+
+			###### Roles pour Tablean --> Admin de faculté
+			# Recherche du nom du groupe AD d'approbation pour la faculté
+			$facApprovalGroup = $nameGenerator.getApproveADGroupName(2, $false).name
+
+			# Recherche de la liste des membres
+			$facApprovalMembers = Get-ADGroupMember $facApprovalGroup -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
+
+			if($facApprovalMembers.Count -gt 0)
+			{
+				$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
+				updateVRAUsersForBG -mysql $mysql -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty['name'].toLower())
+			}
+
+
+
 			if($exitFacLoop)
 			{
 				break
 			}
 
 		}# FIN BOUCLE de parcours des facultés
+
+
+		###### Roles pour Tablean --> Admin du service
+		# Recherche du nom du groupe AD d'approbation pour la faculté
+		$adminGroup = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
+
+		# Recherche de la liste des membres
+		$adminMembers = Get-ADGroupMember $adminGroup -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
+
+		if($adminMembers.Count -gt 0)
+		{
+			$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
+			updateVRAUsersForBG -mysql $mysql -userList $adminMembers -role AdminEPFL -bgName "all"
+		}
+		
 
 		# ----------------------------------------------------------------------------------------------------------------------
 
