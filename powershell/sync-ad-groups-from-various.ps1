@@ -413,7 +413,7 @@ try
 		$ldap = [EPFLLDAP]::new()
 
 		# Recherche de toutes les facultés
-		$facultyList = $ldap.getLDAPFacultyList() # | Where-Object { $_['name'] -eq "ASSOCIATIONS" } # Décommenter et modifier pour limiter à une faculté donnée
+		$facultyList = $ldap.getLDAPFacultyList() #  | Where-Object { $_['name'] -eq "ASSOCIATIONS" } # Décommenter et modifier pour limiter à une faculté donnée
 
 		$exitFacLoop = $false
 
@@ -742,6 +742,8 @@ try
 					Remove-ADGroup $_.name -Confirm:$false
 				}
 
+				$counters.inc('ADGroupsRemoved')
+
 				$logHistory.addLineAndDisplay(("--> Removing rights for '{0}' role in vraUsers table for AD groupe {1}" -f [TableauRoles]::User.ToString(), $_.name))
 
 				# Extraction des informations
@@ -756,8 +758,6 @@ try
 
 				# Suppression des accès pour le business group correspondant au groupe AD courant.
 				updateVRAUsersForBG -mysql $mysql -userList @() -role User -bgName $nameGenerator.getBGName()
-
-				$counters.inc('ADGroupsRemoved')
 			}
 		}# FIN BOUCLE de parcours des groupes AD qui sont dans l'OU de l'environnement donné
 	}
