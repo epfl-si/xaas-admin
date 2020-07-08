@@ -68,7 +68,8 @@ class BillingS3Bucket: Billing
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Renvoie la quantité utilisée pour un bucket pour un mois et une année donnés
+        BUT : Renvoie la quantité utilisée pour un bucket pour un mois et une année donnés. La quantité
+                est pondérée au nombre de jours pendant lesquels le bucket est utilisé dans le mois.
         
         IN  : $bucketName   -> nom du bucket 
         IN  : $month        -> Le no du mois pour lequel extraire les infos
@@ -84,7 +85,7 @@ class BillingS3Bucket: Billing
             # Ajout du 0 initial pour la requête de recherche 
             $monthStr = "0{0}" -f $monthStr
         }
-        $request = "SELECT AVG(storageUtilized)/1024/1024/1024/1024 AS 'usage' FROM BucketsUsage WHERE date like '{0}-{1}-%' AND bucketName='{2}'" -f $year, $monthStr, $bucketName
+        $request = "SELECT AVG(storageUtilized)/1024/1024/1024/1024 AS 'usage', COUNT(*) as 'nbDays' FROM BucketsUsage WHERE date like '{0}-{1}-%' AND bucketName='{2}'" -f $year, $monthStr, $bucketName
 
         $res = $this.mysql.execute($request)
 
@@ -93,7 +94,9 @@ class BillingS3Bucket: Billing
         {
             return 0
         }
-        return  $res[0].usage
+
+        # Calcul de la moyenne en fonction du nombre de jours utilisés durant le mois
+        return  $res[0].nbDays * $res[0].usage / [DateTime]::DaysInMonth($year, $month)
     }
 
     <#
@@ -109,8 +112,9 @@ class BillingS3Bucket: Billing
     [void] extractData([int]$month, [int]$year)
     {
         
-        # On commence par récupérer la totalité des Buckets qui existent
-        $request = "SELECT * FROM Buckets"
+        # On commence par récupérer la totalité des Buckets qui existent. Ceci est fait en interrogeant une table spéciale
+        # dans laquelle on a tous les buckets, y compris ceux qui ont été effacés
+        $request = "SELECT * FROM BucketsArchive"
         $bucketList = $this.mysql.execute($request)
 
         # Parcours de la liste des buckets

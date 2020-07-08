@@ -34,6 +34,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ITServices.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -44,6 +45,14 @@ param ( [string]$targetEnv, [string]$targetTenant)
 # Chargement des fichiers de configuration
 $configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
+
+# Les types de rôles pour l'application Tableau
+enum TableauRoles 
+{
+	User
+	AdminFac
+	AdminEPFL
+}
 
 <#
 -------------------------------------------------------------------------------------
@@ -60,9 +69,8 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 		  $false -> le groupe ($groupMemberGroup) à ajouter dans le groupe $groupName 
 		  			n'existe pas.
 #>
-function createADGroupWithContent
+function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation)
 {
-	param([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation)
 
 	# Si le groupe n'existe pas encore 
 	if((ADGroupExists -groupName $groupName) -eq $false)
@@ -107,9 +115,8 @@ function createADGroupWithContent
 	IN  : $targetEnv	-> Environnement courant
 	IN  : $targetTenant	-> Tenant courant
 #>
-function handleNotifications
+function handleNotifications([System.Collections.IDictionary] $notifications, [string]$targetEnv, [string]$targetTenant)
 {
-	param([System.Collections.IDictionary] $notifications, [string]$targetEnv, [string]$targetTenant)
 
 	# Parcours des catégories de notifications
 	ForEach($notif in $notifications.Keys)
@@ -173,10 +180,8 @@ function handleNotifications
 
 	RET : Tableau avec la liste des comptes sans ceux qui n'existent pas dans AD
 #>
-function removeInexistingADAccounts
+function removeInexistingADAccounts([Array] $accounts)
 {
-	param([Array] $accounts)
-
 	$validAccounts = @()
 
 	ForEach($acc in $accounts)
@@ -195,7 +200,97 @@ function removeInexistingADAccounts
 		}
 	}
 
-	return $validAccounts
+	# On met une virgule pour forcer ce con de PowerShell a vraiment retourner un tableau. Si on ne fait pas ça et qu'on
+	# a un tableau vide, ça sera transformé en $null ...
+	return ,$validAccounts
+}
+
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Ajoute le contenu d'un groupe AD dans la table des utilisateurs vRA qui est
+			utilisée pour gérer les accès à l'application Tableau.
+			Pour le moment, on ne fait ceci que pour le tenant EPFL car c'est le seul
+			qui est facturé
+
+	IN  : $mysql	-> Objet permettant d'accéder à la DB
+	IN  : $ADGroup	-> Groupe AD avec les utilisateurs à ajouter
+	IN  : $role		-> Role à donner aux utilisateurs du groupe
+	IN  : $bgName	-> Nom du Business Group qui est accessible
+					   Peut être de la forme basique epfl_<faculty>_<unit>
+					   Ou alors simplement un seul élément si c'est un nom de faculté
+#>
+function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$role, [string]$bgName)
+{
+
+	switch($role)
+	{
+		User
+		{
+			# Extraction des infos ($dummy va contenir le nom complte du BG, dont on n'a pas besoin)
+			# Gère les noms  de BG au format epfl_<fac>_<unit>
+			$dummy, $criteriaList = [regex]::Match($bgName, '^([a-z]+)_([a-z]+)_(\w+)').Groups | Select-Object -ExpandProperty value
+		}
+
+		AdminFac
+		{
+			# Extraction des infos ($dummy va contenir le nom complte du BG, dont on n'a pas besoin)
+			# Gère les noms  de BG au format epfl_<fac>
+			$dummy, $criteriaList = [regex]::Match($bgName, '^([a-z]+)_([a-z]+)').Groups | Select-Object -ExpandProperty value
+		}
+
+		AdminEPFL
+		{
+			# Pas besoin d'extraire les infos, car dans ce cas-là, $bgName contiendra juste "all"
+			$criteriaList = @($bgName)
+		}
+	}
+	
+
+	# Ajout de critères vides pour avoir les 3 critères demandés
+	While($criteriaList.Count -lt 3)
+	{
+		$criteriaList += ""
+	}
+
+	$criteriaConditions = @()
+	For($i=0 ; $i -lt 3 ; $i++)
+	{
+		$criteriaConditions += "crit{0} = '{1}'" -f ($i+1), $criteriaList[$i]
+	}
+
+	# On commence par supprimer tous les utilisateurs du role donné pour le BG
+	$request = "DELETE FROM vraUsers WHERE role='{0}' AND {1}" -f $role, ($criteriaConditions -join " AND ")
+	$mysql.execute($request)
+
+	$baseRequest = "INSERT INTO vraUsers VALUES"
+	$rows = @()
+	# Boucle sur les utilisateurs à ajouter
+	ForEach($user in $userList)
+	{
+		$rows += "('{0}', '{1}', '{2}' )" -f $user, $role.ToString(), ($criteriaList -join "', '")
+		$counters.inc('membersAddedTovRAUsers')
+
+		# Si on arrive à un groupe de 10 éléments
+		if($rows.Count -eq 20)
+		{
+			# On créé la requête et on l'exécute
+			$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
+			$mysql.execute($request)
+			$rows = @()
+		}
+		
+	}
+
+	# S'il reste des éléments à ajouter
+	if($rows.Count -gt 0)
+	{
+		$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
+		$mysql.execute($request)
+	}
+
+	
+
 }
 
 
@@ -246,6 +341,14 @@ try
 	# Objet pour pouvoir envoyer des mails de notification
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 	
+	# Pour accéder à la base de données
+	$mysql = [MySQL]::new($configVra.getConfigValue($targetEnv, "db", "host"), `
+							$configVra.getConfigValue($targetEnv, "db", "dbName"), `
+							$configVra.getConfigValue($targetEnv, "db", "user"), `
+							$configVra.getConfigValue($targetEnv, "db", "password"), `
+							$global:BINARY_FOLDER, `
+							$configVra.getConfigValue($targetEnv, "db", "port"))
+
 	Import-Module ActiveDirectory
 
 	if($SIMULATION_MODE)
@@ -274,6 +377,7 @@ try
 	$counters.add('ADGroupsMembersAdded', '# AD Group members added')
 	$counters.add('ADGroupsMembersRemoved', '# AD Group members removed')
 	$counters.add('ADMembersNotFound', '# AD members not found')
+	$counters.add('membersAddedTovRAUsers', '# Users added to vraUsers table (Tableau)')
 
 	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -309,7 +413,7 @@ try
 		$ldap = [EPFLLDAP]::new()
 
 		# Recherche de toutes les facultés
-		$facultyList = $ldap.getLDAPFacultyList()
+		$facultyList = $ldap.getLDAPFacultyList() #  | Where-Object { $_['name'] -eq "ASSOCIATIONS" } # Décommenter et modifier pour limiter à une faculté donnée
 
 		$exitFacLoop = $false
 
@@ -416,7 +520,7 @@ try
 			# ----------------------------------------------------------------------------------
 
 			# Recherche des unités pour la facultés
-			$unitList = $ldap.getFacultyUnitList($faculty['name'], $EPFL_FAC_UNIT_NB_LEVEL)
+			$unitList = $ldap.getFacultyUnitList($faculty['name'], $EPFL_FAC_UNIT_NB_LEVEL) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et modifier pour limiter à une unité donnée
 
 			$unitNo = 1
 			# Parcours des unités de la faculté
@@ -426,6 +530,9 @@ try
 
 				# Recherche des membres de l'unité
 				$ldapMemberList = $ldap.getUnitMembers($unit['uniqueidentifier'])
+
+				# On commence par filtrer les comptes pour savoir s'ils existent tous
+				$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
 
 				# Initialisation des détails pour le générateur de noms
 				$nameGenerator.initDetails(@{facultyName = $faculty['name']
@@ -492,6 +599,8 @@ try
 				# Si le groupe AD existe
 				if($adGroupExists)
 				{
+					
+
 					# S'il n'y a aucun membre dans le groupe AD,
 					if($null -eq $adMemberList)
 					{
@@ -504,9 +613,6 @@ try
 						$toAdd = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '<=' } | ForEach-Object {$_.InputObject}
 						$toRemove = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '=>' }  | ForEach-Object {$_.InputObject}
 					}
-
-					# On commence par filtrer les comptes AD à ajouter pour savoir s'ils existent tous
-					$toAdd = removeInexistingADAccounts -accounts $toAdd
 
 					# Ajout des nouveaux membres s'il y en a
 					if($toAdd.Count -gt 0)
@@ -556,6 +662,15 @@ try
 
 				} # FIN SI le groupe AD existe
 
+				
+				###### Roles pour Tablean --> Utilisateurs dans les Business Groups
+				# Si l'unité courante a des membres
+				if($ldapMemberList.Count -gt 0)
+				{
+					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
+					updateVRAUsersForBG -mysql $mysql -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName()
+				}
+
 
 
 				$counters.inc('epfl.LDAPUnitsProcessed')
@@ -570,12 +685,43 @@ try
 
 			}# FIN BOUCLE de parcours des unités de la faculté
 
+
+			###### Roles pour Tablean --> Admin de faculté
+			# Recherche du nom du groupe AD d'approbation pour la faculté
+			$facApprovalGroup = $nameGenerator.getApproveADGroupName(2, $false).name
+
+			# Recherche de la liste des membres
+			$facApprovalMembers = Get-ADGroupMember $facApprovalGroup -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
+
+			if($facApprovalMembers.Count -gt 0)
+			{
+				$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
+				updateVRAUsersForBG -mysql $mysql -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty['name'].toLower())
+			}
+
+
+
 			if($exitFacLoop)
 			{
 				break
 			}
 
 		}# FIN BOUCLE de parcours des facultés
+
+
+		###### Roles pour Tablean --> Admin du service
+		# Recherche du nom du groupe AD d'approbation pour la faculté
+		$adminGroup = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
+
+		# Recherche de la liste des membres
+		$adminMembers = Get-ADGroupMember $adminGroup -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
+
+		if($adminMembers.Count -gt 0)
+		{
+			$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
+			updateVRAUsersForBG -mysql $mysql -userList $adminMembers -role AdminEPFL -bgName "all"
+		}
+		
 
 		# ----------------------------------------------------------------------------------------------------------------------
 
@@ -597,6 +743,21 @@ try
 				}
 
 				$counters.inc('ADGroupsRemoved')
+
+				$logHistory.addLineAndDisplay(("--> Removing rights for '{0}' role in vraUsers table for AD groupe {1}" -f [TableauRoles]::User.ToString(), $_.name))
+
+				# Extraction des informations
+				$facultyName, $unitName, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+				# Initialisation des détails pour le générateur de noms
+				$nameGenerator.initDetails(@{facultyName = $facultyName
+											facultyID = ''
+											unitName = $unitName
+											unitID = ''
+											financeCenter = ''})
+
+				# Suppression des accès pour le business group correspondant au groupe AD courant.
+				updateVRAUsersForBG -mysql $mysql -userList @() -role User -bgName $nameGenerator.getBGName()
 			}
 		}# FIN BOUCLE de parcours des groupes AD qui sont dans l'OU de l'environnement donné
 	}
@@ -747,10 +908,10 @@ try
 		Start-Sleep -Seconds $sleepDurationSec
 		try {
 			# Création d'une connexion au serveur
-			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
 								 $targetTenant, 
-								 $configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
-								 $configVra.getConfigValue($targetEnv, $targetTenant, "password"))
+								 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
+								 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
 		}
 		catch {
 			Write-Error "Error connecting to vRA API !"
