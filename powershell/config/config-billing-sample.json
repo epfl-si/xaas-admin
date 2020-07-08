@@ -1,14 +1,6 @@
 {
     "dev":
     {
-        "db": 
-        {
-            "host":"",
-            "user":"",
-            "password":"",
-            "dbName":"",
-            "port":""
-        },
         "copernic":
         {
             "server": "",
@@ -18,15 +10,7 @@
     },
     "test":
     {
-        "db": 
-        {
-            "host":"",
-            "user":"",
-            "password":"",
-            "dbName":"",
-            "port":""
-        },
-        "copernic":
+         "copernic":
         {
             "server": "",
             "username": "",
@@ -35,14 +19,6 @@
     },
     "prod":
     {
-        "db": 
-        {
-            "host":"",
-            "user":"",
-            "password":"",
-            "dbName":"",
-            "port":""
-        },
         "copernic":
         {
             "server": "",
