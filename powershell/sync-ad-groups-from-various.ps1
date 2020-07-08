@@ -34,6 +34,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ITServices.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -147,6 +148,17 @@ function handleNotifications
 					$mailSubject = "Error - Active Directory groups missing"
 
 					$templateName = "ad-groups-missing-for-groups-creation"
+				}
+
+				# ---------------------------------------
+				# Groupe active directory manquants pour création des éléments pour Tenant Research
+				'missingRSRCHADGroups'
+				{
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+
+					$mailSubject = "Error - Active Directory groups missing"
+
+					$templateName = "ad-groups-missing-for-groups-creation-rsrch"
 				}
 
 				default
@@ -739,7 +751,7 @@ try
 			$logHistory.addLineAndDisplay("Processing data for Research Tenant")
 	
 			# Ajout du nécessaire pour gérer les notifications pour ce Tenant
-			$notifications.missingRsrchADGroups = @()
+			$notifications.missingRSRCHADGroups = @()
 	
 			# Ajout des compteurs propres au tenant
 			$counters.add('rsrch.projectProcessed', '# Projects processed')
@@ -753,108 +765,116 @@ try
 										$global:BINARY_FOLDER, `
 										$configGrants.getConfigValue($targetEnv, "port"))
 
-			# TODO: Implémenter la chose
-			Throw "Research to implement"
-
-			$projectList = @()
+			$projectList = $mysqlGrants.execute("SELECT * FROM v_gdb_iaas WHERE subsides_start_date <= DATE(NOW()) AND subsides_end_date > DATE(NOW())")
 			
 			$projectNo = 1 
 			# Parcours des services renvoyés par Django
 			ForEach($project in $projectList)
 			{
 	
-				# $logHistory.addLineAndDisplay(("-> [{0}/{1}] Project {2}..." -f $projectNo, $servicesList.Count, $service.shortName))
+				$logHistory.addLineAndDisplay(("-> [{0}/{1}] Project {2}..." -f $projectNo, $projectList.Count, $project.id))
 	
-				# $counters.inc('its.serviceProcessed')
+				$counters.inc('rsrch.projectProcessed')
 	
-				# # Initialisation des détails pour le générateur de noms
-				# $nameGenerator.initDetails(@{serviceShortName = $service.shortName
-				# 							serviceName = $service.longName
-				# 							snowServiceId = $service.snowId})
+				# Initialisation des détails pour le générateur de noms
+				$nameGenerator.initDetails(@{projectId = $project.id
+											financeCenter = $project.labo_no
+											projectAcronym = $project.acronym})
 	
-				# $projectNo += 1
+				$projectNo += 1
 	
-				# # --------------------------------- APPROVE
-				# $allGroupsOK = $true
-				# # Génération des noms des X groupes dont on va avoir besoin pour approuver les NOUVELLES demandes pour le service. 
-				# $level = 0
-				# while($true)
-				# {
-				# 	$level += 1
-				# 	# Recherche des informations pour le level courant.
-				# 	$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
+				# On détermine le sciper de l'admin du projet
+				if($project.pi_sciper -ne 'NULL')
+				{
+					$projectAdminSciper = $project.pi_sciper
+				}
+				else
+				{
+					$projectAdminSciper = $project.pi_epfl_sciper
+				}
+
+				# --------------------------------- APPROVE
+				$allGroupsOK = $true
+				# Génération des noms des X groupes dont on va avoir besoin pour approuver les NOUVELLES demandes pour le service. 
+				$level = 0
+				while($true)
+				{
+					$level += 1
+					# Recherche des informations pour le level courant.
+					$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
 	
-				# 	# Si vide, c'est qu'on a atteint le niveau max pour les level
-				# 	if($null -eq $approveGroupInfos)
-				# 	{
-				# 		break
-				# 	}
+					# Si vide, c'est qu'on a atteint le niveau max pour les level
+					if($null -eq $approveGroupInfos)
+					{
+						break
+					}
 	
-				# 	$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
-				# 	$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
-	
-				# 	# Création des groupes + gestion des groupes prérequis 
-				# 	if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-				# 		-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
-				# 	{
-				# 		# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
-				# 		if($notifications['missingITSADGroups'] -notcontains $approveGroupNameGroups)
-				# 		{
-				# 			$notifications['missingITSADGroups'] += $approveGroupNameGroups
-				# 		}
+					$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
+					$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
+					
+					# Création des groupes + gestion des groupes prérequis 
+					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
+					{
+						$notificationKey = "Groupe: {0} (SCIPER admin groupe: {1})" -f $approveGroupNameGroups, $projectAdminSciper
+						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
+						if($notifications['missingRSRCHADGroups'] -notcontains $notificationKey)
+						{
 							
-				# 		$allGroupsOK = $false
-				# 	}
+							$notifications['missingRSRCHADGroups'] += $notificationKey
+						}
+							
+						$allGroupsOK = $false
+					}
 	
-				# } # FIN BOUCLE de création des groupes pour les différents level d'approbation 
+				} # FIN BOUCLE de création des groupes pour les différents level d'approbation 
 				
-				# # Si on n'a pas pu créer tous les groupes, on passe au service suivant 
-				# if($allGroupsOK -eq $false)
-				# {
-				# 	$counters.inc('its.serviceSkipped')
-				# 	continue
-				# }
+				# Si on n'a pas pu créer tous les groupes, on passe au service suivant 
+				if($allGroupsOK -eq $false)
+				{
+					$counters.inc('rsrch.projectSkipped')
+					continue
+				}
 	
 				# # --------------------------------- ROLES
 	
-				# # Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
-				# # Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
-				# # sera le même
-				# $admSupGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
-				# $admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
-				# $admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
+				# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
+				# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
+				# sera le même
+				$admSupGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
+				$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
+				$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
 	
-				# # Création des groupes + gestion des groupes prérequis 
-				# if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
-				# 	 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
-				# {
-				# 	# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-				# 	$notifications['missingITSADGroups'] += $admSupGroupNameGroups
-				# 	continue
-				# }
-				# # Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-				# $doneADGroupList += $admSupGroupNameAD
+				# Création des groupes + gestion des groupes prérequis 
+				if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
+					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+				{
+					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
+					$notifications['missingRSRCHADGroups'] += $admSupGroupNameGroups
+					continue
+				}
+				# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+				$doneADGroupList += $admSupGroupNameAD
 	
 	
 	
-				# # Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
-				# # Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
-				# # sera le même
-				# $userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
-				# $userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
-				# $userSharedGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
+				# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
+				# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
+				# sera le même
+				$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
+				$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
 	
-				# # Création des groupes + gestion des groupes prérequis 
-				# if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroups `
-				# 	 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
-				# {
-				# 	# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-				# 	$notifications['missingITSADGroups'] += $userSharedGroupNameGroups
-				# 	continue
-				# }
-				# # Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-				# $doneADGroupList += $userSharedGroupNameAD
-				
+				# Création des groupes + gestion des groupes prérequis 
+				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroups `
+					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+				{
+					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
+					$notifications['missingRSRCHADGroups'] += $userSharedGroupNameGroups
+					continue
+				}
+				# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+				$doneADGroupList += $userSharedGroupNameAD
 	
 			}# FIN BOUCLE de parcours des services renvoyés
 		}
