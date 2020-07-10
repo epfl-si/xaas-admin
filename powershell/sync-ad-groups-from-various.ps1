@@ -261,9 +261,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 
 	# On commence par supprimer tous les utilisateurs du role donné pour le BG
 	$request = "DELETE FROM vraUsers WHERE role='{0}' AND {1}" -f $role, ($criteriaConditions -join " AND ")
-	#$mysql.execute($request)
-
-	$nbDeleted = Invoke-SQLUpdate -Query $request
+	$nbDeleted = $mysql.execute($request)
 
 	$baseRequest = "INSERT INTO vraUsers VALUES"
 	$rows = @()
@@ -278,8 +276,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 		{
 			# On créé la requête et on l'exécute
 			$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
-			#$mysql.execute($request)
-			$nInserted = Invoke-SQLUpdate -Query $request
+			$nbInserted = $mysql.execute($request)
 			$rows = @()
 		}
 		
@@ -289,8 +286,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 	if($rows.Count -gt 0)
 	{
 		$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
-		#$mysql.execute($request)
-		$nInserted = Invoke-SQLUpdate -Query $request
+		$nbInserted = $mysql.execute($request)
 	}
 
 	
@@ -346,23 +342,13 @@ try
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 	
 	# Pour accéder à la base de données
-	# $mysql = [MySQL]::new($configVra.getConfigValue($targetEnv, "db", "host"), `
-	# 						$configVra.getConfigValue($targetEnv, "db", "dbName"), `
-	# 						$configVra.getConfigValue($targetEnv, "db", "user"), `
-	# 						$configVra.getConfigValue($targetEnv, "db", "password"), `
-	# 						$global:BINARY_FOLDER, `
-	# 						$configVra.getConfigValue($targetEnv, "db", "port"))
+	$mysql = [MySQL]::new($configVra.getConfigValue($targetEnv, "db", "host"), `
+							$configVra.getConfigValue($targetEnv, "db", "dbName"), `
+							$configVra.getConfigValue($targetEnv, "db", "user"), `
+							$configVra.getConfigValue($targetEnv, "db", "password"), `
+							$configVra.getConfigValue($targetEnv, "db", "port"))
 
 	Import-Module ActiveDirectory
-	Import-Module SimplySQL
-
-	open-mysqlconnection -server $configVra.getConfigValue($targetEnv, "db", "host") `
-							 -database $configVra.getConfigValue($targetEnv, "db", "dbName") `
-							 -port $configVra.getConfigValue($targetEnv, "db", "port") `
-							-username $configVra.getConfigValue($targetEnv, "db", "user") `
-							-password $configVra.getConfigValue($targetEnv, "db", "password")
-
-	$mysql = $null
 
 	if($SIMULATION_MODE)
 	{
@@ -948,7 +934,7 @@ try
 	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
 
 	# Fermeture de la connexion MySQL
-	Close-SQLConnection
+	$mysql.disconnect()
 
 }
 catch # Dans le cas d'une erreur dans le script

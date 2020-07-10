@@ -1,35 +1,25 @@
 <#
-   BUT : Classe permettant de faire des requêtes dans une DB MySQL. Toutes les choses déjà existantes
-         trouvées sur le NET pour faire ceci, y compris le connecteur .NET fournis par MySQL
-         (https://dev.mysql.com/downloads/connector/net/8.0.html) ne fonctionnent pas si le serveur ne fait pas de SSL.
-         Donc cette classe utilise simplement l'utilitaire "mysql.exe" qui est notamment fourni avec MySQL Workbench
-         (https://www.mysql.com/fr/products/workbench/)
+   BUT : Classe permettant de faire des requêtes dans une DB MySQL. 
 
    AUTEUR : Lucien Chaboudez
    DATE   : Mai 2018
 
    Prérequis:
-   Cette classe a besoin de l'utilitaire "mysql.exe" pour bien fonctionner. Celui-ci est installé en même temps que
-   l'application MySQL Workbench (https://www.mysql.com/fr/products/workbench/) donc on peut par exemple utilise ceci
-   pour l'avoir.
+   Cette classe a besoin du module https://www.powershellgallery.com/packages/SimplySql/1.6.2 
 
 
    ----------
    HISTORIQUE DES VERSIONS
    0.1 - Version de base
+   0.2 - On n'utilise plus "mysql.exe" car il posait problème depuis les machines dans le subnet 10.x.x.x
 
 #>
+# Importation du module pour faire le boulot
+Import-Module SimplySQL
+
 class MySQL
 {
-    hidden [string]$server
-    hidden [string]$db
-    hidden [string]$username
-    hidden [string]$password
-    hidden [int]$port
-
-    hidden [PSObject]$credFile
-
-    hidden [System.Diagnostics.ProcessStartInfo]$processStartInfo
+    hidden [string]$connectionName
 
     <#
 		-------------------------------------------------------------------------------------
@@ -39,48 +29,31 @@ class MySQL
         IN  : $db               -> Nom de la base de données à laquelle se connecter
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
-        IN  : $binPath          -> Chemin jusqu'au dossier "bin" dans lequel on peut trouver 'mysql.exe'
         IN  : $port             -> (optionnel) No de port à utiliser
 
 		RET : Instance de l'objet
 	#>
-    MySQL([string]$server, [string]$db, [string]$username, [string]$password, [string]$binPath, [int]$port=3306)
+    MySQL([string]$server, [string]$db, [string]$username, [string]$password, [int]$port=3306)
     {
-        $this.server    = $server
-        $this.db        = $db
-        $this.username  = $username
-        $this.password  = $password
-        $this.port      = $port
+        # Définition d'un nom de connexion pour pouvoir l'identifier et la fermer correctement dans le cas
+        # où on aurait plusieurs instances de l'objet en même temps.
+        $this.connectionName = "MySQL{0}" -f (Get-Random)
 
-        $pathToMySQLExe = ([IO.Path]::Combine($binPath, "mysql.exe"))
+        # Sécurisation du mot de passe et du nom d'utilisateur
+        $credSecurePwd = $password | ConvertTo-SecureString -AsPlainText -Force
+        $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $username, $credSecurePwd	
 
-        # Check de la validité du chemin passé
-        if( !(Test-Path $pathToMySQLExe))
-        {
-            Write-Error -Message ("Incorrect path to 'mysql.exe'... ({0})" -f $pathToMySQLExe) -ErrorAction Stop
-        }
-
-        # Création du nécessaire pour exécuter la commande MySQL par la suite.
-        $this.processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $this.processStartInfo.FileName = $pathToMySQLExe
-        $this.processStartInfo.UseShellExecute = $false
-        $this.processStartInfo.CreateNoWindow = $false
-        $this.processStartInfo.RedirectStandardOutput = $true
-
-        # Afin d'éviter des warning à répétition lorsque l'on exécute une requête MySQL avec le mot de passe en paramètre, on créé
-        # un fichier temporaire avec les credentials.
-        $this.credFile = New-TemporaryFile
-        ("[client]`nuser = {0}`npassword = {1}`nhost = {2}" -f $this.username, $this.password, $this.server ) | Out-File $this.credFile.FullName -Encoding:ascii
+        Open-MySQLConnection -server $server  -database $db  -port $port -credential $credObject -ConnectionName $this.connectionName
     }
 
     
     <#
 		-------------------------------------------------------------------------------------
-		BUT : Fait du ménage en supprimant le fichier temporaire
+		BUT : Ferme la connexion
 	#>
-    [void]Dispose()
+    [void]disconnect()
     {
-        Remove-Item $this.credFile.FullName
+        Close-SQLConnection -ConnectionName $this.connectionName
     }
 
     <#
@@ -89,38 +62,35 @@ class MySQL
 
 		IN  : $query    -> Requêtes MySQL à exécuter
 
-        RET : Résultat sous la forme d'un tableau associatif (IDictionnary)
-              $false si une erreur survient.
+        RET : Si SELECT => Résultat sous la forme d'un tableau associatif (IDictionnary)
+              Si INSERT, UPDATE ou DELETE => Nombre d'éléments impactés
+              Si une erreur survient, une exception est levée
 	#>
     [PSCustomObject] execute([string]$query)
     {
 
-        $this.processStartInfo.Arguments = ('--defaults-extra-file={0} --port={1} --database={2} --execute "{3}"' -f `
-                                            $this.credFile.FullName, $this.port, $this.db, $query)
-        $MySQLProcess = [System.Diagnostics.Process]::Start($this.processStartInfo)
-
-        if($MySQLProcess.ExitCode -gt 0)
-        {
-            return $false
-        }
-
-        $result = $null
-
         # Si on a demandé à récupérer des données, 
         if($query -like "SELECT*" )
         {
+            # Exécution de la requête
+            $queryResult = Invoke-SQLQuery -Query $query -ConnectionName $this.connectionName -AsDataTable
 
-            $result = $MySQLProcess.StandardOutput.ReadToEnd() | ConvertFrom-Csv -Delimiter "`t"
-
-            # Transformation du résultat en tableau s'il n'y a qu'un seul enregistrement renvoyé. Ceci permettra de gérer le retour
-            # de cette fonction d'une manière uniforme sans avoir à contrôler si c'est un tableau ou pas.
-
-            # NOTE: Lors du parcours des enregistrements présents dans le tableau, il faudra accéder les champs via $record.<nomDuChamp> et pas
-            # via $record[<nomDuChamp>]
-            if($result -isnot [Array])
-            {
-                $result = @($result)
+            $result = @()
+            # On met en forme dans un tableau
+            $queryResult.rows | ForEach-Object {
+                $row = @{}
+                For($i=0 ; $i -lt $queryResult.columns.count; $i++)
+                {
+#                    $row[$queryResult.columns[$i].ToString()] = $_[$i]
+                    $row.add($queryResult.columns[$i].columnName, $_[$i])
+                }
+                $result += $row
             }
+
+        }
+        else # C'est une requête de modification 
+        {
+            $result = Invoke-SQLUpdate -Query $query -ConnectionName $this.connectionName
         }
 
         return $result
