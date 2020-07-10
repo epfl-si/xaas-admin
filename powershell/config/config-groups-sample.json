@@ -1,0 +1,7 @@
+{
+    "api":
+    {
+        "appName": "",  // Nom de l'application
+        "callerSciper": "" // Sciper de la personne pour laquelle on exécutera les commandes
+    }
+}
