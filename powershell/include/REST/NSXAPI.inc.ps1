@@ -1,5 +1,5 @@
 <#
-   BUT : Contient les fonctions donnant accès à l'API vRA
+   BUT : Contient les fonctions donnant accès à l'API NSX
 
    Documentation: 
     - API: https://code.vmware.com/apis/222/nsx-t
