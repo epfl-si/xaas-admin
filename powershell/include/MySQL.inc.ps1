@@ -1,5 +1,9 @@
 <#
-   BUT : Classe permettant de faire des requêtes dans une DB MySQL. 
+   BUT : Classe permettant de faire des requêtes dans une DB MySQL. Beaucoup de choses déjà existantes
+         trouvées sur le NET pour faire ceci, y compris le connecteur .NET fournis par MySQL
+         (https://dev.mysql.com/downloads/connector/net/8.0.html) ne fonctionnent pas si le serveur ne fait pas de SSL.
+         Le seul qui fonctionne, c'est le module SimplySQL !
+
 
    AUTEUR : Lucien Chaboudez
    DATE   : Mai 2018
