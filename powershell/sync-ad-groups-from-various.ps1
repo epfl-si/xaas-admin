@@ -263,7 +263,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 	$request = "DELETE FROM vraUsers WHERE role='{0}' AND {1}" -f $role, ($criteriaConditions -join " AND ")
 	#$mysql.execute($request)
 
-	Invoke-SQLQuery -Query $request
+	$nbDeleted = Invoke-SQLUpdate -Query $request
 
 	$baseRequest = "INSERT INTO vraUsers VALUES"
 	$rows = @()
@@ -279,7 +279,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 			# On créé la requête et on l'exécute
 			$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
 			#$mysql.execute($request)
-			Invoke-SQLQuery -Query $request
+			$nInserted = Invoke-SQLUpdate -Query $request
 			$rows = @()
 		}
 		
@@ -290,7 +290,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 	{
 		$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
 		#$mysql.execute($request)
-		Invoke-SQLQuery -Query $request
+		$nInserted = Invoke-SQLUpdate -Query $request
 	}
 
 	
