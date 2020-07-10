@@ -41,11 +41,13 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "Groups.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configGrants = [ConfigReader]::New("config-grants.json")
+$configGroups = [ConfigReader]::New("config-groups.json")
 
 <#
 -------------------------------------------------------------------------------------
@@ -258,6 +260,9 @@ try
 
 	# Objet pour pouvoir envoyer des mails de notification
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
+
+	# Pour s'interfacer avec l'application Groups
+	$groupsApp = [GroupsAPI]::new('websrv.epfl.ch', $configGroups.getConfigValue("api", "appName"), $configGroups.getConfigValue("api", "callerSciper"))
 	
 	Import-Module ActiveDirectory
 
