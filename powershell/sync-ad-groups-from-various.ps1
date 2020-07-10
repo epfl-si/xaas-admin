@@ -354,7 +354,7 @@ try
 	# 						$configVra.getConfigValue($targetEnv, "db", "port"))
 
 	Import-Module ActiveDirectory
-	Import-Module SimplyMySQL
+	Import-Module SimplySQL
 
 	open-mysqlconnection -server $configVra.getConfigValue($targetEnv, "db", "host") `
 							 -database $configVra.getConfigValue($targetEnv, "db", "dbName") `
