@@ -259,7 +259,7 @@ class GroupsAPI: RESTAPICurl
         $uri = "{0}&name={1}&owner={2}&description={3}&url={4}&{5}" -f $this.getBaseURI('addGroup'), `
                                                                     $name, `
                                                                     $this.callerSciper, `
-                                                                    [System.Net.WebUtility]::HtmlEncode($description), `
+                                                                    [System.Net.WebUtility]::UrlEncode($description), `
                                                                     $url, `
                                                                     (($defaultOptions.getEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join "&")
 

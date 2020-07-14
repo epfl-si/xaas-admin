@@ -158,7 +158,7 @@ function handleNotifications
 				{
 					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
 
-					$mailSubject = "Error - Active Directory groups missing"
+					$mailSubject = "Info - Active Directory groups missing"
 
 					$templateName = "ad-groups-missing-for-groups-creation-rsrch"
 				}
@@ -235,9 +235,14 @@ function createGroupsGroupIfNotExists([GroupsAPI]$groupsApp, [string]$name, [str
 	if($null -eq $group)
 	{
 		
+		$counters.inc('groupsGroupsCreated')
+
 		# Ajout du groupe
 		$logHistory.addLineAndDisplay(("---> Group '{0}' doesn't exists, creating it" -f $name))
-		$group = $groupsApp.addGroup($name, $desc, "")
+		$options = @{
+			maillist = 'n'
+		}
+		$group = $groupsApp.addGroup($name, $desc, "", $options)
 
 		# Ajout des membres
 		$logHistory.addLineAndDisplay(("---> Adding {0} members..." -f $memberSciperList.count))
@@ -343,6 +348,7 @@ try
 	$counters.add('ADGroupsMembersAdded', '# AD Group members added')
 	$counters.add('ADGroupsMembersRemoved', '# AD Group members removed')
 	$counters.add('ADMembersNotFound', '# AD members not found')
+	$counters.add('groupsGroupsCreated', '# Groups groups created')
 
 	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -850,7 +856,7 @@ try
 				}
 
 				# --------------------------------- APPROVE
-				$allGroupsOK = $true
+				$allApproveGroupsOK = $true
 				# Génération des noms des X groupes dont on va avoir besoin pour approuver les NOUVELLES demandes pour le service. 
 				$level = 0
 				while($true)
@@ -875,36 +881,28 @@ try
 						$approveGroupNameGroups = $nameGenerator.getApproveGroupsGroupName($level, $false).name
 						$approveGroupDescGroups = $nameGenerator.getApproveGroupsGroupDesc($level)
 
-						$logHistory.addLineAndDisplay(("--> Creating group '{0}' in Groups if doesn't exists..." -f $approveGroupNameGroups))
+						$logHistory.addLineAndDisplay(("--> Creating approval group '{0}' level {1} in Groups if doesn't exists..." -f $approveGroupNameGroups, $level))
 						# Création du groupe dans Groups s'il n'existe pas
 						$approveGroupGroups = createGroupsGroupIfNotExists -groupsApp $groupsApp -name $approveGroupNameGroups -desc $approveGroupDescGroups `
-																			-ownerSciper $projectAdminSciper -memberSciperList @($projectAdminSciper) `
-																			-adminSciperList @($projectAdminSciper)
+																			-memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper)
 					}
 					
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroupsAD `
 						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
 					{
-						$notificationKey = "Groupe: {0} (SCIPER admin groupe: {1})" -f $approveGroupNameGroupsAD, $projectAdminSciper
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
-						if($notifications['missingRSRCHADGroups'] -notcontains $notificationKey)
+						if($notifications['missingRSRCHADGroups'] -notcontains $approveGroupNameGroupsAD)
 						{
-							
-							$notifications['missingRSRCHADGroups'] += $notificationKey
+							$notifications['missingRSRCHADGroups'] += $approveGroupNameGroupsAD
 						}
 							
-						$allGroupsOK = $false
+						$allApproveGroupsOK = $false
 					}
 	
 				} # FIN BOUCLE de création des groupes pour les différents level d'approbation 
 				
-				# Si on n'a pas pu créer tous les groupes, on passe au service suivant 
-				if($allGroupsOK -eq $false)
-				{
-					$counters.inc('rsrch.projectSkipped')
-					continue
-				}
+				
 	
 				# # --------------------------------- ROLES
 	
@@ -915,17 +913,20 @@ try
 				$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
 				$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
 	
+				$roleAdmSupGroupOK = $true
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
 					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					$notifications['missingRSRCHADGroups'] += $admSupGroupNameGroups
-					continue
+					$roleAdmSupGroupOK = $false
 				}
-				# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-				$doneADGroupList += $admSupGroupNameAD
-	
+				else
+				{
+					# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+					$doneADGroupList += $admSupGroupNameAD
+				}
 	
 	
 				# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
@@ -935,16 +936,39 @@ try
 				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
 				$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
 	
+				# Récupération des infos du groupe dans Groups
+				$admSupGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
+				$admSupGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
+				
+				$logHistory.addLineAndDisplay(("--> Creating request group '{0}' in Groups if doesn't exists..." -f $admSupGroupNameGroups))
+				# Création du groupe dans Groups s'il n'existe pas
+				$requestGroupGroups = createGroupsGroupIfNotExists -groupsApp $groupsApp -name $admSupGroupNameGroups -desc $admSupGroupDescGroups `
+																	 -memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper)
+
+				$roleSharedGroupOk = $true
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroups `
 					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					$notifications['missingRSRCHADGroups'] += $userSharedGroupNameGroups
-					continue
+					$roleSharedGroupOk = $false
 				}
-				# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-				$doneADGroupList += $userSharedGroupNameAD
+				else
+				{
+					# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+					$doneADGroupList += $userSharedGroupNameAD
+				}
+
+
+				# Si on n'a pas pu créer tous les groupes, on passe au service suivant 
+				if(($allApproveGroupsOK -eq $false) -or ($roleAdmSupGroupOK -eq $false) -or ($roleSharedGroupOk -eq $false))
+				{
+					$counters.inc('rsrch.projectSkipped')
+				}
+
+				Write-Warning "Breaking loop for test purpose"
+				break
 	
 			}# FIN BOUCLE de parcours des services renvoyés
 		}
