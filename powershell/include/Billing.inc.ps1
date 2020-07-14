@@ -306,7 +306,7 @@ class Billing
         {
             $request = "UPDATE BillingItem SET itemBillReference='{0}' WHERE parentEntityId='{1}' AND itemType='{2}' AND itemBillReference IS NULL " -f $billReference, $entityId, $itemType
 
-            $this.mysql.execute($request)
+            $nbUpdated = $this.mysql.execute($request)
         }   
     }
 
@@ -320,7 +320,7 @@ class Billing
     [void] cancelBill([string]$billReference)
     {
         $request = "UPDATE BillingItem SET itemBillReference=NULL WHERE itemBillReference='{0}'" -f $billReference
-        $this.mysql.execute($request)
+        $nbUpdated = $this.mysql.execute($request)
     }
 
 

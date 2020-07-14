@@ -255,13 +255,11 @@ try
 
     }
     
-
     # Pour accéder à la base de données
     $mysql = [MySQL]::new($configVra.getConfigValue($targetEnv, "db", "host"), `
                           $configVra.getConfigValue($targetEnv, "db", "dbName"), `
                           $configVra.getConfigValue($targetEnv, "db", "user"), `
                           $configVra.getConfigValue($targetEnv, "db", "password"), `
-                          $global:BINARY_FOLDER, `
                           $configVra.getConfigValue($targetEnv, "db", "port"))
 
     $ldap = [EPFLLDAP]::new()
@@ -652,6 +650,8 @@ try
 
     # Résumé des actions entreprises
     $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
+
+    $mysql.disconnect()
 
 }
 catch

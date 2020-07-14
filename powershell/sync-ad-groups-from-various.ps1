@@ -261,7 +261,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 
 	# On commence par supprimer tous les utilisateurs du role donné pour le BG
 	$request = "DELETE FROM vraUsers WHERE role='{0}' AND {1}" -f $role, ($criteriaConditions -join " AND ")
-	$mysql.execute($request)
+	$nbDeleted = $mysql.execute($request)
 
 	$baseRequest = "INSERT INTO vraUsers VALUES"
 	$rows = @()
@@ -276,7 +276,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 		{
 			# On créé la requête et on l'exécute
 			$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
-			$mysql.execute($request)
+			$nbInserted = $mysql.execute($request)
 			$rows = @()
 		}
 		
@@ -286,7 +286,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 	if($rows.Count -gt 0)
 	{
 		$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
-		$mysql.execute($request)
+		$nbInserted = $mysql.execute($request)
 	}
 
 	
@@ -346,7 +346,6 @@ try
 							$configVra.getConfigValue($targetEnv, "db", "dbName"), `
 							$configVra.getConfigValue($targetEnv, "db", "user"), `
 							$configVra.getConfigValue($targetEnv, "db", "password"), `
-							$global:BINARY_FOLDER, `
 							$configVra.getConfigValue($targetEnv, "db", "port"))
 
 	Import-Module ActiveDirectory
@@ -934,6 +933,8 @@ try
 
 	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
 
+	# Fermeture de la connexion MySQL
+	$mysql.disconnect()
 
 }
 catch # Dans le cas d'une erreur dans le script
