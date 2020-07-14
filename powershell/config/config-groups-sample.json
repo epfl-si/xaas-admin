@@ -1,7 +1,23 @@
 {
-    "api":
+    "dev":
     {
-        "appName": "",  // Nom de l'application
-        "callerSciper": "" // Sciper de la personne pour laquelle on exécutera les commandes
+        "server": "",
+        "appName": "",  // Nom de l'application cliente (nom du "compte" pour accéder)
+        "callerSciper": "", // Sciper de la personne pour laquelle on exécutera les commandes
+        "password": "" 
+    },
+    "test":
+    {
+        "server": "",
+        "appName": "",  // Nom de l'application cliente (nom du "compte" pour accéder)
+        "callerSciper": "", // Sciper de la personne pour laquelle on exécutera les commandes
+        "password": "" 
+    },
+    "prod":
+    {
+        "server": "",
+        "appName": "",  // Nom de l'application cliente (nom du "compte" pour accéder)
+        "callerSciper": "", // Sciper de la personne pour laquelle on exécutera les commandes
+        "password": "" 
     }
 }

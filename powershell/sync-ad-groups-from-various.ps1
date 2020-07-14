@@ -259,10 +259,12 @@ try
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 
 	# Objet pour pouvoir envoyer des mails de notification
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue($targetEnv, "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
 	# Pour s'interfacer avec l'application Groups
-	$groupsApp = [GroupsAPI]::new('websrv.epfl.ch', $configGroups.getConfigValue("api", "appName"), $configGroups.getConfigValue("api", "callerSciper"))
+	$groupsApp = [GroupsAPI]::new($configGroups.getConfigValue($targetEnv, "server"),`
+								  $configGroups.getConfigValue($targetEnv, "appName"),`
+								   $configGroups.getConfigValue($targetEnv, "callerSciper"))
 	
 	Import-Module ActiveDirectory
 

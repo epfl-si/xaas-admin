@@ -17,6 +17,7 @@ class GroupsAPI: RESTAPICurl
 
     hidden [string] $appName
     hidden [string] $callerSciper
+    hidden [string] $password
 
     <#
 	-------------------------------------------------------------------------------------
@@ -24,15 +25,17 @@ class GroupsAPI: RESTAPICurl
 
 		IN  : $server			-> Nom DNS du serveur
 		IN  : $appName  	    -> Nom de l'application qui va appeler l'API
-		IN  : $callerSciper		-> No sciper de la personne pour laquelle on exécute la commande
+        IN  : $callerSciper		-> No sciper de la personne pour laquelle on exécute la commande
+        IN  : $password         -> Le mot de passe
 	#>
-	GroupsAPI([string] $server, [string] $appName, [string] $callerSciper) : base($server) # Ceci appelle le constructeur parent
+	GroupsAPI([string] $server, [string] $appName, [string] $callerSciper, [string]$password) : base($server) # Ceci appelle le constructeur parent
 	{
         $this.headers.Add('Accept', 'application/json')
         $this.headers.Add('Content-Type', 'application/json')
         
         $this.appName = $appName
         $this.callerSciper = $callerSciper
+        $this.password = $password
     }
 
 
@@ -47,7 +50,7 @@ class GroupsAPI: RESTAPICurl
     #>
     hidden [string] getBaseURI([string]$command)
     {
-        return ("https://{0}/rwsgroups/{1}?app={2}&caller={3}" -f $this.server, $command, $this.appName, $this.callerSciper)
+        return ("https://{0}/cgi-bin/rwsgroups/{1}?app={2}&caller={3}" -f $this.server, $command, $this.appName, $this.callerSciper)
     }
 
 
@@ -65,7 +68,11 @@ class GroupsAPI: RESTAPICurl
     hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
     {
 
-        $response = $this.callAPI($uri, $method, $body)
+        # Tous les appels à la fonction vont se faire avec $body=$null car l'intégralité des paramètres passe en GET.
+        # Il y a juste le mot de passe qui passe en --data donc on l'y ajoute tout simplement
+        $body = "password={0}" -f $this.password
+
+        $response = ([RESTAPICurl]$this).callAPI($uri, $method, $body)
 
         # Si une erreur a été renvoyée 
         if(objectPropertyExists -obj $response -propertyName 'error')
@@ -94,9 +101,21 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}" -f $this.getBaseURI('getGroup'), $id
 
-        $group = $this.callAPI($uri, "Get", $null)
+        try
+        {
+            $group = $this.callAPI($uri, "Get", $null)
+        }
+        catch
+        {
+            # Analyse du message d'erreur pour voir si le groupe n'est pas trouvé
+            if($_.Exception.Message -like ("*{0} doesn't exist*" -f $id))
+            {
+                return $null
+            }
+            # On continue la propagation de l'exception 
+            Throw
+        }
 
-        Throw "Handle if not found"
         return $group.result
     }
 
@@ -132,6 +151,12 @@ class GroupsAPI: RESTAPICurl
 
         $group = $this.callAPI($uri, "Get", $null)
 
+        # Si pas trouvé
+        if($group.result.count -eq 0)
+        {
+            return $null
+        }
+
         # Si le groupe existe
         if($null -ne $group)
         {
@@ -139,13 +164,15 @@ class GroupsAPI: RESTAPICurl
             $this.addInCache($group.result[0], $uri)
         }
 
+        
+
         # Si on veut tous les détails
         if($allDetails)
         {
             # On fait un autre appel pour avoir tous les détails. Car une recherche ne renvoie que peu de choses.
             return $this.getGroupById($group.result[0].id)
         }
-        Throw "Handle if not found"
+        
         return $group.result[0]
     }
 

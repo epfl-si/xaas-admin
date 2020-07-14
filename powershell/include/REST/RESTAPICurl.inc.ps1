@@ -29,7 +29,6 @@ class RESTAPICurl: RESTAPI
 	hidden [System.Diagnostics.Process]$curl
 	hidden [PSObject]$process
 	
-
     <#
 	-------------------------------------------------------------------------------------
 		BUT : Créer une instance de l'objet et ouvre une connexion au serveur
@@ -97,8 +96,10 @@ class RESTAPICurl: RESTAPI
 	{
 		$this.lastBody = $body
 		
+		$method = $method.ToUpper()
+
 		# Si la requête est de la lecture
-		if($method.ToLower() -eq "get")
+		if($method -eq "GET")
 		{
 			# Si on a l'info dans le cache, on la retourne
 			$cached = $this.getFromCache($uri)
@@ -112,7 +113,15 @@ class RESTAPICurl: RESTAPI
 		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
 		$this.incFuncCall($false)
 		
-		$args = "--insecure -s --request {0}" -f $method.ToUpper()
+		$args = "--insecure -s"
+
+		# Si on ne fait pas du GET (ce qui est le type de requête par défaut pour Curl)
+		if($method -ne "GET")
+		{
+			# On spécifie ce que l'on fait
+			$args = "{0} --request {1}" -f $args, $method
+		}
+		
 
 		$tmpFile = $null
 
@@ -120,7 +129,16 @@ class RESTAPICurl: RESTAPI
 		{
 			# Génération d'un nom de fichier temporaire et ajout du JSON dans celui-ci
 			$tmpFile = (New-TemporaryFile).FullName
-			(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:default
+
+			# Si on a passé une simple chaine de caractères, on la prend tel quel
+			if($body.GetType().Name -eq "String")
+			{
+				$body | Out-File -FilePath $tmpFile -Encoding:default
+			}
+			else # On a passé un objet, on le converti en JSON
+			{
+				(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:default
+			}
 
 			$args += ' --data "@{0}"' -f $tmpFile
 		}
