@@ -155,7 +155,7 @@ class RESTAPICurl: RESTAPI
 				}
 				
 				# Si rien reçu ou code d'erreur
-				if(($null -eq $result) -or ($null -ne $result.error_code))
+				if($null -ne $result.error_code)
 				{
 					# Si on a fait le max de tentative, on peut lever une erreur
 					if($currentAttemptNo -eq $nbCurlAttempts)
