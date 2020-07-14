@@ -113,7 +113,7 @@ class GroupsAPI: RESTAPICurl
 
         try
         {
-            $group = $this.callAPI($uri, "Get", $null)
+            $group = $this.callAPI($uri, "POST", $null)
         }
         catch
         {
@@ -159,7 +159,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&name={1}" -f $this.getBaseURI('searchGroups'), $name
 
-        $group = $this.callAPI($uri, "Get", $null)
+        $group = $this.callAPI($uri, "POST", $null)
 
         # Si pas trouvé
         if($group.result.count -eq 0)
@@ -263,7 +263,7 @@ class GroupsAPI: RESTAPICurl
                                                                     $url, `
                                                                     (($defaultOptions.getEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join "&")
 
-        $dummy = $this.callAPI($uri, "Get", $null)
+        $dummy = $this.callAPI($uri, "POST", $null)
 
         return $this.getGroupByName($name)
     }
@@ -279,7 +279,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}" -f $this.getBaseURI('deleteGroup'), $groupId
 
-        $group = $this.callAPI($uri, "Get", $null)
+        $group = $this.callAPI($uri, "POST", $null)
     }
 
 
@@ -294,7 +294,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}&newowner={2}" -f $this.getBaseURI('changeOwner'), $groupId, $ownerSciper
 
-        $group = $this.callAPI($uri, "Get", $null)
+        $group = $this.callAPI($uri, "POST", $null)
     }
 
 
@@ -313,7 +313,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}&admin={2}" -f $this.getBaseURI('addAdmin'), $groupId, $adminSciper
 
-        $group = $this.callAPI($uri, "Get", $null)
+        $group = $this.callAPI($uri, "POST", $null)
     }
 
 
@@ -344,7 +344,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}&admin={2}" -f $this.getBaseURI('removeAdmin'), $groupId, $adminSciper
 
-        $group = $this.callAPI($uri, "Get", $null)
+        $group = $this.callAPI($uri, "POST", $null)
     }
 
 
@@ -376,7 +376,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}" -f $this.getBaseURI('listAdmins'), $groupId
 
-        $result = $this.callAPI($uri, "Get", $null)
+        $result = $this.callAPI($uri, "POST", $null)
 
         return $result.result
     }
@@ -398,7 +398,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}&member={2}" -f $this.getBaseURI('addMember'), $groupId, $memberSciper
 
-        $group = $this.callAPI($uri, "Get", $null)
+        $group = $this.callAPI($uri, "POST", $null)
     }
     
     <#
@@ -427,7 +427,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}&member={2}" -f $this.getBaseURI('removeMember'), $groupId, $memberSciper
 
-        $group = $this.callAPI($uri, "Get", $null)
+        $group = $this.callAPI($uri, "POST", $null)
     }
 
 
@@ -459,7 +459,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}" -f $this.getBaseURI('listMembers'), $groupId
 
-        $result = $this.callAPI($uri, "Get", $null)
+        $result = $this.callAPI($uri, "POST", $null)
 
         return $result.result
     }

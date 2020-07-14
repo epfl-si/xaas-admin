@@ -113,15 +113,7 @@ class RESTAPICurl: RESTAPI
 		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
 		$this.incFuncCall($false)
 		
-		$args = "--insecure -s"
-
-		# Si on ne fait pas du GET (ce qui est le type de requête par défaut pour Curl)
-		if($method -ne "GET")
-		{
-			# On spécifie ce que l'on fait
-			$args = "{0} --request {1}" -f $args, $method
-		}
-		
+		$args = "--insecure -s --request {1}" -F $method
 
 		$tmpFile = $null
 
