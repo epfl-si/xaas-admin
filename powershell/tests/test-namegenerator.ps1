@@ -26,7 +26,7 @@ USAGES:
 $classTester = [ClassTester]::new()
 
 # ------------------------------------------
-Tests pour le tenant EPFL
+# Tests pour le tenant EPFL
 
 $nameGenerator = [NameGenerator]::new('test', 'epfl')
 

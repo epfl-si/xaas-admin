@@ -200,6 +200,20 @@
     },
 
     {
+        "name": "getApproveGroupsGroupDesc",
+        "tests": [
+             {
+                "params":[1],
+                "expected": "vRA test approval group (level 1)"
+            },
+            {
+                "params":[2],
+                "expected": "vRA test approval group (level 2) for Faculty ENT-R"
+            }
+        ]
+    },
+
+    {
         "name": "getApproveGroupsEmail",
         "tests":[
             {

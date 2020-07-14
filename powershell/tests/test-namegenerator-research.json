@@ -195,6 +195,20 @@
     },
 
     {
+        "name": "getApproveGroupsGroupDesc",
+        "tests": [
+             {
+                "params":[1],
+                "expected": "vRA test approval group (level 1)"
+            },
+            {
+                "params":[2],
+                "expected": "vRA test approval group (level 2) for Project 123456"
+            }
+        ]
+    },
+
+    {
         "name": "getApproveGroupsEmail",
         "tests":[
             {
@@ -336,7 +350,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "123456-t-"
+                "expected": "123456tvm"
             }
         ]
     },

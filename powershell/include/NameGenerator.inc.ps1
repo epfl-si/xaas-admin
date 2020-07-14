@@ -729,7 +729,7 @@ class NameGenerator
                 # Le premier niveau d'approbation est générique à toutes les facultés donc pas de description "précise" pour celui-ci
                 if($level -gt 1)
                 {
-                    $desc = "{0} for Project: {1}" -f $desc, $this.getDetail('projectId')
+                    $desc = "{0} for Project {1}" -f $desc, $this.getDetail('projectId')
                 }
             }
 
