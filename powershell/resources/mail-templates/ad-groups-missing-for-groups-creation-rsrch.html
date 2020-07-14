@@ -1,6 +1,7 @@
-Les groupes Active Directory suivants sont manquants pour l'environnement <b>{{targetEnv}}</b> et le Tenant <b>{{targetTenant}}</b>. 
+Des groupes ont été créés automatiquement dans l'application https://groups.epfl.ch pour  l'environnement <b>{{targetEnv}}</b> et le Tenant <b>{{targetTenant}}</b>. 
+<br>Leur pendant dans Active Directory (listé ci-dessous) n'ont pas encore eu le temps d'être synchronisés depuis l'application Groups.
 <br>Leur absence empêche la création d'autres groupes AD ainsi que des Business Groups qui les utilisent. 
-<br>Veuillez les créer à la main en utilisant les informations ci-dessous.
+<br>Les autres groupes AD et les Business Groups qui les utilisent seront créés lors de la prochaine exécution du script.
 <br>
 <ul>
     <li>{{groupList}}</li>
