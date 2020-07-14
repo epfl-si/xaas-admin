@@ -117,6 +117,20 @@
     },
 
     {
+        "name": "getRoleGroupsGroupDesc",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "Administrators for Tenant EPFL on Environment TEST"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "Support for Faculty ENT-R on Tenant EPFL on Environment TEST"
+            }
+        ]
+    },
+
+    {
         "name": "getRoleGroupsGroupName",
         "tests": [
             {

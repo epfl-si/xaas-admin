@@ -117,6 +117,29 @@
             }
         ]
     },
+
+    {
+        "name": "getRoleGroupsGroupDesc",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "Administrators/Support for Tenant ITSERVICES on Environment TEST"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "To do requests for 'Virtualization Service' service"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "To do requests for 'Virtualization Service' service"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "Administrators/Support for Tenant ITSERVICES on Environment TEST"
+            }
+        ]
+    },
+
     {
         "name": "getRoleGroupsADGroupName",
         "tests": [

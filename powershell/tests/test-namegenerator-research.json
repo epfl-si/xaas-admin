@@ -117,6 +117,29 @@
             }
         ]
     },
+
+    {
+        "name": "getRoleGroupsGroupDesc",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "To do requests for project 123456"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "To do requests for project 123456"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
+            }
+        ]
+    },
+
     {
         "name": "getRoleGroupsADGroupName",
         "tests": [

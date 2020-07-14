@@ -407,10 +407,20 @@ class NameGenerator
                 {
                     # vra_<envShort>_<serviceShort>
                     $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('serviceShortName'))
-                    # <snowServiceId>;<serviceName>
-                    # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
-                    # réutilisé pour d'autres choses dans la création des éléments dans vRA
-                    $groupDesc = "{0};{1}" -f $this.getDetail('snowServiceId').ToUpper(), $this.getDetail('serviceName')
+
+                    # Groupe AD
+                    if($type -eq $this.GROUP_TYPE_AD)
+                    {
+                        # <snowServiceId>;<serviceName>
+                        # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
+                        # réutilisé pour d'autres choses dans la création des éléments dans vRA
+                        $groupDesc = "{0};{1}" -f $this.getDetail('snowServiceId').ToUpper(), $this.getDetail('serviceName')
+                    }
+                    # Groupe "groups"
+                    else
+                    {
+                        $groupDesc = "To do requests for '{0}' service" -f $this.getDetail('serviceName')
+                    }
 
                 }
                 # Autre EPFL
@@ -438,10 +448,21 @@ class NameGenerator
                 {
                     # vra_<envShort>_<projectId>
                     $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('projectId'))
-                    # <projectAcronym>;<financeCenter>
-                    # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
-                    # réutilisé pour d'autres choses dans la création des éléments dans vRA
-                    $groupDesc = "{0};{1}" -f $this.getDetail('projectAcronym'), $this.getDetail('financeCenter')
+
+                    # Groupe AD
+                    if($type -eq $this.GROUP_TYPE_AD)
+                    {
+                        # <projectAcronym>;<financeCenter>
+                        # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
+                        # réutilisé pour d'autres choses dans la création des éléments dans vRA
+                        $groupDesc = "{0};{1}" -f $this.getDetail('projectAcronym'), $this.getDetail('financeCenter')
+                    }
+                    # Groupe "groups"
+                    else
+                    {
+                        $groupDesc = "To do requests for project {0}" -f $this.getDetail('projectId')
+                    }
+                    
 
                 }
                 # Autre EPFL
@@ -518,6 +539,23 @@ class NameGenerator
     {
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false)
         return $groupName
+    }
+
+
+    <# 
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la description du groupe "GROUPS" pour les paramètres passés 
+
+        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
+                                    "CSP_SUBTENANT_MANAGER"
+							        "CSP_SUPPORT"
+							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
+                                    "CSP_CONSUMER"
+    #>
+    [string] getRoleGroupsGroupDesc([string]$role)
+    {
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false)
+        return $groupDesc
     }
 
 
