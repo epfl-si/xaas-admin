@@ -693,6 +693,55 @@ class NameGenerator
         return $this.getApproveGroupName($level, $this.GROUP_TYPE_GROUPS, $fqdn)
     }
 
+<#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la description du groupe Groups utilisé pour les approbations des demandes
+              pour le tenant.
+
+        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
+       
+        RET : Description du groupe
+    #>
+    [string] getApproveGroupsGroupDesc([int]$level)
+    {
+        $desc = "vRA {0} approval group (level {1})" -f $this.env, $level
+
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL
+            {
+                # Le premier niveau d'approbation est générique à toutes les facultés donc pas de description "précise" pour celui-ci
+                if($level -gt 1)
+                {
+                    $desc = "{0} for Faculty {1}" -f $desc, $this.getDetail('facultyName').ToUpper()
+                }
+            }
+
+            $global:VRA_TENANT__ITSERVICES
+            {
+                # NOTE: 15.02.2019 - On n'utilise plue le nom du service dans la description du groupe car c'est maintenant un seul groupe d'approbation
+                # pour tous les services 
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # Le premier niveau d'approbation est générique à toutes les facultés donc pas de description "précise" pour celui-ci
+                if($level -gt 1)
+                {
+                    $desc = "{0} for Project: {1}" -f $desc, $this.getDetail('projectId')
+                }
+            }
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+
+        return $desc
+    }
 
     <#
         -------------------------------------------------------------------------------------
