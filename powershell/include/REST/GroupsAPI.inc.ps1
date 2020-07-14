@@ -84,6 +84,16 @@ class GroupsAPI: RESTAPICurl
     }
 
 
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie le sciper qui est utilisé pour faire les appels à l'API
+    #>
+    [string] getCallerSciper()
+    {
+        return $this.callerSciper
+    }
+
+
     <# --------------------------------------------------------------------------------------
                                         GROUPES
     -------------------------------------------------------------------------------------- #>
@@ -179,25 +189,27 @@ class GroupsAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Ajoute un groupe
+        BUT : Ajoute un groupe. Par défaut, on met comme owner ce qui est configuré pour faire
+                les requêtes dans Groups. Il faudra ensuite utiliser la fonction changeOwner pour
+                mettre le bon owner.
 
         IN  : $name             -> Nom du groupe 
-        IN  : $ownerSciper      -> No sciper du owner du groupe
         IN  : $description      -> Description du groupe
         IN  : $url              -> URL associée au groupe
 
         RET : Le groupe ajouté 
     #>
-    [PSObject] addGroup([string]$name, [string]$ownerSciper, [string]$description, [string]$url)
+    [PSObject] addGroup([string]$name, [string]$description, [string]$url)
     {
-        return $this.addGroup($name, $ownerSciper, $description, $url, @{})
+        return $this.addGroup($name, $description, $url, @{})
     }
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Ajoute un groupe
+        BUT : Ajoute un groupe. Par défaut, on met comme owner ce qui est configuré pour faire
+                les requêtes dans Groups. Il faudra ensuite utiliser la fonction changeOwner pour
+                mettre le bon owner.
 
         IN  : $name             -> Nom du groupe 
-        IN  : $ownerSciper      -> No sciper du owner du groupe
         IN  : $description      -> Description du groupe
         IN  : $url              -> URL associée au groupe
         IN  : $optionsOverride  -> Tableau associatif avec les options que l'on veut surcharger par 
@@ -205,10 +217,10 @@ class GroupsAPI: RESTAPICurl
 
         RET : Le groupe ajouté 
     #>
-    [PSObject] addGroup([string]$name, [string]$ownerSciper, [string]$description, [string]$url, [Hashtable]$optionsOverride)
+    [PSObject] addGroup([string]$name, [string]$description, [string]$url, [Hashtable]$optionsOverride)
     {
         # Options par défaut pour la création d'un groupe
-        $defaultOptions = {
+        $defaultOptions = @{
             
             # 'o' = Tout le monde peut voir la liste des membres
             # 'f' = Seul l'admin peut voir la liste des membres
@@ -246,7 +258,7 @@ class GroupsAPI: RESTAPICurl
 
         $uri = "{0}&name={1}&owner={2}&description={3}&url={4}&{5}" -f $this.getBaseURI('addGroup'), `
                                                                     $name, `
-                                                                    $ownerSciper, `
+                                                                    $this.callerSciper, `
                                                                     [System.Net.WebUtility]::HtmlEncode($description), `
                                                                     $url, `
                                                                     (($defaultOptions.getEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join "&")
@@ -271,6 +283,19 @@ class GroupsAPI: RESTAPICurl
     }
 
 
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Change le owner d'un groupe
+
+        IN  : $groupId          -> ID du groupe 
+        IN  : $ownerSciper      -> Sciper du nouveau owner
+    #>
+    [void] changeOwner([string]$groupId, [string]$ownerSciper)
+    {
+        $uri = "{0}&id={1}&newowner={2}" -f $this.getBaseURI('changeOwner'), $groupId, $ownerSciper
+
+        $group = $this.callAPI($uri, "Get", $null)
+    }
 
 
     <# --------------------------------------------------------------------------------------
@@ -303,7 +328,7 @@ class GroupsAPI: RESTAPICurl
     {
         ForEach($adminSciper in $adminSciperList)
         {
-            $this.addAmin($groupId, $adminSciper)
+            $this.addAdmin($groupId, $adminSciper)
         }
     }
 

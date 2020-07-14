@@ -41,7 +41,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "Groups.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "GroupsAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configVra = [ConfigReader]::New("config-vra.json")
@@ -214,6 +214,54 @@ function removeInexistingADAccounts
 }
 
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Créé un groupe dans Groups (s'il n'existe pas)
+
+	IN  : $groupsApp			-> Objet permettant d'accéder à l'API des groups
+	IN  : $name					-> Nom du groupe
+	IN  : $desc					-> Description du groupe
+	IN  : $memberSciperList		-> Tableau avec la liste des scipers des membres du groupe
+	IN  : $adminSciperList		-> Tableau avec la liste des scipers des admins du groupe
+
+	RET : Le groupe
+#>
+function createGroupsGroupIfNotExists([GroupsAPI]$groupsApp, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList)
+{
+	# Recherche du groupe pour voir s'il existe
+	$group = $groupsApp.getGroupByName($name, $true)
+
+	# Si le groupe n'existe pas, 
+	if($null -eq $group)
+	{
+		
+		# Ajout du groupe
+		$logHistory.addLineAndDisplay(("---> Group '{0}' doesn't exists, creating it" -f $name))
+		$group = $groupsApp.addGroup($name, $desc, "")
+
+		# Ajout des membres
+		$logHistory.addLineAndDisplay(("---> Adding {0} members..." -f $memberSciperList.count))
+		$groupsApp.addMembers($group.id, $memberSciperList)
+
+		# Ajout des admins
+		$logHistory.addLineAndDisplay(("---> Adding {0} admins..." -f $adminSciperList.count))
+		$groupsApp.addAdmins($group.id, $adminSciperList)
+
+		# Suppression du membre ajouté par défaut (celui du "caller", ajouté automatiquement à la création)
+		$groupsApp.removeMember($group.id, $groupsApp.getCallerSciper())
+
+		# Récupération du groupe
+		$group = $groupsApp.getGroupById($group.id)
+	}
+	else # le groupe exists
+	{
+		$logHistory.addLineAndDisplay(("---> Group '{0}' already exists" -f $name))
+	}
+
+	return $group
+}
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -259,12 +307,13 @@ try
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 
 	# Objet pour pouvoir envoyer des mails de notification
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue($targetEnv, "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
 	# Pour s'interfacer avec l'application Groups
 	$groupsApp = [GroupsAPI]::new($configGroups.getConfigValue($targetEnv, "server"),`
 								  $configGroups.getConfigValue($targetEnv, "appName"),`
-								   $configGroups.getConfigValue($targetEnv, "callerSciper"))
+								   $configGroups.getConfigValue($targetEnv, "callerSciper"),`
+								   $configGroups.getConfigValue($targetEnv, "password"))
 	
 	Import-Module ActiveDirectory
 
@@ -817,13 +866,27 @@ try
 					}
 	
 					$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
-					$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
+					$approveGroupNameGroupsAD = $nameGenerator.getApproveGroupsADGroupName($level, $false)
+
+					# Si on est au moins au 2e niveau d'approbation
+					if($level -gt 1)
+					{
+						# Récupération des infos du groupe dans Groups
+						$approveGroupNameGroups = $nameGenerator.getApproveGroupsGroupName($level, $false).name
+						$approveGroupDescGroups = $nameGenerator.getApproveGroupsGroupDesc($level)
+
+						$logHistory.addLineAndDisplay(("--> Creating group '{0}' in Groups if doesn't exists..." -f $approveGroupNameGroups))
+						# Création du groupe dans Groups s'il n'existe pas
+						$approveGroupGroups = createGroupsGroupIfNotExists -groupsApp $groupsApp -name $approveGroupNameGroups -desc $approveGroupDescGroups `
+																			-ownerSciper $projectAdminSciper -memberSciperList @($projectAdminSciper) `
+																			-adminSciperList @($projectAdminSciper)
+					}
 					
 					# Création des groupes + gestion des groupes prérequis 
-					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroupsAD `
 						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
 					{
-						$notificationKey = "Groupe: {0} (SCIPER admin groupe: {1})" -f $approveGroupNameGroups, $projectAdminSciper
+						$notificationKey = "Groupe: {0} (SCIPER admin groupe: {1})" -f $approveGroupNameGroupsAD, $projectAdminSciper
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
 						if($notifications['missingRSRCHADGroups'] -notcontains $notificationKey)
 						{
