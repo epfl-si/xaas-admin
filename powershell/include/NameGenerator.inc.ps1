@@ -1615,6 +1615,7 @@ class NameGenerator
         RET : Pour tenant EPFL, tableau avec :
                 - Nom de la faculté
                 - Nom de l'unité
+                - No du centre financier
             
               Pour tenant ITServices, tableau avec :
                 - Nom long du service

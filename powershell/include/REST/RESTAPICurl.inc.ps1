@@ -156,13 +156,15 @@ class RESTAPICurl: RESTAPI
 				
 				$result = $output | ConvertFrom-Json
 	
+				# Si pas trouvé
 				if($result.httpStatus -eq "NOT_FOUND")
 				{
+					# On peut simplement sortir de la boucle
 					$result = $null
-					
+					break	
 				}
 				
-				# Si code d'erreur
+				# Si rien reçu ou code d'erreur
 				if($null -ne $result.error_code)
 				{
 					# Si on a fait le max de tentative, on peut lever une erreur

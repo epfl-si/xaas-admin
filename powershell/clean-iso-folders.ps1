@@ -150,10 +150,10 @@ try
 		# Si on n'a pas encore de connexion à vRA, là, ça serait bien d'en ouvrir une histoire pouvoir continuer.
 		if($null -eq $vra)
 		{
-			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "server"), 
+			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
 								$targetTenant, 
-								$configVra.getConfigValue($targetEnv, $targetTenant, "user"), 
-								$configVra.getConfigValue($targetEnv, $targetTenant, "password"))
+								$configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
+								$configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
 		}	
 
 		# Si on n'a pas encore de connexin à vCenter, c'est aussi maintenant qu'on va l'établir. Enfin, on pourrait faire ça plus tard dans le code mais vu qu'on vient

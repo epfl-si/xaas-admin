@@ -52,39 +52,24 @@ class BillingS3Bucket: Billing
     #>
     hidden [PSObject] getEntityType([PSObject]$bucketInfos)
     {
-        <# 
-            Du fait qu'on a un environnement de test qui est sur la production et que les données ne sont pas
-            "propres" par rapport à ce qu'on a défini en production car tout est affecté au tenant "test", même
-            si c'est de la "prod". La définition du type de l'entity va se faire de manière différente
-        #>
-        if($this.targetEnv -eq $global:TARGET_ENV__TEST)
+
+        # On va utiliser le champ "unitOrSvcID"
+        if($bucketInfos.unitOrSvcID -match $this.entityMatchUnit)
         {
-            # On va utiliser le champ "unitOrSvcID"
-            if($bucketInfos.unitOrSvcID -match $this.entityMatchUnit)
-            {
-                return [EntityType]::Unit
-            }
-            if($bucketInfos.unitOrSvcID -match $this.entityMatchSvc)
-            {
-                return [EntityType]::Service
-            }
-            # Si on arrive ici, c'est que ce n'est pas géré donc on renvoie $null
-            return $null
+            return [EntityType]::Unit
         }
-        else # Production
+        if($bucketInfos.unitOrSvcID -match $this.entityMatchSvc)
         {
-            switch($bucketInfos.targetTenant)
-            {
-                $global:VRA_TENANT__EPFL { return [EntityType]::Unit }
-                $global:VRA_TENANT__ITSERVICES { return [EntityType]::Service}
-            }
-            Throw ("Tenant '{0}' not handled" -f $bucketInfos.targetTenant)
+            return [EntityType]::Service
         }
+        # Si on arrive ici, c'est que ce n'est pas géré donc on renvoie $null
+        return $null
     }
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Renvoie la quantité utilisée pour un bucket pour un mois et une année donnés
+        BUT : Renvoie la quantité utilisée pour un bucket pour un mois et une année donnés. La quantité
+                est pondérée au nombre de jours pendant lesquels le bucket est utilisé dans le mois.
         
         IN  : $bucketName   -> nom du bucket 
         IN  : $month        -> Le no du mois pour lequel extraire les infos
@@ -100,7 +85,7 @@ class BillingS3Bucket: Billing
             # Ajout du 0 initial pour la requête de recherche 
             $monthStr = "0{0}" -f $monthStr
         }
-        $request = "SELECT AVG(storageUtilized)/1024/1024/1024/1024 AS 'usage' FROM BucketsUsage WHERE date like '{0}-{1}-%' AND bucketName='{2}'" -f $year, $monthStr, $bucketName
+        $request = "SELECT AVG(storageUtilized)/1024/1024/1024/1024 AS 'usage', COUNT(*) as 'nbDays' FROM BucketsUsage WHERE date like '{0}-{1}-%' AND bucketName='{2}'" -f $year, $monthStr, $bucketName
 
         $res = $this.mysql.execute($request)
 
@@ -109,7 +94,9 @@ class BillingS3Bucket: Billing
         {
             return 0
         }
-        return  $res[0].usage
+
+        # Calcul de la moyenne en fonction du nombre de jours utilisés durant le mois
+        return  $res[0].nbDays * $res[0].usage / [DateTime]::DaysInMonth($year, $month)
     }
 
     <#
@@ -125,8 +112,9 @@ class BillingS3Bucket: Billing
     [void] extractData([int]$month, [int]$year)
     {
         
-        # On commence par récupérer la totalité des Buckets qui existent
-        $request = "SELECT * FROM Buckets"
+        # On commence par récupérer la totalité des Buckets qui existent. Ceci est fait en interrogeant une table spéciale
+        # dans laquelle on a tous les buckets, y compris ceux qui ont été effacés
+        $request = "SELECT * FROM BucketsArchive"
         $bucketList = $this.mysql.execute($request)
 
         # Parcours de la liste des buckets

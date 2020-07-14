@@ -94,11 +94,35 @@ class ConfigReader
       # On regarde ensuite si le sous-élément demandé dans l'élément exist aussi.
       if(!($this.propertyExists($elementObj, $subElement)))
       {
-         Throw "ConfigReader: Sub element '{0}' for element '{1} and scope '{2}' doesn't exists in '{3}'" -f $subElement, $element, $scope, $this.JSONfile
+         Throw "ConfigReader: Asked value ({0} -> {1} -> {2}) doesn't exists in '{3}'  " -f $scope, $element, $subElement, $this.JSONfile
       }
 
       # Retour de ce qui est demandé
       return $elementObj.$subElement
+   }
+
+   <#
+	-------------------------------------------------------------------------------------
+      BUT : Renvoie une valeur de configuration pour un élément donné
+      
+      IN  : $scope         -> Scope dans lequel on travaille.
+                              peut être: Test, Dev, Prod, ...
+      IN  : $element       -> Nom de l'élément dans lequel se trouve le sous-élément dont on veut la valeur
+      IN  : $subElement    -> Nom du sous-élément dans lequel se trouve le sous-sous-élément dont on veut la valeur
+      IN  : $subSubElement -> Nom du sous-élément dont on veut la valeur
+	#>
+   [PSObject]getConfigValue([string]$scope, [string]$element, [string]$subElement, [string]$subSubElement)
+   {
+      $elementObj = $this.getConfigValue($scope, $element, $subElement);
+
+      # On regarde ensuite si le sous-élément demandé dans l'élément exist aussi.
+      if(!($this.propertyExists($elementObj, $subSubElement)))
+      {
+         Throw "ConfigReader: Asked value ({0} -> {1} -> {2} -> {3}) doesn't exists in '{4}'  " -f $scope, $element, $subElement, $subSubElement, $this.JSONfile
+      }
+
+      # Retour de ce qui est demandé
+      return $elementObj.$subSubElement
    }
 
 }

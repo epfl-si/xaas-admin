@@ -4,11 +4,11 @@
         "_comment": "Custom EPFL action",
         "actions": [
             {
-                "name": "Mount/Unmount CD-ROM (ISO)",
+                "name": "[VM] Mount/Unmount CD-ROM (ISO)",
                 "approvals": []
             },
             {
-                "name": "DNS alias request",
+                "name": "[VM] DNS alias request",
                 "approvals": [] 
             },
             {
@@ -20,7 +20,7 @@
                 "approvals": [] 
             },
             {
-                "name": "Request support (VM)",
+                "name": "[VM] Request support",
                 "approvals": []
             },
             {
