@@ -334,18 +334,24 @@ function createGroupsGroupIfNotExists([GroupsAPI]$groupsApp, [string]$name, [str
 		# Ajout du groupe
 		$logHistory.addLineAndDisplay(("---> Group '{0}' doesn't exists, creating it" -f $name))
 		$options = @{
-			maillist = 'n'
+			maillist = '0'
 		}
 		$group = $groupsApp.addGroup($name, $desc, "", $options)
 
 		# Ajout des membres
-		$logHistory.addLineAndDisplay(("---> Adding {0} members..." -f $memberSciperList.count))
-		$groupsApp.addMembers($group.id, $memberSciperList)
-
+		if($memberSciperList.count -gt 0)
+		{
+			$logHistory.addLineAndDisplay(("---> Adding {0} members..." -f $memberSciperList.count))
+			$groupsApp.addMembers($group.id, $memberSciperList)
+		}
+		
 		# Ajout des admins
-		$logHistory.addLineAndDisplay(("---> Adding {0} admins..." -f $adminSciperList.count))
-		$groupsApp.addAdmins($group.id, $adminSciperList)
-
+		if($adminSciperList.count -gt 0)
+		{
+			$logHistory.addLineAndDisplay(("---> Adding {0} admins..." -f $adminSciperList.count))
+			$groupsApp.addAdmins($group.id, $adminSciperList)
+		}
+		
 		# Suppression du membre ajouté par défaut (celui du "caller", ajouté automatiquement à la création)
 		$groupsApp.removeMember($group.id, $groupsApp.getCallerSciper())
 
@@ -967,7 +973,7 @@ try
 		# -------------------------------------------------------------------------------------------------------------------------------------
 		$global:VRA_TENANT__RESEARCH
 		{
-			$logHistory.addLineAndDisplay("Processing data for Research Tenant")
+			$logHistory.addLineAndDisplay("Retrieving projects list...")
 	
 			# Ajout du nécessaire pour gérer les notifications pour ce Tenant
 			$notifications.missingRSRCHADGroups = @()
@@ -981,7 +987,6 @@ try
 										$configGrants.getConfigValue($targetEnv, "dbName"), `
 										$configGrants.getConfigValue($targetEnv, "user"), `
 										$configGrants.getConfigValue($targetEnv, "password"), `
-										$global:BINARY_FOLDER, `
 										$configGrants.getConfigValue($targetEnv, "port"))
 
 			$projectList = $mysqlGrants.execute("SELECT * FROM v_gdb_iaas WHERE subsides_start_date <= DATE(NOW()) AND subsides_end_date > DATE(NOW())")
@@ -1003,7 +1008,7 @@ try
 				$projectNo += 1
 	
 				# On détermine le sciper de l'admin du projet
-				if($project.pi_sciper -ne 'NULL')
+				if($project.pi_sciper -ne [DBNull]::Value)
 				{
 					$projectAdminSciper = $project.pi_sciper
 				}

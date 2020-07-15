@@ -234,23 +234,23 @@ class GroupsAPI: RESTAPICurl
 
             # 'y' = groupe visible (nécessaire pour Tequila)
             # 'n' = groupe qu'on le voit pas mais il est là
-            visible = 'y'
+            visible = '1'
 
             # 'y' = mailing list <groupe>@groupes.epfl.ch
             # 'n' = pas de mailing list
-            maillist = 'y'
+            maillist = '1'
 
             # 'y' = mailing list visible
             # 'n' = mailing list invisible
-            visilist = 'n'
+            visilist = '0'
 
             # 'y' = le groupe peut être utilisé par quelqu'un d'autre pour être mis dans un autre groupe
             # 'n' = bah... contraire de 'y'
-            public = 'n'
+            public = '0'
 
             # 'y' = groupe visible dans LDAP
             # 'n' = groupe pas visible dans LDAP
-            ldap = 'y'
+            ldap = '1'
         }
 
         # On met à jour les options par défaut avec ce qu'il faut override
