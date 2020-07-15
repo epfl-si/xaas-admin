@@ -232,24 +232,24 @@ class GroupsAPI: RESTAPICurl
             # 'w' = Comme 'o' mais avec Warning envoyé par email aux admins/owner quand une opération est effectuée
             registration = 'f'
 
-            # 'y' = groupe visible (nécessaire pour Tequila)
-            # 'n' = groupe qu'on le voit pas mais il est là
+            # '1' = groupe visible (nécessaire pour Tequila)
+            # '0' = groupe qu'on le voit pas mais il est là
             visible = '1'
 
-            # 'y' = mailing list <groupe>@groupes.epfl.ch
-            # 'n' = pas de mailing list
+            # '1' = mailing list <groupe>@groupes.epfl.ch
+            # '0' = pas de mailing list
             maillist = '1'
 
-            # 'y' = mailing list visible
-            # 'n' = mailing list invisible
+            # '1' = mailing list visible
+            # '0' = mailing list invisible
             visilist = '0'
 
-            # 'y' = le groupe peut être utilisé par quelqu'un d'autre pour être mis dans un autre groupe
-            # 'n' = bah... contraire de 'y'
+            # '1' = le groupe peut être utilisé par quelqu'un d'autre pour être mis dans un autre groupe
+            # '0' = bah... contraire de 'y'
             public = '0'
 
-            # 'y' = groupe visible dans LDAP
-            # 'n' = groupe pas visible dans LDAP
+            # '1' = groupe visible dans LDAP
+            # '0' = groupe pas visible dans LDAP
             ldap = '1'
         }
 
