@@ -128,17 +128,16 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [PSObject]$bg, [string]$t
 		$vra.deleteBG($bg.id)
 
 
+		# --------------
+		# Préfixe de VM
 		# Seulement pour certains tenants et on doit obligatoirement le faire APRES avoir effacé le BG car sinon 
 		# y'a une monstre exception sur plein de lignes qui nous insulte et elle ferait presque peur.
-		$deleteForTenants = @($global:VRA_TENANT__ITSERVICES, $global:VRA_TENANT__RESEARCH)
+		$deleteForTenants = @($global:VRA_TENANT__RESEARCH)
 		if($deleteForTenants -contains $targetTenant)
 		{
 			# On initialise les détails depuis le nom du BG, cela nous permettra de récupérer
 			# le nom du préfix de machine.
 			$nameGenerator.initDetailsFromBGName($bg.name)
-
-			# --------------
-			# Préfixe de VM
 
 			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
@@ -151,9 +150,13 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [PSObject]$bg, [string]$t
 				$vra.deleteMachinePrefix($machinePrefix)
 			}
 
+		}# FIN S'il faut effacer le préfix de VM
 
-			# --------------
-			# Approval policies
+		# --------------
+		# Approval policies
+		$deleteForTenants = @($global:VRA_TENANT__ITSERVICES, $global:VRA_TENANT__RESEARCH)
+		if($deleteForTenants -contains $targetTenant)
+		{	
 			$approvalPoliciesTypesToDelete = @($global:APPROVE_POLICY_TYPE__ITEM_REQ,
 											   $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			ForEach($approvalPolicyType in $approvalPoliciesTypesToDelete)
@@ -171,7 +174,7 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [PSObject]$bg, [string]$t
 
 			}# FIN BOUCLE de parcours des Approval Policies à effacer
 
-		}
+		}# FIN S'il faut effacer les approval policies
 
 		# Incrémentation du compteur
 		$counters.inc('BGDeleted')
