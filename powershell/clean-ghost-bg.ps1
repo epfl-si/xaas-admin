@@ -62,16 +62,17 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 		  
 		  Si le BG contient des items, on va simplement le marquer comme "ghost" et changer les droits d'accès
 
-	IN  : $vra 		-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $bg		-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
-					   par un appel à une méthode de la classe vRAAPI
+	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $bg				-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
+					   			par un appel à une méthode de la classe vRAAPI
+	IN  : $targetTenant		-> Le tenant sur lequel on se trouve
+	IN  : $nameGenerator	-> Objet de la classe NameGenerator 
 
 	RET : $true si effacé
 		  $false si pas effacé (mis en ghost)
 #>
-function deleteBGAndComponentsIfPossible
+function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [PSObject]$bg, [string]$targetTenant, [NameGenerator]$nameGenerator)
 {
-	param([vRAAPI]$vra, [PSObject]$bg)
 
 	# Recherche des items potentiellement présents dans le BG
 	$bgItemList = $vra.getBGItemList($bg)
@@ -118,7 +119,7 @@ function deleteBGAndComponentsIfPossible
 			$vra.deleteEnt($bgEnt.id)
 		}
 
-
+		
 		$notifications['bgDeleted'] += $bg.name
 
 		# --------------
@@ -126,6 +127,29 @@ function deleteBGAndComponentsIfPossible
 		$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}'..." -f $bg.name))
 		$vra.deleteBG($bg.id)
 
+
+		# --------------
+		# Préfixe de VM
+		# Seulement pour certains tenants et on doit obligatoirement le faire APRES avoir effacé le BG car sinon 
+		# y'a une monstre exception sur plein de lignes qui nous insulte et elle ferait presque peur.
+		$deleteForTenants = @($global:VRA_TENANT__ITSERVICES, $global:VRA_TENANT__RESEARCH)
+		if($deleteForTenants -contains $targetTenant)
+		{
+			# On initialise les détails depuis le nom du BG, cela nous permettra de récupérer
+			# le nom du préfix de machine.
+			$nameGenerator.initDetailsFromBGName($bg.name)
+
+			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
+
+			$machinePrefix = $vra.getMachinePrefix($machinePrefixName)
+
+			# Si on a trouvé un ID de machine
+			if($null -ne $machinePrefix)
+			{
+				$logHistory.addLineAndDisplay(("--> Deleting Machine Prefix '{0}'..." -f $bg.name))
+				$vra.deleteMachinePrefix($machinePrefix.id)
+			}
+		}
 
 		# Incrémentation du compteur
 		$counters.inc('BGDeleted')
@@ -270,7 +294,7 @@ try
 			((getBGCustomPropValue -bg $_ -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS) -eq $global:VRA_BG_STATUS__GHOST))
 		{
 			$logHistory.addLineAndDisplay(("-> Business Group '{0}' is Ghost, deleting..." -f $_.name))
-			$deleted = deleteBGAndComponentsIfPossible -vra $vra -bg $_
+			$deleted = deleteBGAndComponentsIfPossible -vra $vra -bg $_ -targetTenant $targetTenant -nameGenerator $nameGenerator
 
 			# Si le BG a pu être complètement effacé, c'est qu'il n'y avait plus d'items dedans et que donc forcément aucune
 			# ISO ne pouvait être montée nulle part.

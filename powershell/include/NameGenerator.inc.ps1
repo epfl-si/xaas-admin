@@ -96,6 +96,11 @@ class NameGenerator
                                         serviceShortName    -> Nom court du service
                                         serviceName         -> Nom long du service
                                         snowServiceId       -> ID du service dans ServiceNow
+                                    
+                                    Research:
+                                        projectId       -> Id du projet
+                                        financeCenter   -> No du centre financier du projet
+                                        projectAcronym  -> Acronyme du projet
     #>
     [void] initDetails([System.Collections.IDictionary]$details)
     {
@@ -142,6 +147,69 @@ class NameGenerator
 
         $this.details = $details
     }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : initialise UNE PARTIE des détails depuis le nom du business group passé.
+                Ceci permet d'utiliser UNIQUEMENT un sous ensemble des fonctions définies
+                dans cette classe car d'autres détails manqueront. A la base, on peut initialiser
+                les détails depuis le nom du BG pour pouvoir utiliser la fonction getVMMachinePrefix 
+                mais peut-être que d'autres peuvent aussi fonctionner.
+
+        IN  : $bgName   -> Nom du BG
+    #>
+    [void] initDetailsFromBGName([string]$bgName)
+    {
+        $bgParts = $bgName.split("_")
+        $withDetails = @{}
+        switch($this.tenant)
+        {
+            # Tenant EPFL
+            $global:VRA_TENANT__EPFL 
+            { 
+                # le nom du BG est au format <tenantShort>_<faculty>_<unit>
+                $withDetails = @{
+                    financeCenter = ''
+                    facultyName = $bgParts[1]
+                    facultyID = ''
+                    unitName = $bgParts[2]
+                    unitID = '' 
+                }
+            }
+
+            # Tenant ITServices
+            $global:VRA_TENANT__ITSERVICES 
+            { 
+                # le nom du BG est au format <tenantShort>_<serviceShort>
+                $withDetails = @{
+                    serviceShortName = $bgParts[1]
+                    serviceName = ''
+                    snowServiceId = ''
+                }
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # le nom du BG est au format <tenantShort>_<projectId>
+                $withDetails = @{
+                    projectId = $bgParts[1]
+                    financeCenter = ''
+                    projectAcronym = ''
+                }
+            }
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+
+        $this.initDetails($withDetails)
+    }
+
 
     <#
         -------------------------------------------------------------------------------------
@@ -1295,6 +1363,8 @@ class NameGenerator
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
+    
+
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie le préfixe de machine à utiliser pour une faculté ou un service
@@ -1504,19 +1574,24 @@ class NameGenerator
         $name = ""
         switch($this.tenant)
         {
+            # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
+                # <tenantShort>_<faculty>_<unit>
                 $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
             }
 
+            # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES
             {
+                # <tenantShort>_<serviceShort>
                 $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('serviceShortName'))
             }
 
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
+                # <tenantShort>_<projectId>
                 $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('projectId'))
             }
 
