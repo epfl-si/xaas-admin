@@ -1500,7 +1500,7 @@ try
 		# Tableau pour les approbateurs des différents niveaux
 		$approverGroupAtDomainList = @()
 		$level = 0
-		# on fait une 
+		# on fait une boucle infine et on sortira quand on n'aura plus d'infos
 		While($true)
 		{
 			$level += 1
