@@ -113,7 +113,7 @@ class RESTAPICurl: RESTAPI
 		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
 		$this.incFuncCall($false)
 		
-		$args = "--insecure -s --request {0}" -F $method
+		$args = "--insecure -s --request {0}" -f $method
 
 		$tmpFile = $null
 
