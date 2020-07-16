@@ -67,6 +67,34 @@ class vRAAPI: RESTAPICurl
 
 	}
 
+	
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Surcharge la fonction qui fait l'appel à l'API pour simplement ajouter un
+				check des erreurs
+
+		IN  : $uri		-> URL à appeler
+		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
+		IN  : $body 	-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
+						 	Si $null, on ne passe rien.
+
+		RET : Retour de l'appel
+
+	#>	
+	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
+	{
+		$response = ([RESTAPICurl]$this).callAPI($uri, $method, $body)
+
+        # Si une erreur a été renvoyée 
+        if(objectPropertyExists -obj $response -propertyName 'errors')
+        {
+			Throw ("GroupsAPI error: {0}" -f $response.errors[0].systemMessage
+			)
+        }
+
+        return $response
+	}
+
 
 	<#
 		-------------------------------------------------------------------------------------
@@ -1304,7 +1332,12 @@ class vRAAPI: RESTAPICurl
 	#>
 	[void] deleteMachinePrefix([string] $id)
 	{
-		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/{1}" -f $this.server, $id
+		<# A savoir que l'URL utilisée ici ne correspond pas à la documentation Swagger de l'API car ... ça fait depuis
+			début 2019 que VMware ne l'a pas mise à jour... un bug était déjà présent dans la version 7.5 de l'API (ou de
+			sa documentation). Bref, c'est grâce à ce post d'un forum que la solution a été trouvée:
+			https://communities.vmware.com/thread/604831
+		#>
+		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/guid'{1}'" -f $this.server, $id
 
 		$dummy = $this.callAPI($uri, "DELETE", $null)
 	}
