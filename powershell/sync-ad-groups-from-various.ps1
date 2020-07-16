@@ -320,7 +320,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 
 	RET : Le groupe
 #>
-function createGroupsGroupIfNotExists([GroupsAPI]$groupsApp, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList)
+function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList)
 {
 	# Recherche du groupe pour voir s'il existe
 	$group = $groupsApp.getGroupByName($name, $true)
@@ -332,7 +332,7 @@ function createGroupsGroupIfNotExists([GroupsAPI]$groupsApp, [string]$name, [str
 		$counters.inc('groupsGroupsCreated')
 
 		# Ajout du groupe
-		$logHistory.addLineAndDisplay(("---> Group '{0}' doesn't exists, creating it" -f $name))
+		$logHistory.addLineAndDisplay(("--> Creating groups group '{0}'..." -f $name))
 		$options = @{
 			maillist = '0'
 		}
@@ -341,14 +341,14 @@ function createGroupsGroupIfNotExists([GroupsAPI]$groupsApp, [string]$name, [str
 		# Ajout des membres
 		if($memberSciperList.count -gt 0)
 		{
-			$logHistory.addLineAndDisplay(("---> Adding {0} members..." -f $memberSciperList.count))
+			$logHistory.addLineAndDisplay(("--> Adding {0} members..." -f $memberSciperList.count))
 			$groupsApp.addMembers($group.id, $memberSciperList)
 		}
 		
 		# Ajout des admins
 		if($adminSciperList.count -gt 0)
 		{
-			$logHistory.addLineAndDisplay(("---> Adding {0} admins..." -f $adminSciperList.count))
+			$logHistory.addLineAndDisplay(("--> Adding {0} admins..." -f $adminSciperList.count))
 			$groupsApp.addAdmins($group.id, $adminSciperList)
 		}
 		
@@ -360,7 +360,7 @@ function createGroupsGroupIfNotExists([GroupsAPI]$groupsApp, [string]$name, [str
 	}
 	else # le groupe exists
 	{
-		$logHistory.addLineAndDisplay(("---> Group '{0}' already exists" -f $name))
+		$logHistory.addLineAndDisplay(("--> Groups group '{0}' already exists" -f $name))
 	}
 
 	return $group
@@ -391,6 +391,7 @@ $SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global
 # le script courant
 $TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__TEST_MODE)))
 $EPFL_TEST_NB_UNITS_MAX = 10
+$RESEARCH_TEST_NB_PROJECTS_MAX = 10
 
 
 # CONFIGURATION
@@ -431,15 +432,15 @@ try
 
 	if($SIMULATION_MODE)
 	{
-		$logHistory.addLineAndDisplay("***************************************")
-		$logHistory.addLineAndDisplay("** Script running in simulation mode **")
-		$logHistory.addLineAndDisplay("***************************************")
+		$logHistory.addWarningAndDisplay("***************************************")
+		$logHistory.addWarningAndDisplay("** Script running in simulation mode **")
+		$logHistory.addWarningAndDisplay("***************************************")
 	}
 	if($TEST_MODE)
 	{
-		$logHistory.addLineAndDisplay("*********************************")
-		$logHistory.addLineAndDisplay("** Script running in TEST mode **")
-		$logHistory.addLineAndDisplay("*********************************")
+		$logHistory.addWarningAndDisplay("*********************************")
+		$logHistory.addWarningAndDisplay("** Script running in TEST mode **")
+		$logHistory.addWarningAndDisplay("*********************************")
 	}
 
 	# Liste des groupes AD traités par le script
@@ -780,6 +781,7 @@ try
 
 				if($exitFacLoop)
 				{
+					Write-Warning "Breaking faculty loop for test purpose"
 					break
 				}
 
@@ -1043,9 +1045,8 @@ try
 						$approveGroupNameGroups = $nameGenerator.getApproveGroupsGroupName($level, $false).name
 						$approveGroupDescGroups = $nameGenerator.getApproveGroupsGroupDesc($level)
 
-						$logHistory.addLineAndDisplay(("--> Creating approval group '{0}' level {1} in Groups if doesn't exists..." -f $approveGroupNameGroups, $level))
 						# Création du groupe dans Groups s'il n'existe pas
-						$approveGroupGroups = createGroupsGroupIfNotExists -groupsApp $groupsApp -name $approveGroupNameGroups -desc $approveGroupDescGroups `
+						$approveGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $approveGroupNameGroups -desc $approveGroupDescGroups `
 																			-memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper)
 					}
 					
@@ -1102,9 +1103,8 @@ try
 				$admSupGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
 				$admSupGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
 				
-				$logHistory.addLineAndDisplay(("--> Creating request group '{0}' in Groups if doesn't exists..." -f $admSupGroupNameGroups))
 				# Création du groupe dans Groups s'il n'existe pas
-				$requestGroupGroups = createGroupsGroupIfNotExists -groupsApp $groupsApp -name $admSupGroupNameGroups -desc $admSupGroupDescGroups `
+				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $admSupGroupNameGroups -desc $admSupGroupDescGroups `
 																	 -memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper)
 
 				$roleSharedGroupOk = $true
@@ -1129,11 +1129,17 @@ try
 					$counters.inc('rsrch.projectSkipped')
 				}
 
-				Write-Warning "Breaking loop for test purpose"
-				break
+				
+				# Pour faire des tests
+				if($TEST_MODE -and ($counters.get('rsrch.projectProcessed') -ge $RESEARCH_TEST_NB_PROJECTS_MAX))
+				{
+					Write-Warning "Breaking loop for test purpose"
+					break
+				}
 	
 			}# FIN BOUCLE de parcours des services renvoyés
-		}
+
+		}# FIN SI c'est le tenant Research
 
 	}# FIN EN fonction du tenant	
 	
@@ -1144,9 +1150,9 @@ try
 
 	if($SIMULATION_MODE)
 	{
-		$logHistory.addLineAndDisplay("***************************************")
-		$logHistory.addLineAndDisplay("** Script running in simulation mode **")
-		$logHistory.addLineAndDisplay("***************************************")
+		$logHistory.addWarningAndDisplay("***************************************")
+		$logHistory.addWarningAndDisplay("** Script running in simulation mode **")
+		$logHistory.addWarningAndDisplay("***************************************")
 	}
 	else # Si on n'est pas en mode "Simulation", c'est qu'on a créé des éléments dans AD
 	{
@@ -1176,9 +1182,9 @@ try
 
 	if($TEST_MODE)
 	{
-		$logHistory.addLineAndDisplay("*********************************")
-		$logHistory.addLineAndDisplay("** Script running in TEST mode **")
-		$logHistory.addLineAndDisplay("*********************************")
+		$logHistory.addWarningAndDisplay("*********************************")
+		$logHistory.addWarningAndDisplay("** Script running in TEST mode **")
+		$logHistory.addWarningAndDisplay("*********************************")
 	}
 
 	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
