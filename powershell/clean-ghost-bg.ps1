@@ -128,8 +128,6 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [PSObject]$bg, [string]$t
 		$vra.deleteBG($bg.id)
 
 
-		# --------------
-		# Préfixe de VM
 		# Seulement pour certains tenants et on doit obligatoirement le faire APRES avoir effacé le BG car sinon 
 		# y'a une monstre exception sur plein de lignes qui nous insulte et elle ferait presque peur.
 		$deleteForTenants = @($global:VRA_TENANT__ITSERVICES, $global:VRA_TENANT__RESEARCH)
@@ -139,6 +137,9 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [PSObject]$bg, [string]$t
 			# le nom du préfix de machine.
 			$nameGenerator.initDetailsFromBGName($bg.name)
 
+			# --------------
+			# Préfixe de VM
+
 			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
 			$machinePrefix = $vra.getMachinePrefix($machinePrefixName)
@@ -146,9 +147,30 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [PSObject]$bg, [string]$t
 			# Si on a trouvé un ID de machine
 			if($null -ne $machinePrefix)
 			{
-				$logHistory.addLineAndDisplay(("--> Deleting Machine Prefix '{0}'..." -f $bg.name))
-				$vra.deleteMachinePrefix($machinePrefix.id)
+				$logHistory.addLineAndDisplay(("--> Deleting Machine Prefix '{0}'..." -f $machinePrefix.name))
+				$vra.deleteMachinePrefix($machinePrefix)
 			}
+
+
+			# --------------
+			# Approval policies
+			$approvalPoliciesTypesToDelete = @($global:APPROVE_POLICY_TYPE__ITEM_REQ,
+											   $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+			ForEach($approvalPolicyType in $approvalPoliciesTypesToDelete)
+			{
+				# Recherche du nom
+				$approvalPolicyName, $approvalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($approvalPolicyType)
+
+				$approvalPolicy = $vra.getApprovalPolicy($approvalPolicyName)
+				
+				if($null -ne $approvalPolicy)
+				{
+					$logHistory.addLineAndDisplay(("--> Deleting Approval Policy '{0}'..." -f $approvalPolicy.name))
+					$vra.deleteApprovalPolicy($approvalPolicy)
+				}
+
+			}# FIN BOUCLE de parcours des Approval Policies à effacer
+
 		}
 
 		# Incrémentation du compteur

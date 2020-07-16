@@ -154,8 +154,10 @@ class NameGenerator
         BUT : initialise UNE PARTIE des détails depuis le nom du business group passé.
                 Ceci permet d'utiliser UNIQUEMENT un sous ensemble des fonctions définies
                 dans cette classe car d'autres détails manqueront. A la base, on peut initialiser
-                les détails depuis le nom du BG pour pouvoir utiliser la fonction getVMMachinePrefix 
-                mais peut-être que d'autres peuvent aussi fonctionner.
+                les détails depuis le nom du BG pour pouvoir utiliser les fonctions suivante 
+                mais peut-être que d'autres peuvent aussi fonctionner:
+                - getVMMachinePrefix 
+                - getApprovalPolicyNameAndDesc
 
         IN  : $bgName   -> Nom du BG
     #>
