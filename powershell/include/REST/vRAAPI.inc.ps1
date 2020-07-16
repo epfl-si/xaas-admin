@@ -67,7 +67,7 @@ class vRAAPI: RESTAPICurl
 
 	}
 
-	
+
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Surcharge la fonction qui fait l'appel à l'API pour simplement ajouter un
@@ -1328,16 +1328,16 @@ class vRAAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
 		BUT : Supprime un préfixe de machine
 
-		IN  : $id	-> ID du préfixe à effacer
+		IN  : $machinePrefix	-> Objet représentant le préfixe de machine à effacer
 	#>
-	[void] deleteMachinePrefix([string] $id)
+	[void] deleteMachinePrefix([PSCustomObject] $machinePrefix)
 	{
 		<# A savoir que l'URL utilisée ici ne correspond pas à la documentation Swagger de l'API car ... ça fait depuis
 			début 2019 que VMware ne l'a pas mise à jour... un bug était déjà présent dans la version 7.5 de l'API (ou de
 			sa documentation). Bref, c'est grâce à ce post d'un forum que la solution a été trouvée:
 			https://communities.vmware.com/thread/604831
 		#>
-		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/guid'{1}'" -f $this.server, $id
+		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/guid'{1}'" -f $this.server, $machinePrefix.id
 
 		$dummy = $this.callAPI($uri, "DELETE", $null)
 	}
