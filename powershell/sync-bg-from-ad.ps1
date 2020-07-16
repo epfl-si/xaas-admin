@@ -309,25 +309,8 @@ function createOrUpdateBG
 		# Si on ne trouve pas de préfixe de machine pour le nouveau BG,
 		if($null -eq $machinePrefix)
 		{
-			# Si le BG n'existe pas, 
-			if($null -eq $bg)
-			{
-				$logHistory.addWarningAndDisplay(("No machine prefix found for {0}, skipping" -f $machinePrefixName))
-				# On enregistre le préfixe de machine inexistant
-				$notifications['newBGMachinePrefixNotFound'] += $machinePrefixName
-
-				$counters.inc('BGNotCreated')
-			}
-			else # Le BG existe, il s'agit donc d'un renommage 
-			{
-				$logHistory.addWarningAndDisplay(("No machine prefix found for new faculty name ({0})" -f $machinePrefixName))
-				# On enregistre le préfixe de machine inexistant
-				$notifications['facRenameMachinePrefixNotFound'] += $machinePrefixName
-
-				$counters.inc('BGNotRenamed')
-			}
-			# on sort
-			return $null
+			$logHistory.addLineAndDisplay(("-> Machine prefix {0} doesn't exists, creating..." -f $machinePrefixName))
+			$machinePrefix = $vra.addMachinePrefix($machinePrefixName, $global:VRA_MACHINE_PREFIX_NB_DIGITS)
 		}
 		$machinePrefixId = $machinePrefix.id
 	
@@ -889,14 +872,6 @@ function handleNotifications
 
 			switch($notif)
 			{
-				# ---------------------------------------
-				# Préfixes de machine non trouvés
-				'newBGMachinePrefixNotFound'
-				{
-					$valToReplace.prefixList = ($uniqueNotifications -join "</li>`n<li>")
-					$mailSubject = "Error - Machine prefixes not found"
-					$templateName = "bg-machine-prefix-not-found"
-				}
 
 				# ---------------------------------------
 				# BG sans "custom property" permettant de définir le statut
@@ -925,15 +900,6 @@ function handleNotifications
 					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
 					$mailSubject = "Info - Business Group marked as 'ghost'"
 					$templateName = "bg-set-as-ghost"
-				}
-
-				# ---------------------------------------
-				# Préfix de machine non trouvé pour un renommage de faculté
-				'facRenameMachinePrefixNotFound'
-				{
-					$valToReplace.prefixList = ($uniqueNotifications -join "</li>`n<li>")
-					$mailSubject = "Error - Machine prefixes not found for new faculty name"
-					$templateName = "fac-rename-machine-prefix-not-found"
 				}
 
 				# ---------------------------------------
@@ -1299,8 +1265,6 @@ try
 	$counters.add('ResCreated', '# Reservations created')
 	$counters.add('ResUpdated', '# Reservations updated')
 	$counters.add('ResDeleted', '# Reservations deleted')
-	# Machine prefixes
-	$counters.add('MachinePrefNotFound', '# machines prefixes not found')
 	# Approval policies 
 	$counters.add('AppPolCreated', '# Approval Policies created')
 	$counters.add('AppPolExisting', '# Approval Policies already existing')
@@ -1326,9 +1290,7 @@ try
 
 	(cette liste sera accédée en variable globale même si c'est pas propre XD)
 	#>
-	$notifications=@{newBGMachinePrefixNotFound = @()
-					facRenameMachinePrefixNotFound = @()
-					bgWithoutCustomPropStatus = @()
+	$notifications=@{bgWithoutCustomPropStatus = @()
 					bgWithoutCustomPropType = @()
 					bgSetAsGhost = @()
 					emptyADGroups = @()
@@ -1788,10 +1750,6 @@ try
 	handleNotifications -notifications $notifications -targetEnv $targetEnv -targetTenant $targetTenant
 
 	$logHistory.addLineAndDisplay("Done")
-
-	# Une dernière mise à jour
-	$counters.set('MachinePrefNotFound', $notifications['newBGMachinePrefixNotFound'].count + `
-										$notifications['facRenameMachinePrefixNotFound'].count)
 
 	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
 

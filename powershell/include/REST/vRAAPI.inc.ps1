@@ -1229,7 +1229,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getMachinePrefixListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/?page=1&limit=9999" -f $this.server, $this.tenant
+		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/?page=1&limit=9999" -f $this.server
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1267,6 +1267,46 @@ class vRAAPI: RESTAPICurl
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute un préfix de machine dans vRA. Par défaut, il sera ajouté pour le tenant
+				auquel on est connecté
+
+		IN  : $name				-> Le nom du préfix de machine que l'on désire ajouter
+		IN  : $numberOfDigits	-> Nombre de digits max du préfixe
+
+		RET : Objet contenant le préfixe
+	#>
+	[PSCustomObject] addMachinePrefix([string] $name, [int] $numberOfDigits)
+	{
+		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/" -f $this.server
+
+		# Valeur à mettre pour la configuration du BG
+		$replace = @{
+			name = $name
+			numberOfDigits = $numberOfDigits
+		}
+
+		$body = $this.createObjectFromJSON("vra-machine-prefix.json", $replace)
+
+		return ($this.callAPI($uri, "POST", $body))
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Supprime un préfixe de machine
+
+		IN  : $id	-> ID du préfixe à effacer
+	#>
+	[void] deleteMachinePrefix([string] $id)
+	{
+		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/{1}" -f $this.server, $id
+
+		$dummy = $this.callAPI($uri, "DELETE", $null)
 	}
 
 

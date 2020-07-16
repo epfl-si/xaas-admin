@@ -80,6 +80,8 @@ $global:VRA_BG_RES_MANAGE__MAN   = "man"
 # Pour filtrer et ne prendre que les groupes AD modifiés durant les X derniers jours pour la création des éléments dans vRA
 $global:AD_GROUP_MODIFIED_LAST_X_DAYS = 2
 
+# Nombre de digits des préfixes de machine
+$global:VRA_MACHINE_PREFIX_NB_DIGITS = 4
 
 ### ISO
 # Nom chemin jusqu'aux volumes NAS où se trouvent les ISO privées
