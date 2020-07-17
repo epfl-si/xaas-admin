@@ -130,6 +130,9 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [P
 		$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}'..." -f $bg.name))
 		$vra.deleteBG($bg.id)
 
+		# On initialise les détails depuis le nom du BG, cela nous permettra de récupérer
+		# le nom du préfix de machine.
+		$nameGenerator.initDetailsFromBGName($bg.name)
 
 		# Seulement pour certains tenants et on doit obligatoirement le faire APRES avoir effacé le BG car sinon 
 		# y'a une monstre exception sur plein de lignes qui nous insulte et elle ferait presque peur.
@@ -138,9 +141,6 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [P
 			# --------------
 			# Préfixe de VM
 
-			# On initialise les détails depuis le nom du BG, cela nous permettra de récupérer
-			# le nom du préfix de machine.
-			$nameGenerator.initDetailsFromBGName($bg.name)
 
 			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
