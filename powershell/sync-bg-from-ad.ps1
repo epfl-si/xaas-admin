@@ -1231,7 +1231,7 @@ try
 	# Petite info dans les logs.
 	if($fullSync)
 	{
-		$logHistory.addLineAndDisplay("Doing a FULL sync with all AD groups...")
+		$logHistory.addWarningAndDisplay("Doing a FULL sync with all AD groups...")
 	}
 	else
 	{
