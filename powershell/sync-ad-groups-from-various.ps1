@@ -74,35 +74,42 @@ enum TableauRoles
 #>
 function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation)
 {
+	# On regarde si le groupe à ajouter dans le nouveau groupe existe
+	if((ADGroupExists -groupName $groupMemberGroup) -eq $false)
+	{
+		$logHistory.addWarningAndDisplay(("--> Inner group '{0}' doesn't exists, skipping AD group '{1}' creation!" -f $groupMemberGroup, $groupName))
+		return $false
+	}
 
 	# Si le groupe n'existe pas encore 
 	if((ADGroupExists -groupName $groupName) -eq $false)
 	{
-		# On regarde si le groupe à ajouter dans le nouveau groupe existe
-		if((ADGroupExists -groupName $groupMemberGroup) -eq $false)
-		{
-			return $false
-		}
-
-		# Si on arrive ici, c'est que le groupe à mettre dans le nouveau groupe AD existe
-
 		if(-not $simulation)
 		{
 			$logHistory.addLineAndDisplay(("--> Creating AD group '{0}'..." -f $groupName))
 			# Création du groupe
 			New-ADGroup -Name $groupName -Description $groupDesc -GroupScope DomainLocal -Path $OU
+		}
+	}
+	else
+	{
+		$logHistory.addLineAndDisplay(("--> AD group '{0}' already exists" -f $groupName))
+	}
+
+	# Si on arrive ici, c'est que le groupe à mettre dans le nouveau groupe AD existe
+
+	if(-not $simulation)
+	{
 
 			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
-			
+			# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
+			Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
+			# Et on remet les bons membres
 			Add-ADGroupMember $groupName -Members $groupMemberGroup
 
 			$counters.inc('ADGroupsCreated')
-		}
 	}
-	else # Le groupe existe déjà
-	{	
-		$logHistory.addLineAndDisplay(("--> AD group '{0}' already exists" -f $groupName))
-	}
+	
 	return $true
 }
 
@@ -799,48 +806,7 @@ try
 				$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
 				updateVRAUsersForBG -mysql $mysql -userList $adminMembers -role AdminEPFL -bgName "all"
 			}
-				
-		
-	
-
-			# ----------------------------------------------------------------------------------------------------------------------
-
-			# Parcours des groupes AD qui sont dans l'OU de l'environnement donné. On ne prend que les groupes qui sont utilisés pour 
-			# donner des droits d'accès aux unités. Afin de faire ceci, on fait un filtre avec une expression régulière
-			Get-ADGroup  -Filter ("Name -like '*'") -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
-			Where-Object {$_.Name -match $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")} | 
-			ForEach-Object {
-
-				# Si le groupe n'est pas dans ceux créés à partir de LDAP, c'est que l'unité n'existe plus. On supprime donc le groupe AD pour que 
-				# le Business Group associé soit supprimé également.
-				if($doneADGroupList -notcontains $_.name)
-				{
-					$logHistory.addLineAndDisplay(("--> Unit doesn't exists anymore, removing group {0} " -f $_.name))
-					if(-not $SIMULATION_MODE)
-					{
-						# On supprime le groupe AD
-						Remove-ADGroup $_.name -Confirm:$false
-					}
-
-					$counters.inc('ADGroupsRemoved')
-
-					$logHistory.addLineAndDisplay(("--> Removing rights for '{0}' role in vraUsers table for AD groupe {1}" -f [TableauRoles]::User.ToString(), $_.name))
-
-					# Extraction des informations
-					$facultyName, $unitName, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
-
-					# Initialisation des détails pour le générateur de noms
-					$nameGenerator.initDetails(@{facultyName = $facultyName
-												facultyID = ''
-												unitName = $unitName
-												unitID = ''
-												financeCenter = ''})
-
-					# Suppression des accès pour le business group correspondant au groupe AD courant.
-					updateVRAUsersForBG -mysql $mysql -userList @() -role User -bgName $nameGenerator.getBGName()
-				}
-
-			}# FIN BOUCLE de parcours des groupes AD qui sont dans l'OU de l'environnement donné
+			
 		}
 
 		# -------------------------------------------------------------------------------------------------------------------------------------
@@ -864,7 +830,7 @@ try
 			$itServices = [ITServices]::new()
 			
 			# On prend la liste correspondant à l'environnement sur lequel on se trouve
-			$servicesList = $itServices.getServiceList($targetEnv)
+			$servicesList = $itServices.getServiceList($targetEnv) 
 	
 			$serviceNo = 1 
 			# Parcours des services renvoyés par Django
@@ -992,6 +958,8 @@ try
 										$configGrants.getConfigValue($targetEnv, "port"))
 
 			$projectList = $mysqlGrants.execute("SELECT * FROM v_gdb_iaas WHERE subsides_start_date <= DATE(NOW()) AND subsides_end_date > DATE(NOW())")
+			# Décommenter la ligne suivante et éditer l'ID pour simuler la disparition d'un projet
+			#$projectList = $projectList | Where-Object { $_.id -ne "4387"}
 			
 			$projectNo = 1 
 			# Parcours des services renvoyés par Django
@@ -1062,6 +1030,11 @@ try
 							
 						$allApproveGroupsOK = $false
 					}
+					else
+					{
+						# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+						$doneADGroupList += $approveGroupInfos.name
+					}
 	
 				} # FIN BOUCLE de création des groupes pour les différents level d'approbation 
 				
@@ -1097,7 +1070,7 @@ try
 				# sera le même
 				$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
 				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
-				$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
+				$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
 	
 				# Récupération des infos du groupe dans Groups
 				$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
@@ -1109,7 +1082,7 @@ try
 
 				$roleSharedGroupOk = $true
 				# Création des groupes + gestion des groupes prérequis 
-				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroups `
+				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
 					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
@@ -1142,6 +1115,68 @@ try
 		}# FIN SI c'est le tenant Research
 
 	}# FIN EN fonction du tenant	
+
+	# ----------------------------------------------------------------------------------------------------------------------
+
+	# Parcours des groupes AD qui sont dans l'OU de l'environnement donné. On ne prend que les groupes qui sont utilisés pour 
+	# donner des droits d'accès aux unités. Afin de faire ceci, on fait un filtre avec une expression régulière
+	Get-ADGroup  -Filter ("Name -like '*'") -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
+	Where-Object {$_.Name -match $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")} | 
+	ForEach-Object {
+
+		# Si le groupe n'est pas dans ceux créés à partir de la source de données, c'est que l'élément n'existe plus. On supprime donc le groupe AD pour que 
+		# le Business Group associé soit marqué comme "ghost" puis supprimé également par la suite via l'exécution du script "clean-ghost-bg.ps1".
+		if($doneADGroupList -notcontains $_.name)
+		{
+			# Définition du type d'élément auquel on a à faire
+			$element = switch($targetTenant)
+			{
+				$global:VRA_TENANT__EPFL { "Unit" }
+				$global:VRA_TENANT__ITSERVICES  { "Service"}
+				$global:VRA_TENANT__RESEARCH { "Project"}
+			}
+
+			$logHistory.addLineAndDisplay(("--> {0} doesn't exists anymore, removing user group {1} " -f $element, $_.name))
+			if(-not $SIMULATION_MODE)
+			{
+				# On supprime le groupe AD
+				Remove-ADGroup $_.name -Confirm:$false
+			}
+
+			$counters.inc('ADGroupsRemoved')
+
+			# Si on est dans le Tenant "Research",
+			if($targetTenant -eq $global:VRA_TENANT__RESEARCH)
+			{
+				$approveADGroupName = $nameGenerator.getApproveADGroupNameFromUserADGroups($_.name)
+
+				# On supprime aussi le groupe AD pour l'approbation (niveau 2)
+				$logHistory.addLineAndDisplay(("--> {0} doesn't exists anymore, removing approval group {1} " -f $element, $approveADGroupName))
+				Remove-ADGroup $approveADGroupName -Confirm:$false
+
+			}
+
+			if($targetTenant -eq $global:VRA_TENANT__EPFL)
+			{
+				$logHistory.addLineAndDisplay(("--> Removing rights for '{0}' role in vraUsers table for AD groupe {1}" -f [TableauRoles]::User.ToString(), $_.name))
+
+				# Extraction des informations
+				$facultyName, $unitName, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+				# Initialisation des détails pour le générateur de noms
+				$nameGenerator.initDetails(@{facultyName = $facultyName
+											facultyID = ''
+											unitName = $unitName
+											unitID = ''
+											financeCenter = ''})
+
+				# Suppression des accès pour le business group correspondant au groupe AD courant.
+				updateVRAUsersForBG -mysql $mysql -userList @() -role User -bgName $nameGenerator.getBGName()
+			}
+			
+		}
+
+	}# FIN BOUCLE de parcours des groupes AD qui sont dans l'OU de l'environnement donné
 	
 
 	# Gestion des erreurs s'il y en a
