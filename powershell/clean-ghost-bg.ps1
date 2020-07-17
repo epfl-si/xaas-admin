@@ -372,8 +372,6 @@ try
 						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
 
 
-
-
 	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")
 
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
@@ -400,9 +398,9 @@ try
 				Remove-Item -Path $bgISOFolder -Recurse -Force
 			}
 
-		}
+		} # FIN si le BG peut être effacé
 
-	}
+	}# Fin BOUCLE parcours des business groups
 
 	$vra.disconnect()
 
