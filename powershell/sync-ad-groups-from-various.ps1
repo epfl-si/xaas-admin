@@ -391,7 +391,7 @@ $SIMULATION_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global
 # le script courant
 $TEST_MODE = (Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__TEST_MODE)))
 $EPFL_TEST_NB_UNITS_MAX = 10
-$RESEARCH_TEST_NB_PROJECTS_MAX = 10
+$RESEARCH_TEST_NB_PROJECTS_MAX = 5
 
 
 # CONFIGURATION
@@ -1100,11 +1100,11 @@ try
 				$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
 	
 				# Récupération des infos du groupe dans Groups
-				$admSupGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
-				$admSupGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
+				$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
+				$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
 				
 				# Création du groupe dans Groups s'il n'existe pas
-				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $admSupGroupNameGroups -desc $admSupGroupDescGroups `
+				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
 																	 -memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper)
 
 				$roleSharedGroupOk = $true
