@@ -46,6 +46,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "GroupsAPI.inc.ps1"))
 
 
 
@@ -53,6 +54,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 # Chargement des fichiers de configuration
 $configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
+$configGroups = [ConfigReader]::New("config-groups.json")
 
 
 
@@ -63,6 +65,7 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 		  Si le BG contient des items, on va simplement le marquer comme "ghost" et changer les droits d'accès
 
 	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $groupsApp		-> Objet de la classe GroupsAPI permettant d'accéder à "groups"
 	IN  : $bg				-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
 					   			par un appel à une méthode de la classe vRAAPI
 	IN  : $targetTenant		-> Le tenant sur lequel on se trouve
@@ -71,7 +74,7 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 	RET : $true si effacé
 		  $false si pas effacé (mis en ghost)
 #>
-function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [PSObject]$bg, [string]$targetTenant, [NameGenerator]$nameGenerator)
+function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [PSObject]$bg, [string]$targetTenant, [NameGenerator]$nameGenerator)
 {
 
 	# Recherche des items potentiellement présents dans le BG
@@ -128,13 +131,13 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [PSObject]$bg, [string]$t
 		$vra.deleteBG($bg.id)
 
 
-		# --------------
-		# Préfixe de VM
 		# Seulement pour certains tenants et on doit obligatoirement le faire APRES avoir effacé le BG car sinon 
 		# y'a une monstre exception sur plein de lignes qui nous insulte et elle ferait presque peur.
-		$deleteForTenants = @($global:VRA_TENANT__RESEARCH)
-		if($deleteForTenants -contains $targetTenant)
+		if($targetTenant -eq $global:VRA_TENANT__RESEARCH)
 		{
+			# --------------
+			# Préfixe de VM
+
 			# On initialise les détails depuis le nom du BG, cela nous permettra de récupérer
 			# le nom du préfix de machine.
 			$nameGenerator.initDetailsFromBGName($bg.name)
@@ -150,7 +153,30 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [PSObject]$bg, [string]$t
 				$vra.deleteMachinePrefix($machinePrefix)
 			}
 
-		}# FIN S'il faut effacer le préfix de VM
+			# --------------
+			# Groupes "groups" des approval policies
+
+			# On va commencer la recherche des groupes d'approvation au niveau 2 seulement, car le 
+			# niveau 1, c'est le service manager IaaS
+			$level = 2
+			while($true)
+			{
+				# Recherche des infos du groupe "groups" pour les approbation
+				$approveGroupGroupsInfos = $nameGenerator.getApproveGroupsGroupName($level, $false)
+
+				# Si vide, c'est qu'on a atteint le niveau max pour les level
+				if($null -eq $approveGroupGroupsInfos)
+				{
+					break
+				}
+
+				$logHistory.addLineAndDisplay(("--> Deleting approval groups group '{0}'..." -f $approveGroupGroupsInfos.name))
+				$groupsApp.deleteGroup($approveGroupGroupsInfos.name)
+
+				$level += 1
+			}
+
+		}
 
 		# --------------
 		# Approval policies
@@ -173,6 +199,13 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [PSObject]$bg, [string]$t
 				}
 
 			}# FIN BOUCLE de parcours des Approval Policies à effacer
+
+			# --------------
+			# Groupe "groups" pour les demandes
+
+			$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
+			$logHistory.addLineAndDisplay(("--> Deleting customer groups group '{0}'..." -f $userSharedGroupNameGroups))
+			$groupsApp.deleteGroup($userSharedGroupNameGroups)
 
 		}# FIN S'il faut effacer les approval policies
 
@@ -281,6 +314,12 @@ try
 	# Objet pour pouvoir envoyer des mails de notification
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
+	# Pour s'interfacer avec l'application Groups
+	$groupsApp = [GroupsAPI]::new($configGroups.getConfigValue($targetEnv, "server"),`
+								  $configGroups.getConfigValue($targetEnv, "appName"),`
+								   $configGroups.getConfigValue($targetEnv, "callerSciper"),`
+								   $configGroups.getConfigValue($targetEnv, "password"))
+
 	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
 	!! Attention !!
@@ -319,7 +358,7 @@ try
 			((getBGCustomPropValue -bg $_ -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS) -eq $global:VRA_BG_STATUS__GHOST))
 		{
 			$logHistory.addLineAndDisplay(("-> Business Group '{0}' is Ghost, deleting..." -f $_.name))
-			$deleted = deleteBGAndComponentsIfPossible -vra $vra -bg $_ -targetTenant $targetTenant -nameGenerator $nameGenerator
+			$deleted = deleteBGAndComponentsIfPossible -vra $vra -groupsApp $groupsApp -bg $_ -targetTenant $targetTenant -nameGenerator $nameGenerator
 
 			# Si le BG a pu être complètement effacé, c'est qu'il n'y avait plus d'items dedans et que donc forcément aucune
 			# ISO ne pouvait être montée nulle part.

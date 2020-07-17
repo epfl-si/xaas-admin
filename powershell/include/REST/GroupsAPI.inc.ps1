@@ -273,13 +273,22 @@ class GroupsAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
         BUT : Supprime un groupe
 
-        IN  : $groupId          -> ID du groupe à supprimer
+        IN  : $groupName          -> Nom du groupe à supprimer
     #>
-    [void] deleteGroup([string]$groupId)
+    [void] deleteGroup([string]$groupName)
     {
-        $uri = "{0}&id={1}" -f $this.getBaseURI('deleteGroup'), $groupId
+        # Recherche du groupe
+        $group = $this.getGroupByName($groupName)
 
-        $group = $this.callAPI($uri, "POST", $null)
+        # Si trouvé
+        if($null -ne $group)
+        {
+            # Création de l'URL pour effacement
+            $uri = "{0}&id={1}" -f $this.getBaseURI('deleteGroup'), $group.id
+
+            $group = $this.callAPI($uri, "POST", $null)
+        }
+
     }
 
 
