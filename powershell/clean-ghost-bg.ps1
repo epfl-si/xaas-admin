@@ -171,7 +171,17 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [P
 				}
 
 				$logHistory.addLineAndDisplay(("--> Deleting approval groups group '{0}'..." -f $approveGroupGroupsInfos.name))
-				$groupsApp.deleteGroup($approveGroupGroupsInfos.name)
+				try
+				{
+					# On essaie d'effacer le groupe
+					$groupsApp.deleteGroup($approveGroupGroupsInfos.name)
+				}
+				catch
+				{
+					# Si exception, c'est qu'on n'a probablement pas les droits d'effacer parce que le owner du groupe n'est pas le bon
+					$notifications['groupsGroupsNotDeleted'] += $approveGroupGroupsInfos.name
+					$logHistory.addWarningAndDisplay("--> Cannot delete groups group maybe because not owner by correct person")
+				}
 
 				$level += 1
 			}
@@ -205,7 +215,16 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [P
 
 			$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
 			$logHistory.addLineAndDisplay(("--> Deleting customer groups group '{0}'..." -f $userSharedGroupNameGroups))
-			$groupsApp.deleteGroup($userSharedGroupNameGroups)
+			try
+			{
+				$groupsApp.deleteGroup($userSharedGroupNameGroups)
+			}
+			catch
+			{
+				# Si exception, c'est qu'on n'a probablement pas les droits d'effacer parce que le owner du groupe n'est pas le bon
+				$notifications['groupsGroupsNotDeleted'] += $userSharedGroupNameGroups
+				$logHistory.addWarningAndDisplay("--> Cannot delete groups group maybe because not owner by correct person")
+			}
 
 		}# FIN S'il faut effacer les approval policies
 
@@ -267,6 +286,14 @@ function handleNotifications
                     $templateName = "bg-not-deleted-because-not-empty"
                 }
 				
+				# ---------------------------------------
+				# Groupes groups.epfl.ch pas effacés parce que probablement mauvais owner
+				'groupsGroupsNotDeleted'
+				{
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+                    $mailSubject = "Info - groups.epfl.ch Groups NOT deleted (maybe not correct owner)"
+                    $templateName = "groups-groups-not-deleted"
+				}
 
 				default
 				{
@@ -329,7 +356,8 @@ try
 	(cette liste sera accédée en variable globale même si c'est pas propre XD)
 	#>
 	$notifications=@{bgDeleted = @()
-					bgNotDeleted =@()}
+					bgNotDeleted =@()
+					groupsGroupsNotDeleted = @()}
 
 
 	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
