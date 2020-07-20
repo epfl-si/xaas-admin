@@ -778,8 +778,8 @@ class NameGenerator
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du groupe AD ou GROUPS créé pour le mécanisme d'approbation des demandes
-              pour un Business Group du tenant ITServices
+        BUT : Renvoie le nom du groupe AD créé pour le mécanisme d'approbation des demandes
+              pour un Business Group
 
         IN  : $level            -> Le niveau d'approbation (1, 2, ...)
         IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
@@ -794,14 +794,52 @@ class NameGenerator
     {
         return $this.getApproveGroupName($level, $this.GROUP_TYPE_AD, $fqdn)
     }
-    
 
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du groupe GROUPS créé pour le mécanisme d'approbation des demandes
+              pour un Business Group
+
+        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
+        IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
+                                    $true|$false  
+                                    Si pas passé => $false 
+
+        RET : Objet avec les données membres suivantes :
+                .name           -> le nom du groupe ou "" si rien pour le $level demandé.    
+                .onlyForTenant  -> $true|$false pour dire si c'est uniquement pour le tenant courant ($true) ou pas ($false =  tous les tenants)
+    #>
     [PSCustomObject] getApproveGroupsGroupName([int]$level, [bool]$fqdn)
     {
         return $this.getApproveGroupName($level, $this.GROUP_TYPE_GROUPS, $fqdn)
     }
 
-<#
+    
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du groupe AD pour les approbations en se basant sur un nom de
+                groupe pour les utilisateurs qui peuvent faire des demandes. 
+                Au vu des nomenclatures, ceci ne fonctionne que pour le tenant Research
+
+        IN  : $ADUserGroupName  -> Nom du groupe contenant les utilisateurs pouvant faire des 
+                                    demandes au sein du Business Group
+
+        RET : Nom du groupe d'approbation
+    #>
+    [string] getApproveADGroupNameFromUserADGroups([string]$ADUserGroupName)
+    {
+        if($this.tenant -ne $global:VRA_TENANT__RESEARCH)
+        {
+            Throw ("Only supported for {0} tenant" -f $global:VRA_TENANT__RESEARCH)
+        }
+
+        # Lorsque l'on utilise -match ou -notmatch, PowerShell initialise automatiquement une variable $matches avec les résultats du match
+        $dummy = $ADUserGroupName.ToLower() -match "([a-z_]+)_([0-9]+)"
+        return ("{0}_approval_{1}" -f $matches[1], $matches[2])
+    }
+
+    <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie la description du groupe Groups utilisé pour les approbations des demandes
               pour le tenant.
