@@ -154,7 +154,7 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				}
 
 				# ---------------------------------------
-				# Groupe active directory manquants pour création des éléments pour Tenant ITS
+				# Groupe active directory manquants pour création des éléments pour Tenant ITS (approve)
 				'missingITSADGroups'
 				{
 					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
@@ -166,14 +166,14 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				}
 
 				# ---------------------------------------
-				# Groupe active directory manquants pour création des éléments pour Tenant Research
-				'missingRSRCHADGroups'
+				# Groupe active directory manquants pour création des éléments pour Tenant Research (user, approval) et ITServices (user)
+				'missingADGroups'
 				{
 					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
 
-					$mailSubject = "Info - Active Directory groups missing"
+					$mailSubject = "Info - Active Directory groups missing (please wait)"
 
-					$templateName = "ad-groups-missing-for-groups-creation-rsrch"
+					$templateName = "ad-groups-missing-for-groups-creation-wait"
 				}
 
 				default
@@ -474,7 +474,10 @@ try
 
 	(cette liste sera accédée en variable globale même si c'est pas propre XD)
 	#>
-	$notifications = @{}
+	$notifications = @{
+		missingADGroups = @()
+	}
+
 
 
 	switch($targetTenant)
@@ -819,15 +822,14 @@ try
 		{
 			$logHistory.addLineAndDisplay("Processing data for ITServices Tenant")
 	
-			# Ajout du nécessaire pour gérer les notifications pour ce Tenant
-			$notifications.missingITSADGroups = @()
-	
 			# Ajout des compteurs propres au tenant
 			$counters.add('its.serviceProcessed', '# Service processed')
 			$counters.add('its.serviceSkipped', '# Service skipped')
 	
 			# Objet pour lire les informations sur le services IT
 			$itServices = [ITServices]::new()
+
+			$notifications.missingITSADGroups = @()
 			
 			# On prend la liste correspondant à l'environnement sur lequel on se trouve
 			$servicesList = $itServices.getServiceList($targetEnv) 
@@ -847,6 +849,15 @@ try
 											snowServiceId = $service.snowId})
 	
 				$serviceNo += 1
+
+				if($service.serviceManagerSciper -ne "")
+				{
+					$groupsContentAndAdmin = @($service.serviceManagerSciper)
+				}
+				else
+				{
+					$groupsContentAndAdmin = @()
+				}
 	
 				# --------------------------------- APPROVE
 				$allGroupsOK = $true
@@ -866,7 +877,7 @@ try
 	
 					$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
 					$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
-	
+
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
 						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
@@ -916,18 +927,29 @@ try
 				# sera le même
 				$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
 				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
-				$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
+				$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
 	
+				# Récupération des infos du groupe dans Groups
+				$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
+				$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
+				
+
+				# Création du groupe dans Groups s'il n'existe pas
+				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
+																	 -memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin
+
 				# Création des groupes + gestion des groupes prérequis 
-				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroups `
+				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
 					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					$notifications['missingITSADGroups'] += $userSharedGroupNameGroups
-					continue
+					$notifications['missingADGroups'] += $userSharedGroupNameGroupsAD
 				}
-				# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-				$doneADGroupList += $userSharedGroupNameAD
+				else
+				{
+					# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+					$doneADGroupList += $userSharedGroupNameAD
+				}
 				
 	
 			}# FIN BOUCLE de parcours des services renvoyés
@@ -1023,9 +1045,9 @@ try
 						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
-						if($notifications['missingRSRCHADGroups'] -notcontains $approveGroupNameGroupsAD)
+						if($notifications['missingADGroups'] -notcontains $approveGroupNameGroupsAD)
 						{
-							$notifications['missingRSRCHADGroups'] += $approveGroupNameGroupsAD
+							$notifications['missingADGroups'] += $approveGroupNameGroupsAD
 						}
 							
 						$allApproveGroupsOK = $false
@@ -1086,7 +1108,7 @@ try
 					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					$notifications['missingRSRCHADGroups'] += $userSharedGroupNameGroups
+					$notifications['missingADGroups'] += $userSharedGroupNameGroups
 					$roleSharedGroupOk = $false
 				}
 				else
