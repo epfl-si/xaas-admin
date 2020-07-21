@@ -268,7 +268,9 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 	# Boucle sur les utilisateurs à ajouter
 	ForEach($user in $userList)
 	{
-		$rows += "('{0}', '{1}', '{2}' )" -f $user, $role.ToString(), ($criteriaList -join "', '")
+		# Le 1 qu'on ajoute à la fin, c'est pour la colonne 'link'. Cette valeur est constante et elle doit être ajoutée
+		# pour le bon fonctionnement de Tableau et son interfaçage avec les utilisateurs de vRA
+		$rows += "('{0}', '{1}', '{2}', '1' )" -f $user, $role.ToString(), ($criteriaList -join "', '")
 		$counters.inc('membersAddedTovRAUsers')
 
 		# Si on arrive à un groupe de 10 éléments
