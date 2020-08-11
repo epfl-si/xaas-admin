@@ -184,15 +184,18 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [P
 				}
 
 				$level += 1
-			}
 
-		}
+			} # FIN BOUCLE de parcours des niveaux d'approbation
 
-		# --------------
-		# Approval policies
+		}# FIN SI c'est pour ces tenants qu'il faut effacer des éléments
+
+		
 		$deleteForTenants = @($global:VRA_TENANT__ITSERVICES, $global:VRA_TENANT__RESEARCH)
 		if($deleteForTenants -contains $targetTenant)
 		{	
+			
+			# --------------
+			# Approval policies
 			$approvalPoliciesTypesToDelete = @($global:APPROVE_POLICY_TYPE__ITEM_REQ,
 											   $global:APPROVE_POLICY_TYPE__ACTION_REQ)
 			ForEach($approvalPolicyType in $approvalPoliciesTypesToDelete)
@@ -226,13 +229,14 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [P
 				$logHistory.addWarningAndDisplay("--> Cannot delete groups group maybe because not owner by correct person")
 			}
 
-		}# FIN S'il faut effacer les approval policies
+		}# FIN SI c'est pour ces tenants qu'il faut effacer des éléments
 
 		# Incrémentation du compteur
 		$counters.inc('BGDeleted')
 
 		$deleted = $true
-	}
+		
+	}# FIN S'il n'y a aucun item dans le BG
 
 	return $deleted
 }
