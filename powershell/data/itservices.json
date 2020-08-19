@@ -40,6 +40,11 @@
             "longName":  "Wired Network",
             "shortName":  "wnet",
             "snowId":  "SVC0101"
+        },
+        {
+            "longName":  "Kubernetes",
+            "shortName":  "k8st",
+            "snowId":  "SVC1219"
         }
     ],
     "prod": [
