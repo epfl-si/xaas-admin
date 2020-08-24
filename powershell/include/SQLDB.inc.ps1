@@ -16,12 +16,19 @@
    HISTORIQUE DES VERSIONS
    0.1 - Version de base
    0.2 - On n'utilise plus "mysql.exe" car il posait problème depuis les machines dans le subnet 10.x.x.x
+   0.3 - Extension pour supporter MSSQL
 
 #>
 # Importation du module pour faire le boulot
 Import-Module SimplySQL
 
-class MySQL
+enum DBType 
+{
+    MySQL
+    MSSQL
+}
+
+class SQLDB
 {
     hidden [string]$connectionName
 
@@ -29,25 +36,38 @@ class MySQL
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
 
-        IN  : $server           -> adresse IP ou nom IP du serveur MySQL
+        IN  : $dbType           -> Type de base de données, MSSQL ou MySQL
+        IN  : $server           -> adresse IP ou nom IP du serveur
         IN  : $db               -> Nom de la base de données à laquelle se connecter
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
-        IN  : $port             -> (optionnel) No de port à utiliser
+        IN  : $port             -> No de port à utiliser. Sera ignoré pour une DB MSSQL donc on peut passer $null
 
 		RET : Instance de l'objet
 	#>
-    MySQL([string]$server, [string]$db, [string]$username, [string]$password, [int]$port=3306)
+    SQLDB([DBType]$dbType, [string]$server, [string]$db, [string]$username, [string]$password, [int]$port)
     {
         # Définition d'un nom de connexion pour pouvoir l'identifier et la fermer correctement dans le cas
         # où on aurait plusieurs instances de l'objet en même temps.
-        $this.connectionName = "MySQL{0}" -f (Get-Random)
+        $this.connectionName = "SQLDB{0}" -f (Get-Random)
 
         # Sécurisation du mot de passe et du nom d'utilisateur
         $credSecurePwd = $password | ConvertTo-SecureString -AsPlainText -Force
         $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $username, $credSecurePwd	
 
-        Open-MySQLConnection -server $server  -database $db  -port $port -credential $credObject -ConnectionName $this.connectionName
+        # En fonction du type de DB
+        switch($dbType)
+        {
+            MySQL
+            {
+                Open-MySQLConnection -server $server  -database $db  -port $port -credential $credObject -ConnectionName $this.connectionName
+            }
+
+            MSSQL
+            {
+                Open-SqlConnection -Server $server -Database $db -Credential $credObject -ConnectionName $this.connectionName 
+            }
+        }
     }
 
     

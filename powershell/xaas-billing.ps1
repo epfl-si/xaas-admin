@@ -46,7 +46,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "SQLDB.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Billing.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "BillingS3Bucket.inc.ps1"))
@@ -256,7 +256,8 @@ try
     }
     
     # Pour accéder à la base de données
-    $mysql = [MySQL]::new($configVra.getConfigValue($targetEnv, "db", "host"), `
+    $mysql = [SQLDB]::new([DBType]::MySQL, `
+                          $configVra.getConfigValue($targetEnv, "db", "host"), `
                           $configVra.getConfigValue($targetEnv, "db", "dbName"), `
                           $configVra.getConfigValue($targetEnv, "db", "user"), `
                           $configVra.getConfigValue($targetEnv, "db", "password"), `
