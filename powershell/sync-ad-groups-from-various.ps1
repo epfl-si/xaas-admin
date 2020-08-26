@@ -34,7 +34,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ITServices.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "SQLDB.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -220,7 +220,7 @@ function removeInexistingADAccounts([Array] $accounts)
 					   Peut être de la forme basique epfl_<faculty>_<unit>
 					   Ou alors simplement un seul élément si c'est un nom de faculté
 #>
-function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$role, [string]$bgName)
+function updateVRAUsersForBG([SQLDB]$mysql, [Array]$userList, [TableauRoles]$role, [string]$bgName)
 {
 
 	switch($role)
@@ -344,7 +344,8 @@ try
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 	
 	# Pour accéder à la base de données
-	$mysql = [MySQL]::new($configVra.getConfigValue($targetEnv, "db", "host"), `
+	$mysql = [SQLDB]::new([DBType]::MySQL, `
+							$configVra.getConfigValue($targetEnv, "db", "host"), `
 							$configVra.getConfigValue($targetEnv, "db", "dbName"), `
 							$configVra.getConfigValue($targetEnv, "db", "user"), `
 							$configVra.getConfigValue($targetEnv, "db", "password"), `
