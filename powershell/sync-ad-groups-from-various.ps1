@@ -260,10 +260,10 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 	}
 
 	# On commence par supprimer tous les utilisateurs du role donné pour le BG
-	$request = "DELETE FROM dbo.vraUsers WHERE role='{0}' AND {1}" -f $role, ($criteriaConditions -join " AND ")
+	$request = "DELETE FROM vraUsers WHERE role='{0}' AND {1}" -f $role, ($criteriaConditions -join " AND ")
 	$nbDeleted = $sqldb.execute($request)
 
-	$baseRequest = "INSERT INTO dbo.vraUsers VALUES"
+	$baseRequest = "INSERT INTO vraUsers VALUES"
 	$rows = @()
 	# Boucle sur les utilisateurs à ajouter
 	ForEach($user in $userList)
