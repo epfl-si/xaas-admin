@@ -264,6 +264,23 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
+        BUT : met à jour une section de firewall 
+        
+        IN  : $section      -> Objet représentant la section
+    #>
+    [void] updateFirewallSection([PSObject]$section)
+    {
+        
+        $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $section.id
+        
+		# Création de la section de firewall
+        $dummy = $this.callAPI($uri, "PUT", $section)       
+        
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
         BUT : Efface une section de firewall 
         
         IN  : $id	        -> ID de la section de firewall
