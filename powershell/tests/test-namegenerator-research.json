@@ -312,7 +312,7 @@
         "tests":[
             {
                 "params":[],
-                "expected":"st.rsrch_123456"
+                "expected":"st.rsrch"
             }
         ]
     },
@@ -322,7 +322,7 @@
         "tests": [
             {
                 "params":[],
-                "expected": ["rsrch_123456","Section for Tenant research and Project 123456"]
+                "expected": ["rsrch","Section for Tenant research"]
             }
         ]   
     },
@@ -334,20 +334,20 @@
                 "params":[],
                 "expected":[
                     {
-                        "tag": "allow-123456-in",
-                        "name": "allow-123456-in"
+                        "tag": "allow-rsrch-in",
+                        "name": "allow-rsrch-in"
                     },
                     {
-                        "tag": "allow-intra-123456-comm",
-                        "name": "allow-intra-123456-comm"
+                        "tag": "allow-intra-rsrch-comm",
+                        "name": "allow-intra-rsrch-comm"
                     },
                     {
-                        "tag": "allow-123456-out",
-                        "name": "allow-123456-out"
+                        "tag": "allow-rsrch-out",
+                        "name": "allow-rsrch-out"
                     },
                     {
-                        "tag": "deny-123456-all",
-                        "name": "deny-123456-all"
+                        "tag": "deny-rsrch-all",
+                        "name": "deny-rsrch-all"
                     }
                 ]
             }
