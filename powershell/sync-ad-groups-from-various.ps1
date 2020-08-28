@@ -77,7 +77,7 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 	# On regarde si le groupe à ajouter dans le nouveau groupe existe
 	if((ADGroupExists -groupName $groupMemberGroup) -eq $false)
 	{
-		$logHistory.addWarningAndDisplay(("--> Inner group '{0}' doesn't exists, skipping AD group '{1}' creation!" -f $groupMemberGroup, $groupName))
+		$logHistory.addWarningAndDisplay(("Inner group '{0}' doesn't exists, skipping AD group '{1}' creation!" -f $groupMemberGroup, $groupName))
 		return $false
 	}
 
@@ -1160,7 +1160,7 @@ try
 				$global:VRA_TENANT__RESEARCH { "Project"}
 			}
 
-			$logHistory.addLineAndDisplay(("--> {0} doesn't exists anymore, removing user group {1} " -f $element, $_.name))
+			$logHistory.addLineAndDisplay(("--> {0} doesn't exists anymore, removing AD user group {1} " -f $element, $_.name))
 			if(-not $SIMULATION_MODE)
 			{
 				# On supprime le groupe AD
@@ -1175,14 +1175,14 @@ try
 				$approveADGroupName = $nameGenerator.getApproveADGroupNameFromUserADGroups($_.name)
 
 				# On supprime aussi le groupe AD pour l'approbation (niveau 2)
-				$logHistory.addLineAndDisplay(("--> {0} doesn't exists anymore, removing approval group {1} " -f $element, $approveADGroupName))
+				$logHistory.addLineAndDisplay(("--> {0} doesn't exists anymore, removing AD approval group {1} " -f $element, $approveADGroupName))
 				Remove-ADGroup $approveADGroupName -Confirm:$false
 
 			}
 
 			if($targetTenant -eq $global:VRA_TENANT__EPFL)
 			{
-				$logHistory.addLineAndDisplay(("--> Removing rights for '{0}' role in vraUsers table for AD groupe {1}" -f [TableauRoles]::User.ToString(), $_.name))
+				$logHistory.addLineAndDisplay(("--> Removing rights for '{0}' role in vraUsers table for AD group {1}" -f [TableauRoles]::User.ToString(), $_.name))
 
 				# Extraction des informations
 				$facultyName, $unitName, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
