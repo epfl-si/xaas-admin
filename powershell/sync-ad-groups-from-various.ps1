@@ -34,7 +34,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ITServices.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "MySQL.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "SQLDB.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -234,14 +234,14 @@ function removeInexistingADAccounts([Array] $accounts)
 			Pour le moment, on ne fait ceci que pour le tenant EPFL car c'est le seul
 			qui est facturé
 
-	IN  : $mysql	-> Objet permettant d'accéder à la DB
+	IN  : $sqldb	-> Objet permettant d'accéder à la DB
 	IN  : $ADGroup	-> Groupe AD avec les utilisateurs à ajouter
 	IN  : $role		-> Role à donner aux utilisateurs du groupe
 	IN  : $bgName	-> Nom du Business Group qui est accessible
 					   Peut être de la forme basique epfl_<faculty>_<unit>
 					   Ou alors simplement un seul élément si c'est un nom de faculté
 #>
-function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$role, [string]$bgName)
+function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$role, [string]$bgName)
 {
 
 	switch($role)
@@ -282,7 +282,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 
 	# On commence par supprimer tous les utilisateurs du role donné pour le BG
 	$request = "DELETE FROM vraUsers WHERE role='{0}' AND {1}" -f $role, ($criteriaConditions -join " AND ")
-	$nbDeleted = $mysql.execute($request)
+	$nbDeleted = $sqldb.execute($request)
 
 	$baseRequest = "INSERT INTO vraUsers VALUES"
 	$rows = @()
@@ -299,7 +299,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 		{
 			# On créé la requête et on l'exécute
 			$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
-			$nbInserted = $mysql.execute($request)
+			$nbInserted = $sqldb.execute($request)
 			$rows = @()
 		}
 		
@@ -309,7 +309,7 @@ function updateVRAUsersForBG([MySQL]$mysql, [Array]$userList, [TableauRoles]$rol
 	if($rows.Count -gt 0)
 	{
 		$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
-		$nbInserted = $mysql.execute($request)
+		$nbInserted = $sqldb.execute($request)
 	}
 
 	
@@ -431,7 +431,16 @@ try
 								   $configGroups.getConfigValue($targetEnv, "password"))
 	
 	# Pour accéder à la base de données
-	$mysql = [MySQL]::new($configVra.getConfigValue($targetEnv, "db", "host"), `
+	$sqldb = [SQLDB]::new([DBType]::MSSQL, `
+							$configVra.getConfigValue($targetEnv, "dbmssql", "host"), `
+							$configVra.getConfigValue($targetEnv, "dbmssql", "dbName"), `
+							$configVra.getConfigValue($targetEnv, "dbmssql", "user"), `
+							$configVra.getConfigValue($targetEnv, "dbmssql", "password"), `
+							$configVra.getConfigValue($targetEnv, "dbmssql", "port"))
+
+	# Pour accéder à la base de données
+	$mysql = [SQLDB]::new([DBType]::MySQL, `
+							$configVra.getConfigValue($targetEnv, "db", "host"), `
 							$configVra.getConfigValue($targetEnv, "db", "dbName"), `
 							$configVra.getConfigValue($targetEnv, "db", "user"), `
 							$configVra.getConfigValue($targetEnv, "db", "password"), `
@@ -759,7 +768,8 @@ try
 					if($ldapMemberList.Count -gt 0)
 					{
 						$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
-						updateVRAUsersForBG -mysql $mysql -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName()
+						updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName()
+						updateVRAUsersForBG -sqldb $mysql -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName()
 					}
 
 
@@ -787,7 +797,8 @@ try
 				if($facApprovalMembers.Count -gt 0)
 				{
 					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
-					updateVRAUsersForBG -mysql $mysql -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty['name'].toLower())
+					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty['name'].toLower())
+					updateVRAUsersForBG -sqldb $mysql -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty['name'].toLower())
 				}
 
 
@@ -809,7 +820,8 @@ try
 			if($adminMembers.Count -gt 0)
 			{
 				$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
-				updateVRAUsersForBG -mysql $mysql -userList $adminMembers -role AdminEPFL -bgName "all"
+				updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all"
+				updateVRAUsersForBG -sqldb $mysql -userList $adminMembers -role AdminEPFL -bgName "all"
 			}
 			
 		}
@@ -1195,7 +1207,8 @@ try
 											financeCenter = ''})
 
 				# Suppression des accès pour le business group correspondant au groupe AD courant.
-				updateVRAUsersForBG -mysql $mysql -userList @() -role User -bgName $nameGenerator.getBGName()
+				updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName()
+				updateVRAUsersForBG -sqldb $mysql -userList @() -role User -bgName $nameGenerator.getBGName()
 			}
 			
 		}
@@ -1248,7 +1261,8 @@ try
 
 	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
 
-	# Fermeture de la connexion MySQL
+	# Fermeture de la connexion à la base de données
+	$sqldb.disconnect()
 	$mysql.disconnect()
 
 }
