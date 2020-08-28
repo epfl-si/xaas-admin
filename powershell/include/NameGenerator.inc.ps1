@@ -1143,8 +1143,9 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                $name = "sg.rsrch_{0}" -f $this.getDetail('projectId')
-                $desc = "Tenant: {0}\nBusiness Group: {1}\nProject ID: {2}" -f $this.tenant, $bgName, $this.getDetail('projectId')
+                # Pour ce tenant, il a été décidé de n'avoir qu'un seul NSGroup pour l'entièreté des éléments
+                $name = "sg.rsrch"
+                $desc = "Tenant: {0}" -f $this.tenant
             }
 
 

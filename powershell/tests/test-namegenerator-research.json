@@ -302,7 +302,7 @@
         "tests":[
             {
                 "params": ["rsrch_123456"],
-                "expected": ["sg.rsrch_123456", "Tenant: research\\nBusiness Group: rsrch_123456\\nProject ID: 123456"]
+                "expected": ["sg.rsrch", "Tenant: research"]
             }
         ]
     },
