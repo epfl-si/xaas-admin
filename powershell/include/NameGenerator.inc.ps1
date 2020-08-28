@@ -1187,7 +1187,8 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                $tagName = "st.rsrch_{0}" -f $this.getDetail('projectId')
+                # Pour ce tenant, c'est le même "security tag" qui sera appliqué à tous les éléments.
+                $tagName = "st.rsrch"
             }
 
             # Tenant pas géré
@@ -1234,8 +1235,9 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                $name = "rsrch_{0}" -f $this.getDetail('projectId')
-                $desc = "Section for Tenant {0} and Project {1}" -f $this.tenant, $this.getDetail('projectId')
+                # Pour ce tenant, il a été décidé d'avoir une seule section pour tous les projets.
+                $name = "rsrch"
+                $desc = "Section for Tenant {0}" -f $this.tenant
             }
 
 
@@ -1284,7 +1286,8 @@ class NameGenerator
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                $ruleMiddle = $this.getDetail('projectId')
+                # Pour ce tenant, il a été décidé qu'on avait qu'une seule section et donc des règles uniques pour tous les éléments
+                $ruleMiddle = "rsrch"
             }
 
             # Tenant pas géré

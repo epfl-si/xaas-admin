@@ -267,6 +267,10 @@ class NSXAPI: RESTAPICurl
         BUT : met à jour une section de firewall 
         
         IN  : $section      -> Objet représentant la section
+
+        NOTE: Aucune idée s'il faut faire un "unlock" de la section avant de pouvoir modifier certains
+                détails. Dans tous les cas, le nom (display_name) peut être changé sans faire un
+                "unlock"
     #>
     [void] updateFirewallSection([PSObject]$section)
     {
