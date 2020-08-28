@@ -140,6 +140,20 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
+		BUT : Efface un NS Group
+
+		IN  : $nsGroup  -> Objet représentant le NS Group à effacer
+	#>
+    [void] deleteNSGroup([PSObject]$nsGroup)
+    {
+        $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $nsGroup.id
+
+        $dummy = $this.callAPI($uri, "Delete", $null)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
 	    								FIREWALL SECTION
 		-------------------------------------------------------------------------------------
@@ -285,14 +299,14 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Efface une section de firewall 
+        BUT : Efface une section de firewall et toutes les règles qui sont dedans
         
         IN  : $id	        -> ID de la section de firewall
     #>
     [void] deleteFirewallSection([string]$id)
     {
         
-        $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $id
+        $uri = "https://{0}/api/v1/firewall/sections/{1}?cascade=true" -f $this.server, $id
         
 		# Création de la section de firewall
         $dummy = $this.callAPI($uri, "Delete", $null)       

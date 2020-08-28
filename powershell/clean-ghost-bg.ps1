@@ -47,6 +47,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "GroupsAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "NSXAPI.inc.ps1"))
 
 
 
@@ -55,6 +56,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 $configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configGroups = [ConfigReader]::New("config-groups.json")
+$configNSX = [ConfigReader]::New("config-nsx.json")
 
 
 
@@ -66,6 +68,7 @@ $configGroups = [ConfigReader]::New("config-groups.json")
 
 	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $groupsApp		-> Objet de la classe GroupsAPI permettant d'accéder à "groups"
+	IN  : $nsx				-> Objet de la classe NSXAPI pour faire du ménage dans NSX
 	IN  : $bg				-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
 					   			par un appel à une méthode de la classe vRAAPI
 	IN  : $targetTenant		-> Le tenant sur lequel on se trouve
@@ -74,7 +77,7 @@ $configGroups = [ConfigReader]::New("config-groups.json")
 	RET : $true si effacé
 		  $false si pas effacé (mis en ghost)
 #>
-function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [PSObject]$bg, [string]$targetTenant, [NameGenerator]$nameGenerator)
+function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [NSXAPI]$nsx, [PSObject]$bg, [string]$targetTenant, [NameGenerator]$nameGenerator)
 {
 
 	# Recherche des items potentiellement présents dans le BG
@@ -231,6 +234,27 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [P
 
 		}# FIN SI c'est pour ces tenants qu'il faut effacer des éléments
 
+
+		if($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
+		{
+			# --------------
+			# NSX
+
+			# Section de Firewall
+			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
+			$nsxSection  = $nsx.getFirewallSectionByName($nsxFWSectionName)
+
+			$logHistory.addLineAndDisplay(("--> Deleting NSX Firewall section '{0}'..." -f $nsxFWSectionName))
+			$nsx.deleteFirewallSection($nsxSection.id)
+
+
+			# Security Group
+			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bg.name)
+			$nsxNSGroup = $nsx.getNSGroupByName($nsxNSGroupName)
+			$logHistory.addLineAndDisplay(("--> Deleting NSX NS Group '{0}'..." -f $nsxNSGroupName))
+			$nsx.deleteNSGroup($nsxNSGroup)
+		}
+
 		# Incrémentation du compteur
 		$counters.inc('BGDeleted')
 
@@ -375,6 +399,10 @@ try
 						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
 						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
 
+	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
+	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
+	$nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), $configNSX.getConfigValue($targetEnv, "user"), $configNSX.getConfigValue($targetEnv, "password"))
+
 
 	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")
 
@@ -388,7 +416,7 @@ try
 			((getBGCustomPropValue -bg $_ -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS) -eq $global:VRA_BG_STATUS__GHOST))
 		{
 			$logHistory.addLineAndDisplay(("-> Business Group '{0}' is Ghost, deleting..." -f $_.name))
-			$deleted = deleteBGAndComponentsIfPossible -vra $vra -groupsApp $groupsApp -bg $_ -targetTenant $targetTenant -nameGenerator $nameGenerator
+			$deleted = deleteBGAndComponentsIfPossible -vra $vra -groupsApp $groupsApp -nsx $nsx -bg $_ -targetTenant $targetTenant -nameGenerator $nameGenerator
 
 			# Si le BG a pu être complètement effacé, c'est qu'il n'y avait plus d'items dedans et que donc forcément aucune
 			# ISO ne pouvait être montée nulle part.
@@ -417,6 +445,7 @@ try
 
 	# Affichage des nombres d'appels aux fonctions des objets REST
 	$vra.displayFuncCalls()
+	$nsx.displayFuncCalls()
 
 }
 catch # Dans le cas d'une erreur dans le script
