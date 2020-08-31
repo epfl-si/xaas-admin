@@ -340,6 +340,32 @@ class NetAppAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
+        BUT : Modifie la taille d'un volume et attend que la tâche qui tourne en fond pour la création se
+                termine.
+        
+        IN  : $sizeGB       -> Taille du volume en GB
+	#>
+    [void] resizeVolume([string]$id, [int]$sizeGB)
+    {
+        $uri = "https://{0}/api/storage/volumes/{1}" -f $this.server , $id
+
+        $sizeInBytes = $sizeGB * 1024 * 1024 * 1024
+
+        $replace = @{
+            sizeInBytes = $sizeInBytes
+        }
+
+        $body = $this.createObjectFromJSON("xaas-nas-resize-volume.json", $replace)
+
+        $result = $this.callAPI($uri, "PATCH", $body)
+
+        # L'opération se fait en asynchrone donc on attend qu'elle se termine
+        $this.waitForJobToFinish($result.job.uuid)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
         BUT : Supprime un volume et attend que la tâche qui tourne en fond pour la création se
                 termine.
         
