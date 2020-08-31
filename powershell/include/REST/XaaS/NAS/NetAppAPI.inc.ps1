@@ -60,12 +60,61 @@ class NetAppAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
 		BUT : Retourne les informations sur la version du NetApp
 	#>
-    [PSCustomObject] getVersion()
+    [PSObject] getVersion()
     {
         $uri = "https://{0}/api/cluster?fields=version" -f $this.server
 
         return $this.callAPI($uri, "GET", $null).version
     }
 
-     
+
+    <#
+        -------------------------------------------------------------------------------------
+                                                SVM
+        -------------------------------------------------------------------------------------
+    #>
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Retourne la liste des SVM disponibles
+	#>
+    [Array] getSVMList()
+    {
+        $uri = "https://{0}/api/svm/svms" -f $this.server
+
+        return $this.callAPI($uri, "GET", $null).records
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne les informations d'une SVM en fonction de son ID
+        
+        IN  : $id   -> ID de la SVM
+	#>
+    [PSObject] getSVMById([string]$id)
+    {
+        $uri = "https://{0}/api/svm/svms/{1}" -f $this.server, $id
+
+        return $this.callAPI($uri, "GET", $null)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne les informations d'une SVM en fonction de son nom
+        
+        IN  : $id   -> ID de la SVM
+	#>
+    [PSObject] getSVMByName([string]$name)
+    {
+        $svm = $this.getSVMList() | Where-Object { $_.name -eq $name }
+
+        if($null -eq $svm)
+        {
+            return $null
+        }
+
+        return $this.getSVMById($svm.uuid)
+    }
 }
