@@ -5,3 +5,4 @@ config-vra.json
 config-vsphere.json
 config-xaas-backup.json
 config-xaas-s3.json
+config-xaas-nas.json
