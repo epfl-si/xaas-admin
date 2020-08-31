@@ -153,8 +153,16 @@ class RESTAPICurl: RESTAPI
 			# Si aucune erreur
 			if($this.curl.ExitCode -eq 0)
 			{
-				
-				$result = $output | ConvertFrom-Json
+				# On teste la récupération de ce qui a été retourné
+				try
+				{
+					$result = $output | ConvertFrom-Json
+				}
+				catch
+				{
+					# Si erreur, on ajoute simplement le JSON retourné au message d'exception pour que ça soit repris dans le mail envoyé aux admins
+					Throw ("{0}`n<b>Returned 'JSON':</b> {1}" -f $_.Exception.Message, $output)
+				}
 	
 				# Si pas trouvé
 				if($result.httpStatus -eq "NOT_FOUND")
