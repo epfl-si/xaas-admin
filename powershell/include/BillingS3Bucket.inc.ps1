@@ -36,7 +36,7 @@ class BillingS3Bucket: Billing
 
 		RET : Instance de l'objet
 	#>
-    BillingS3Bucket([MySQL]$mysql, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv) : base($mysql, $ldap, $serviceList, $serviceBillingInfos, $targetEnv)
+    BillingS3Bucket([SQLDB]$mysql, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv) : base($mysql, $ldap, $serviceList, $serviceBillingInfos, $targetEnv)
     {
     }
 
