@@ -89,14 +89,15 @@ class BillingS3Bucket: Billing
 
         $res = $this.db.execute($request)
 
-        # Si aucune utilisation
-        if($res[0].usage -eq "NULL")
+        try
+        {
+            # Calcul de la moyenne en fonction du nombre de jours utilisés durant le mois
+            return  $res[0].nbDays * $res[0].usage / [DateTime]::DaysInMonth($year, $month)
+        }
+        catch
         {
             return 0
         }
-
-        # Calcul de la moyenne en fonction du nombre de jours utilisés durant le mois
-        return  $res[0].nbDays * $res[0].usage / [DateTime]::DaysInMonth($year, $month)
     }
 
     <#
