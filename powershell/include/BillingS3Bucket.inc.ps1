@@ -87,7 +87,7 @@ class BillingS3Bucket: Billing
         }
         $request = "SELECT AVG(storageUtilized)/1024/1024/1024/1024 AS 'usage', COUNT(*) as 'nbDays' FROM BucketsUsage WHERE date like '{0}-{1}-%' AND bucketName='{2}'" -f $year, $monthStr, $bucketName
 
-        $res = $this.mysql.execute($request)
+        $res = $this.db.execute($request)
 
         # Si aucune utilisation
         if($res[0].usage -eq "NULL")
@@ -115,7 +115,7 @@ class BillingS3Bucket: Billing
         # On commence par récupérer la totalité des Buckets qui existent. Ceci est fait en interrogeant une table spéciale
         # dans laquelle on a tous les buckets, y compris ceux qui ont été effacés
         $request = "SELECT * FROM BucketsArchive"
-        $bucketList = $this.mysql.execute($request)
+        $bucketList = $this.db.execute($request)
 
         # Parcours de la liste des buckets
         ForEach($bucket in $bucketList)
