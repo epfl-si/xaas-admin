@@ -1,6 +1,7 @@
 <#
 USAGES:
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -svm <svm> 
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action resize -sizeGB <sizeGB>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getsize [-volName <volName>]
 #>
 <#
@@ -39,7 +40,8 @@ param([string]$targetEnv,
       [string]$targetTenant, 
       [string]$action, 
       [string]$svm,
-      [string]$volName)
+      [string]$volName,
+      [int]$sizeGB)
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -125,6 +127,28 @@ try
         }# FIN Action Delete
 
 
+        # -- Resize d'un volume
+        $ACTION_RESIZE {
+
+            $logHistory.addLine( ("Getting Volume {0}" -f $volName) )
+            $vol = $netapp.getVolumeByName($volName)
+
+            # Si volume pas trouvé
+            if($null -eq $vol)
+            {
+                $output.error = ("Volume {0} doesn't exists" -f $volName)
+                $logHistory.addLine($output.error)
+            }
+            else
+            {
+                $logHistory.addLine( ("Resizing Volume {0} to {1} GB" -f $volName, $sizeGB) )
+                $netapp.resizeVolume($vol.uuid, $sizeGB)
+            }
+            
+
+        }# FIN Action resize
+
+
         # -- Renvoie la taille d'un Volume
         $ACTION_GET_SIZE {
 
@@ -140,6 +164,7 @@ try
             # Parcours des volumes dont on veut la taille
             $volNameList | ForEach-Object { 
 
+                $logHistory.addLine( ("Getting size for Volume {0}" -f $_) )
                 $vol = $netapp.getVolumeByName($_)
 
                 $output.results += @{
