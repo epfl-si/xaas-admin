@@ -267,7 +267,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 	$rows = @()
 
 	# Suppression des "itadmin-" au début des noms d'utilisateur et on ne prend que les "unique" pour éviter d'éventuelles collisions
-	$uniqueUserList = $userList | Foreach-Object { $_ -replace "^itadmin-", "" } | Get-Unique
+	$uniqueUserList = $userList | Foreach-Object { $_ -replace "^itadmin-", "" } | Sort-Object | Get-Unique
 
 	# Boucle sur les utilisateurs à ajouter
 	ForEach($user in $uniqueUserList)
