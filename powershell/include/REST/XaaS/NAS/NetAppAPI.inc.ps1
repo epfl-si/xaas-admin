@@ -137,7 +137,7 @@ class NetAppAPI: RESTAPICurl
                 if(($method.ToLower() -eq "get"))
                 {
                     # Si la property existe
-                    if(($getPropertyName -ne "") -and ([bool]($res.PSobject.Properties.name -match $getPropertyName)))
+                    if(($getPropertyName -ne "") -and ([bool]($res.PSobject.Properties.name -eq $getPropertyName)))
                     {
                         $res = $res.$getPropertyName
                     }
