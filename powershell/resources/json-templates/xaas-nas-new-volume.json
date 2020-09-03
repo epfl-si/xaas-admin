@@ -1,0 +1,14 @@
+{
+    "aggregates": [
+      {
+        "name": "{{aggregateName}}",
+        "uuid": "{{aggregateUUID}}"
+      }
+    ],
+    "svm": {
+      "name": "{{svmName}}",
+      "uuid": "{{svmUUID}}"
+    },
+    "name": "{{volName}}",
+    "size": {{sizeInBytes}}
+}
