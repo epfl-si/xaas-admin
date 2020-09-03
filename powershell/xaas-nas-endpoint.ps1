@@ -100,11 +100,23 @@ try
     $targetEnv = $targetEnv.ToLower()
     $targetTenant = $targetTenant.ToLower()
 
-    # Création de l'objet pour communiquer avec le NAS
-    $netapp = [NetAppAPI]::new($configNAS.getConfigValue($targetEnv, "server"), `
-                                $configNAS.getConfigValue($targetEnv, "user"), `
-                                $configNAS.getConfigValue($targetEnv, "password"))
-    
+    $netapp = $null
+
+    # Parcours des serveurs qui sont définis
+    $configNAS.getConfigValue($targetEnv, "serverList") | ForEach-Object {
+
+        if($null -eq $netapp)
+        {
+            # Création de l'objet pour communiquer avec le NAS
+            $netapp = [NetAppAPI]::new($_, $configNAS.getConfigValue($targetEnv, "user"), $configNAS.getConfigValue($targetEnv, "password"))
+        }
+        else
+        {
+            $netapp.addServer($_)
+        }
+    }# Fin boucle de parcours des serveurs qui sont définis
+
+
     # Objet pour pouvoir envoyer des mails de notification
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
@@ -144,7 +156,6 @@ try
                 $logHistory.addLine( ("Resizing Volume {0} to {1} GB" -f $volName, $sizeGB) )
                 $netapp.resizeVolume($vol.uuid, $sizeGB)
             }
-            
 
         }# FIN Action resize
 
