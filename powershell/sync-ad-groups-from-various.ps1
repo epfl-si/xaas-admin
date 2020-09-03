@@ -265,8 +265,12 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 
 	$baseRequest = "INSERT INTO vraUsers VALUES"
 	$rows = @()
+
+	# Suppression des "itadmin-" au début des noms d'utilisateur et on ne prend que les "unique" pour éviter d'éventuelles collisions
+	$uniqueUserList = $userList | Foreach-Object { $_ -replace "^itadmin-", "" } | Get-Unique
+
 	# Boucle sur les utilisateurs à ajouter
-	ForEach($user in $userList)
+	ForEach($user in $uniqueUserList)
 	{
 		# Le 1 qu'on ajoute à la fin, c'est pour la colonne 'link'. Cette valeur est constante et elle doit être ajoutée
 		# pour le bon fonctionnement de Tableau et son interfaçage avec les utilisateurs de vRA
