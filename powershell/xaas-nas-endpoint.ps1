@@ -3,6 +3,7 @@ USAGES:
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -svm <svm> 
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action resize -sizeGB <sizeGB>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getsize [-volName <volName>]
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getsvmlist -faculty <faculty>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -41,7 +42,8 @@ param([string]$targetEnv,
       [string]$action, 
       [string]$svm,
       [string]$volName,
-      [int]$sizeGB)
+      [int]$sizeGB,
+      [string]$faculty)
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -74,6 +76,7 @@ $ACTION_CREATE              = "create"
 $ACTION_DELETE              = "delete"
 $ACTION_RESIZE              = "resize"
 $ACTION_GET_SIZE            = "getsize"
+$ACTION_GET_SVM_LIST        = "getsvmlist"
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -116,10 +119,8 @@ try
         }
     }# Fin boucle de parcours des serveurs qui sont définis
 
-
     # Objet pour pouvoir envoyer des mails de notification
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
-
 
     # En fonction de l'action demandée
     switch ($action)
@@ -186,7 +187,41 @@ try
 
         }# FIN Action Delete
 
-        
+
+        # -- Renvoie la liste des SVM pour une faculté
+        $ACTION_GET_SVM_LIST {
+            # Chargement des informations sur le mapping des facultés
+            $facultyMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-mapping.json"))
+            $facultyMappingList = (Get-Content -Path $facultyMappingFile -raw) | ConvertFrom-Json
+
+            # Chargement des informations 
+            $facultyToSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-to-svm.json"))
+            $facultyToSVM = (Get-Content -Path $facultyToSVMFile -raw) | ConvertFrom-Json
+
+            # On commence par regarder s'il y a un mapping pour la faculté donnée
+            $targetFaculty = $faculty
+            Foreach($facMapping in $facultyMappingList)
+            {
+                if($facMapping.fromFac.toLower() -eq $faculty.toLower())
+                {
+                    $targetFaculty = $facMapping.toFac
+                    break
+                }
+            }
+            
+            # Liste des SVM pour la faculté (avec la bonne nommenclature)
+            $svmList = $netapp.getSVMList() | Where-Object { $_.name -match ('^{0}[0-9].*' -f $targetFaculty)}
+            
+            # Si on a une liste hard-codée de SVM pour la faculté
+            if([bool]($facultyToSVM.PSobject.Properties.name.toLower() -eq $faculty.toLower()))
+            {
+                # On ajoute la liste hard-codée
+                $svmList += $facultyToSVM.$faculty
+            }
+
+            # Ajout du résultat trié
+            $output.results += $svmList | Sort-Object
+        }
 
     }
 
