@@ -435,7 +435,7 @@ try
 		ForEach($faculty in $facultyList)
 		{
 			$counters.inc('epfl.facProcessed')
-			$logHistory.addLineAndDisplay(("[{0}/{1}] Faculty {2}..." -f $counters.get('epfl.facProcessed'), $facultyList.Count, $faculty['name']))
+			$logHistory.addLineAndDisplay(("[{0}/{1}] Faculty {2}..." -f $counters.get('epfl.facProcessed'), $facultyList.Count, $faculty.name))
 			
 			# ----------------------------------------------------------------------------------
 			# --------------------------------- FACULTE
@@ -445,8 +445,8 @@ try
 			# NOTE: On ne connait pas encore toutes les informations donc on initialise 
 			# avec juste celles qui sont nécessaires pour la suite. Le reste, on met une
 			# chaîne vide.
-			$nameGenerator.initDetails(@{facultyName = $faculty['name']
-										facultyID = $faculty['uniqueidentifier']
+			$nameGenerator.initDetails(@{facultyName = $faculty.name
+										facultyID = $faculty.uniqueidentifier
 										unitName = ''
 										unitID = ''
 										financeCenter = ''})
@@ -534,13 +534,13 @@ try
 			# ----------------------------------------------------------------------------------
 
 			# Recherche des unités pour la facultés
-			$unitList = $ldap.getFacultyUnitList($faculty['name'], $EPFL_FAC_UNIT_NB_LEVEL) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et modifier pour limiter à une unité donnée
+			$unitList = $ldap.getFacultyUnitList($faculty.name, $EPFL_FAC_UNIT_NB_LEVEL) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et modifier pour limiter à une unité donnée
 
 			$unitNo = 1
 			# Parcours des unités de la faculté
 			ForEach($unit in $unitList)
 			{
-				$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty['name'], $unit['name']))
+				$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty.name, $unit.name))
 
 				# Recherche des membres de l'unité
 				$ldapMemberList = $ldap.getUnitMembers($unit['uniqueidentifier'])
@@ -549,11 +549,11 @@ try
 				$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
 
 				# Initialisation des détails pour le générateur de noms
-				$nameGenerator.initDetails(@{facultyName = $faculty['name']
-											facultyID = $faculty['uniqueidentifier']
-											unitName = $unit['name']
-											unitID = $unit['uniqueidentifier']
-											financeCenter = $unit['accountingnumber']})
+				$nameGenerator.initDetails(@{facultyName = $faculty.name
+											facultyID = $faculty.uniqueidentifier
+											unitName = $unit.name
+											unitID = $unit.uniqueidentifier
+											financeCenter = $unit.accountingnumber})
 
 				# Création du nom du groupe AD et de la description
 				$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
@@ -604,7 +604,7 @@ try
 					}
 					else # Pas de membres donc on ne créé pas le groupe
 					{
-						$logHistory.addLineAndDisplay(("--> No members in unit '{0}', skipping group creation " -f $unit['name']))
+						$logHistory.addLineAndDisplay(("--> No members in unit '{0}', skipping group creation " -f $unit.name))
 						$counters.inc('epfl.LDAPUnitsEmpty')
 						$adGroupExists = $false
 					}
@@ -711,8 +711,8 @@ try
 			if($facApprovalMembers.Count -gt 0)
 			{
 				$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
-				updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty['name'].toLower())
-				updateVRAUsersForBG -sqldb $mysql -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty['name'].toLower())
+				updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower())
+				updateVRAUsersForBG -sqldb $mysql -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower())
 			}
 
 
