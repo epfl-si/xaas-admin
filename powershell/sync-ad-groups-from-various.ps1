@@ -155,6 +155,18 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 					$templateName = "ad-groups-missing-for-groups-creation"
 				}
 
+				# ---------------------------------------
+				# Unité 'Gestion' pas trouvée au niveau 4 pour une unité de niveau 3
+				'level3GEUnitNotFound'
+				{
+					$valToReplace.unitList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=130975579"
+
+					$mailSubject = "Error - Level 4 'GE' unit can't be identified, please proceed manually"
+
+					$templateName = "level-4-ge-unit-not-found"
+				}
+
 				default
 				{
 					# Passage à l'itération suivante de la boucle
@@ -392,6 +404,7 @@ try
 	$counters.add('ADGroupsMembersRemoved', '# AD Group members removed')
 	$counters.add('ADMembersNotFound', '# AD members not found')
 	$counters.add('membersAddedTovRAUsers', '# Users added to vraUsers table (Tableau)')
+	$counters.add('level3GEUnitNotFound', '# level 3 GE unit not found')
 
 	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -402,6 +415,7 @@ try
 	(cette liste sera accédée en variable globale même si c'est pas propre XD)
 	#>
 	$notifications = @{}
+	$notifications.level3GEUnitNotFound = @()
 
 
 	# -------------------------------------------------------------------------------------------------------------------------------------
@@ -430,6 +444,10 @@ try
 		$facultyList = $ldap.getLDAPFacultyList() #  | Where-Object { $_['name'] -eq "ASSOCIATIONS" } # Décommenter et modifier pour limiter à une faculté donnée
 
 		$exitFacLoop = $false
+
+		# Chargement des informations sur le mapping des facultés
+		$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "ge-unit-mapping.json"))
+		$geUnitMappingList = (Get-Content -Path $geUnitMappingFile -raw) | ConvertFrom-Json
 
 		# Parcours des facultés trouvées
 		ForEach($faculty in $facultyList)
@@ -542,6 +560,51 @@ try
 			{
 				$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty.name, $unit.name))
 
+
+				# Si c'est une unité de niveau 3 (centre), on doit chercher l'unité de niveau 4 qui fait office de "gestion"
+				if($unit.level -eq 3)
+				{
+					$logHistory.addLineAndDisplay("--> Level 3 unit (Center), looking for level 4 'GE' unit for finance center..." )
+
+					# Noms d'unité à rechercher. On cherche de plusieurs manières parce qu'ils ont été incapables de nommer ça d'une façon cohérente...
+					$geUnitNameList = @( ("{0}-GE" -f $unit.name)
+										 ("{0}-GE" -f [Regex]::match($unit.name, '[A-Za-z]+-(.*)').groups[1].value) )
+
+					# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
+					$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
+
+					$financeCenter = $null
+
+					# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
+					ForEach($geUnitName in $geUnitNameList)
+					{
+						$logHistory.addLineAndDisplay(("---> Looking for '{0}' unit..." -f $geUnitName))
+						$geUnit = $unitList | Where-Object { $_.name -eq $geUnitName }
+
+						if($null -ne $geUnit)
+						{
+							$logHistory.addLineAndDisplay("---> Unit found, getting finance center")
+							$financeCenter = $geUnit.accountingnumber
+							break
+						}
+					}
+
+					# Si on n'a rien trouvé... 
+					if($null -eq $financeCenter)
+					{
+						$logHistory.addLineAndDisplay("--> 'GE' unit not found... using 'normal' finance center")
+						$financeCenter = $unit.accountingnumber
+						$counters.inc('level3GEUnitNotFound')
+						# Ajout du nom de l'unité niveau 3 pour notifier par mail que pas trouvée
+						$notifications.level3GEUnitNotFound += $unit.name
+					}
+				}
+				else # Ce n'est pas une unité de niveau 3 (centre)
+				{
+					$financeCenter = $unit.accountingnumber
+				}
+
+
 				# Recherche des membres de l'unité
 				$ldapMemberList = $ldap.getUnitMembers($unit['uniqueidentifier'])
 
@@ -553,7 +616,7 @@ try
 											facultyID = $faculty.uniqueidentifier
 											unitName = $unit.name
 											unitID = $unit.uniqueidentifier
-											financeCenter = $unit.accountingnumber})
+											financeCenter = $financeCenter})
 
 				# Création du nom du groupe AD et de la description
 				$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
