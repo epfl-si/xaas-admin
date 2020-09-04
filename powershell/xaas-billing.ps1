@@ -97,10 +97,10 @@ function replaceInString([string]$str, [System.Collections.IDictionary] $valToRe
         $replaceWith = $valToReplace.Item($search)
 
         # Si on a des retours à la ligne dans la valeur à remplacer
-        if($replaceWith -like "*\n*")
+        if($replaceWith -like "*`n*")
         {
             # On met le tout dans des paragraphes pour que le HTML soit généré correctement
-            $replaceWith = "<p>{0}</p>" -f ($replaceWith -replace "\\n", "</p><p>")
+            $replaceWith = "<p>{0}</p>" -f ($replaceWith -replace "`n", "</p><p>")
         }
 
         $str = $str -replace  $strToSearch, $replaceWith
