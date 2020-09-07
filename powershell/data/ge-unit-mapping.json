@@ -1,0 +1,82 @@
+[
+    {
+        "level3Center": "SI-VP",
+        "level4GeUnit": "VPSI"
+    },
+    {
+        "level3Center": "RH-RH",
+        "level4GeUnit": "RH-G"
+    },
+    {
+        "level3Center": "CDM-SG",
+        "level4GeUnit": "CDM-GE"
+    },
+    {
+        "level3Center": "E-FC",
+        "level4GeUnit": "EXTS-GE"
+    },
+    {
+        "level3Center": "ENAC-SG",
+        "level4GeUnit": "ENAC-GE"
+    },
+    {
+        "level3Center": "ENT-E-GES",
+        "level4GeUnit": "ENT-E-GE"
+    },
+    {
+        "level3Center": "ENT-P-GES",
+        "level4GeUnit": "ENT-P-GE"
+    },
+    {
+        "level3Center": "ENT-R-GES",
+        "level4GeUnit": "ENT-R-GE"
+    },
+    {
+        "level3Center": "EPFL-ECAL-L",
+        "level4GeUnit": "EPFL-ECAL-GE"
+    },
+    {
+        "level3Center": "E-VP",
+        "level4GeUnit": "VPE"
+    },
+    {
+        "level3Center": "IC-SG",
+        "level4GeUnit": "IC-GE"
+    },
+    {
+        "level3Center": "P-APR",
+        "level4GeUnit": "APR"
+    },
+    {
+        "level3Center": "P-MEDIACOM",
+        "level4GeUnit": "MEDIACOM"
+    },
+    {
+        "level3Center": "PRN-MARVEL",
+        "level4GeUnit": "PRNMARVEL-GE"
+    },
+    {
+        "level3Center": "PRN-ROBOTICS",
+        "level4GeUnit": "PRN-ROBOT-GE"
+    },
+    {
+        "level3Center": "PTECH",
+        "level4GeUnit": "PTEC-GE"
+    },
+    {
+        "level3Center": "RHO-VP",
+        "level4GeUnit": "VPRHO"
+    },
+    {
+        "level3Center": "R-VP",
+        "level4GeUnit": "VPR"
+    },
+    {
+        "level3Center": "STI-SG",
+        "level4GeUnit": "STI-GE"
+    },
+    {
+        "level3Center": "SV-SG",
+        "level4GeUnit": "SV-GE"
+    }
+]
