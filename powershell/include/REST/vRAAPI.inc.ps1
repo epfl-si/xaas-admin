@@ -1354,7 +1354,28 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSObject] getItem([string]$itemType, [string]$itemName)
 	{
-		$res = $this.getBGItemListQuery(("`$filter=resourceType/name eq '{0}' and name eq '{1}'" -f $itemType, $itemName))
+		# On encode le nom de l'item dans le cas où il aurait un nom avec des caractères spéciaux
+		$res = $this.getBGItemListQuery(("`$filter=resourceType/name eq '{0}' and name eq '{1}'" -f $itemType, [System.Net.WebUtility]::UrlEncode($itemName)))
+
+		if($res.length -eq 0)
+		{
+			return $null
+		}
+		return $res[0]
+	}
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie un item donné pour son id
+			  
+		IN  : $itemName			-> ID de l'item que l'on chercher
+
+		RET : Objet avec l'item
+			$null si pas trouvé
+	#>
+	[PSObject] getItem([string]$itemId)
+	{
+		$res = $this.getBGItemListQuery(("`$filter=id eq '{0}'" -f $itemId))
 
 		if($res.length -eq 0)
 		{
