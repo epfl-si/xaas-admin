@@ -48,13 +48,16 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SQLDB.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "Billing.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "BillingS3Bucket.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ITServices.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "CopernicAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "Billing.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "BillingS3Bucket.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
@@ -74,6 +77,9 @@ $global:BILLING_KEEP_PDF_NB_DAYS = 30
 # Actions possibles par le script
 $global:ACTION_EXTRACT_DATA = "extractData"
 $global:ACTION_BILLING      = "billing"
+
+# Liste des tenants à facturer
+$global:TENANTS_TO_BILL = @($global:VRA_TENANT__EPFL)
 
 <#
 	-------------------------------------------------------------------------------------
@@ -97,10 +103,10 @@ function replaceInString([string]$str, [System.Collections.IDictionary] $valToRe
         $replaceWith = $valToReplace.Item($search)
 
         # Si on a des retours à la ligne dans la valeur à remplacer
-        if($replaceWith -like "*\n*")
+        if($replaceWith -like "*`n*")
         {
             # On met le tout dans des paragraphes pour que le HTML soit généré correctement
-            $replaceWith = "<p>{0}</p>" -f ($replaceWith -replace "\\n", "</p><p>")
+            $replaceWith = "<p>{0}</p>" -f ($replaceWith -replace "`n", "</p><p>")
         }
 
         $str = $str -replace  $strToSearch, $replaceWith
@@ -265,6 +271,22 @@ try
 
     $ldap = [EPFLLDAP]::new()
 
+
+    $vraTenantList = @{}
+
+    # Créatino des connexions à vRA pour chaque tenant à facturer
+    ForEach($tenant in $global:TENANTS_TO_BILL)
+    {
+        # Création d'une connexion au serveur vRA pour accéder à ses API REST
+        $logHistory.addLineAndDisplay(("Connecting to vRA tenant {0}...") -f $tenant)
+        $vraTenantList.$tenant = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+                                            $tenant, 
+                                            $configVra.getConfigValue($targetEnv, "infra", $tenant, "user"), 
+                                            $configVra.getConfigValue($targetEnv, "infra", $tenant, "password"))
+    }
+
+    
+
     # Objet pour lire les informations sur le services IT
     $itServices = [ITServices]::new()
 
@@ -285,7 +307,7 @@ try
 
     # Création de l'objet pour faire les opérations pour le service donné. On le créée d'une manière dynamique en utilisant la bonne classe
     # en fonction du type de service à facturer
-    $expression = '$billingObject = [{0}]::new($mysql, $ldap, $itServicesList, $serviceBillingInfos, $targetEnv)' -f $serviceBillingInfos.billingClassName
+    $expression = '$billingObject = [{0}]::new($vraTenantList, $mysql, $ldap, $itServicesList, $serviceBillingInfos, $targetEnv)' -f $serviceBillingInfos.billingClassName
     Invoke-expression $expression
 
     # Pour accéder à Copernic
