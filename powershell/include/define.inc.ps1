@@ -38,6 +38,7 @@ $global:TARGET_ENV_LIST = @($global:TARGET_ENV__DEV
 $global:VRA_TENANT__DEFAULT = "vsphere.local"
 $global:VRA_TENANT__EPFL = "EPFL"
 $global:VRA_TENANT__ITSERVICES = "ITServices"
+$global:VRA_TENANT__RESEARCH = "Research"
 
 # Nom des tenants que l'on devra traiter
 $global:TARGET_TENANT_LIST = @($global:VRA_TENANT__EPFL, $global:VRA_TENANT__ITSERVICES<#, $global:VRA_TENANT__DEFAULT #>)
