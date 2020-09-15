@@ -52,7 +52,7 @@ class NetAppAPI: RESTAPICurl
         $this.extraArgs = "-u {0}:{1}" -f $username, $password
 
         # Ajout du serveur à la liste
-        $this.addServer($server)
+        $this.addTargetServer($server)
 
     }
 
@@ -64,7 +64,7 @@ class NetAppAPI: RESTAPICurl
         
         IN  : $server               -> Nom du serveur
 	#>
-    [void] addServer([string]$server)
+    [void] addTargetServer([string]$server)
     {
         # Ajout à la liste
         $this.serverList += $server
@@ -180,7 +180,6 @@ class NetAppAPI: RESTAPICurl
             return $allRes
         }
         
-		
     }
 
 
@@ -215,7 +214,7 @@ class NetAppAPI: RESTAPICurl
         # Quand on arrive ici, c'est que le job est terminé. On peut donc contrôler qu'ils se soit bien déroulé.
         if($job.state -ne "success")
         {
-            Throw $job.message
+            Throw ("JOB {0} finished with state {1}" -f $jobId, $job.message)
         }
     }
 
@@ -255,25 +254,36 @@ class NetAppAPI: RESTAPICurl
 
 
     <#
-		-------------------------------------------------------------------------------------
-        BUT : Retourne les informations sur la version du NetApp
-        
-        IN  : $server   -> Nom du serveur dont on veut la version
-	#>
-    [PSObject] getVersion([string]$server)
-    {
-
-        $uri = "https://{0}/api/cluster?fields=version" -f $server
-
-        return $this.callAPI($uri, "GET", $null).version
-    }
-
-
-    <#
         =====================================================================================
                                                 SVM
         =====================================================================================
     #>
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des SVM disponibles sur l'ensemble des serveurs définis
+
+        IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+        
+        https://nas-mcc-t.epfl.ch/docs/api/#/svm/svm_collection_get
+	#>
+    hidden [Array] getSVMListQuery([string]$queryParams)
+    {
+        $uri = "/api/svm/svms?max_records=9999"
+
+        # Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+
+        return $this.callAPI($uri, "GET", $null, "records")
+        
+    }
+
 
     <#
 		-------------------------------------------------------------------------------------
@@ -283,10 +293,7 @@ class NetAppAPI: RESTAPICurl
 	#>
     [Array] getSVMList()
     {
-        $uri = "/api/svm/svms"
-
-        return $this.callAPI($uri, "GET", $null, "records")
-        
+        return $this.getSVMListQuery($null)
     }
 
 
@@ -337,15 +344,35 @@ class NetAppAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Retourne la liste des aggrégats
+        BUT : Retourne la liste des aggrégats avec des paramètres de filtrage optionnels
+
+        IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
         
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/aggregate_collection_get
 	#>
-    [Array] getAggregateList()
+    hidden [Array] getAggregateListQuery([string]$queryParams)
     {
-        $uri = "/api/storage/aggregates"
+        $uri = "/api/storage/aggregates?max_records=9999"
+
+        # Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
 
         return $this.callAPI($uri, "GET", $null, "records")
+    }
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des aggrégats
+	#>
+    [Array] getAggregateList()
+    {
+        return $this.getAggregateListQuery($null)
     }
     
 
@@ -392,19 +419,51 @@ class NetAppAPI: RESTAPICurl
                                             VOLUMES
         =====================================================================================
     #>
+    
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Retourne la liste des volumes
+        BUT : Retourne la liste des volumes avec des paramètres de filtrage optionnels
+
+        IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
         
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_collection_get
 	#>
-    [Array] getVolumeList()
+    hidden [Array] getVolumeListQuery([string]$queryParams)
     {
-        $uri = "/api/storage/volumes"
+        $uri = "/api/storage/volumes?max_records=9999"
 
+        # Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+        
         return $this.callAPI($uri, "GET", $null, "records")
     }
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des volumes 
+	#>
+    [Array] getVolumeList()
+    {
+        return $this.getVolumeListQuery($null)
+    }
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des volumes pour une SVM
+	#>
+    [Array] getSVMVolumes([PSObject]$svm)
+    {
+        return $this.getVolumeListQuery("svm.name={0}" -f $svm.name)
+    }
+
 
     <#
 		-------------------------------------------------------------------------------------
@@ -450,14 +509,19 @@ class NetAppAPI: RESTAPICurl
         BUT : Créé un volume et attend que la tâche qui tourne en fond pour la création se
                 termine.
         
-        IN  : $name         -> Nom du volume
-        IN  : $sizeGB       -> Taille du volume en GB
-        IN  : $svm          -> Objet représentant la SVM à laquelle attacher le volume
-        IN  : $aggregate    -> Objet représentant l'aggrégat où se trouvera le volume
+        IN  : $name             -> Nom du volume
+        IN  : $sizeGB           -> Taille du volume en GB
+        IN  : $svm              -> Objet représentant la SVM à laquelle attacher le volume
+        IN  : $aggregate        -> Objet représentant l'aggrégat où se trouvera le volume
+        IN  : $securityStyle    -> le type de sécurité:
+                                    "unix", "ntfs", "mixed", "unified"
+        IN  : $mountPath        -> Chemin de montage du volume
 
         RET : Le volume créé
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_create
 	#>
-    [PSObject] addVolume([string]$name, [int]$sizeGB, [PSObject]$svm, [PSObject]$aggregate)
+    [PSObject] addVolume([string]$name, [int]$sizeGB, [PSObject]$svm, [PSObject]$aggregate, [string]$securityStyle, [string]$mountPath)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([netAppObjectType]::SVM, $svm.uuid)
@@ -472,7 +536,9 @@ class NetAppAPI: RESTAPICurl
             svmName = $svm.name
             svmUUID = $svm.uuid
             volName = $name
-            sizeInBytes = $sizeInBytes
+            sizeInBytes = @($sizeInBytes, $true)
+            securityStyle = $securityStyle
+            mountPath = $mountPath
         }
 
         $body = $this.createObjectFromJSON("xaas-nas-new-volume.json", $replace)
@@ -535,5 +601,119 @@ class NetAppAPI: RESTAPICurl
 
         # L'opération se fait en asynchrone donc on attend qu'elle se termine
         $this.waitForJobToFinish($targetServer, $result.job.uuid)
+    }
+
+
+    <#
+        =====================================================================================
+                                        SHARES CIFS
+        =====================================================================================
+    #>
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Créé un share CIFS et attend que la tâche qui tourne en fond pour la création se
+                termine.
+        
+        IN  : $name                     -> Nom du share
+        IN  : $svm                      -> Objet représentant la SVM sur laquelle il faut créer le share
+        IN  : $path                     -> Chemin pour le share
+        
+        RET : rien
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/NAS/cifs_share_create
+	#>
+    [void] addCIFSShare([string]$name, [PSObject]$svm, [string]$path)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([netAppObjectType]::SVM, $svm.uuid)
+
+        $uri = "https://{0}/api/protocols/cifs/shares" -f $targetServer
+
+        $replace = @{
+            svmName = $svm.name
+            svmUUID = $svm.uuid
+            shareName = $name
+            path = $path
+        }
+
+        $body = $this.createObjectFromJSON("xaas-nas-new-cifs-share.json", $replace)
+
+        $this.callAPI($uri, "POST", $body)
+
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime un share CIFS
+        
+        IN  : $share    -> Objet représentant le share
+        
+        RET : rien
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/NAS/cifs_share_delete
+	#>
+    [void] deleteCIFSShare([PSObject]$share)
+    {
+         # Recherche du serveur NetApp cible
+         $targetServer = $this.getServerForObject([netAppObjectType]::SVM, $share.svm.uuid)
+
+         $uri = "https://{0}/api/protocols/cifs/shares/{1}/{2}" -f $targetServer, $share.svm.uuid, [System.Net.WebUtility]::UrlEncode($share.name)
+
+         $this.callAPI($uri, "DELETE", $null)
+
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des shares CIFS avec des paramètres de filtrage optionnels
+
+        IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+        
+        https://nas-mcc-t.epfl.ch/docs/api/#/NAS/cifs_share_collection_get
+	#>
+    hidden [Array] getCIFSShareListQuery([string]$queryParams)
+    {
+        $uri = "/api/protocols/cifs/shares?max_records=9999"
+
+        # Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+        
+        return $this.callAPI($uri, "GET", $null, "records")
+    }
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des shares sur une SVM
+
+        IN  : $svmName  -> Nom de la SVM
+
+        RET : Liste des shares
+	#>
+    [Array] getSVMCIFSShareList([string]$svmName)
+    {
+        return $this.getCIFSShareListQuery(("svm.name={0}" -f $svmName))
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des shares pour un volume
+
+        IN  : $volName  -> nom du volume
+
+        RET : Liste des shares
+	#>
+    [Array] getVolCIFSShareList([string]$volName)
+    {
+        return $this.getCIFSShareListQuery(("volume.name={0}" -f $volName))
     }
 }

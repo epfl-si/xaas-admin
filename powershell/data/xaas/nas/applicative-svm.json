@@ -1,0 +1,12 @@
+{
+    "cifs":
+    [
+        "nas-app-ma-cifs1",
+        "nas-app-ma-cifs2"
+    ],
+    "nfs3":
+    [
+        "nas-app-ma-nfs1",
+        "nas-app-ma-nfs2"
+    ]
+}

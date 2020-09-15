@@ -9,6 +9,10 @@
       "name": "{{svmName}}",
       "uuid": "{{svmUUID}}"
     },
+    "nas": {
+      "security_style":"{{securityStyle}}",
+      "path": "{{mountPath}}"
+    },
     "name": "{{volName}}",
-    "size": {{sizeInBytes}}
+    "size": "{{sizeInBytes}}"
 }
