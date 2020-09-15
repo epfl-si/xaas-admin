@@ -1232,11 +1232,13 @@ class NameGenerator
         {
             $global:VRA_TENANT__EPFL
             {
+                # epfl_<fac>_<unit>
                 $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
             }
 
             $global:VRA_TENANT__ITSERVICES
             {
+                # its_<serviceShortName>
                 $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('serviceShortName'))
             }
 
@@ -1541,6 +1543,60 @@ class NameGenerator
 
         # Si on arrive ici, c'est qu'on n'a pas trouvé donc erreur 
         Throw ("Error extracting BG name from given path '{0}'" -f $path)
+    }
+
+
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie les détails d'un élément en fonction du nom du BG passé en paramètre
+
+        IN  : $bgName   -> Nom du BG
+
+        RET : Objet avec un contenu différent en fonction du tenant sur lequel on est:
+
+            EPFL:
+                .faculty
+                .unit
+            ITServices
+                .serviceShortName
+    #>
+    [PSObject] getDetailsFromBGName([string]$bgName)
+    {   
+        $result = $null
+
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL 
+            {
+                # Le nom du BG est au format: epfl_<fac>_<unit>
+                $dummy, $faculty, $unit = [regex]::Match($bgName, '^epfl_([a-z]+)_([a-z0-9_]+)').Groups | Select-Object -ExpandProperty value
+                
+                $result = @{
+                    faculty = $faculty
+                    # On remet les "-" dans le nom d'unité si besoin
+                    unit = $unit -replace "_", "-"
+                }
+            }
+            
+
+            $global:VRA_TENANT__ITSERVICES
+            {
+                # Le nom du BG est au format: its_<serviceShortName>
+                $dummy, $serviceShortName = [regex]::Match($bgName, '^its_([a-z0-9]+)').Groups | Select-Object -ExpandProperty value
+
+                $result = @{
+                    serviceShortName = $serviceShortName
+                }
+            }
+
+
+            default 
+            {
+                Throw ("Tenant not handled ({0})" -f $this.tenant)
+            }
+        }
+
+        return $result
     }
 
 }
