@@ -20,22 +20,25 @@
 class NameGeneratorS3
 {
    hidden [string] $hash
-   hidden [string] $unitOrSvcID  
+   hidden [string] $id  
 
    <#
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
 
-        IN  : $unitOrSvcID    -> No d'unité (si tenant EPFL) ou id de service ServiceNow (si tenant ITServices)
-        IN  : $friendlyName   -> Nom "friendly" à donner au Bucket
+        IN  : $unitOrSvcOrProjectID    -> No :
+                                             - d'unité (si tenant EPFL) 
+                                             - id de service ServiceNow (si tenant ITServices)
+                                             - id de projet (Tenant Research)
+        IN  : $friendlyName            -> Nom "friendly" à donner au Bucket
 
 		RET : Instance de l'objet
 	#>
-   NameGeneratorS3([string]$unitOrSvcID, [string]$friendlyName)
+   NameGeneratorS3([string]$unitOrSvcOrProjectID, [string]$friendlyName)
    {
-      $this.unitOrSvcID = $unitOrSvcID
+      $this.id = $unitOrSvcOrProjectID
 
-      $this.hash = getStringHash -string ("{0}{1}{2}" -f $friendlyName, $unitOrSvcID, (getUnixTimestamp) )
+      $this.hash = getStringHash -string ("{0}{1}{2}" -f $friendlyName, $unitOrSvcOrProjectID, (getUnixTimestamp) )
    }
 
 
@@ -45,7 +48,7 @@ class NameGeneratorS3
 	#>
    [string] getBucketName()
    {
-      return ("{0}-{1}" -f $this.unitOrSvcID, $this.hash).ToLower()
+      return ("{0}-{1}" -f $this.id, $this.hash).ToLower()
    }
 
    
@@ -64,7 +67,7 @@ class NameGeneratorS3
          Throw "Unknown access type ({0})" -f $accessType
       }
 
-      return ("{0}-{1}-{2}-{3}" -f $this.unitOrSvcID, $this.hash, $userOrPol, $accessType).ToLower()
+      return ("{0}-{1}-{2}-{3}" -f $this.id, $this.hash, $userOrPol, $accessType).ToLower()
    }
 
 

@@ -96,6 +96,11 @@ class NameGenerator
                                         serviceShortName    -> Nom court du service
                                         serviceName         -> Nom long du service
                                         snowServiceId       -> ID du service dans ServiceNow
+                                    
+                                    Research:
+                                        projectId       -> Id du projet
+                                        financeCenter   -> No du centre financier du projet
+                                        projectAcronym  -> Acronyme du projet
     #>
     [void] initDetails([System.Collections.IDictionary]$details)
     {
@@ -111,6 +116,11 @@ class NameGenerator
             {
                 $keysToCheck = @('serviceShortName', 'serviceName', 'snowServiceId')
             } 
+
+            $global:VRA_TENANT__RESEARCH
+            {
+                $keysToCheck = @('projectId', 'financeCenter', 'projectAcronym')
+            }
 
             # Tenant pas géré
             default
@@ -137,6 +147,71 @@ class NameGenerator
 
         $this.details = $details
     }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : initialise UNE PARTIE des détails depuis le nom du business group passé.
+                Ceci permet d'utiliser UNIQUEMENT un sous ensemble des fonctions définies
+                dans cette classe car d'autres détails manqueront. A la base, on peut initialiser
+                les détails depuis le nom du BG pour pouvoir utiliser les fonctions suivante 
+                mais peut-être que d'autres peuvent aussi fonctionner:
+                - getVMMachinePrefix 
+                - getApprovalPolicyNameAndDesc
+
+        IN  : $bgName   -> Nom du BG
+    #>
+    [void] initDetailsFromBGName([string]$bgName)
+    {
+        $bgParts = $bgName.split("_")
+        $withDetails = @{}
+        switch($this.tenant)
+        {
+            # Tenant EPFL
+            $global:VRA_TENANT__EPFL 
+            { 
+                # le nom du BG est au format <tenantShort>_<faculty>_<unit>
+                $withDetails = @{
+                    financeCenter = ''
+                    facultyName = $bgParts[1]
+                    facultyID = ''
+                    unitName = $bgParts[2]
+                    unitID = '' 
+                }
+            }
+
+            # Tenant ITServices
+            $global:VRA_TENANT__ITSERVICES 
+            { 
+                # le nom du BG est au format <tenantShort>_<serviceShort>
+                $withDetails = @{
+                    serviceShortName = $bgParts[1]
+                    serviceName = ''
+                    snowServiceId = ''
+                }
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # le nom du BG est au format <tenantShort>_<projectId>
+                $withDetails = @{
+                    projectId = $bgParts[1]
+                    financeCenter = ''
+                    projectAcronym = ''
+                }
+            }
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+
+        $this.initDetails($withDetails)
+    }
+
 
     <#
         -------------------------------------------------------------------------------------
@@ -270,6 +345,29 @@ class NameGenerator
                 }
             }
 
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                if($role -eq "CSP_SUBTENANT_MANAGER" -or `
+                    $role -eq "CSP_SUPPORT")
+                {
+                    # vra_<envShort>_adm_sup_<tenantShort>
+                    return "^{0}{1}_adm_sup_{2}$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+                }
+                # Shared, Users
+                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
+                        $role -eq "CSP_CONSUMER")
+                {
+                    # vra_<envShort>_<projectId>
+                    # On ajoute une exclusion à la fin pour être sûr de ne pas prendre aussi les éléments qui sont pour les 2 rôles ci-dessus
+                    return "^{0}{1}(?!_approval)_[0-9]+(?<!_adm_sup_{2})$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+                }  
+                else
+                {
+                    Throw ("Incorrect role given ({0})" -f $role)
+                }
+            }
+
             # Tenant pas géré
             default
             {
@@ -379,10 +477,62 @@ class NameGenerator
                 {
                     # vra_<envShort>_<serviceShort>
                     $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('serviceShortName'))
-                    # <snowServiceId>;<serviceName>
-                    # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
-                    # réutilisé pour d'autres choses dans la création des éléments dans vRA
-                    $groupDesc = "{0};{1}" -f $this.getDetail('snowServiceId').ToUpper(), $this.getDetail('serviceName')
+
+                    # Groupe AD
+                    if($type -eq $this.GROUP_TYPE_AD)
+                    {
+                        # <snowServiceId>;<serviceName>
+                        # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
+                        # réutilisé pour d'autres choses dans la création des éléments dans vRA
+                        $groupDesc = "{0};{1}" -f $this.getDetail('snowServiceId').ToUpper(), $this.getDetail('serviceName')
+                    }
+                    # Groupe "groups"
+                    else
+                    {
+                        $groupDesc = "To do requests for '{0}' service" -f $this.getDetail('serviceName')
+                    }
+
+                }
+                # Autre EPFL
+                else
+                {
+                    Throw ("Incorrect value for role : '{0}'" -f $role)
+                }
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # Admin, Support
+                if($role -eq "CSP_SUBTENANT_MANAGER" -or `
+                    $role -eq "CSP_SUPPORT")
+                {
+                    # vra_<envShort>_adm_sup_rsrch
+                    $groupName = "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+                    $groupDesc = "Administrators/Support for Tenant {0} on Environment {1}" -f $this.tenant.ToUpper(), $this.env.ToUpper()
+                    
+                }
+                # Shared, Users
+                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
+                        $role -eq "CSP_CONSUMER")
+                {
+                    # vra_<envShort>_<projectId>
+                    $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('projectId'))
+
+                    # Groupe AD
+                    if($type -eq $this.GROUP_TYPE_AD)
+                    {
+                        # <projectAcronym>;<financeCenter>
+                        # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
+                        # réutilisé pour d'autres choses dans la création des éléments dans vRA
+                        $groupDesc = "{0};{1}" -f $this.getDetail('projectAcronym'), $this.getDetail('financeCenter')
+                    }
+                    # Groupe "groups"
+                    else
+                    {
+                        $groupDesc = "To do requests for project {0}" -f $this.getDetail('projectId')
+                    }
+                    
 
                 }
                 # Autre EPFL
@@ -459,6 +609,23 @@ class NameGenerator
     {
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false)
         return $groupName
+    }
+
+
+    <# 
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la description du groupe "GROUPS" pour les paramètres passés 
+
+        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
+                                    "CSP_SUBTENANT_MANAGER"
+							        "CSP_SUPPORT"
+							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
+                                    "CSP_CONSUMER"
+    #>
+    [string] getRoleGroupsGroupDesc([string]$role)
+    {
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false)
+        return $groupDesc
     }
 
 
@@ -571,6 +738,24 @@ class NameGenerator
                 }
             }
 
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                if($level -eq 1)
+                {
+                    $last = "service_manager"
+                    $onlyForTenant = $false
+                }
+                elseif($level -eq 2)
+                {
+                    $last = $this.getDetail('projectId')
+                }
+                else 
+                {
+                    return $null   
+                }
+            }
+
 
             # Tenant pas géré
             default
@@ -593,8 +778,8 @@ class NameGenerator
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du groupe AD ou GROUPS créé pour le mécanisme d'approbation des demandes
-              pour un Business Group du tenant ITServices
+        BUT : Renvoie le nom du groupe AD créé pour le mécanisme d'approbation des demandes
+              pour un Business Group
 
         IN  : $level            -> Le niveau d'approbation (1, 2, ...)
         IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
@@ -609,13 +794,100 @@ class NameGenerator
     {
         return $this.getApproveGroupName($level, $this.GROUP_TYPE_AD, $fqdn)
     }
-    
 
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du groupe GROUPS créé pour le mécanisme d'approbation des demandes
+              pour un Business Group
+
+        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
+        IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
+                                    $true|$false  
+                                    Si pas passé => $false 
+
+        RET : Objet avec les données membres suivantes :
+                .name           -> le nom du groupe ou "" si rien pour le $level demandé.    
+                .onlyForTenant  -> $true|$false pour dire si c'est uniquement pour le tenant courant ($true) ou pas ($false =  tous les tenants)
+    #>
     [PSCustomObject] getApproveGroupsGroupName([int]$level, [bool]$fqdn)
     {
         return $this.getApproveGroupName($level, $this.GROUP_TYPE_GROUPS, $fqdn)
     }
 
+    
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du groupe AD pour les approbations en se basant sur un nom de
+                groupe pour les utilisateurs qui peuvent faire des demandes. 
+                Au vu des nomenclatures, ceci ne fonctionne que pour le tenant Research
+
+        IN  : $ADUserGroupName  -> Nom du groupe contenant les utilisateurs pouvant faire des 
+                                    demandes au sein du Business Group
+
+        RET : Nom du groupe d'approbation
+    #>
+    [string] getApproveADGroupNameFromUserADGroups([string]$ADUserGroupName)
+    {
+        if($this.tenant -ne $global:VRA_TENANT__RESEARCH)
+        {
+            Throw ("Only supported for {0} tenant" -f $global:VRA_TENANT__RESEARCH)
+        }
+
+        # Lorsque l'on utilise -match ou -notmatch, PowerShell initialise automatiquement une variable $matches avec les résultats du match
+        $dummy = $ADUserGroupName.ToLower() -match "([a-z_]+)_([0-9]+)"
+        return ("{0}_approval_{1}" -f $matches[1], $matches[2])
+    }
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la description du groupe Groups utilisé pour les approbations des demandes
+              pour le tenant.
+
+        IN  : $level            -> Le niveau d'approbation (1, 2, ...)
+       
+        RET : Description du groupe
+    #>
+    [string] getApproveGroupsGroupDesc([int]$level)
+    {
+        $desc = "vRA {0} approval group (level {1})" -f $this.env, $level
+
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL
+            {
+                # Le premier niveau d'approbation est générique à toutes les facultés donc pas de description "précise" pour celui-ci
+                if($level -gt 1)
+                {
+                    $desc = "{0} for Faculty {1}" -f $desc, $this.getDetail('facultyName').ToUpper()
+                }
+            }
+
+            $global:VRA_TENANT__ITSERVICES
+            {
+                # NOTE: 15.02.2019 - On n'utilise plue le nom du service dans la description du groupe car c'est maintenant un seul groupe d'approbation
+                # pour tous les services 
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # Le premier niveau d'approbation est générique à toutes les facultés donc pas de description "précise" pour celui-ci
+                if($level -gt 1)
+                {
+                    $desc = "{0} for Project {1}" -f $desc, $this.getDetail('projectId')
+                }
+            }
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+
+        return $desc
+    }
 
     <#
         -------------------------------------------------------------------------------------
@@ -663,6 +935,16 @@ class NameGenerator
                 # pour tous les services 
                 # return "Approval group (level {0}) for Service: {1}" -f $level, $serviceName
 
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # Le premier niveau d'approbation est générique à toutes les facultés donc pas de description "précise" pour celui-ci
+                if($level -gt 1)
+                {
+                    $desc = "{0} for Project: {1}" -f $desc, $this.getDetail('projectId')
+                }
             }
 
             # Tenant pas géré
@@ -768,6 +1050,36 @@ class NameGenerator
                 $desc = "Approval policy for {0} for Service: {1}" -f $type_desc, $this.getDetail('serviceName')
             }
 
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                $type_desc = ""
+                $suffix = ""
+                switch($approvalPolicyType)
+                {
+                    $global:APPROVE_POLICY_TYPE__ITEM_REQ
+                    {
+                        $suffix = "newItems"
+                        $type_desc = "new items"
+                    }
+
+                    $global:APPROVE_POLICY_TYPE__ACTION_REQ
+                    {
+                        $suffix = "2ndDay"
+                        $type_desc = "2nd day actions"
+                    }
+
+                    default
+                    {
+                        Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
+                    }
+
+                }
+        
+                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('projectId')), $suffix
+                $desc = "Approval policy for {0} for Project: {1}" -f $type_desc, $this.getDetail('projectId')
+            }
+
 
             # Tenant pas géré
             default
@@ -813,6 +1125,7 @@ class NameGenerator
         $desc = ""
         switch($this.tenant)
         {
+            # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
                 $name = "sg.epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
@@ -820,10 +1133,19 @@ class NameGenerator
             }
 
 
+            # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES
             {
                 $name = "sg.its_{0}" -f $this.getDetail('serviceShortName')
                 $desc = "Tenant: {0}\nBusiness Group: {1}\nSNOWID: {2}" -f $this.tenant, $bgName, $this.getDetail('snowServiceId')
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # Pour ce tenant, il a été décidé de n'avoir qu'un seul NSGroup pour l'entièreté des éléments
+                $name = "sg.rsrch"
+                $desc = "Tenant: {0}" -f $this.tenant
             }
 
 
@@ -851,15 +1173,23 @@ class NameGenerator
         $tagName = ""
         switch($this.tenant)
         {
+            # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
                 $tagName = "st.epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
             }
 
-            
+            # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES
             {
                 $tagName = "st.its_{0}" -f $this.getDetail('serviceShortName')
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # Pour ce tenant, c'est le même "security tag" qui sera appliqué à tous les éléments.
+                $tagName = "st.rsrch"
             }
 
             # Tenant pas géré
@@ -889,17 +1219,26 @@ class NameGenerator
 
         switch($this.tenant)
         {
+            # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
                 $name = "epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName'))
                 $desc = "Section for Tenant {0} and Faculty {1}" -f $this.tenant, $this.getDetail('facultyName').toUpper()
             }
 
-
+            # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES
             {
                 $name = "its_{0}" -f $this.getDetail('serviceShortName')
                 $desc = "Section for Tenant {0} and Service {1}" -f $this.tenant, $this.getDetail('serviceShortName')
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # Pour ce tenant, il a été décidé d'avoir une seule section pour tous les projets.
+                $name = "rsrch"
+                $desc = "Section for Tenant {0}" -f $this.tenant
             }
 
 
@@ -931,16 +1270,25 @@ class NameGenerator
 
         switch($this.tenant)
         {
-
+            # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
                 $ruleMiddle = $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
             }
 
 
+            # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES
             {
                 $ruleMiddle = $this.getDetail('serviceShortName')
+            }
+
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # Pour ce tenant, il a été décidé qu'on avait qu'une seule section et donc des règles uniques pour tous les éléments
+                $ruleMiddle = "rsrch"
             }
 
             # Tenant pas géré
@@ -990,9 +1338,10 @@ class NameGenerator
             $tenantOU = "OU="
             switch($this.tenant)
             {
-                $global:VRA_TENANT__DEFAULT { $tenantOU += "default"}
-                $global:VRA_TENANT__EPFL { $tenantOU += "EPFL"}
-                $global:VRA_TENANT__ITSERVICES { $tenantOU += "ITServices"}
+                $global:VRA_TENANT__DEFAULT { $tenantOU += "default" }
+                $global:VRA_TENANT__EPFL { $tenantOU += "EPFL" }
+                $global:VRA_TENANT__ITSERVICES { $tenantOU += "ITServices" }
+                $global:VRA_TENANT__RESEARCH { $tenantOU += "Research" }
             }
             # On a donc : OU=<tenant>, 
             $tenantOU += ","
@@ -1043,17 +1392,22 @@ class NameGenerator
     #>
     hidden [string] getTenantShortName()
     {
-        switch($this.tenant)
+        $res = switch($this.tenant)
         {
-            $global:VRA_TENANT__DEFAULT { return 'def'}
-            $global:VRA_TENANT__EPFL { return 'epfl'}
-            $global:VRA_TENANT__ITSERVICES { return 'its'}
+            $global:VRA_TENANT__DEFAULT { 'def' }
+            $global:VRA_TENANT__EPFL { 'epfl' }
+            $global:VRA_TENANT__ITSERVICES { 'its' }
+            $global:VRA_TENANT__RESEARCH { 'rsrch'}
+            default { '' }
         }
-        return ""
+        
+        return $res
     } 
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
+
+    
 
     <#
         -------------------------------------------------------------------------------------
@@ -1063,25 +1417,35 @@ class NameGenerator
     #>
     [string] getVMMachinePrefix()
     {
-        $facultyNameOrServiceShortName = ""
+        $detailToUse = ""
         switch($this.tenant)
         {
+            # Tenant EPFL
             $global:VRA_TENANT__EPFL 
             { 
-                $facultyNameOrServiceShortName = $this.getDetail('facultyName')
+                $detailToUse = $this.getDetail('facultyName')
             }
 
+            # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES 
             { 
-                $facultyNameOrServiceShortName = $this.getDetail('serviceShortName')
+                # On ne créé pas de préfixe de VM pour ce tenant, c'est vRA qui s'occupera de faire le job
+                # en utilisant le nom du BG comme base pour le préfixe de VM
+                return ""
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                $detailToUse = $this.getDetail('projectId')
             }
         }
 
         # Suppression de tous les caractères non alpha numériques
-        $facultyNameOrServiceShortName = $facultyNameOrServiceShortName -replace '[^a-z0-9]', ''
+        $detailToUse = $detailToUse -replace '[^a-z0-9]', ''
 
         # On raccourci à 6 caractères pour ne pas avoir des préfixes trop longs
-        $facultyNameOrServiceShortName = $facultyNameOrServiceShortName.Substring(0, [System.Math]::Min(6, $facultyNameOrServiceShortName.length))
+        $detailToUse = $detailToUse.Substring(0, [System.Math]::Min(6, $detailToUse.length))
 
         # Pour l'ID court de l'environnement 
         $envId = ""
@@ -1095,17 +1459,23 @@ class NameGenerator
                 {
                     $envId = $this.getEnvShortName()
                 }
-                return "{0}{1}vm" -f $this.transformFacultyForGroupName($facultyNameOrServiceShortName), $envId
+                return "{0}{1}vm" -f $this.transformFacultyForGroupName($detailToUse), $envId
             }
             
             $global:VRA_TENANT__ITSERVICES 
             { 
+                # Pas besoin de traiter les choses ici car on a déjà fait un "return" précédemment pour sortir de la fonction                
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
                 # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
                 if($this.env -ne $global:TARGET_ENV__PROD)
                 {
-                    $envId = "-{0}" -f $this.getEnvShortName()
+                    $envId = $this.getEnvShortName()
                 }
-                return "{0}{1}-" -f $this.transformForGroupName($facultyNameOrServiceShortName) , $envId
+                return "{0}{1}vm" -f $this.transformForGroupName($detailToUse) , $envId
             }
 
             # Tenant pas géré
@@ -1141,6 +1511,12 @@ class NameGenerator
                 $desc = "" 
             }
 
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                $desc = $this.getDetail('projectAcronym')
+            }
+
             # Tenant pas géré
             default
             {
@@ -1172,6 +1548,12 @@ class NameGenerator
             $global:VRA_TENANT__ITSERVICES 
             {
                 $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('serviceShortName')) 
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('projectId')) 
             }
 
             # Tenant pas géré
@@ -1209,6 +1591,12 @@ class NameGenerator
                 $desc = "Service: {0}" -f $this.getDetail('serviceName')
             }
 
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                $desc = "Project: {0}" -f $this.getDetail('projectId')
+            }
+
             # Tenant pas géré
             default
             {
@@ -1230,14 +1618,25 @@ class NameGenerator
         $name = ""
         switch($this.tenant)
         {
+            # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
+                # <tenantShort>_<faculty>_<unit>
                 $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
             }
 
+            # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES
             {
+                # <tenantShort>_<serviceShort>
                 $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('serviceShortName'))
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # <tenantShort>_<projectId>
+                $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('projectId'))
             }
 
             default
@@ -1293,6 +1692,20 @@ class NameGenerator
             {
                 # Le nom du groupe devait avoir la forme :
                 # vra_<envShort>_<serviceShortName>
+                
+                if($partList.Count -lt 3)
+                {
+                    Throw ("Incorrect group name ({0}) for Tenant {1}" -f $ADGroupName, $this.tenant)
+                }
+
+                $result = @($partList[2])
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # Le nom du groupe devait avoir la forme :
+                # vra_<envShort>_<projectId>
                 
                 if($partList.Count -lt 3)
                 {
@@ -1358,6 +1771,20 @@ class NameGenerator
                 $partList = @($partList)
             }
 
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # Le nom du groupe devait avoir la forme :
+                # <financeCenter>;<description>
+                
+                if($partList.Count -lt 2)
+                {
+                    Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
+                }
+
+                $partList = @($partList)
+            }
+
             default
             {
                 Throw ("Unsupported Tenant ({0})" -f $this.tenant)
@@ -1401,7 +1828,19 @@ class NameGenerator
                 # its_<serviceShortName>
 
                 # Le nom de la Reservation est généré comme suit
-                # <tenantShort>_<serviceShortName>_<cluster>
+                # its_<serviceShortName>_<cluster>
+                
+                $resName = "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                # Le nom du BG a la structure suivante :
+                # rsrch_<projectId>
+
+                # Le nom de la Reservation est généré comme suit
+                # rsrch_<projectId>_<cluster>
                 
                 $resName = "{0}_{1}" -f $bgName, $this.transformForGroupName($clusterName)
             }

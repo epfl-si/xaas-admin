@@ -29,7 +29,6 @@ class RESTAPICurl: RESTAPI
 	hidden [System.Diagnostics.Process]$curl
 	hidden [PSObject]$process
 	
-
     <#
 	-------------------------------------------------------------------------------------
 		BUT : Créer une instance de l'objet et ouvre une connexion au serveur
@@ -97,8 +96,10 @@ class RESTAPICurl: RESTAPI
 	{
 		$this.lastBody = $body
 		
+		$method = $method.ToUpper()
+
 		# Si la requête est de la lecture
-		if($method.ToLower() -eq "get")
+		if($method -eq "GET")
 		{
 			# Si on a l'info dans le cache, on la retourne
 			$cached = $this.getFromCache($uri)
@@ -112,7 +113,7 @@ class RESTAPICurl: RESTAPI
 		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
 		$this.incFuncCall($false)
 		
-		$args = "--insecure -s --request {0}" -f $method.ToUpper()
+		$args = "--insecure -s --request {0}" -f $method
 
 		$tmpFile = $null
 
@@ -120,7 +121,16 @@ class RESTAPICurl: RESTAPI
 		{
 			# Génération d'un nom de fichier temporaire et ajout du JSON dans celui-ci
 			$tmpFile = (New-TemporaryFile).FullName
-			(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:default
+
+			# Si on a passé une simple chaine de caractères, on la prend tel quel
+			if($body.GetType().Name -eq "String")
+			{
+				$body | Out-File -FilePath $tmpFile -Encoding:default
+			}
+			else # On a passé un objet, on le converti en JSON
+			{
+				(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:default
+			}
 
 			$args += ' --data "@{0}"' -f $tmpFile
 		}
@@ -143,8 +153,16 @@ class RESTAPICurl: RESTAPI
 			# Si aucune erreur
 			if($this.curl.ExitCode -eq 0)
 			{
-				
-				$result = $output | ConvertFrom-Json
+				# On teste la récupération de ce qui a été retourné
+				try
+				{
+					$result = $output | ConvertFrom-Json
+				}
+				catch
+				{
+					# Si erreur, on ajoute simplement le JSON retourné au message d'exception pour que ça soit repris dans le mail envoyé aux admins
+					Throw ("{0}`n<b>Returned 'JSON':</b> {1}" -f $_.Exception.Message, $output)
+				}
 	
 				# Si pas trouvé
 				if($result.httpStatus -eq "NOT_FOUND")

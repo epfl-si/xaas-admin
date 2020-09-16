@@ -5,11 +5,9 @@
             {
                 "params": [
                     {
-                        "facultyName": "ENT-R",
-                        "facultyID": "12635",
-                        "unitName": "IDEV-ING",
-                        "unitID": "13031",
-                        "financeCenter": "1907"
+                        "projectId": "123456",
+                        "projectAcronym": "rsrchprjx",
+                        "financeCenter": "F9876"
                     }
                 ],
                 "expected": null
@@ -21,19 +19,19 @@
         "tests": [
             {
                 "params": ["CSP_SUBTENANT_MANAGER"],
-                "expected": "^vra_t_adm_epfl$"
+                "expected": "^vra_t_adm_sup_rsrch$"
             },
             {
                 "params": ["CSP_SUPPORT"],
-                "expected": "^vra_t_sup_\\d+$"
+                "expected": "^vra_t_adm_sup_rsrch$"
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "^vra_t_\\d+_\\d+$"
+                "expected": "^vra_t(?!_approval)_[0-9]+(?\u003c!_adm_sup_rsrch)$"
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "^vra_t_\\d+_\\d+$"
+                "expected": "^vra_t(?!_approval)_[0-9]+(?\u003c!_adm_sup_rsrch)$"
             }
 
         ]
@@ -42,37 +40,36 @@
         "name": "getRoleADGroupName",
         "tests": [
             {
-                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", true],
-                "expected": "vra_t_12635_13031@intranet.epfl.ch"
-            },
-            {
-                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", false],
-                "expected": "vra_t_12635_13031"
-            },
-            {
-                "params": ["CSP_CONSUMER", true],
-                "expected": "vra_t_12635_13031@intranet.epfl.ch"
-            },
-            {
-                "params": ["CSP_CONSUMER", false],
-                "expected": "vra_t_12635_13031"
-            },
-
-            {
-                "params": ["CSP_SUPPORT", true],
-                "expected": "vra_t_sup_entr@intranet.epfl.ch"
-            },
-            {
-                "params": ["CSP_SUPPORT", false],
-                "expected": "vra_t_sup_entr"
-            },
-            {
                 "params": ["CSP_SUBTENANT_MANAGER", true],
-                "expected": "vra_t_adm_epfl@intranet.epfl.ch"
+                "expected": "vra_t_adm_sup_rsrch@intranet.epfl.ch"
             },
             {
                 "params": ["CSP_SUBTENANT_MANAGER", false],
-                "expected": "vra_t_adm_epfl"
+                "expected": "vra_t_adm_sup_rsrch"
+            },
+            {
+                "params": ["CSP_SUPPORT", true],
+                "expected": "vra_t_adm_sup_rsrch@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_SUPPORT", false],
+                "expected": "vra_t_adm_sup_rsrch"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", true],
+                "expected": "vra_t_123456@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", false],
+                "expected": "vra_t_123456"
+            },
+            {
+                "params": ["CSP_CONSUMER", true],
+                "expected": "vra_t_123456@intranet.epfl.ch"
+            },
+            {
+                "params": ["CSP_CONSUMER", false],
+                "expected": "vra_t_123456"
             }
         ]
     },
@@ -82,50 +79,19 @@
         "tests": [
             {
                 "params": ["CSP_SUPPORT"],
-                "expected": "Support for Faculty ENT-R on Tenant EPFL on Environment TEST"
-            },
-            {
-                "params": ["CSP_SUPPORT"],
-                "expected": "Support for Faculty ENT-R on Tenant EPFL on Environment TEST"
-            },
-            {
-                "params": ["CSP_SUBTENANT_MANAGER"],
-                "expected": "Administrators for Tenant EPFL on Environment TEST"
-            },
-            {
-                "params": ["CSP_SUBTENANT_MANAGER"],
-                "expected": "Administrators for Tenant EPFL on Environment TEST"
-            },
-
-            {
-                "params": ["CSP_SUBTENANT_MANAGER"],
-                "expected": "Administrators for Tenant EPFL on Environment TEST"
-            },
-            {
-                "params": ["CSP_SUPPORT"],
-                "expected": "Support for Faculty ENT-R on Tenant EPFL on Environment TEST"
-            },
-            {
-                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "ENT-R;IDEV-ING;1907"
+                "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "ENT-R;IDEV-ING;1907"
-            }
-        ]
-    },
-
-    {
-        "name": "getRoleGroupsGroupDesc",
-        "tests": [
-            {
-                "params": ["CSP_SUBTENANT_MANAGER"],
-                "expected": "Administrators for Tenant EPFL on Environment TEST"
+                "expected": "rsrchprjx;F9876"
             },
             {
-                "params": ["CSP_SUPPORT"],
-                "expected": "Support for Faculty ENT-R on Tenant EPFL on Environment TEST"
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "rsrchprjx;F9876"
             }
         ]
     },
@@ -135,11 +101,41 @@
         "tests": [
             {
                 "params": ["CSP_SUBTENANT_MANAGER"],
-                "expected": "vra_t_adm_epfl"
+                "expected": "vra_t_adm_sup_rsrch"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "vra_t_123456"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "vra_t_123456"
             },
             {
                 "params": ["CSP_SUPPORT"],
-                "expected": "vra_t_sup_entr"
+                "expected": "vra_t_adm_sup_rsrch"
+            }
+        ]
+    },
+
+    {
+        "name": "getRoleGroupsGroupDesc",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "To do requests for project 123456"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "To do requests for project 123456"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
             }
         ]
     },
@@ -149,11 +145,19 @@
         "tests": [
             {
                 "params": ["CSP_SUPPORT"],
-                "expected": "vra_t_sup_entr_AppGrpU"
+                "expected": "vra_t_adm_sup_rsrch_AppGrpU"
             },
             {
                 "params": ["CSP_SUBTENANT_MANAGER"],
-                "expected": "vra_t_adm_epfl_AppGrpU"
+                "expected": "vra_t_adm_sup_rsrch_AppGrpU"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "vra_t_123456_AppGrpU"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "vra_t_123456_AppGrpU"
             }
         ]
     },
@@ -179,14 +183,14 @@
                 "params":[2, true],
                 "expected": {
                     "onlyForTenant": true,
-                    "name": "vra_t_approval_entr@intranet.epfl.ch"
+                    "name": "vra_t_approval_123456@intranet.epfl.ch"
                 }
             },
             {
                 "params":[2, false],
                 "expected": {
                     "onlyForTenant": true,
-                    "name": "vra_t_approval_entr"
+                    "name": "vra_t_approval_123456"
                 }
             }
 
@@ -207,7 +211,7 @@
                 "params":[2, false],
                 "expected": {
                     "onlyForTenant": true,
-                    "name": "vra_t_approval_entr"
+                    "name": "vra_t_approval_123456"
                 }
             }
         ]
@@ -222,7 +226,7 @@
             },
             {
                 "params":[2],
-                "expected": "vRA test approval group (level 2) for Faculty ENT-R"
+                "expected": "vRA test approval group (level 2) for Project 123456"
             }
         ]
     },
@@ -236,21 +240,7 @@
             },
             {
                 "params":[2],
-                "expected": "vra_t_approval_entr@groupes.epfl.ch"
-            }
-        ]
-    },
-
-    {
-        "name": "getApproveADGroupDesc",
-        "tests":[
-            {
-                "params":[1],
-                "expected": "Approval group (level 1)"
-            },
-            {
-                "params":[2],
-                "expected": "Approval group (level 2) for Faculty: ENT-R"
+                "expected": "vra_t_approval_123456@groupes.epfl.ch"
             }
         ]
     },
@@ -264,7 +254,21 @@
             },
             {
                 "params":[2, false],
-                "expected": "vra_t_approval_entr_AppGrpU"
+                "expected": "vra_t_approval_123456_AppGrpU"
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveADGroupDesc",
+        "tests":[
+            {
+                "params":[1],
+                "expected": "Approval group (level 1)"
+            },
+            {
+                "params":[2],
+                "expected": "Approval group (level 2) for Project: 123456"
             }
         ]
     },
@@ -274,11 +278,11 @@
         "tests":[
             {
                 "params":["new"],
-                "expected": ["epfl_entr_newItems", "Approval policy for new items for ENT-R Faculty"]
+                "expected": ["rsrch_123456_newItems", "Approval policy for new items for Project: 123456"]
             },
             {
                 "params":["reconfigure"],
-                "expected": ["epfl_entr_2ndDay", "Approval policy for 2nd day actions for ENT-R Faculty"]
+                "expected": ["rsrch_123456_2ndDay", "Approval policy for 2nd day actions for Project: 123456"]
             }
         ]
     },
@@ -288,7 +292,7 @@
         "tests": [
             {
                 "params":[],
-                "expected": ["epfl_entr_idev_ing", "Faculty: ENT-R\nUnit: IDEV-ING"]
+                "expected": ["rsrch_123456", "Project: 123456"]
             }
         ]
     },
@@ -297,8 +301,8 @@
         "name": "getSecurityGroupNameAndDesc",
         "tests":[
             {
-                "params": ["epfl_entr_idev_ing"],
-                "expected": ["sg.epfl_entr", "Tenant: epfl\\nFaculty: ENT-R"]
+                "params": ["rsrch_123456"],
+                "expected": ["sg.rsrch", "Tenant: research"]
             }
         ]
     },
@@ -308,7 +312,7 @@
         "tests":[
             {
                 "params":[],
-                "expected":"st.epfl_entr"
+                "expected":"st.rsrch"
             }
         ]
     },
@@ -318,7 +322,7 @@
         "tests": [
             {
                 "params":[],
-                "expected": ["epfl_entr","Section for Tenant epfl and Faculty ENT-R"]
+                "expected": ["rsrch","Section for Tenant research"]
             }
         ]   
     },
@@ -330,20 +334,20 @@
                 "params":[],
                 "expected":[
                     {
-                        "tag": "allow-entr-in",
-                        "name": "allow-entr-in"
+                        "tag": "allow-rsrch-in",
+                        "name": "allow-rsrch-in"
                     },
                     {
-                        "tag": "allow-intra-entr-comm",
-                        "name": "allow-intra-entr-comm"
+                        "tag": "allow-intra-rsrch-comm",
+                        "name": "allow-intra-rsrch-comm"
                     },
                     {
-                        "tag": "allow-entr-out",
-                        "name": "allow-entr-out"
+                        "tag": "allow-rsrch-out",
+                        "name": "allow-rsrch-out"
                     },
                     {
-                        "tag": "deny-entr-all",
-                        "name": "deny-entr-all"
+                        "tag": "deny-rsrch-all",
+                        "name": "deny-rsrch-all"
                     }
                 ]
             }
@@ -355,7 +359,7 @@
         "tests":[
             {
                 "params": [true],
-                "expected": "OU=EPFL,OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+                "expected": "OU=Research,OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
             },
             {
                 "params": [false],
@@ -369,17 +373,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "entrtvm"
-            }
-        ]
-    },
-
-    {
-        "name": "getBGDescription",
-        "tests":[
-            {
-                "params": [],
-                "expected": "Faculty: ENT-R\nUnit: IDEV-ING"
+                "expected": "123456tvm"
             }
         ]
     },
@@ -389,7 +383,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "epfl_entr_idev_ing"
+                "expected": "rsrch_123456"
             }
         ]
     },
@@ -399,7 +393,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "Faculty: ENT-R\nUnit: IDEV-ING"
+                "expected": "Project: 123456"
             }
         ]
     },
@@ -408,8 +402,8 @@
         "name": "extractInfosFromADGroupName",
         "tests":[
             {
-                "params": ["vra_t_12635_13031"],
-                "expected": ["12635", "13031"]
+                "params": ["vra_t_123456"],
+                "expected": ["123456"]
             }
         ]
     },
@@ -418,8 +412,8 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["ENT-R;IDEV-ING;1907"],
-                "expected": ["ENT-R", "IDEV-ING", "1907"]
+                "params": ["123456;This is my project description"],
+                "expected": ["123456", "This is my project description"]
             }
         ]
     },
@@ -429,7 +423,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "epfl_entr_idev_ing"
+                "expected": "rsrch_123456"
             }
         ]
     },
@@ -438,8 +432,8 @@
         "name": "getBGResName",
         "tests":[
             {
-                "params": ["epfl_entr_idev_ing", "clstr-test-INJ"],
-                "expected": "epfl_entr_idev_ing_clstr_test_inj"
+                "params": ["rsrch_123456", "clstr-test-INJ"],
+                "expected": "rsrch_123456_clstr_test_inj"
             }
         ]
     },
@@ -448,8 +442,8 @@
         "name": "getADGroupFQDN",
         "tests":[
             {
-                "params": ["vra_t_12635_13035"],
-                "expected": "vra_t_12635_13035@intranet.epfl.ch"
+                "params": ["vra_t_123456"],
+                "expected": "vra_t_123456@intranet.epfl.ch"
             }
         ]
     },
@@ -469,17 +463,17 @@
         "tests":[
             {
                 "params": [],
-                "expected": "template_epfl_"
+                "expected": "template_rsrch_"
             }
         ]
     },
-
+    
     {
         "name": "getNASPrivateISOPath",
         "tests":[
             {
-                "params": ["epfl_entr_idev_ing"],
-                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_entr_idev_ing"
+                "params": ["rsrch_123456"],
+                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\research\\rsrch_123456"
             }
         ]
     },
@@ -489,7 +483,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl"
+                "expected": "\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\research"
             }
         ]
     },
@@ -498,13 +492,9 @@
         "name": "getNASPrivateISOPathBGName",
         "tests":[
             {
-                "params": ["\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_entr_idev_ing"],
-                "expected": "epfl_entr_idev_ing"
+                "params": ["\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\research\\rsrch_123456"],
+                "expected": "rsrch_123456"
             }
         ]
     }
-
-
-    
-
 ]
