@@ -1,0 +1,7 @@
+{
+    "name": "{{name}}",
+    "svm": {
+      "name": "{{svmName}}",
+      "uuid": "{{svmUUID}}"
+    }
+  }
