@@ -5,6 +5,12 @@
         "uuid": "{{aggregateUUID}}"
       }
     ],
+    "autosize": {
+      "mode": "off"
+    },
+    "guarantee": {
+      "type": "none"
+    },
     "svm": {
       "name": "{{svmName}}",
       "uuid": "{{svmUUID}}"
