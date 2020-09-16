@@ -54,7 +54,7 @@ USAGES:
 param([string]$targetEnv, 
       [string]$targetTenant, 
       [string]$action, 
-      [string]$unitOrSvcID, 
+      [string]$unitOrSvcID,  # On peut aussi y trouver un numéro de projet s'il s'agit du tenant Research
       [string]$friendlyName, 
       [string]$linkedTo, 
       [string]$bucketName, 
