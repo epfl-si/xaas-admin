@@ -18,6 +18,7 @@ enum netAppObjectType
     SVM
     Aggregate
     Volume
+    ExportPolicy
 }
 
 class NetAppAPI: RESTAPICurl
@@ -239,6 +240,8 @@ class NetAppAPI: RESTAPICurl
             Aggregate { $object = $this.getAggregateById($objectUUID) }
 
             Volume { $object = $this.getVolumeById($objectUUID) }
+
+            ExportPolicy { $object = $this.getExportPolicyById($objectUUID) }
 
             default { Throw ("Object type {0} not handled" -f $objectType.ToString())}
         }
@@ -492,14 +495,14 @@ class NetAppAPI: RESTAPICurl
     [PSObject] getVolumeByName([string]$name)
     {
         # Recherche du volume dans la liste
-        $result = $this.getVolumeList() | Where-Object { $_.name -eq $name }
+        $result = $this.getVolumeListQuery(("name={0}" -f $name))
 
         if($null -eq $result)
         {
             return $null
         }
 
-        # Recheche des détails de la SVM
+        # Recheche des détails du volume
         return $this.getVolumeById($result.uuid)
     }
 
@@ -590,7 +593,7 @@ class NetAppAPI: RESTAPICurl
         
         IN  : $id   -> ID du volume que l'on désire supprimer
 	#>
-    [void] deleteVolume([PSObject]$id)
+    [void] deleteVolume([string]$id)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([netAppObjectType]::Volume, $id)
@@ -716,4 +719,352 @@ class NetAppAPI: RESTAPICurl
     {
         return $this.getCIFSShareListQuery(("volume.name={0}" -f $volName))
     }
+
+
+    <#
+        =====================================================================================
+                                    EXPORT POLICIES (NFS)
+        =====================================================================================
+    #>
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des export policies avec des paramètres de filtrage optionnels
+
+        IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+        
+        https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_policy_collection_get
+	#>
+    hidden [Array] getExportPolicyListQuery([string]$queryParams)
+    {
+        $uri = "/api/protocols/nfs/export-policies?max_records=9999"
+
+        # Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+        
+        return $this.callAPI($uri, "GET", $null, "records")
+    }
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des export policies
+
+        RET : Liste des export policies
+	#>
+    [Array] getExportPolicyList()
+    {
+        return $this.getExportPolicyListQuery("")
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne une export policy par son nom
+
+        IN  : $id   -> ID de l'export policy
+
+        RET : L'export policy
+                $null si pas trouvé
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_policy_get
+	#>
+    [Array] getExportPolicyById([string]$id)
+    {
+        $uri = "/api/protocols/nfs/export-policies/{0}" -f $id
+
+        return $this.callAPI($uri, "GET", $null, "", $true)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne une export policy par son nom
+
+        IN  : $name -> Nom de l'export policy
+
+        RET : L'export policy
+                $null si pas trouvé
+	#>
+    [Array] getExportPolicyByName([string]$name)
+    {
+        $result = $this.getExportPolicyListQuery( ("name={0}" -f $name) )
+
+        if($null -eq $result)
+        {
+            return $null
+        }
+
+        # Recheche des détails de l'export policy
+        return $this.getExportPolicyById($result.id)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Ajoute une export policy
+
+        IN  : $name     -> Nom de l'export policy
+        IN  : $svm      -> Objet représentant la SVM à laquelle la policy doit être attachée.
+        
+        RET : L'export policy créée
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_policy_create
+	#>
+    [PSObject] addExportPolicy([string]$name, [PSObject]$svm)
+    {
+        $uri = "/api/protocols/nfs/export-policies"
+
+        $replace = @{
+            name = $name
+            svmName = $svm.name
+            svmUUID = $svm.uuid
+        }
+
+        $body = $this.createObjectFromJSON("xaas-nas-new-export-policy.json", $replace)
+
+        $result = $this.callAPI($uri, "POST", $body)
+
+        # Retour de l'élément créé
+        return $this.getExportPolicyByName($name)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime une export policy
+
+        IN  : $exportPolicy      -> Objet représentant l'export policy à supprimer
+        
+        https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_policy_delete
+	#>
+    [void] deleteExportPolicy([PSObject]$exportPolicy)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([netAppObjectType]::ExportPolicy, $exportPolicy.id)
+
+        $uri = "https://{0}/api/protocols/nfs/export-policies/{1}" -f $targetServer, $exportPolicy.id
+
+        $this.callAPI($uri, "DELETE", $null)
+    }
+
+
+<#
+        =====================================================================================
+                                    EXPORT POLICIES RULES (NFS)
+        =====================================================================================
+    #>
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des règles d'export policies avec des paramètres de filtrage optionnels
+
+        IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+        
+        https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_rule_collection_get
+	#>
+    hidden [Array] getExportPolicyRuleListQuery([string]$exportPolicyId, [string]$queryParams)
+    {
+        $uri = "/api/protocols/nfs/export-policies/{0}/rules?max_records=9999" -f  $exportPolicyId
+
+        # Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+        
+        return $this.callAPI($uri, "GET", $null, "records")
+    }
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des règles d'export policies
+
+        IN  : $exportPolicy     -> Objet représentant l'export policy
+
+        RET : Liste des règles d'export policies
+	#>
+    [Array] getExportPolicyRuleList([PSObject]$exportPolicy)
+    {
+        return $this.getExportPolicyRuleListQuery($exportPolicy.id, "")
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime la liste des règles d'une export policies
+
+        IN  : $exportPolicy     -> Objet représentant l'export policy
+        IN  : $targetServer     -> Serveur cible sur lequel se trouve l'export policy
+    #>
+    hidden [void] deleteExportPolicyRule([PSObject]$exportPolicy, [string]$targetServer, [int]$index)
+    {
+        $uri = "https://{0}/api/protocols/nfs/export-policies/{1}/rules/{2}" -f $targetServer, $exportPolicy.id, $index
+
+        $this.callAPI($uri, "DELETE", $null)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime la liste des règles d'une export policies
+
+        IN  : $exportPolicy     -> Objet représentant l'export policy
+    #>
+    [void] deleteExportPolicyRuleList([PSObject]$exportPolicy)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([netAppObjectType]::ExportPolicy, $exportPolicy.id)
+
+        # Parcours des règles et effacement de celles-ci
+        ForEach($rule in $this.getExportPolicyRuleListQuery($exportPolicy.id, ""))
+        {
+            $this.deleteExportPolicyRule($exportPolicy, $targetServer, $rule.index)
+        }
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Ajoute une règle d'export policy
+
+        IN  : $exportPolicy     -> Objet représentant l'export policy
+        IN  : $targetServer     -> Nom du serveur où exécuter la requête
+        IN  : $replaceInBody    -> Hashtable avec les éléments à remplacer dans le body
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_rule_create
+	#>
+    hidden [void] addExportPolicyRule([PSObject]$exportPolicy, [string]$targetServer, [HashTable]$replaceInBody)
+    {
+        $uri = "https://{0}/api/protocols/nfs/export-policies/{1}/rules" -f $targetServer, $exportPolicy.id
+
+        $body = $this.createObjectFromJSON("xaas-nas-new-export-policy-rule.json", $replaceInBody)
+
+        $result = $this.callAPI($uri, "POST", $body)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Ajoute les règles dans une export policy
+
+        IN  : $exportPolicy     -> Objet représentant l'export policy
+        IN  : $ROIPList         -> tableau avec la liste des IP Read-Only
+        IN  : $RWIPList         -> Tableau avec la liste des IP Read-Write
+        IN  : $RootIPList       -> Tableau avec la liste des IP Root
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_rule_create
+	#>
+    [void] updateExportPolicyRules([PSObject]$exportPolicy, [Array]$ROIPList, [Array]$RWIPList, [Array]$RootIPList)
+    {
+        # On commence par supprimer les règles existantes
+        $this.deleteExportPolicyRuleList($exportPolicy)
+
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([netAppObjectType]::ExportPolicy, $exportPolicy.id)
+
+        $doneIPs = @()
+
+        # Parcours des IP ReadOnly
+        ForEach($ip in $ROIPList)
+        {
+            if($doneIPs -contains $ip){ Continue }
+
+            $replace = @{
+                clientMatch = $ip
+                roRule = "any"
+            }
+
+            # Si l'IP a ausi les accès Root
+            if($RootIPList -contains $ip)
+            {
+                $replace.rwRule = "any"
+                $replace.superUser = "any"
+            }
+            else # Pas dans le root
+            {
+                # Si dans les RW
+                if($RWIPList -contains $ip)
+                {
+                    $replace.rwRule = "any"
+                }
+                else # Pas dans le RW
+                {
+                    $replace.rwRule = "never"
+                }
+
+                $replace.superUser = "none"
+
+            }# FIN SI pas dans le root
+
+            $doneIPs += $ip
+
+            # Ajout de la règle
+            $this.addExportPolicyRule($exportPolicy, $targetServer, $replace)
+
+        }# FIN BOUCLE sur les IP ReadOnly
+
+
+        # Parcours des IP ReadWrite
+        ForEach($ip in $RWIPList)
+        {
+            if($doneIPs -contains $ip){ continue }
+
+            $replace = @{
+                clientMatch = $ip
+                rwRule = "any"
+                roRule = "any"
+            }
+
+            if($RootIPList -contains $ip)
+            {
+                $replace.superUser = "any"
+            }
+            else
+            {
+                $replace.superUser = "none"
+            }
+
+            $doneIPs += $ip
+
+            # Ajout de la règle
+            $this.addExportPolicyRule($exportPolicy, $targetServer, $replace)
+
+        }# FIN BOUCLE sur les IP ReadWrite
+
+
+        # Parcours des IP Root 
+        ForEach($ip in $RootIPList)
+        {
+            if($doneIPs -contains $ip){ continue }
+
+            $replace = @{
+                clientMatch = $ip
+                superUser = "any"
+                rwRule = "any"
+                roRule = "any"
+            }
+
+            $doneIPs += $ip
+
+            # Ajout de la règle
+            $this.addExportPolicyRule($exportPolicy, $targetServer, $replace)
+
+        }# FIN BOUCLE parcours des IP Root
+
+    }
+
+
+
+
 }
