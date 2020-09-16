@@ -195,11 +195,21 @@ class RESTAPICurl: RESTAPI
 				# Si on a fait le max de tentative, on peut lever une erreur
 				if($currentAttemptNo -eq $nbCurlAttempts)
 				{
-					if($this.curl.ExitCode -eq 52)
+					# https://curl.haxx.se/libcurl/c/libcurl-errors.html
+					switch($this.curl.ExitCode)
 					{
-						$errorStr = "Empty answer received from remote host"
+						7
+						{
+							$errorStr = "Failed to connect to host or proxy"
+						}
+
+						52
+						{
+							$errorStr = "Empty answer received from remote host"
+						}
+						
 					}
-					Throw "Error executing command ({0}) with error : `n{1}" -f $this.curl.StartInfo.Arguments, $errorStr
+					Throw ("Error executing command ({0}) with error : `n{1}" -f $this.curl.StartInfo.Arguments, $errorStr)
 				}
 
 			}# FIN SI erreur Curl 

@@ -176,6 +176,17 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 					$templateName = "ad-groups-missing-for-groups-creation-wait"
 				}
 
+				# Unité 'Gestion' pas trouvée au niveau 4 pour une unité de niveau 3
+				'level3GEUnitNotFound'
+				{
+					$valToReplace.unitList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=130975579"
+
+					$mailSubject = "Error - Level 4 'GE' unit can't be identified, please proceed manually"
+
+					$templateName = "level-4-ge-unit-not-found"
+				}
+
 				default
 				{
 					# Passage à l'itération suivante de la boucle
@@ -286,8 +297,12 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 
 	$baseRequest = "INSERT INTO vraUsers VALUES"
 	$rows = @()
+
+	# Suppression des "itadmin-" au début des noms d'utilisateur et on ne prend que les "unique" pour éviter d'éventuelles collisions
+	$uniqueUserList = $userList | Foreach-Object { $_ -replace "^itadmin-", "" } | Sort-Object | Get-Unique
+
 	# Boucle sur les utilisateurs à ajouter
-	ForEach($user in $userList)
+	ForEach($user in $uniqueUserList)
 	{
 		# Le 1 qu'on ajoute à la fin, c'est pour la colonne 'link'. Cette valeur est constante et elle doit être ajoutée
 		# pour le bon fonctionnement de Tableau et son interfaçage avec les utilisateurs de vRA
@@ -476,6 +491,7 @@ try
 	$counters.add('ADMembersNotFound', '# AD members not found')
 	$counters.add('groupsGroupsCreated', '# Groups groups created')
 	$counters.add('membersAddedTovRAUsers', '# Users added to vraUsers table (Tableau)')
+	$counters.add('level3GEUnitNotFound', '# level 3 GE unit not found')
 
 	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -485,9 +501,8 @@ try
 
 	(cette liste sera accédée en variable globale même si c'est pas propre XD)
 	#>
-	$notifications = @{
-		missingADGroups = @()
-	}
+	$notifications = @{}
+	$notifications.level3GEUnitNotFound = @()
 
 
 
@@ -519,6 +534,10 @@ try
 			$facultyList = $ldap.getLDAPFacultyList() #  | Where-Object { $_['name'] -eq "ASSOCIATIONS" } # Décommenter et modifier pour limiter à une faculté donnée
 
 			$exitFacLoop = $false
+
+			# Chargement des informations sur le mapping des facultés
+			$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "ge-unit-mapping.json"))
+			$geUnitMappingList = (Get-Content -Path $geUnitMappingFile -raw) | ConvertFrom-Json
 
 			# Parcours des facultés trouvées
 			ForEach($faculty in $facultyList)
@@ -621,28 +640,72 @@ try
 				# ----------------------------------------------------------------------------------
 				# --------------------------------- UNITÉS
 				# ----------------------------------------------------------------------------------
-
 				# Recherche des unités pour la facultés
-				$unitList = $ldap.getFacultyUnitList($faculty['name'], $EPFL_FAC_UNIT_NB_LEVEL) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et modifier pour limiter à une unité donnée
+				$unitList = $ldap.getFacultyUnitList($faculty.name, $EPFL_FAC_UNIT_NB_LEVEL) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et modifier pour limiter à une unité donnée
 
 				$unitNo = 1
 				# Parcours des unités de la faculté
 				ForEach($unit in $unitList)
 				{
-					$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty['name'], $unit['name']))
+					$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty.name, $unit.name))
+
+
+					# Si c'est une unité de niveau 3 (centre), on doit chercher l'unité de niveau 4 qui fait office de "gestion"
+					if($unit.level -eq 3)
+					{
+						$logHistory.addLineAndDisplay("--> Level 3 unit (Center), looking for level 4 'GE' unit for finance center..." )
+
+						# Noms d'unité à rechercher. On cherche de plusieurs manières parce qu'ils ont été incapables de nommer ça d'une façon cohérente...
+						$geUnitNameList = @( ("{0}-GE" -f $unit.name)
+											("{0}-GE" -f [Regex]::match($unit.name, '[A-Za-z]+-(.*)').groups[1].value) )
+
+						# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
+						$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
+
+						$financeCenter = $null
+
+						# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
+						ForEach($geUnitName in $geUnitNameList)
+						{
+							$logHistory.addLineAndDisplay(("---> Looking for '{0}' unit..." -f $geUnitName))
+							$geUnit = $unitList | Where-Object { $_.name -eq $geUnitName }
+
+							if($null -ne $geUnit)
+							{
+								$logHistory.addLineAndDisplay("---> Unit found, getting finance center")
+								$financeCenter = $geUnit.accountingnumber
+								break
+							}
+						}
+
+						# Si on n'a rien trouvé... 
+						if($null -eq $financeCenter)
+						{
+							$logHistory.addLineAndDisplay("--> 'GE' unit not found... using 'normal' finance center")
+							$financeCenter = $unit.accountingnumber
+							$counters.inc('level3GEUnitNotFound')
+							# Ajout du nom de l'unité niveau 3 pour notifier par mail que pas trouvée
+							$notifications.level3GEUnitNotFound += $unit.name
+						}
+					}
+					else # Ce n'est pas une unité de niveau 3 (centre)
+					{
+						$financeCenter = $unit.accountingnumber
+					}
 
 					# Recherche des membres de l'unité
 					$ldapMemberList = $ldap.getUnitMembers($unit['uniqueidentifier'])
+					
+					# Initialisation des détails pour le générateur de noms
+					$nameGenerator.initDetails(@{facultyName = $faculty.name
+											facultyID = $faculty.uniqueidentifier
+											unitName = $unit.name
+											unitID = $unit.uniqueidentifier
+											financeCenter = $financeCenter})
 
 					# On commence par filtrer les comptes pour savoir s'ils existent tous
 					$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
 
-					# Initialisation des détails pour le générateur de noms
-					$nameGenerator.initDetails(@{facultyName = $faculty['name']
-												facultyID = $faculty['uniqueidentifier']
-												unitName = $unit['name']
-												unitID = $unit['uniqueidentifier']
-												financeCenter = $unit['accountingnumber']})
 
 					# Création du nom du groupe AD et de la description
 					$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
@@ -676,7 +739,7 @@ try
 						if($ldapMemberList.Count -gt 0)
 						{
 							$logHistory.addLineAndDisplay(("--> Creating group ({0}) " -f $adGroupName))
-
+				
 							if(-not $SIMULATION_MODE)
 							{
 								# Création du groupe
@@ -693,7 +756,7 @@ try
 						}
 						else # Pas de membres donc on ne créé pas le groupe
 						{
-							$logHistory.addLineAndDisplay(("--> No members in unit '{0}', skipping group creation " -f $unit['name']))
+							$logHistory.addLineAndDisplay(("--> No members in unit '{0}', skipping group creation " -f $unit.name))
 							$counters.inc('epfl.LDAPUnitsEmpty')
 							$adGroupExists = $false
 						}
@@ -797,8 +860,8 @@ try
 				if($facApprovalMembers.Count -gt 0)
 				{
 					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
-					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty['name'].toLower())
-					updateVRAUsersForBG -sqldb $mysql -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty['name'].toLower())
+					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower())
+					updateVRAUsersForBG -sqldb $mysql -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower())
 				}
 
 
@@ -987,7 +1050,8 @@ try
 			$counters.add('rsrch.projectSkipped', '# Projects skipped')
 
 			# Pour accéder à la base de données
-			$mysqlGrants = [MySQL]::new($configGrants.getConfigValue($targetEnv, "host"), `
+			$mysqlGrants = [SQLDB]::new([DBType]::MySQL, `
+										$configGrants.getConfigValue($targetEnv, "host"), `
 										$configGrants.getConfigValue($targetEnv, "dbName"), `
 										$configGrants.getConfigValue($targetEnv, "user"), `
 										$configGrants.getConfigValue($targetEnv, "password"), `

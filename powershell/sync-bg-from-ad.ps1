@@ -365,12 +365,10 @@ function createOrUpdateBG
 		$counters.inc('BGExisting')
 		# ==========================================================================================
 
-		# Si le BG n'a pas la custom property donnée, on l'ajoute
-		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
-		# les BG existants avec la nouvelle "Custom Property"
-		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
+		# Si le centre financier du BG a changé (ce qui peut arriver), on le met à jour
+		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER) -ne $financeCenter)
 		{
-			# Ajout de la custom Property avec la valeur par défaut 
+			# Mise à jour
 			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
 		}
 
@@ -1299,7 +1297,6 @@ try
 
 
 	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
-
 
 	
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST

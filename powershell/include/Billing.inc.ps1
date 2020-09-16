@@ -32,12 +32,16 @@ class Billing
     hidden [PSObject] $serviceList
     hidden [EPFLLDAP] $ldap
     hidden [PSObject] $serviceBillingInfos
+    hidden [Hashtable] $vraTenantList
 
 
     <#
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
 
+        IN  : $vraTenantList        -> Hashtable avec des objets de la classe VRAAPI pour interroger vRA.
+                                        Chaque objet a pour clef le nom du tenant et comme "contenu" le 
+                                        nécessaire pour interroger le tenant
         IN  : $db                   -> Objet de la classe SQLDB permettant d'accéder aux données.
         IN  : $ldap                 -> Connexion au LDAP pour récupérer les infos sur les unités
         IN  : $serviceList          -> Objet avec la liste de services (chargé depuis le fichier JSON itservices.json)
@@ -48,8 +52,9 @@ class Billing
 
 		RET : Instance de l'objet
 	#>
-    Billing([SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv)
+    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv)
     {
+        $this.vraTenantList = $vraTenantList
         $this.db = $db
         $this.ldap = $ldap
         $this.serviceList = $serviceList
