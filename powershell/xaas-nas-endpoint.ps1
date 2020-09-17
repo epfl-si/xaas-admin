@@ -101,6 +101,9 @@ $global:VOL_TYPE_APP        = "app"
 # Limites
 $global:MAX_VOL_PER_UNIT    = 10
 
+# Autre
+$global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"
+
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
 <#
@@ -302,11 +305,25 @@ try
             {
                 "cifs"
                 {
-                    
                     $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $volName, $mountPath) )
                     $netapp.addCIFSShare($volName, $svmObj, $mountPath)
 
+                    # On ajoute le nom du share CIFS au résultat renvoyé par le script
                     $result.cifsShare = $volName
+
+                    $logHistory.addLine(("Checking if Export Policy '{0}' exists on SVM '{1}'..." -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name))
+                    $denyExportPol = $netapp.getExportPolicyByName($svmObj, $global:EXPORT_POLICY_DENY_NFS_ON_CIFS)
+
+                    if($null -eq $denyExportPol)
+                    {
+                        $logHistory.addLine("Export Policy doesn't exists, creating...")
+                        # Création de l'export policy
+                        $denyExportPol = $netapp.addExportPolicy($global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj)
+                    }
+
+                    $logHistory.addLine(("Applying Export Policy '{0}' to SVM '{1}' on Volume '{2}'" -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name, $volName))
+                    $netapp.applyExportPolicyOnVolume($denyExportPol, $newVol)
+
                 }
 
                 "nfs3"

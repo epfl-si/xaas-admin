@@ -178,6 +178,10 @@ class NetAppAPI: RESTAPICurl
         }
         else
         {
+            if($allRes.Count -eq 0)
+            {
+                return $null
+            }
             return $allRes
         }
         
@@ -805,6 +809,29 @@ class NetAppAPI: RESTAPICurl
         return $this.getExportPolicyById($result.id)
     }
 
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne une export policy d'une SVM par son nom
+
+        IN  : $svm  -> Objet représentant la SVM
+        IN  : $name -> Nom de l'export policy
+
+        RET : L'export policy
+                $null si pas trouvé
+	#>
+    [Array] getExportPolicyByName([PSObject]$svm, [string]$name)
+    {
+        $result = $this.getExportPolicyListQuery( ("svm.name={0}&name={1}" -f $svm.name, $name) )
+
+        if($null -eq $result)
+        {
+            return $null
+        }
+
+        # Recheche des détails de l'export policy
+        return $this.getExportPolicyById($result.id)
+    }
+
 
     <#
 		-------------------------------------------------------------------------------------
@@ -855,7 +882,34 @@ class NetAppAPI: RESTAPICurl
     }
 
 
-<#
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Applique une export policy sur un volume
+
+        IN  : $exportPolicy      -> Objet représentant l'export policy à supprimer
+        IN  : $volume            -> Objet représentant le volume sur lequel appliquer la policy
+        
+        https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_modify
+	#>
+    [void] applyExportPolicyOnVolume([PSObject]$exportPolicy, [PSObject]$volume)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([netAppObjectType]::Volume, $volume.uuid)
+
+        $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $volume.uuid
+
+        $replace = @{
+            exportPolicyId = @($exportPolicy.id, $true)
+            exportPolicyName = $exportPolicy.name
+        }
+
+        $body = $this.createObjectFromJSON("xaas-nas-patch-volume-export-policy.json", $replace)
+
+        $this.callAPI($uri, "PATCH", $body)
+    }
+
+
+    <#
         =====================================================================================
                                     EXPORT POLICIES RULES (NFS)
         =====================================================================================
