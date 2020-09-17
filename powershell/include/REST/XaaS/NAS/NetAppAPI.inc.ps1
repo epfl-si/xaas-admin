@@ -770,7 +770,7 @@ class NetAppAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Retourne une export policy par son nom
+        BUT : Retourne une export policy par son id
 
         IN  : $id   -> ID de l'export policy
 
@@ -886,7 +886,7 @@ class NetAppAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
         BUT : Applique une export policy sur un volume
 
-        IN  : $exportPolicy      -> Objet représentant l'export policy à supprimer
+        IN  : $exportPolicy      -> Objet représentant l'export policy à appliquer
         IN  : $volume            -> Objet représentant le volume sur lequel appliquer la policy
         
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_modify
@@ -920,7 +920,8 @@ class NetAppAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
         BUT : Retourne la liste des règles d'export policies avec des paramètres de filtrage optionnels
 
-        IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+        IN  : $exportPolicyId   -> ID de l'export policy pour laquelle on veut les règles
+        IN  : $queryParams	    -> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
         
@@ -1118,6 +1119,117 @@ class NetAppAPI: RESTAPICurl
 
     }
 
+
+    <#
+        =====================================================================================
+                                    SNAPSHOT POLICIES
+        =====================================================================================
+    #>
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des policies de snapshot avec les paramètres passés.
+
+        IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+        
+        https://nas-mcc-t.epfl.ch/docs/api/#/storage/snapshot_policy_collection_get
+	#>
+    hidden [Array] getSnapshotPolicyListQuery([string]$queryParams)
+    {
+        $uri = "/api/storage/snapshot-policies?max_records=9999"
+
+        # Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+        
+        return $this.callAPI($uri, "GET", $null, "records")
+    }
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des policies de snapshot
+
+        RET : Liste des règles des policies de snapshot
+	#>
+    [Array] getSnapshotPolicyList()
+    {
+        return $this.getSnapshotPolicyListQuery("")
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne une policy de snapshot par son id
+
+        IN  : $id   -> ID de l'export policy
+
+        RET : L'export policy
+                $null si pas trouvé
+        
+        https://nas-mcc-t.epfl.ch/docs/api/#/storage/snapshot_policy_get
+	#>
+    [Array] getSnapshotPolicyById([string]$id)
+    {
+        $uri = "/api/storage/snapshot-policies/{0}" -f $id
+
+        return $this.callAPI($uri, "GET", $null, "", $true)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne une policy de snapshot par son nom
+
+        IN  : $name -> Nom de la policy de snapshot
+
+        RET : La policy de snapshot
+                $null si pas trouvé
+	#>
+    [Array] getSnapshotPolicyByName([string]$name)
+    {
+        $result = $this.getSnapshotPolicyListQuery( ("name={0}" -f $name) )
+
+        if($null -eq $result)
+        {
+            return $null
+        }
+
+        # Recheche des détails de l'export policy
+        return $this.getSnapshotPolicyById($result.uuid)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Applique une policy de snapshot sur un volume
+
+        IN  : $exportPolicy      -> Objet représentant la policy de snapshot à appliquer
+        IN  : $volume            -> Objet représentant le volume sur lequel appliquer la policy
+        
+        https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_modify
+	#>
+    [void] applySnapshotPolicyOnVolume([PSObject]$snapPolicy, [PSObject]$volume)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([netAppObjectType]::Volume, $volume.uuid)
+
+        $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $volume.uuid
+
+        $replace = @{
+            snapPolicyUuid = $snapPolicy.uuid
+            snapPolicyName = $snapPolicy.name
+        }
+
+        $body = $this.createObjectFromJSON("xaas-nas-patch-volume-snapshot-policy.json", $replace)
+
+        $this.callAPI($uri, "PATCH", $body)
+    }
 
 
 

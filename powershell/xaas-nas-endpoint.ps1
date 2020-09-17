@@ -103,6 +103,7 @@ $global:MAX_VOL_PER_UNIT    = 10
 
 # Autre
 $global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"
+$global:SNAPSHOT_POLICY = "epfl-default"
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
@@ -262,6 +263,16 @@ try
 
                     # Recherche de la SVM
                     $svmObj = $netapp.getSVMByName($svm)
+
+                    # Il faut qu'on mette les snapshot en place
+                    $logHistory.addLine("Getting Snapshot Policy...")
+                    $snapPolicy = $netapp.getSnapshotPolicyByName($global:SNAPSHOT_POLICY)
+                    # Si on ne trouve pas la policy de snapshot,
+                    if($null -eq $snapPolicy)
+                    {
+                        Throw ("Snapshot policy '{0}' doesn't exists" -f $global:SNAPSHOT_POLICY)
+                    }
+
                 }
 
                 default
@@ -330,8 +341,15 @@ try
                 {
                     
                 }
-            }
+            }# FIN En fonction du type d'accès demandé 
 
+            # Si volume collaboratif
+            if($volType -eq $global:VOL_TYPE_COLL)
+            {
+                # On applique la policy de snapshot
+                $logHistory.addLine(("Applying Snapshot Policy '{0}' on Volume '{1}'" -f $global:SNAPSHOT_POLICY, $volName))
+                $netapp.applySnapshotPolicyOnVolume($snapPolicy, $newVol)
+            }
 
             $output.results += $result
            
