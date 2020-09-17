@@ -360,9 +360,6 @@ try
                 $netapp.deleteCIFSShare($share)
             }
 
-            
-
-            
             $logHistory.addLine( ("Deleting Volume {0}" -f $volName) )
             $netapp.deleteVolume($vol.uuid)
         }# FIN Action Delete
@@ -473,6 +470,19 @@ try
         # -- Pour savoir si une unité a le droit d'avoir un nouveau volume
         $ACTION_CAN_HAVE_NEW_VOL
         {
+           
+            # Récupération du nom de la faculté et de l'unité
+            $details = $nameGenerator.getDetailsFromBGName($bgName)
+
+            $nameGeneratorNAS.setCollaborativeDetails($details.faculty, $details.unit)
+
+            $logHistory.addLine( "Looking for next volume name..." )
+            # Recheche du prochain nom de volume
+            $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -faculty $details.faculty -unit $details.unit
+            
+            $output.results += @{
+                canHaveNewVol = ($null -ne $volName)
+            }
 
         }
 
