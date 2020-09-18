@@ -104,6 +104,7 @@ $global:MAX_VOL_PER_UNIT    = 10
 # Autre
 $global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"
 $global:SNAPSHOT_POLICY = "epfl-default"
+$global:SNAPSHOT_SPACE_PERCENT = 30
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
@@ -169,6 +170,23 @@ function chooseAppSVM([NetAppAPI]$netapp, [Array]$svmList)
     }
 
     return $targetSVM
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Renvoie la taille correcte à initialiser pour le volume au vu du pourcentage à 
+            réserver pour les snapshots
+
+    IN  : $requestedSizeGB  -> Taille demandée pour le Volume
+    IN  : $snapSpacePercent -> Pourcentage d'espace à réserver pour les snapshots
+
+    RET : Taille "réelle" à utiliser pour créer le volume
+#>
+function getCorrectVolumeSize([int]$requestedSizeGB, [int]$snapSpacePercent)
+{
+    return $requestedSizeGB * 100 / (100 - $snapSpacePercent)
+    
 }
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -242,6 +260,9 @@ try
                     $logHistory.addLine("Choosing SVM for volume...")
                     $svmObj = chooseAppSVM -netapp $netapp -svmList = $appSVMList.$access
                     $logHistory.addLine( ("SVM will be '{0}'" -f $svmObj.name) )
+
+                    # Pas d'espace réservé pour les snapshots
+                    $snapSpacePercent = 0
                 }
 
                 # ---- Volume Collaboratif
@@ -273,6 +294,8 @@ try
                         Throw ("Snapshot policy '{0}' doesn't exists" -f $global:SNAPSHOT_POLICY)
                     }
 
+                    $snapSpacePercent = $global:SNAPSHOT_SPACE_PERCENT
+
                 }
 
                 default
@@ -300,8 +323,11 @@ try
             # Définition du chemin de montage du volume
             $mountPath = "/{0}" -f $volName
 
+            # Redéfinition de la taille du volume en fonction du pourcentage à conserver pour les snapshots
+            $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $snapSpacePercent
+
             # Création du nouveau volume
-            $newVol = $netapp.addVolume($volName, $sizeGB, $svmObj, $svmObj.aggregates[0], $securityStyle, $mountPath)
+            $newVol = $netapp.addVolume($volName, $sizeWithSnapGB, $svmObj, $svmObj.aggregates[0], $securityStyle, $mountPath, $snapSpacePercent)
 
             # Pour le retour du script
             $result = @{

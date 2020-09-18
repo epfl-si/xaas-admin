@@ -523,19 +523,20 @@ class NetAppAPI: RESTAPICurl
         IN  : $securityStyle    -> le type de sécurité:
                                     "unix", "ntfs", "mixed", "unified"
         IN  : $mountPath        -> Chemin de montage du volume
+        IN  : $snapSpacePercent -> Pourcentage d'espace à mettre pour les snapshots
 
         RET : Le volume créé
 
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_create
 	#>
-    [PSObject] addVolume([string]$name, [int]$sizeGB, [PSObject]$svm, [PSObject]$aggregate, [string]$securityStyle, [string]$mountPath)
+    [PSObject] addVolume([string]$name, [float]$sizeGB, [PSObject]$svm, [PSObject]$aggregate, [string]$securityStyle, [string]$mountPath, [int]$snapSpacePercent)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([netAppObjectType]::SVM, $svm.uuid)
 
         $uri = "https://{0}/api/storage/volumes" -f $targetServer
 
-        $sizeInBytes = $sizeGB * 1024 * 1024 * 1024
+        $sizeInBytes = [Math]::Ceiling($sizeGB * 1024 * 1024 * 1024)
 
         $replace = @{
             aggregateName = $aggregate.name
@@ -543,9 +544,11 @@ class NetAppAPI: RESTAPICurl
             svmName = $svm.name
             svmUUID = $svm.uuid
             volName = $name
-            sizeInBytes = @($sizeInBytes, $true)
             securityStyle = $securityStyle
             mountPath = $mountPath
+            # Tableau avec $true en 2e valeur pour faire en sorte de ne pas mettre les " " autour de la valeur dans le JSON
+            sizeInBytes = @($sizeInBytes, $true)
+            snapSpacePercent = @($snapSpacePercent, $true)
         }
 
         $body = $this.createObjectFromJSON("xaas-nas-new-volume.json", $replace)
