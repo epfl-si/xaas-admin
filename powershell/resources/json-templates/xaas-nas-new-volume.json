@@ -25,5 +25,8 @@
       "snapshot": {
         "reserve_percent": "{{snapSpacePercent}}"
       }
+    },
+    "tiering": {
+      "policy": "auto"
     }
 }
