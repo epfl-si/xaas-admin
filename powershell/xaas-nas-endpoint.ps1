@@ -395,7 +395,7 @@ try
 
             $logHistory.addLine("Getting CIFS Shares for Volume...")
             $shareList = $netapp.getVolCIFSShareList($volName)
-            $logHistory.addLine(("{0} CIFS shares found..." -f {$shareList.count}))
+            $logHistory.addLine(("{0} CIFS shares found..." -f $shareList.count))
 
             # Suppression des shares CIFS
             ForEach($share in $shareList)
