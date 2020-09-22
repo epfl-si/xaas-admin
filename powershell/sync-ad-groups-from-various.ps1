@@ -515,7 +515,7 @@ try
 	#>
 	$notifications = @{}
 	$notifications.level3GEUnitNotFound = @()
-
+	$notifications.missingADGroups = @()
 
 
 	switch($targetTenant)
