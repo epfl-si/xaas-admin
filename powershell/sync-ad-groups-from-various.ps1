@@ -166,6 +166,18 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				}
 
 				# ---------------------------------------
+				# Groupe active directory manquants pour création des éléments pour Tenant Research
+				'missingRSRCHADGroups'
+				{
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.docUrl = "#"
+
+					$mailSubject = "Error - Active Directory groups missing"
+
+					$templateName = "ad-groups-missing-for-groups-creation"
+				}
+
+				# ---------------------------------------
 				# Groupe active directory manquants pour création des éléments pour Tenant Research (user, approval) et ITServices (user)
 				'missingADGroups'
 				{
