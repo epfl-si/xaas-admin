@@ -1,5 +1,7 @@
 config-billing.json
 config-global.json
+config-grants.json
+config-groups.json
 config-nsx.json
 config-vra.json
 config-vsphere.json

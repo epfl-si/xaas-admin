@@ -254,7 +254,7 @@ class EPFLLDAP
 		return $allMembers.Properties['memberuid']
 	}
 
-		<#
+	<#
 	-------------------------------------------------------------------------------------
 		BUT : Retourne les informations d'une unité
 		IN  : $unitUniqueIdentifier	-> Identifiant unique de l'unité (numérique)
@@ -292,5 +292,4 @@ class EPFLLDAP
 		return $null
 
 	}
-
 }

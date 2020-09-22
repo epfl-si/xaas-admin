@@ -71,6 +71,13 @@
                         "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
                         "JSONReplacements": {},
                         "approvalLevels": 1
+                    },
+                    {
+                        "tenant": "Research",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 2
                     }
                 ]
             },
@@ -144,6 +151,13 @@
                         "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
                         "JSONReplacements": {},
                         "approvalLevels": 1
+                    },
+                    {
+                        "tenant": "Research",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 2
                     }
                 ]
             },

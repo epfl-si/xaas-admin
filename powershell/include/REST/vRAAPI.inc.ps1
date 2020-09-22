@@ -70,6 +70,34 @@ class vRAAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Surcharge la fonction qui fait l'appel à l'API pour simplement ajouter un
+				check des erreurs
+
+		IN  : $uri		-> URL à appeler
+		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
+		IN  : $body 	-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
+						 	Si $null, on ne passe rien.
+
+		RET : Retour de l'appel
+
+	#>	
+	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
+	{
+		$response = ([RESTAPICurl]$this).callAPI($uri, $method, $body)
+
+        # Si une erreur a été renvoyée 
+        if(objectPropertyExists -obj $response -propertyName 'errors')
+        {
+			Throw ("GroupsAPI error: {0}" -f $response.errors[0].systemMessage
+			)
+        }
+
+        return $response
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Ferme une connexion via l'API REST
 
 	#>
@@ -1229,7 +1257,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getMachinePrefixListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/?page=1&limit=9999" -f $this.server, $this.tenant
+		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/?page=1&limit=9999" -f $this.server
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1267,6 +1295,51 @@ class vRAAPI: RESTAPICurl
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute un préfix de machine dans vRA. Par défaut, il sera ajouté pour le tenant
+				auquel on est connecté
+
+		IN  : $name				-> Le nom du préfix de machine que l'on désire ajouter
+		IN  : $numberOfDigits	-> Nombre de digits max du préfixe
+
+		RET : Objet contenant le préfixe
+	#>
+	[PSCustomObject] addMachinePrefix([string] $name, [int] $numberOfDigits)
+	{
+		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/" -f $this.server
+
+		# Valeur à mettre pour la configuration du BG
+		$replace = @{
+			name = $name
+			numberOfDigits = $numberOfDigits
+		}
+
+		$body = $this.createObjectFromJSON("vra-machine-prefix.json", $replace)
+
+		return ($this.callAPI($uri, "POST", $body))
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Supprime un préfixe de machine
+
+		IN  : $machinePrefix	-> Objet représentant le préfixe de machine à effacer
+	#>
+	[void] deleteMachinePrefix([PSCustomObject] $machinePrefix)
+	{
+		<# A savoir que l'URL utilisée ici ne correspond pas à la documentation Swagger de l'API car ... ça fait depuis
+			début 2019 que VMware ne l'a pas mise à jour... un bug était déjà présent dans la version 7.5 de l'API (ou de
+			sa documentation). Bref, c'est grâce à ce post d'un forum que la solution a été trouvée:
+			https://communities.vmware.com/thread/604831
+		#>
+		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/guid'{1}'" -f $this.server, $machinePrefix.id
+
+		$dummy = $this.callAPI($uri, "DELETE", $null)
 	}
 
 
