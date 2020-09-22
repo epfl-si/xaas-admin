@@ -74,13 +74,21 @@ class NameGeneratorNAS
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie le nom d'un volume collaboratif (vu qu'il y a le numéro passé en paramètre)
 
-      IN  : $volNumber  -> Numéro du volume
-
+      IN  : $volNumber     -> Numéro du volume
+   I  IN  : $isNFSVolume   -> $true|$false pour dire si c'est un Volume accédé en NFS
+      
       RET : Le nom du volume
 	#>
-   [string] getVolName([int]$volNumber)
+   [string] getVolName([int]$volNumber, [bool]$isNFSVolume)
    {
-      return ("{0}_{1}_{2}_files" -f $this.details.faculty, $this.details.unit, $volNumber)
+      $volName = ("{0}_{1}_{2}_files" -f $this.details.faculty, $this.details.unit, $volNumber)
+
+      if($isNFSVolume)
+      {
+         $volName = "{0}_nfs" -f $volName
+      }
+
+      return $volName
    }
 
 

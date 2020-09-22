@@ -98,6 +98,9 @@ $ACTION_CAN_HAVE_NEW_VOL    = "canHaveNewVol"
 $global:VOL_TYPE_COLL       = "col"
 $global:VOL_TYPE_APP        = "app"
 
+$global:ACCESS_TYPE_CIFS    = "cifs"
+$global:ACCESS_TYPE_NFS3    = "nfs3"
+
 # Limites
 $global:MAX_VOL_PER_UNIT    = 10
 
@@ -116,20 +119,25 @@ $global:SNAPSHOT_SPACE_PERCENT = 30
     IN  : $nameGeneratorNAS -> Objet de la classe NameGeneratorNAS
     IN  : $faculty          -> La faculté pour laquelle le volume sera
     IN  : $unit             -> L'unité pour laquelle le volume sera
+    IN  : $access           -> le type d'accès
+                                $global:ACCESS_TYPE_CIFS
+                                $global:ACCESS_TYPE_NFS3
 
     RET : Nouveau nom du volume
             $null si on a atteint le nombre max de volumes pour l'unité
 #>
-function getNextColVolName([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS, [string]$faculty, [string]$unit)
+function getNextColVolName([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS, [string]$faculty, [string]$unit, [string]$access)
 {
     $unit = $unit.toLower() -replace "-", ""
     $faculty = $faculty.toLower()
     $unitVolList = $netapp.getVolumeList() | Where-Object { $_ -match $nameGeneratorNAS.getCollaborativeVolRegex() } | Sort-Object
 
+    $isNFS = ($access -eq $global:ACCESS_TYPE_NFS3)
+
     # Recherche du prochain numéro libre
     for($i=1; $i -lt $global:MAX_VOL_PER_UNIT; $i++)
     {
-        $curVolName = $nameGeneratorNAS.getVolName($i)
+        $curVolName = $nameGeneratorNAS.getVolName($i, $isNFS)
         if($unitVolList -notcontains $curVolName)
         {
             return $curVolName
