@@ -1198,7 +1198,10 @@ try
 					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					$notifications['missingADGroups'] += $userSharedGroupNameGroups
+					if($notifications['missingADGroups'] -notcontains $userSharedGroupNameGroupsAD)
+					{
+						$notifications['missingADGroups'] += $userSharedGroupNameGroupsAD
+					}
 					$roleSharedGroupOk = $false
 				}
 				else
