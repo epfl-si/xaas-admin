@@ -1,6 +1,6 @@
 <#
 USAGES:
-    xaas-backup-sync-vm-tags.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl [-importFromvSphere]
+    xaas-backup-sync-vm-tags.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research [-importFromvSphere]
 #>
 <#
     BUT 		: Script lancé par une tâche planifiée, afin de synchroniser, de manière unidirectionnelle,

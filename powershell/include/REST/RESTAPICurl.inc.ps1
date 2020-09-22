@@ -29,7 +29,6 @@ class RESTAPICurl: RESTAPI
 	hidden [System.Diagnostics.Process]$curl
 	hidden [PSObject]$process
 	
-
     <#
 	-------------------------------------------------------------------------------------
 		BUT : Créer une instance de l'objet et ouvre une connexion au serveur
@@ -112,8 +111,10 @@ class RESTAPICurl: RESTAPI
 	{
 		$this.lastBody = $body
 		
+		$method = $method.ToUpper()
+
 		# Si la requête est de la lecture
-		if($method.ToLower() -eq "get")
+		if($method -eq "GET")
 		{
 			# Si on a l'info dans le cache, on la retourne
 			$cached = $this.getFromCache($uri)
@@ -127,7 +128,7 @@ class RESTAPICurl: RESTAPI
 		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
 		$this.incFuncCall($false)
 		
-		$args = "{0} --insecure -s --request {1}" -f $extraArgs, $method.ToUpper()
+		$curlArgs = "{0} --insecure -s --request {1}" -f $extraArgs, $method.ToUpper()
 
 		$tmpFile = $null
 
@@ -135,14 +136,23 @@ class RESTAPICurl: RESTAPI
 		{
 			# Génération d'un nom de fichier temporaire et ajout du JSON dans celui-ci
 			$tmpFile = (New-TemporaryFile).FullName
-			(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:default
 
-			$args += ' --data "@{0}"' -f $tmpFile
+			# Si on a passé une simple chaine de caractères, on la prend tel quel
+			if($body.GetType().Name -eq "String")
+			{
+				$body | Out-File -FilePath $tmpFile -Encoding:default
+			}
+			else # On a passé un objet, on le converti en JSON
+			{
+				(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:default
+			}
+
+			$curlArgs += ' --data "@{0}"' -f $tmpFile
 		}
 
 		# Ajout des arguments 
 		# Explication sur le @'...'@ ici : https://stackoverflow.com/questions/18116186/escaping-quotes-and-double-quotes
-		$this.curl.StartInfo.Arguments = "{0} {1} `"{2}`"" -f ( $this.getCurlHeaders() ), $args, ($uri -replace " ","%20")
+		$this.curl.StartInfo.Arguments = "{0} {1} `"{2}`"" -f ( $this.getCurlHeaders() ), $curlArgs, ($uri -replace " ","%20")
 
 		$result = $null
 
@@ -158,8 +168,16 @@ class RESTAPICurl: RESTAPI
 			# Si aucune erreur
 			if($this.curl.ExitCode -eq 0)
 			{
-				
-				$result = $output | ConvertFrom-Json
+				# On teste la récupération de ce qui a été retourné
+				try
+				{
+					$result = $output | ConvertFrom-Json
+				}
+				catch
+				{
+					# Si erreur, on ajoute simplement le JSON retourné au message d'exception pour que ça soit repris dans le mail envoyé aux admins
+					Throw ("{0}`n<b>Returned 'JSON':</b> {1}" -f $_.Exception.Message, $output)
+				}
 	
 				# Si pas trouvé
 				if($result.httpStatus -eq "NOT_FOUND")
@@ -192,11 +210,21 @@ class RESTAPICurl: RESTAPI
 				# Si on a fait le max de tentative, on peut lever une erreur
 				if($currentAttemptNo -eq $nbCurlAttempts)
 				{
-					if($this.curl.ExitCode -eq 52)
+					# https://curl.haxx.se/libcurl/c/libcurl-errors.html
+					switch($this.curl.ExitCode)
 					{
-						$errorStr = "Empty answer received from remote host"
+						7
+						{
+							$errorStr = "Failed to connect to host or proxy"
+						}
+
+						52
+						{
+							$errorStr = "Empty answer received from remote host"
+						}
+						
 					}
-					Throw "Error executing command ({0}) with error : `n{1}" -f $this.curl.StartInfo.Arguments, $errorStr
+					Throw ("Error executing command ({0}) with error : `n{1}" -f $this.curl.StartInfo.Arguments, $errorStr)
 				}
 
 			}# FIN SI erreur Curl 

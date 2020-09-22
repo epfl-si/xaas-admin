@@ -1,5 +1,5 @@
 <#
-   BUT : Contient les fonctions donnant accès à l'API vRA
+   BUT : Contient les fonctions donnant accès à l'API NSX
 
    Documentation: 
     - API: https://code.vmware.com/apis/222/nsx-t
@@ -140,6 +140,20 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
+		BUT : Efface un NS Group
+
+		IN  : $nsGroup  -> Objet représentant le NS Group à effacer
+	#>
+    [void] deleteNSGroup([PSObject]$nsGroup)
+    {
+        $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $nsGroup.id
+
+        $dummy = $this.callAPI($uri, "Delete", $null)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
 	    								FIREWALL SECTION
 		-------------------------------------------------------------------------------------
@@ -264,14 +278,35 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Efface une section de firewall 
+        BUT : met à jour une section de firewall 
+        
+        IN  : $section      -> Objet représentant la section
+
+        NOTE: Aucune idée s'il faut faire un "unlock" de la section avant de pouvoir modifier certains
+                détails. Dans tous les cas, le nom (display_name) peut être changé sans faire un
+                "unlock"
+    #>
+    [void] updateFirewallSection([PSObject]$section)
+    {
+        
+        $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $section.id
+        
+		# Création de la section de firewall
+        $dummy = $this.callAPI($uri, "PUT", $section)       
+        
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Efface une section de firewall et toutes les règles qui sont dedans
         
         IN  : $id	        -> ID de la section de firewall
     #>
     [void] deleteFirewallSection([string]$id)
     {
         
-        $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $id
+        $uri = "https://{0}/api/v1/firewall/sections/{1}?cascade=true" -f $this.server, $id
         
 		# Création de la section de firewall
         $dummy = $this.callAPI($uri, "Delete", $null)       

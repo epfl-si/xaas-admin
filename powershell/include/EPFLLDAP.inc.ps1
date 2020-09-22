@@ -211,10 +211,15 @@ class EPFLLDAP
 			# Parcours des résultats pour reformater,
 			ForEach($curUnit in $allUnits)
 			{
+				# Extraction de la fin du path et compte du nombre de niveau
+				# Ex: LDAP://ldap.epfl.ch:636/ou=si-vp,ou=si,o=epfl,c=ch  vers OU=SI-VP,OU=SI,O=EPFL,C=CH
+				$level = ([Regex]::match($curunit.path, '.*\/(.*)').Groups[1].value.toUpper() -Split ",").Count -1
+				
 				# Création de l'objet
 				$unitList += @{name = $curUnit.Properties['ou'][0]
 								uniqueidentifier = $curUnit.Properties['uniqueidentifier'][0]
-								accountingnumber = $curUnit.Properties['accountingnumber'][0] }
+								accountingnumber = $curUnit.Properties['accountingnumber'][0]
+								level = $level}
 			} # FIN BOUCLE de parcours des résultats
 		}
 		return $unitList
@@ -249,7 +254,7 @@ class EPFLLDAP
 		return $allMembers.Properties['memberuid']
 	}
 
-		<#
+	<#
 	-------------------------------------------------------------------------------------
 		BUT : Retourne les informations d'une unité
 		IN  : $unitUniqueIdentifier	-> Identifiant unique de l'unité (numérique)
@@ -287,5 +292,4 @@ class EPFLLDAP
 		return $null
 
 	}
-
 }

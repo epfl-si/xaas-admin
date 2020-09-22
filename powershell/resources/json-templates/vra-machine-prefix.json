@@ -1,0 +1,6 @@
+{
+    "tenantId": null,
+    "machineNumberLength": {{numberOfDigits}},
+    "nextMachineNo": 1,
+    "name": "{{name}}"
+  }

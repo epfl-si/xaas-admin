@@ -10,7 +10,7 @@
 
    Prérequis:
    Les fichiers suivants doivent avoir été inclus au programme principal avant que le fichier courant puisse être inclus.
-   - MySQL.inc.ps1
+   - SQLDB.inc.ps1
    - define.inc.ps1
 
    ----------
@@ -27,18 +27,22 @@ enum EntityType
 
 class Billing
 {
-    hidden [MySQL] $mysql
+    hidden [SQLDB] $db
     hidden [string] $targetEnv
     hidden [PSObject] $serviceList
     hidden [EPFLLDAP] $ldap
     hidden [PSObject] $serviceBillingInfos
+    hidden [Hashtable] $vraTenantList
 
 
     <#
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
 
-        IN  : $mysql                -> Objet de la classe MySQL permettant d'accéder aux données.
+        IN  : $vraTenantList        -> Hashtable avec des objets de la classe VRAAPI pour interroger vRA.
+                                        Chaque objet a pour clef le nom du tenant et comme "contenu" le 
+                                        nécessaire pour interroger le tenant
+        IN  : $db                   -> Objet de la classe SQLDB permettant d'accéder aux données.
         IN  : $ldap                 -> Connexion au LDAP pour récupérer les infos sur les unités
         IN  : $serviceList          -> Objet avec la liste de services (chargé depuis le fichier JSON itservices.json)
         IN  : $serviceBillingInfos  -> Objet avec les informations de facturation pour le service 
@@ -48,9 +52,10 @@ class Billing
 
 		RET : Instance de l'objet
 	#>
-    Billing([MySQL]$mysql, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv)
+    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv)
     {
-        $this.mysql = $mysql
+        $this.vraTenantList = $vraTenantList
+        $this.db = $db
         $this.ldap = $ldap
         $this.serviceList = $serviceList
         $this.serviceBillingInfos = $serviceBillingInfos
@@ -72,7 +77,7 @@ class Billing
     {
         $request = "SELECT * FROM BillingEntity WHERE entityType='{0}' AND entityElement='{1}'" -f $type, $element
 
-        $entity = $this.mysql.execute($request)
+        $entity = $this.db.execute($request)
 
         # On retourne le premier élément du tableau car c'est là que se trouve le résultat
         return $entity[0]
@@ -102,7 +107,7 @@ class Billing
         # L'entité n'existe pas, donc on l'ajoute 
         $request = "INSERT INTO BillingEntity VALUES (NULL, '{0}', '{1}', '{2}')" -f $type.toString(), $element, $financeCenter
 
-        $res =  $this.mysql.execute($request)
+        $res =  $this.db.execute($request)
 
         return [int] ($this.getEntity($type, $element)).entityId
     }
@@ -127,7 +132,7 @@ class Billing
         
         $request = "SELECT * FROM BillingItem WHERE itemName='{0}' AND itemMonth='{1}' AND itemYear='{2}'" -f $itemName, $month, $year
 
-        $item = $this.mysql.execute($request)
+        $item = $this.db.execute($request)
 
         # On retourne le premier élément du tableau car c'est là que se trouve le résultat
         return $item[0]
@@ -170,7 +175,7 @@ class Billing
         $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', NULL)" -f `
                             $parentEntityId, $type, $name, $desc, $month, $year, $quantity, $unit, $priceLevel
 
-        $res = $this.mysql.execute($request)
+        $res = $this.db.execute($request)
 
         return [int]($this.getItem($name, $month, $year)).itemId
     }
@@ -255,7 +260,7 @@ class Billing
     #>
     [Array] getEntityList()
     {
-        return $this.mysql.execute("SELECT * FROM BillingEntity")
+        return $this.db.execute("SELECT * FROM BillingEntity")
     }
 
 
@@ -272,7 +277,7 @@ class Billing
         $request = "SELECT * FROM BillingItem WHERE parentEntityId='{0}' AND itemType='{1}' AND itemBillReference IS NULL ORDER BY itemYear,itemMonth,itemName ASC" -f `
                      $entityId, $itemType
 
-        return $this.mysql.execute($request)
+        return $this.db.execute($request)
     }
 
     <#
@@ -287,7 +292,7 @@ class Billing
         $request = "SELECT DISTINCT(itemType) AS 'itemType' FROM BillingItem WHERE parentEntityId='{0}' AND itemBillReference IS NULL" -f `
                      $entityId
 
-        return $this.mysql.execute($request) | Select-Object -ExpandProperty itemType
+        return $this.db.execute($request) | Select-Object -ExpandProperty itemType
     }
 
 
@@ -306,7 +311,7 @@ class Billing
         {
             $request = "UPDATE BillingItem SET itemBillReference='{0}' WHERE parentEntityId='{1}' AND itemType='{2}' AND itemBillReference IS NULL " -f $billReference, $entityId, $itemType
 
-            $nbUpdated = $this.mysql.execute($request)
+            $nbUpdated = $this.db.execute($request)
         }   
     }
 
@@ -320,7 +325,7 @@ class Billing
     [void] cancelBill([string]$billReference)
     {
         $request = "UPDATE BillingItem SET itemBillReference=NULL WHERE itemBillReference='{0}'" -f $billReference
-        $nbUpdated = $this.mysql.execute($request)
+        $nbUpdated = $this.db.execute($request)
     }
 
 

@@ -28,15 +28,20 @@ class BillingS3Bucket: Billing
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
 
-        IN  : $mysql        -> Objet de la classe MySQL permettant d'accéder aux données.
-        IN  : $ldap         -> Connexion au LDAP pour récupérer les infos sur les unités
-        IN  : $serviceList  -> Objet avec la liste de services (chargé depuis le fichier JSON itservices.json)
+        IN  : $vraTenantList        -> Hashtable avec des objets de la classe VRAAPI pour interroger vRA.
+                                        Chaque objet a pour clef le nom du tenant et comme "contenu" le 
+                                        nécessaire pour interroger le tenant
+        IN  : $db                   -> Objet de la classe SQLDB permettant d'accéder aux données.
+        IN  : $ldap                 -> Connexion au LDAP pour récupérer les infos sur les unités
+        IN  : $serviceList          -> Objet avec la liste de services (chargé depuis le fichier JSON itservices.json)
         IN  : $serviceBillingInfos  -> Objet avec les informations de facturation pour le service 
-        IN  : $targetEnv    -> Nom de l'environnement sur lequel on est.
+                                        Ces informations se trouvent dans le fichier JSON "service.json" qui sont 
+                                        dans le dossier data/billing/<service>/service.json
+        IN  : $targetEnv            -> Nom de l'environnement sur lequel on est.
 
 		RET : Instance de l'objet
 	#>
-    BillingS3Bucket([MySQL]$mysql, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv) : base($mysql, $ldap, $serviceList, $serviceBillingInfos, $targetEnv)
+    BillingS3Bucket([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv) : base($vraTenantList, $db, $ldap, $serviceList, $serviceBillingInfos, $targetEnv)
     {
     }
 
@@ -87,16 +92,17 @@ class BillingS3Bucket: Billing
         }
         $request = "SELECT AVG(storageUtilized)/1024/1024/1024/1024 AS 'usage', COUNT(*) as 'nbDays' FROM BucketsUsage WHERE date like '{0}-{1}-%' AND bucketName='{2}'" -f $year, $monthStr, $bucketName
 
-        $res = $this.mysql.execute($request)
+        $res = $this.db.execute($request)
 
-        # Si aucune utilisation
-        if($res[0].usage -eq "NULL")
+        try
+        {
+            # Calcul de la moyenne en fonction du nombre de jours utilisés durant le mois
+            return  $res[0].nbDays * $res[0].usage / [DateTime]::DaysInMonth($year, $month)
+        }
+        catch
         {
             return 0
         }
-
-        # Calcul de la moyenne en fonction du nombre de jours utilisés durant le mois
-        return  $res[0].nbDays * $res[0].usage / [DateTime]::DaysInMonth($year, $month)
     }
 
     <#
@@ -115,25 +121,35 @@ class BillingS3Bucket: Billing
         # On commence par récupérer la totalité des Buckets qui existent. Ceci est fait en interrogeant une table spéciale
         # dans laquelle on a tous les buckets, y compris ceux qui ont été effacés
         $request = "SELECT * FROM BucketsArchive"
-        $bucketList = $this.mysql.execute($request)
+        $bucketList = $this.db.execute($request)
 
         # Parcours de la liste des buckets
         ForEach($bucket in $bucketList)
         {
             $entityType = $this.getEntityType($bucket)
 
+            $targetTenant = $null
+
             # Si pas supporté, on passe à l'élément suivant
+            # NOTE: on n'utilise pas de "switch" car l'utilisation de "Continue" n'est pas possible au sein de celui-ci...
             if($null -eq $entityType)
             {
                 Continue
             }
-
-            # On skip les entité "Service"
-            if($entityType -eq [EntityType]::Service)
+            elseif($entityType -eq [EntityType]::Service)
             {
                 Write-Warning ("Skipping Service entity ({0}) because not billed" -f $bucket.bucketName)
                 Continue
             }
+            elseif($entityType -eq [EntityType]::Unit)
+            {
+                $targetTenant = $global:VRA_TENANT__EPFL
+            }
+            elseif($entityType -eq [EntityType]::Project)
+            {
+                $targetTenant = $global:VRA_TENANT__RESEARCH
+            }
+            
 
             # Recherche des infos sur l'élément concerné et le "détail" de celui-ci
             $entityElement = $bucket.unitOrSvcID
@@ -153,8 +169,11 @@ class BillingS3Bucket: Billing
             # On coupe à la 2e décimale 
             $bucketUsage = truncateToNbDecimal -number $bucketUsage -nbDecimals 2
 
+            # Recherche du bucket en lui-même
+            $vraBucket = $this.vraTenantList.$targetTenant.getItem("S3_Bucket", $bucket.friendlyName)
+
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
-            $itemDesc = "{0}`n{1}`n({2})" -f $this.serviceBillingInfos.billedItems[0].itemDescPrefix, $bucket.bucketName, $bucket.friendlyName
+            $itemDesc = "{0}`n({1})`nOwner: {2}" -f $bucket.bucketName, $bucket.friendlyName, $vraBucket.owners[0].value
 
             $itemId = $this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB" ,"U.1")
 

@@ -117,6 +117,29 @@
             }
         ]
     },
+
+    {
+        "name": "getRoleGroupsGroupDesc",
+        "tests": [
+            {
+                "params": ["CSP_SUBTENANT_MANAGER"],
+                "expected": "Administrators/Support for Tenant ITSERVICES on Environment TEST"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "To do requests for 'Virtualization Service' service"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "To do requests for 'Virtualization Service' service"
+            },
+            {
+                "params": ["CSP_SUPPORT"],
+                "expected": "Administrators/Support for Tenant ITSERVICES on Environment TEST"
+            }
+        ]
+    },
+
     {
         "name": "getRoleGroupsADGroupName",
         "tests": [
@@ -190,6 +213,20 @@
                     "onlyForTenant": true,
                     "name": "vra_t_approval_service_chiefs"
                 }
+            }
+        ]
+    },
+
+    {
+        "name": "getApproveGroupsGroupDesc",
+        "tests": [
+             {
+                "params":[1],
+                "expected": "vRA test approval group (level 1)"
+            },
+            {
+                "params":[2],
+                "expected": "vRA test approval group (level 2)"
             }
         ]
     },
@@ -336,7 +373,7 @@
         "tests":[
             {
                 "params": [],
-                "expected": "vs-t-"
+                "expected": ""
             }
         ]
     },

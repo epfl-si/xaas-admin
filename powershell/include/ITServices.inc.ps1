@@ -52,6 +52,20 @@ class ITServices
 	#>
     [Array] getServiceList([string]$forTargetEnv)
     {
+        # On contrôle que le shortname du service n'existe pas déjà pour l'environnement courant
+        $shortNamesList = @()
+        Foreach($service in $this.serviceList.$forTargetEnv)
+        {
+            if($shortNamesList -notcontains $service.shortName)
+            {
+                $shortNamesList += $service.shortName
+            }
+            else
+            {
+                Throw ("Duplicate ITServices shortname found ({0}) for '{1}' environment!" -f $service.shortName, $forTargetEnv)
+            }
+        }
+
         return $this.serviceList.$forTargetEnv
     }
 

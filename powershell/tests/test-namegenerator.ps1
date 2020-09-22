@@ -41,5 +41,13 @@ $nameGenerator = [NameGenerator]::new('test', 'itservices')
 $jsonFile = ([IO.Path]::Combine("$PSScriptRoot", "test-namegenerator-itservices.json"))
 $classTester.runTests($jsonFile, $nameGenerator)
 
+# ------------------------------------------
+# Tests pour le tenant Reserach
+
+$nameGenerator = [NameGenerator]::new('test', 'research')
+
+$jsonFile = ([IO.Path]::Combine("$PSScriptRoot", "test-namegenerator-research.json"))
+$classTester.runTests($jsonFile, $nameGenerator)
+
 # Affichage des résultats
 $classTester.getResults().display("Test results")
