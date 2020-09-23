@@ -379,7 +379,7 @@ try
                     $logHistory.addLine(("Applying Export Policy '{0}' to SVM '{1}' on Volume '{2}'" -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name, $volName))
                     $netapp.applyExportPolicyOnVolume($denyExportPol, $newVol)
 
-                    
+
                     # --- ACLs
 
                     # Recherche du Business Group
@@ -504,9 +504,22 @@ try
                 $logHistory.addLine( ("Getting size for Volume {0}" -f $_) )
                 $vol = $netapp.getVolumeByName($_)
 
+                # Si volume pas trouvé, c'est qu'on a probablement donné un nom unique en paramètre
+                if($null -eq $vol)
+                {
+                    $output.error = ("Volume {0} doesn't exists" -f $_)
+                    $logHistory.addLine($output.error)
+                    return
+                }
+
+                $volSnapInfos = $netapp.getVolumeSnapshotInfos($vol)
+
                 $output.results += @{
                     volName = $vol.name
                     sizeGB = $vol.space.size / 1024 / 1024 / 1024
+                    usedGB = $vol.space.used / 1024 / 1024 / 1024
+                    snapReservePercent = $volSnapInfos.space.snapshot.reserve_percent
+                    snapUsedGB = $volSnapInfos.space.snapshot.used / 1024 / 1024 / 1024
                 }
             }
 

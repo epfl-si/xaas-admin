@@ -514,6 +514,24 @@ class NetAppAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
+        BUT : Retourne les informations de snapshot d'un Volume en fonction de son ID
+        
+        IN  : $vol   -> Objet représentant le volume
+
+        NOTE : L'appel à cette fonction ne retourne que les champs spécifiquement passés en paramètre.
+                Ce n'est donc pas comme si on pouvait juste "ajouter" des champs à ceux renvoyés par
+                défaut par l'appel retournant les détails d'un volume.
+	#>
+    [PSObject] getVolumeSnapshotInfos([PSObject]$vol)
+    {
+        $uri = "/api/storage/volumes/{0}?fields=space.snapshot.used,space.snapshot.reserve_percent" -f $vol.uuid
+
+        return $this.callAPI($uri, "GET", $null, "", $true)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
         BUT : Créé un volume et attend que la tâche qui tourne en fond pour la création se
                 termine.
         
