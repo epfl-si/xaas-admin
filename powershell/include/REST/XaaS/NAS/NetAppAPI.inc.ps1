@@ -13,13 +13,14 @@
    DATE   : Août 2020
 #>
 
-enum netAppObjectType 
+enum NetAppObjectType 
 {
     SVM
     Aggregate
     Volume
     ExportPolicy
 }
+
 
 class NetAppAPI: RESTAPICurl
 {
@@ -233,7 +234,7 @@ class NetAppAPI: RESTAPICurl
 
         RET : serveur sur lequel se trouve l'élément
 	#>
-    hidden [string] getServerForObject([netAppObjectType]$objectType, [string]$objectUUID)
+    hidden [string] getServerForObject([NetAppObjectType]$objectType, [string]$objectUUID)
     {
         $object = $null
         # Recherche de l'objet en fonction du type
@@ -532,7 +533,7 @@ class NetAppAPI: RESTAPICurl
     [PSObject] addVolume([string]$name, [float]$sizeGB, [PSObject]$svm, [PSObject]$aggregate, [string]$securityStyle, [string]$mountPath, [int]$snapSpacePercent)
     {
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([netAppObjectType]::SVM, $svm.uuid)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
 
         $uri = "https://{0}/api/storage/volumes" -f $targetServer
 
@@ -574,7 +575,7 @@ class NetAppAPI: RESTAPICurl
     [void] resizeVolume([string]$id, [int]$sizeGB)
     {
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([netAppObjectType]::Volume, $id)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $id)
 
         $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $id
 
@@ -603,7 +604,7 @@ class NetAppAPI: RESTAPICurl
     [void] deleteVolume([string]$id)
     {
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([netAppObjectType]::Volume, $id)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $id)
 
         $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $id
 
@@ -636,7 +637,7 @@ class NetAppAPI: RESTAPICurl
     [void] addCIFSShare([string]$name, [PSObject]$svm, [string]$path)
     {
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([netAppObjectType]::SVM, $svm.uuid)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
 
         $uri = "https://{0}/api/protocols/cifs/shares" -f $targetServer
 
@@ -667,7 +668,7 @@ class NetAppAPI: RESTAPICurl
     [void] deleteCIFSShare([PSObject]$share)
     {
          # Recherche du serveur NetApp cible
-         $targetServer = $this.getServerForObject([netAppObjectType]::SVM, $share.svm.uuid)
+         $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $share.svm.uuid)
 
          $uri = "https://{0}/api/protocols/cifs/shares/{1}/{2}" -f $targetServer, $share.svm.uuid, [System.Net.WebUtility]::UrlEncode($share.name)
 
@@ -726,6 +727,27 @@ class NetAppAPI: RESTAPICurl
     {
         return $this.getCIFSShareListQuery(("volume.name={0}" -f $volName))
     }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne un share
+
+        IN  : $svm          -> Objet représentant la SVM sur laquelle le share se trouve
+        IN  : $shareName    -> Le nom du share
+
+        RET : Objet représentant le share
+	#>
+    [PSObject] getCIFSShare([PSObject]$svm, [string]$shareName)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
+
+        $uri = "https://{0}/api/protocols/cifs/shares/{1}/{2}" -f $targetServer, $svm.uuid, [System.Net.WebUtility]::UrlEncode($shareName)
+
+        return $this.callAPI($uri, "GET", $null, "", $true)
+    }
+
 
 
     <#
@@ -877,7 +899,7 @@ class NetAppAPI: RESTAPICurl
     [void] deleteExportPolicy([PSObject]$exportPolicy)
     {
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([netAppObjectType]::ExportPolicy, $exportPolicy.id)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::ExportPolicy, $exportPolicy.id)
 
         $uri = "https://{0}/api/protocols/nfs/export-policies/{1}" -f $targetServer, $exportPolicy.id
 
@@ -897,7 +919,7 @@ class NetAppAPI: RESTAPICurl
     [void] applyExportPolicyOnVolume([PSObject]$exportPolicy, [PSObject]$volume)
     {
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([netAppObjectType]::Volume, $volume.uuid)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
 
         $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $volume.uuid
 
@@ -982,7 +1004,7 @@ class NetAppAPI: RESTAPICurl
     [void] deleteExportPolicyRuleList([PSObject]$exportPolicy)
     {
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([netAppObjectType]::ExportPolicy, $exportPolicy.id)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::ExportPolicy, $exportPolicy.id)
 
         # Parcours des règles et effacement de celles-ci
         ForEach($rule in $this.getExportPolicyRuleListQuery($exportPolicy.id, ""))
@@ -1029,7 +1051,7 @@ class NetAppAPI: RESTAPICurl
         $this.deleteExportPolicyRuleList($exportPolicy)
 
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([netAppObjectType]::ExportPolicy, $exportPolicy.id)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::ExportPolicy, $exportPolicy.id)
 
         $doneIPs = @()
 
@@ -1220,7 +1242,7 @@ class NetAppAPI: RESTAPICurl
     [void] applySnapshotPolicyOnVolume([PSObject]$snapPolicy, [PSObject]$volume)
     {
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([netAppObjectType]::Volume, $volume.uuid)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
 
         $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $volume.uuid
 

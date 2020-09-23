@@ -65,6 +65,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
@@ -74,6 +75,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 
 # Chargement des fichiers propres au NAS NetApp
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "NAS", "NetAppAPI.inc.ps1"))
@@ -81,6 +83,7 @@ param([string]$targetEnv,
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
+$configVra = [ConfigReader]::New("config-vra.json")
 $configNAS = [ConfigReader]::New("config-xaas-nas.json")
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
@@ -226,6 +229,12 @@ try
     
     $nameGeneratorNAS = [NameGeneratorNAS]::new()
 
+    # Création d'une connexion au serveur vRA pour accéder à ses API REST
+	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+						 $targetTenant, 
+						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
+						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+
     $netapp = $null
 
     # Parcours des serveurs qui sont définis
@@ -355,6 +364,7 @@ try
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
                     $result.cifsShare = $volName
+                    $result.mountPath = ("\\{0}\{1}" -f $svm, $volName)
 
                     $logHistory.addLine(("Checking if Export Policy '{0}' exists on SVM '{1}'..." -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name))
                     $denyExportPol = $netapp.getExportPolicyByName($svmObj, $global:EXPORT_POLICY_DENY_NFS_ON_CIFS)
@@ -369,6 +379,34 @@ try
                     $logHistory.addLine(("Applying Export Policy '{0}' to SVM '{1}' on Volume '{2}'" -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name, $volName))
                     $netapp.applyExportPolicyOnVolume($denyExportPol, $newVol)
 
+                    
+                    # --- ACLs
+
+                    # Recherche du Business Group
+                    $bg = $vra.getBG($bgName)
+                    # Récupération des utilisateurs qui ont le droit de demander des volumes
+                    $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
+
+                    # Récupération des ACLs actuelles
+                    $acl = Get-ACL $result.mountPath
+                    
+                    # Parcours des utilisateurs/groupes à ajouter
+                    ForEach($userOrGroupFQDN in $userAndGroupList)
+                    {
+                        # $userOrGroup contient un groupe ou un utilisateur au format <userOrGroup>@intranet.epfl.ch.
+                        # Il faut donc reformater ceci pour avoir INTRANET\<userOrGroup>
+                        $userOrGroup, $null = $userOrGroupFQDN -split '@'
+                        $userOrGroup = "INTRANET\{0}" -f $userOrGroup
+                        $ar = New-Object  system.security.accesscontrol.filesystemaccessrule($userOrGroup,  "FullControl", "ContainerInherit,ObjectInherit",  "None", "Allow")
+                        $acl.AddAccessRule($ar)
+                    }
+
+                    Set-Acl $result.mountPath $acl
+                    # On vire les accès Everyone (on ne peut pas le faire avant sinon on se coupe l'herbe sous le pied pour ce qui est de l'établissement des droits)
+                    $acl.access | Where-Object { $_.IdentityReference -eq "Everyone"} | ForEach-Object { $acl.RemoveAccessRule($_)} | Out-Null
+                    # Et on fini par mettre à jour sans les Everyone
+                    Set-Acl $result.mountPath $acl
+                    
                 }
 
                 "nfs3"
@@ -387,7 +425,6 @@ try
 
             $output.results += $result
            
-
         }# FIN Action Create
 
 
@@ -398,22 +435,31 @@ try
             # Recherche du volume à effacer et effacement
             $vol = $netapp.getVolumeByName($volName)
 
-            $logHistory.addLine( ("Getting SVM {0}..." -f $vol.svm.name) )
-            $svmObj = $netapp.getSVMByID($vol.svm.uuid)
-
-            $logHistory.addLine("Getting CIFS Shares for Volume...")
-            $shareList = $netapp.getVolCIFSShareList($volName)
-            $logHistory.addLine(("{0} CIFS shares found..." -f $shareList.count))
-
-            # Suppression des shares CIFS
-            ForEach($share in $shareList)
+            # Si le volume n'existe pas
+            if($null -eq $vol)
             {
-                $logHistory.addLine( ("Deleting CIFS Share {0}..." -f $share.name) )
-                $netapp.deleteCIFSShare($share)
+                $output.error = ("Volume {0} doesn't exists" -f $volName)
+                $logHistory.addLine($output.error)
             }
+            else
+            {
+                $logHistory.addLine( ("Getting SVM {0}..." -f $vol.svm.name) )
+                $svmObj = $netapp.getSVMByID($vol.svm.uuid)
 
-            $logHistory.addLine( ("Deleting Volume {0}" -f $volName) )
-            $netapp.deleteVolume($vol.uuid)
+                $logHistory.addLine("Getting CIFS Shares for Volume...")
+                $shareList = $netapp.getVolCIFSShareList($volName)
+                $logHistory.addLine(("{0} CIFS shares found..." -f $shareList.count))
+
+                # Suppression des shares CIFS
+                ForEach($share in $shareList)
+                {
+                    $logHistory.addLine( ("Deleting CIFS Share {0}..." -f $share.name) )
+                    $netapp.deleteCIFSShare($share)
+                }
+
+                $logHistory.addLine( ("Deleting Volume {0}" -f $volName) )
+                $netapp.deleteVolume($vol.uuid)
+            }
         }# FIN Action Delete
 
 
@@ -549,12 +595,16 @@ try
     # Ajout du résultat dans les logs 
     $logHistory.addLine(($output | ConvertTo-Json -Depth 100))
 
+    $vra.disconnect()
+
 }
 catch
 {
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
 	$errorTrace = $_.ScriptStackTrace
+
+    $vra.disconnect()
 
     # Ajout de l'erreur et affichage
     $output.error = "{0}`n`n{1}" -f $errorMessage, $errorTrace
