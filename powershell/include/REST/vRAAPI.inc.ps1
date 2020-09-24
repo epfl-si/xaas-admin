@@ -88,7 +88,7 @@ class vRAAPI: RESTAPICurl
         # Si une erreur a été renvoyée 
         if(objectPropertyExists -obj $response -propertyName 'errors')
         {
-			Throw ("GroupsAPI error: {0}" -f $response.errors[0].systemMessage
+			Throw ("vRAAPI error: {0}" -f $response.errors[0].systemMessage
 			)
         }
 
