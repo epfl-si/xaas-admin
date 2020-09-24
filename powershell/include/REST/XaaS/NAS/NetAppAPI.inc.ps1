@@ -590,7 +590,7 @@ class NetAppAPI: RESTAPICurl
         IN  : $id           -> ID du volume
         IN  : $sizeGB       -> Taille du volume en GB
 	#>
-    [void] resizeVolume([string]$id, [int]$sizeGB)
+    [void] resizeVolume([string]$id, [float]$sizeGB)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $id)

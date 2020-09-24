@@ -469,17 +469,23 @@ try
 
             $logHistory.addLine( ("Getting Volume {0}" -f $volName) )
             $vol = $netapp.getVolumeByName($volName)
-
+            
             # Si volume pas trouvé
             if($null -eq $vol)
             {
                 $output.error = ("Volume {0} doesn't exists" -f $volName)
                 $logHistory.addLine($output.error)
             }
-            else
+            else # Volume trouvéc
             {
+                # Recherche des infos sur les snapshots
+                $volSnapInfos = $netapp.getVolumeSnapshotInfos($vol)
+
+                # Redéfinition de la taille du volume en fonction du pourcentage à conserver pour les snapshots
+                $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $volSnapInfos.space.snapshot.reserve_percent
+
                 $logHistory.addLine( ("Resizing Volume {0} to {1} GB" -f $volName, $sizeGB) )
-                $netapp.resizeVolume($vol.uuid, $sizeGB)
+                $netapp.resizeVolume($vol.uuid, $sizeWithSnapGB)
             }
 
         }# FIN Action resize
@@ -516,10 +522,11 @@ try
 
                 $output.results += @{
                     volName = $vol.name
-                    sizeGB = $vol.space.size / 1024 / 1024 / 1024
-                    usedGB = $vol.space.used / 1024 / 1024 / 1024
+                    # On renvoie la taille en enlevant l'espace réservé pour les snapshots
+                    sizeGB = (truncateToNbDecimal -number ($vol.space.size / 1024 / 1024 / 1024 * (1 - ($volSnapInfos.space.snapshot.reserve_percent/100))) -nbDecimals 2)
+                    usedGB = (truncateToNbDecimal -number ($vol.space.used / 1024 / 1024 / 1024) -nbDecimals 2)
                     snapReservePercent = $volSnapInfos.space.snapshot.reserve_percent
-                    snapUsedGB = $volSnapInfos.space.snapshot.used / 1024 / 1024 / 1024
+                    snapUsedGB = (truncateToNbDecimal -number ($volSnapInfos.space.snapshot.used / 1024 / 1024 / 1024) -nbDecimals 2)
                 }
             }
 
