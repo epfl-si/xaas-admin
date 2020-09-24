@@ -514,7 +514,7 @@ class NetAppAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Retourne les informations de snapshot d'un Volume en fonction de son ID
+        BUT : Retourne des informations supplémentaires de taille d'un Volume
         
         IN  : $vol   -> Objet représentant le volume
 
@@ -522,9 +522,9 @@ class NetAppAPI: RESTAPICurl
                 Ce n'est donc pas comme si on pouvait juste "ajouter" des champs à ceux renvoyés par
                 défaut par l'appel retournant les détails d'un volume.
 	#>
-    [PSObject] getVolumeSnapshotInfos([PSObject]$vol)
+    [PSObject] getVolumeSizeInfos([PSObject]$vol)
     {
-        $uri = "/api/storage/volumes/{0}?fields=space.snapshot.used,space.snapshot.reserve_percent" -f $vol.uuid
+        $uri = "/api/storage/volumes/{0}?fields=space.snapshot.used,space.snapshot.reserve_percent,files.maximum,files.used" -f $vol.uuid
 
         return $this.callAPI($uri, "GET", $null, "", $true)
     }

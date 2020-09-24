@@ -479,10 +479,10 @@ try
             else # Volume trouvéc
             {
                 # Recherche des infos sur les snapshots
-                $volSnapInfos = $netapp.getVolumeSnapshotInfos($vol)
+                $volSizeInfos = $netapp.getVolumeSnapshotInfos($vol)
 
                 # Redéfinition de la taille du volume en fonction du pourcentage à conserver pour les snapshots
-                $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $volSnapInfos.space.snapshot.reserve_percent
+                $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $volSizeInfos.space.snapshot.reserve_percent
 
                 $logHistory.addLine( ("Resizing Volume {0} to {1} GB" -f $volName, $sizeGB) )
                 $netapp.resizeVolume($vol.uuid, $sizeWithSnapGB)
@@ -518,15 +518,26 @@ try
                     return
                 }
 
-                $volSnapInfos = $netapp.getVolumeSnapshotInfos($vol)
+                $volSizeInfos = $netapp.getVolumeSizeInfos($vol)
+
+                $volSizeGB = $vol.space.size / 1024 / 1024 / 1024
+                # Suppression de l'espace réservé pour les snapshots
+                $userSizeGB = $volSizeGB * (1 - ($volSizeInfos.space.snapshot.reserve_percent/100))
+                $snapSizeGB = $volSizeGB * ($volSizeInfos.space.snapshot.reserve_percent/100)
 
                 $output.results += @{
                     volName = $vol.name
-                    # On renvoie la taille en enlevant l'espace réservé pour les snapshots
-                    sizeGB = (truncateToNbDecimal -number ($vol.space.size / 1024 / 1024 / 1024 * (1 - ($volSnapInfos.space.snapshot.reserve_percent/100))) -nbDecimals 2)
-                    usedGB = (truncateToNbDecimal -number ($vol.space.used / 1024 / 1024 / 1024) -nbDecimals 2)
-                    snapReservePercent = $volSnapInfos.space.snapshot.reserve_percent
-                    snapUsedGB = (truncateToNbDecimal -number ($volSnapInfos.space.snapshot.used / 1024 / 1024 / 1024) -nbDecimals 2)
+                    user = @{
+                        sizeGB = (truncateToNbDecimal -number $userSizeGB -nbDecimals 2)
+                        usedGB = (truncateToNbDecimal -number ($vol.space.used / 1024 / 1024 / 1024) -nbDecimals 2)
+                        usedFiles = $volSizeInfos.files.used
+                        maxFiles = $volSizeInfos.files.maximum
+                    }
+                    snap = @{
+                        reservePercent = $volSizeInfos.space.snapshot.reserve_percent
+                        reserveSizeGB = (truncateToNbDecimal -number $snapSizeGB -nbDecimals 2)
+                        usedGB = (truncateToNbDecimal -number ($volSizeInfos.space.snapshot.used / 1024 / 1024 / 1024) -nbDecimals 2)
+                    }
                 }
             }
 
