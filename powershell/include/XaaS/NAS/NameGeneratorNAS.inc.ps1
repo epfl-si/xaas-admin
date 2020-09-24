@@ -108,11 +108,20 @@ class NameGeneratorNAS
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la regex à utiliser pour chercher un nom de volume Collaboratif
 
+      IN  : $isNFS   -> pour dire si c'est pour un accès NFS ou pas.
+
       RET : La regex
 	#>
-   [string] getCollaborativeVolRegex()
+   [string] getCollaborativeVolRegex([bool]$isNFS)
    {
-      return ("{0}_{1}_[0-9]_files" -f $this.details.faculty, $this.details.unit)
+      $regex = ("{0}_{1}_[0-9]_files" -f $this.details.faculty, $this.details.unit)
+
+      if($isNFS)
+      {
+         $regex = "{0}_nfs" -f $regex
+      }
+
+      return $regex
    }
         
 }

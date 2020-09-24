@@ -5,7 +5,7 @@ USAGES:
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action delete -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action volExists -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action canHaveNewVol -bgName <bgName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action canHaveNewVol -bgName <bgName> -access cifs|nfs3
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action resize -sizeGB <sizeGB>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getVolSize [-volName <volName>]
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getSVMList -bgName <bgName>
@@ -133,9 +133,12 @@ function getNextColVolName([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorN
 {
     $unit = $unit.toLower() -replace "-", ""
     $faculty = $faculty.toLower()
-    $unitVolList = $netapp.getVolumeList() | Where-Object { $_ -match $nameGeneratorNAS.getCollaborativeVolRegex() } | Sort-Object
 
     $isNFS = ($access -eq $global:ACCESS_TYPE_NFS3)
+
+    # Définition de la regex pour trouver les noms de volumes
+    $volNameRegex = $nameGeneratorNAS.getCollaborativeVolRegex($isNFS)
+    $unitVolList = $netapp.getVolumeList() | Where-Object { $_ -match $volNameRegex } | Sort-Object | Select-Object -ExpandProperty name
 
     # Recherche du prochain numéro libre
     for($i=1; $i -lt $global:MAX_VOL_PER_UNIT; $i++)
@@ -292,7 +295,7 @@ try
 
                     $logHistory.addLine( "Generating volume name..." )
                     # Recheche du prochain nom de volume
-                    $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -faculty $details.faculty -unit $details.unit
+                    $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -faculty $details.faculty -unit $details.unit -access $access
                     $logHistory.addLine( ("New volume name will be '{0}'" -f $volName) )
                     if($null -eq $volName)
                     {
@@ -607,8 +610,8 @@ try
 
             $logHistory.addLine( "Looking for next volume name..." )
             # Recheche du prochain nom de volume
-            $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -faculty $details.faculty -unit $details.unit
-            
+            $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -faculty $details.faculty -unit $details.unit -access $access
+            $logHistory.addLine( ("Next volume name is '{0}'" ) -f $volName)
             $output.results += @{
                 canHaveNewVol = ($null -ne $volName)
             }
@@ -618,7 +621,6 @@ try
     }
 
     $logHistory.addLine("Script execution done!")
-
 
     # Affichage du résultat
     displayJSONOutput -output $output
