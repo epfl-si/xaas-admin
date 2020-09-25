@@ -101,6 +101,12 @@ try
                               $configMyNAS.getConfigValue("cadi", "password"), `
                               $configMyNAS.getConfigValue("cadi", "port"))                           
 
+   # Création du dossier si n'existe pas
+   if(!(Test-path $global:FILES_TO_PUSH_FOLDER))
+   {
+      New-Item  $global:FILES_TO_PUSH_FOLDER -ItemType "directory" | Out-null
+   }
+
    # ---- TESTS
    # Pour récupérer les utilisateurs qui sont à la fois dans départ et arrivée...
    #$incorrectUsers = "SELECT Personnes.sciper, username FROM Accreds INNER JOIN Personnes ON Accreds.sciper = Personnes.sciper WHERE (Accreds.ordre = '1') AND (Accreds.stockindiv = 'y')  AND (Accreds.comptead = 'y') AND (DATE(Accreds.datedeb) <= CURDATE()) AND (username IS NOT NULL) AND Personnes.sciper IN (SELECT sciper FROM Departs WHERE date_add(datedepart, INTERVAL 190 day) < curdate() AND  datedepart > date_add(curdate(), INTERVAL -365 day))"

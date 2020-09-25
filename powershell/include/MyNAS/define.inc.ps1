@@ -11,7 +11,7 @@
 
 #Path pour MySQL
 
-$global:FILES_TO_PUSH_FOLDER  = ([IO.Path]::Combine("$PSScriptRoot", "..", "filesToPush"))
+$global:FILES_TO_PUSH_FOLDER  = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", "filesToPush"))
 $global:SSH_FOLDER            = ([IO.Path]::Combine($global:DATA_FOLDER, "ssh"))
 
 
