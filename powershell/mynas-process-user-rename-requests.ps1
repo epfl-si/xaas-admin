@@ -22,17 +22,18 @@
 
 # Inclusion des constantes
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "define.inc.ps1"))
-
-# Inclusion des fonctions spécifiques à NetApp depuis un autre fichier
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func-netapp.inc.ps1"))
-
-# Inclusion des fonctions générique depuis un autre fichier
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configMyNAS = [ConfigReader]::New("config-mynas.json")
+$configGlobal = [ConfigReader]::New("config-global.json")
 
 # ------------------------------------------------------------------------
 # ---------------------------- FONCTIONS ---------------------------------
@@ -58,7 +59,7 @@ function renameFolder
          
    # Renommage du dossier + gestion des erreurs 
    $errorArray=@()
-   $empty = Rename-NcFile -Controller $controller -VserverContext $vserver -Path $curPath -NewPath $newPath -ErrorVariable "errorArray" -ErrorAction:SilentlyContinue
+   Rename-NcFile -Controller $controller -VserverContext $vserver -Path $curPath -NewPath $newPath -ErrorVariable "errorArray" -ErrorAction:SilentlyContinue | Out-Null
    # Si une erreur s'est produite, on retourne l'erreur
    if($errorArray.Count -gt 0)
    {
@@ -88,452 +89,477 @@ function setUserRenamed
 
 
 
-# ------------------------------------------------------------------------
-# ------------------------ PROGRAMME PRINCIPAL ---------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
-# Chargement du module (si nécessaire)
-loadDataOnTapModule 
- 
-checkEnvironment
-
-try 
+try
 {
-   Write-Host -NoNewline "Connecting... "
-   # Génération du mot de passe 
-   $secPassword = ConvertTo-SecureString $configMyNAS.getConfigValue("nas", "password") -AsPlainText -Force
-   # Création des credentials pour l'utilisateur
-   $credentials = New-Object System.Management.Automation.PSCredential($configMyNAS.getConfigValue("nas", "user"), $secPassword)
-   # Connexion au NetApp
-   $connectHandle = Connect-NcController -Name $global:CLUSTER_COLL_IP -Credential $credentials -HTTPS
-   #$connectHandle
-   Write-Host "OK"
-}
-catch
-{
-   Write-Error "Error connecting to "+$global:CLUSTER_COLL_IP+"!"
-   exit 1
-}
 
-Write-Host "Getting infos... " -NoNewline
-# Récupération de la liste des renommages à effectuer
-$renameList = getWebPageLines -url ($global:WEBSITE_URL_MYNAS+"ws/get-users-to-rename.php?fs_mig_type=mig")
-
-if($renameList -eq $false)
-{
-   Write-Host -ForegroundColor:Red "Error getting rename list!"
-   exit 1
-}
-
-# Recherche du nombre de renommages à effectuer 
-$nbRenames=getNBElemInObject -inObject $renameList
-
-Write-Host "$nbRenames folder(s) to rename"
-
-# Si rien à faire,
-if($nbRenames -eq 0)
-{  
-   Write-Host "Nothing to do, exiting..."
-   exit 0
-}
-
-
-# Tableau pour mettre la liste des 'username' qui ont foiré pour le renommage 
-$logUsernameRenameErrors=@()
-$logNewFolderExists=@()
-$logOldFolderIncorrectOwner=@()
-$logNewFolderIncorrectOwner=@()
-$logAlreadyRenamed=@()
-$logNothingFound=@()
-$logOwnerNotFound=@()
-
-# Pour la liste des dossiers renommés
-$logRenamedFolders=@()
-
-# Compteurs 
-$nbRenamed=0
-$nbRenameError=0
-
-# Parcours des éléments à renommer 
-foreach($renameInfos in $renameList)
-{
-   # les infos contenues dans $renameInfos ont la structure suivante :
-   # <cifsServerName>,<volName>,<pathToUserFolders>,<oldName>,<newName>,<Sciper>
+    # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+    $logHistory = [LogHistory]::new('mynas-process-username-rename', (Join-Path $PSScriptRoot "logs"), 30)
+    
+   # Objet pour pouvoir envoyer des mails de notification
+   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "MyNAS", "")
    
-   # Transformation en tableau puis mise dans des variables plus "parlantes"...
-   $renameInfosArray    = $renameInfos.split(',')
-   $vServerName         = $renameInfosArray[0]
-   $volName             = $renameInfosArray[1]
-   $pathToCurFolder     = ([string]::Concat("/data/",$renameInfosArray[2]))
-   $pathToCurFolderFull = "$volName$pathToCurFolder"
-   $pathToNewFolder     = ([string]::Concat("/data/",$renameInfosArray[3]))
-   $pathToNewFolderFull = "$volName$pathToNewFolder"
-   $curUsername         = $renameInfosArray[2]
-   $newUsername         = $renameInfosArray[3]
-   $userSciper          = $renameInfosArray[4]
+   # Chargement du module (si nécessaire)
+   loadDataOnTapModule 
    
-   # Récupération du serveur CIFS (ou du vServer plutôt)
-   $vserver = Get-NcVserver -Controller $connectHandle -Name $vServerName
-      
-   Write-Host "Rename: $curUsername => $newUsername"
-   
-   # Si l'ancien dossier existe,
-   if((fileOrFolderExists -controller $connectHandle -onVServer $vserver -fileOrDir $pathToCurFolderFull) -eq $true)
+   checkEnvironment
+
+   try 
    {
-      Write-Host " -> Old folder exists... " -NoNewline
-   
-      # Récupération du owner de l'ancien dossier       
-      $curFolderOwner = getFileOrFolderOwner -controller $connectHandle -onVServer $vserver -onVolume $volName -fileOrDir $pathToCurFolder
+      $logHistory.addLineAndDisplay("Connecting... ")
+      # Génération du mot de passe 
+      $secPassword = ConvertTo-SecureString $configMyNAS.getConfigValue("nas", "password") -AsPlainText -Force
+      # Création des credentials pour l'utilisateur
+      $credentials = New-Object System.Management.Automation.PSCredential($configMyNAS.getConfigValue("nas", "user"), $secPassword)
+      # Connexion au NetApp
+      $connectHandle = Connect-NcController -Name $global:CLUSTER_COLL_IP -Credential $credentials -HTTPS
+   }
+   catch
+   {
+      Throw ("Error connecting to "+$global:CLUSTER_COLL_IP+"!")
+   }
+
+   $logHistory.addLineAndDisplay("Getting infos... ")
+   # Récupération de la liste des renommages à effectuer
+   $renameList = getWebPageLines -url ($global:WEBSITE_URL_MYNAS+"ws/get-users-to-rename.php?fs_mig_type=mig")
+
+   if($renameList -eq $false)
+   {
+      Throw "Error getting rename list!"
+   }
+
+   # Recherche du nombre de renommages à effectuer 
+   $nbRenames=getNBElemInObject -inObject $renameList
+
+   $logHistory.addLineAndDisplay("$nbRenames folder(s) to rename")
+
+   # Si rien à faire,
+   if($nbRenames -eq 0)
+   {  
+      $logHistory.addLineAndDisplay("Nothing to do, exiting...")
+      exit 0
+   }
+
+
+   # Tableau pour mettre la liste des 'username' qui ont foiré pour le renommage 
+   $logUsernameRenameErrors=@()
+   $logNewFolderExists=@()
+   $logOldFolderIncorrectOwner=@()
+   $logNewFolderIncorrectOwner=@()
+   $logAlreadyRenamed=@()
+   $logNothingFound=@()
+   $logOwnerNotFound=@()
+
+   # Pour la liste des dossiers renommés
+   $logRenamedFolders=@()
+
+   # Compteurs 
+   $nbRenamed=0
+   $nbRenameError=0
+
+   # Parcours des éléments à renommer 
+   foreach($renameInfos in $renameList)
+   {
+      # les infos contenues dans $renameInfos ont la structure suivante :
+      # <cifsServerName>,<volName>,<pathToUserFolders>,<oldName>,<newName>,<Sciper>
       
-      # Si pas de owner trouvé 
-      if($null -eq $curFolderOwner)
-      {
-         $logOwnerNotFound += $pathToCurFolder
-      }      
-      #Si le owner correspond, 
-      elseif( ($curFolderOwner -eq $newUsername) -or ($curFolderOwner -eq $curUsername))
-      {
-         Write-Host "owner OK... " -NoNewline
-
-         # Si le nouveau dossier n'existe pas      
-         if((fileOrFolderExists -controller $connectHandle -onVServer $vserver -fileOrDir $pathToNewFolderFull) -eq $false)
-         {
-            Write-Host "new folder doesn't exists... renaming... " -NoNewline      
-
+      # Transformation en tableau puis mise dans des variables plus "parlantes"...
+      $renameInfosArray    = $renameInfos.split(',')
+      $vServerName         = $renameInfosArray[0]
+      $volName             = $renameInfosArray[1]
+      $pathToCurFolder     = ([string]::Concat("/data/",$renameInfosArray[2]))
+      $pathToCurFolderFull = "$volName$pathToCurFolder"
+      $pathToNewFolder     = ([string]::Concat("/data/",$renameInfosArray[3]))
+      $pathToNewFolderFull = "$volName$pathToNewFolder"
+      $curUsername         = $renameInfosArray[2]
+      $newUsername         = $renameInfosArray[3]
+      $userSciper          = $renameInfosArray[4]
       
-            # Renommage du dossier + gestion des erreurs 
-            $result = renameFolder -controller $connectHandle -onVServer $vserver -curPath $pathToCurFolderFull -newPath $pathToNewFolderFull
-            if($result -ne $true)
-            {
-               # Ajout de l'erreur à la liste 
-               $logUsernameRenameErrors += ($curUsername+": "+$result)
-               Write-Host "error" -ForegroundColor:Red
-               
-               $nbRenameError +=1
-            }
-            else
-            {
-               $logRenamedFolders += ($curUsername+" => "+$newUsername)
-               
-               Write-Host "setting as renamed... " -NoNewline
-               
-               # On initialise l'utilisateur comme ayant été renommé.
-               setUserRenamed -userSciper $userSciper
-               
-               Write-Host "done"
-               
-               $nbRenamed+=1
-            }# FIN Si pas d'erreur lors du renommage de dossier 
-         }
-         else # Le nouveau dossier existe déjà
+      # Récupération du serveur CIFS (ou du vServer plutôt)
+      $vserver = Get-NcVserver -Controller $connectHandle -Name $vServerName
+         
+      $logHistory.addLineAndDisplay("Rename: $curUsername => $newUsername")
+      
+      # Si l'ancien dossier existe,
+      if((fileOrFolderExists -controller $connectHandle -onVServer $vserver -fileOrDir $pathToCurFolderFull) -eq $true)
+      {
+         $logHistory.addLineAndDisplay(" -> Old folder exists... ")
+      
+         # Récupération du owner de l'ancien dossier       
+         $curFolderOwner = getFileOrFolderOwner -controller $connectHandle -onVServer $vserver -onVolume $volName -fileOrDir $pathToCurFolder
+         
+         # Si pas de owner trouvé 
+         if($null -eq $curFolderOwner)
          {
-            Write-Host "new folder already exists... " -NoNewline
+            $logOwnerNotFound += $pathToCurFolder
+         }      
+         #Si le owner correspond, 
+         elseif( ($curFolderOwner -eq $newUsername) -or ($curFolderOwner -eq $curUsername))
+         {
+            $logHistory.addLineAndDisplay("-> Owner OK... ")
 
-            # Récupération de l'UID du nouveau dossier 
-            $newFolderOwner = getFileOrFolderOwner -controller $connectHandle -onVServer $vserver -onVolume $volName -fileOrDir $pathToNewFolder
-            
-            # Si le owner du nouveau dossier est incorrect (qu'il ne correspond pas à l'utilisateur)
-            if( ($newFolderOwner -ne $newUsername) -and ($newFolderOwner -ne $curUsername))
+            # Si le nouveau dossier n'existe pas      
+            if((fileOrFolderExists -controller $connectHandle -onVServer $vserver -fileOrDir $pathToNewFolderFull) -eq $false)
             {
-               Write-Host "New folder owner incorrect!" -ForegroundColor:Red -NoNewline
-               
-               # Ajout des infos dans le "log" 
-               $logNewFolderExists += "Incorrect Owner on new folder: $curUsername ($curFolderOwner) => $newUsername ($newFolderOwner)"
+               $logHistory.addLineAndDisplay("-> New folder doesn't exists... renaming old... ")
 
-               $nbRenameError+=1
-            }
-            else # Le owner du nouveau dossier est correct
-            {
-               Write-Host "owner OK... " -NoNewline -ForegroundColor:Black
-               # Si l'ancien dossier est vide
-               if((isFolderEmpty -controller $connectHandle -onVServer $vserver -folderPath $pathToCurFolderFull) -eq $true)
+         
+               # Renommage du dossier + gestion des erreurs 
+               $result = renameFolder -controller $connectHandle -onVServer $vserver -curPath $pathToCurFolderFull -newPath $pathToNewFolderFull
+               if($result -ne $true)
                {
-                  Write-Host "old empty, deleting... " -NoNewline
+                  # Ajout de l'erreur à la liste 
+                  $logUsernameRenameErrors += ($curUsername+": "+$result)
+                  $logHistory.addErrorAndDisplay("-> Error renaming folder")
                   
-                  # Suppression de "l'ancien" dossier
-                  $nbDel = removeDirectory -controller $connectHandle -onVServer $vserver -dirPathToRemove $pathToCurFolderFull
-
-                  Write-Host "done"
+                  $nbRenameError +=1
+               }
+               else
+               {
+                  $logRenamedFolders += ($curUsername+" => "+$newUsername)
+                  
+                  $logHistory.addLineAndDisplay("-> Setting as renamed... ")
                   
                   # On initialise l'utilisateur comme ayant été renommé.
                   setUserRenamed -userSciper $userSciper
                   
                   $nbRenamed+=1
+               }# FIN Si pas d'erreur lors du renommage de dossier 
+            }
+            else # Le nouveau dossier existe déjà
+            {
+               $logHistory.addLineAndDisplay("-> New folder already exists... ")
 
-               }
-               else # L'ancien dossier n'est pas vide
-               {
-                  Write-Host "old folder not empty... " -NoNewline
-
-                  # Si le nouveau dossier est vide, 
-                  if((isFolderEmpty -controller $connectHandle -onVServer $vserver -folderPath $pathToNewFolderFull) -eq $true)
-                  {
-                     # Ancien avec donnée  +  nouveau vide  => suppression nouveau vide + renommage ancien
-                     Write-Host "deleting new... " -NoNewline
-                     
-                     $nbDel = removeDirectory -controller $connectHandle -onVServer $vserver -dirPathToRemove $pathToNewFolderFull
-                     
-                     Write-Host "renaming old... " -NoNewline
-
-                     # Renommage de l'ancien dossier + gestion des erreurs 
-                     $result = renameFolder -controller $connectHandle -onVServer $vserver -curPath $pathToCurFolderFull -newPath $pathToNewFolderFull
-                     if($result -ne $true)
-                     {
-                        # Ajout de l'erreur à la liste 
-                        $logUsernameRenameErrors += ($curUsername+": "+$result)
-                        Write-Host "error" -ForegroundColor:Red
-                     }
-                     else
-                     {
-                        $logRenamedFolders += ($curUsername+" => "+$newUsername+ "  (New existed but empty so was deleted)")
-                        
-                        Write-Host "setting as renamed... " -NoNewline
-                        
-                        # On initialise l'utilisateur comme ayant été renommé.
-                        setUserRenamed -userSciper $userSciper
-                        
-                        Write-Host "done"
-                        
-                        $nbRenamed+=1
-                     }# FIN Si pas d'erreur lors du renommage de dossier 
-                  }
-                  else # Le nouveau dossier n'est pas vide
-                  {
-                     # enregistrement de l'information pour le renommage foireux
-                     $logNewFolderExists += "New folder exists and OLD and NEW have data in it! Contact owner: $curUsername ($curFolderOwner) => $newUsername ($newFolderOwner)"
-                     
-                     $nbRenameError+=1
-                     
-                  } # FIN SI le nouveau dossier n'est pas VIDE
-                  
-               } # FIN Si l'ancien dossier n'est pas vide 
-         
-            } # FIN SI Le owner du nouveau dossier est correct
-            
-         } # FIN SI le nouveau dossier existe déjà 
-      }
-      else # Si le owner sur l'ancien dossier ne correspond pas
-      {      
-         Write-host "Incorrect owner ($curFolderOwner)! " -ForegroundColor:Red
-         
-         $logOldFolderIncorrectOwner += "Owner incorrect on $pathToCurFolder : Is '$curFolderOwner' and should be '$curUsername' or '$curUsername'"
-         
-         $nbRenameError += 1
-       
-      } # FIN SI l'UID sur le dossier ne correspond pas
-      
-   }      
-   else # L'ancien dossier n'existe plus
-   {      
-      Write-Host "Old folder not exists... " -NoNewline
-      
-     # Si le nouveau dossier existe 
-     if((fileOrFolderExists -controller $connectHandle -onVServer $vserver -fileOrDir $pathToNewFolderFull) -eq $true)
-     {
-         
-         write-host "new exists... "
-         
-         # Récupération de l'UID du nouveau dossier 
-         $newFolderOwner = getFileOrFolderOwner -controller $connectHandle -onVServer $vserver -onVolume $volName -fileOrDir "/data/$newUsername"
-         
-         # Si le Owner sur le nouveau dossier est OK
-         if( ($newFolderOwner -eq $newUsername) -or ($newFolderOwner -eq $curUsername))
-         {       
-
-            Write-Host "owner OK... setting as renamed... "
-            
-            $logAlreadyRenamed += "$curUsername ($curFolderOwner) => $newUsername ($newFolderOwner)"
-
-            # On initialise le dossier comme renommé
-            setUserRenamed -userSciper $userSciper
+               # Récupération de l'UID du nouveau dossier 
+               $newFolderOwner = getFileOrFolderOwner -controller $connectHandle -onVServer $vserver -onVolume $volName -fileOrDir $pathToNewFolder
                
-            Write-Host "done"
+               # Si le owner du nouveau dossier est incorrect (qu'il ne correspond pas à l'utilisateur)
+               if( ($newFolderOwner -ne $newUsername) -and ($newFolderOwner -ne $curUsername))
+               {
+                  $logHistory.addErrorAndDisplay("-> New folder owner incorrect!")
+                  
+                  # Ajout des infos dans le "log" 
+                  $logNewFolderExists += "Incorrect Owner on new folder: $curUsername ($curFolderOwner) => $newUsername ($newFolderOwner)"
+
+                  $nbRenameError+=1
+               }
+               else # Le owner du nouveau dossier est correct
+               {
+                  $logHistory.addLineAndDisplay("-> Owner OK... ")
+                  # Si l'ancien dossier est vide
+                  if((isFolderEmpty -controller $connectHandle -onVServer $vserver -folderPath $pathToCurFolderFull) -eq $true)
+                  {
+                     $logHistory.addLineAndDisplay("-> Old empty, deleting... ")
+                     
+                     # Suppression de "l'ancien" dossier
+                     $nbDel = removeDirectory -controller $connectHandle -onVServer $vserver -dirPathToRemove $pathToCurFolderFull
+                     
+                     $logHistory.addLineAndDisplay("-> Setting as renamed... ")
+                     # On initialise l'utilisateur comme ayant été renommé.
+                     setUserRenamed -userSciper $userSciper
+                     
+                     $nbRenamed+=1
+
+                  }
+                  else # L'ancien dossier n'est pas vide
+                  {
+                     $logHistory.addLineAndDisplay("-> Old folder not empty... ")
+
+                     # Si le nouveau dossier est vide, 
+                     if((isFolderEmpty -controller $connectHandle -onVServer $vserver -folderPath $pathToNewFolderFull) -eq $true)
+                     {
+                        # Ancien avec donnée  +  nouveau vide  => suppression nouveau vide + renommage ancien
+                        $logHistory.addLineAndDisplay("-> Deleting new... ")
+                        
+                        $nbDel = removeDirectory -controller $connectHandle -onVServer $vserver -dirPathToRemove $pathToNewFolderFull
+                        
+                        $logHistory.addLineAndDisplay("-> Renaming old... ")
+
+                        # Renommage de l'ancien dossier + gestion des erreurs 
+                        $result = renameFolder -controller $connectHandle -onVServer $vserver -curPath $pathToCurFolderFull -newPath $pathToNewFolderFull
+                        if($result -ne $true)
+                        {
+                           # Ajout de l'erreur à la liste 
+                           $logUsernameRenameErrors += ($curUsername+": "+$result)
+                           $logHistory.addErrorAndDisplay("-> Error renaming folder")
+                        }
+                        else
+                        {
+                           $logRenamedFolders += ($curUsername+" => "+$newUsername+ "  (New existed but empty so was deleted)")
+                           
+                           $logHistory.addLineAndDisplay("-> Setting as renamed... ")
+                           
+                           # On initialise l'utilisateur comme ayant été renommé.
+                           setUserRenamed -userSciper $userSciper
+                           
+                           $nbRenamed+=1
+                        }# FIN Si pas d'erreur lors du renommage de dossier 
+                     }
+                     else # Le nouveau dossier n'est pas vide
+                     {
+                        # enregistrement de l'information pour le renommage foireux
+                        $logNewFolderExists += "New folder exists and OLD and NEW have data in it! Contact owner: $curUsername ($curFolderOwner) => $newUsername ($newFolderOwner)"
+                        
+                        $nbRenameError+=1
+                        
+                     } # FIN SI le nouveau dossier n'est pas VIDE
+                     
+                  } # FIN Si l'ancien dossier n'est pas vide 
             
-            $nbRenamed += 1
+               } # FIN SI Le owner du nouveau dossier est correct
+               
+            } # FIN SI le nouveau dossier existe déjà 
          }
-         else # Le owner sur le nouveau dossier est INCORRECT 
-         {
-            Write-Host "Error: owner incorrect!" -ForegroundColor:Red
+         else # Si le owner sur l'ancien dossier ne correspond pas
+         {      
+            $logHistory.addErrorAndDisplay("-> Incorrect owner ($curFolderOwner)! ")
             
-            $logNewFolderIncorrectOwner += "Old folder not exists and incorrect owner on new folder: Is '$newFolderOwner' and should be '$curUsername' or '$curUsername'"
-
+            $logOldFolderIncorrectOwner += "Owner incorrect on $pathToCurFolder : Is '$curFolderOwner' and should be '$curUsername' or '$curUsername'"
+            
             $nbRenameError += 1
-            
-         } # FIN SI UID sur nouveau dossier incorrect 
          
-      }         
-      else # Le nouveau dossier n'existe pas  
+         } # FIN SI l'UID sur le dossier ne correspond pas
+         
+      }      
+      else # L'ancien dossier n'existe plus
+      {      
+         $logHistory.addLineAndDisplay("-> Old folder doesn't exists... ")
+         
+      # Si le nouveau dossier existe 
+      if((fileOrFolderExists -controller $connectHandle -onVServer $vserver -fileOrDir $pathToNewFolderFull) -eq $true)
       {
-         # A ce stade, ni l'ancien ni le nouveau dossier n'existent... 
+            
+            $logHistory.addLineAndDisplay("-> New folder exists...")
+            
+            # Récupération de l'UID du nouveau dossier 
+            $newFolderOwner = getFileOrFolderOwner -controller $connectHandle -onVServer $vserver -onVolume $volName -fileOrDir "/data/$newUsername"
+            
+            # Si le Owner sur le nouveau dossier est OK
+            if( ($newFolderOwner -eq $newUsername) -or ($newFolderOwner -eq $curUsername))
+            {       
 
-         Write-Host "new folder not exists!"
+               $logHistory.addLineAndDisplay("-> Owner OK... setting as renamed... ")
+               
+               $logAlreadyRenamed += "$curUsername ($curFolderOwner) => $newUsername ($newFolderOwner)"
+
+               # On initialise le dossier comme renommé
+               setUserRenamed -userSciper $userSciper
+                  
+               $nbRenamed += 1
+            }
+            else # Le owner sur le nouveau dossier est INCORRECT 
+            {
+               $logHistory.addErrorAndDisplay("Incorrect owner")
+               
+               $logNewFolderIncorrectOwner += "Old folder not exists and incorrect owner on new folder: Is '$newFolderOwner' and should be '$curUsername' or '$curUsername'"
+
+               $nbRenameError += 1
+               
+            } # FIN SI UID sur nouveau dossier incorrect 
+            
+         }         
+         else # Le nouveau dossier n'existe pas  
+         {
+            # A ce stade, ni l'ancien ni le nouveau dossier n'existent... 
+
+            $logHistory.addLineAndDisplay("-> New folder doesn't exists!")
+            
+            $logNothingFound += "Nothing found for folders: '$pathToCurFolder' and '$pathToNewFolder'"
+            
+            $nbRenameError += 1
          
-         $logNothingFound += "Nothing found for folders: '$pathToCurFolder' and '$pathToNewFolder'"
+         } # FIN Si le nouveau dossier n'existe pas 
          
-         $nbRenameError += 1
-        
-      } # FIN Si le nouveau dossier n'existe pas 
+      } # FIN SI l'ancien dossier n'existe plus      
       
-   } # FIN SI l'ancien dossier n'existe plus      
-   
-   # ---------------- QUOTAS ---------------
-   
-   # Génération du nom actuel du user avec le domaine devant 
-   $curUserFullName = ([string]::Concat("INTRANET\",$curUsername))
-   # Génération du nouveau nom du user
-   $newUserFullName = ([string]::Concat("INTRANET\",$newUsername))
-   
-   # Récupération des infos de quota pour l'ancien nom
-   $quotaInfos = Get-NcQuota -Controller $connectHandle -Volume $volName -Vserver $vserver -Target $curUserFullName
-   
-   $errorArray=@()
-   # Suppression de l'entrée de quota avec l'ancien nom
-   Remove-NcQuota -Controller $connectHandle -Volume $volName -VserverContext $vserver -Target $curUserFullName -Qtree "" -Type user -ErrorVariable "errorArray" -ErrorAction:SilentlyContinue
-   
-   # Transformation des quotas. On les a en "KB" avec le get-NcQuota mais il faut les passer en Bytes pour le Set-NcQuota... ceci depuis que 
-   # les PowerShell Toolkit version 4.4 ont été installés. Avant, fallait simplement spécifier l'unité...
-   $softQuota = ([int]$quotaInfos.SoftDiskLimit) *1024
-   $hardQuota = ([int]$quotaInfos.DiskLimit) *1024
-   
-   # Si pas d'erreur 
-   if($errorArray.Count -eq 0)
-   {
-   
+      # ---------------- QUOTAS ---------------
+      
+      # Génération du nom actuel du user avec le domaine devant 
+      $curUserFullName = ([string]::Concat("INTRANET\",$curUsername))
+      # Génération du nouveau nom du user
+      $newUserFullName = ([string]::Concat("INTRANET\",$newUsername))
+      
+      # Récupération des infos de quota pour l'ancien nom
+      $quotaInfos = Get-NcQuota -Controller $connectHandle -Volume $volName -Vserver $vserver -Target $curUserFullName
+      
+      $errorArray=@()
+      # Suppression de l'entrée de quota avec l'ancien nom
+      Remove-NcQuota -Controller $connectHandle -Volume $volName -VserverContext $vserver -Target $curUserFullName -Qtree "" -Type user -ErrorVariable "errorArray" -ErrorAction:SilentlyContinue
+      
+      # Transformation des quotas. On les a en "KB" avec le get-NcQuota mais il faut les passer en Bytes pour le Set-NcQuota... ceci depuis que 
+      # les PowerShell Toolkit version 4.4 ont été installés. Avant, fallait simplement spécifier l'unité...
+      $softQuota = ([int]$quotaInfos.SoftDiskLimit) *1024
+      $hardQuota = ([int]$quotaInfos.DiskLimit) *1024
+      
+      # Si pas d'erreur 
+      if($errorArray.Count -eq 0)
+      {
+      
+         # Resize du volume pour appliquer la modification 
+         $res = resizeQuota -controller $connectHandle -onVServer $vserver -volumeName $volName
+         
+         # Si ça a foiré
+         if($res.JobState -eq "failure")
+         {
+            # Envoi d'un mail aux admins 
+            sendMailToAdmins -mailMessage ([string]::Concat("Error doing 'quota resize' on volume $volName<br><b>Error:</b><br>", $res.JobCompletion)) `
+                              -mailSubject "MyNAS Service: Error processing username rename requests"
+
+            # On remet en place la règle qu'on a voulu supprimer
+            
+            try
+            {
+               # On essaie de chercher l'utilisateur dans AD
+               $val = Get-ADUser -Identity $curUserFullName -Properties * 
+
+               Set-NcQuota -Controller $connectHandle -VserverContext $vserver -Volume $volName `
+                        -Target $curUserFullName -Type user -Qtree "" `
+                        -DiskLimit $hardQuota `
+                        -SoftDiskLimit $softQuota
+            }
+            catch
+            {
+               $logHistory.addErrorAndDisplay(("-> No AD user found for '{0}'"  -f $curUserFullName))
+            }
+                              
+            # On sort
+            exit 1
+         }
+      }# FIN Si pas d'erreur dans la suppression de l'entrée de quota 
+      
+      try
+      {
+         # On essaie de chercher l'utilisateur dans AD
+         $val = Get-ADUser -Identity $newUserFullName -Properties * 
+
+         # Remise de l'entrée de quota mais avec le nouveau nom
+         Set-NcQuota -Controller $connectHandle -VserverContext $vserver -Volume $volName `
+         -Target $newUserFullName -Type user -Qtree "" `
+         -DiskLimit $hardQuota `
+         -SoftDiskLimit $softQuota
+      }
+      catch
+      {
+            $logHistory.addErrorAndDisplay(("-> No AD user found for '{0}'"  -f $newUserFullName))
+      }
+      
+      
+      
       # Resize du volume pour appliquer la modification 
       $res = resizeQuota -controller $connectHandle -onVServer $vserver -volumeName $volName
       
-      # Si ça a foiré
-      if($res.JobState -eq "failure")
+      
+   }# FIN BOUCLE de parcours des éléments à renommer
+
+   Write-Host ""
+   Write-Host "Summary:"
+   Write-Host "--------"
+   Write-Host "Renamed : $nbRenamed"
+   Write-Host "Errors  : $nbRenameError"
+   Write-Host ""
+
+   # Si des dossiers ont été renommés
+   if($logRenamedFolders.count -gt 0)
+   {
+      
+      
+      $mailMessage = stringArrayToMultiLineString -strArray $logRenamedFolders -lineSeparator "<br>"
+      
+      # S'il y avait des dossiers déjà renommés, 
+      if($logAlreadyRenamed.count -gt 0)
       {
-         # Envoi d'un mail aux admins 
-         sendMailToAdmins -mailMessage ([string]::Concat("Error doing 'quota resize' on volume $volName<br><b>Error:</b><br>", $res.JobCompletion)) `
-                           -mailSubject "MyNAS Service: Error processing username rename requests"
-
-         # On remet en place la règle qu'on a voulu supprimer
+         #$mailMessage += "<br>-------------------------------------------------"
+         $mailMessage += "<br><b>Some folders were already renamed<b><br>"
+         #$mailMessage += "-------------------------------------------------"
          
-         try
-         {
-            # On essaie de chercher l'utilisateur dans AD
-            $val = Get-ADUser -Identity $curUserFullName -Properties * 
-
-            Set-NcQuota -Controller $connectHandle -VserverContext $vserver -Volume $volName `
-                      -Target $curUserFullName -Type user -Qtree "" `
-                      -DiskLimit $hardQuota `
-                      -SoftDiskLimit $softQuota
-         }
-         catch
-         {
-             Write-Warning ("No AD user found for '{0}'"  -f $curUserFullName)
-         }
-                           
-         # On sort
-         exit 1
-      }
-   }# FIN Si pas d'erreur dans la suppression de l'entrée de quota 
-   
-   try
-   {
-      # On essaie de chercher l'utilisateur dans AD
-      $val = Get-ADUser -Identity $newUserFullName -Properties * 
-
-      # Remise de l'entrée de quota mais avec le nouveau nom
-      Set-NcQuota -Controller $connectHandle -VserverContext $vserver -Volume $volName `
-      -Target $newUserFullName -Type user -Qtree "" `
-      -DiskLimit $hardQuota `
-      -SoftDiskLimit $softQuota
-   }
-   catch
-   {
-         Write-Warning ("No AD user found for '{0}'"  -f $newUserFullName)
-   }
-   
-   
-   
-   # Resize du volume pour appliquer la modification 
-   $res = resizeQuota -controller $connectHandle -onVServer $vserver -volumeName $volName
-   
-   
-}# FIN BOUCLE de parcours des éléments à renommer
-
-Write-Host ""
-Write-Host "Summary:"
-Write-Host "--------"
-Write-Host "Renamed : $nbRenamed"
-Write-Host "Errors  : $nbRenameError"
-Write-Host ""
-
-# Si des dossiers ont été renommés
-if($logRenamedFolders.count -gt 0)
-{
-   
-   
-   $mailMessage = stringArrayToMultiLineString -strArray $logRenamedFolders -lineSeparator "<br>"
-   
-   # S'il y avait des dossiers déjà renommés, 
-   if($logAlreadyRenamed.count -gt 0)
-   {
-      #$mailMessage += "<br>-------------------------------------------------"
-      $mailMessage += "<br><b>Some folders were already renamed<b><br>"
-      #$mailMessage += "-------------------------------------------------"
+         $mailMessage += stringArrayToMultiLineString -strArray $logAlreadyRenamed -lineSeparator "<br>"
+         
+      }# FIN SI il y avait des dossiers déjà renommés
       
-      $mailMessage += stringArrayToMultiLineString -strArray $logAlreadyRenamed -lineSeparator "<br>"
+      # Envoi du mail 
+      sendMailToAdmins -mailSubject "MyNAS service: User folder have been renamed" -mailMessage $mailMessage
       
-   }# FIN SI il y avait des dossiers déjà renommés
-   
-   # Envoi du mail 
-   sendMailToAdmins -mailSubject "MyNAS service: User folder have been renamed" -mailMessage $mailMessage
-   
-}# FIN SI des dossiers ont été renommés 
+   }# FIN SI des dossiers ont été renommés 
 
-# Pour regrouper toutes les erreurs 
-$logAllErrors = @()
+   # Pour regrouper toutes les erreurs 
+   $logAllErrors = @()
 
-# Si on a trouvé des utilisateurs avec des dossier existants
-if($logNewFolderExists.Count -gt 0)
-{
+   # Si on a trouvé des utilisateurs avec des dossier existants
+   if($logNewFolderExists.Count -gt 0)
+   {
 
-   $logAllErrors += "------------------------------------------------------------------------------------------------------"
-   $logAllErrors += "<b>For some users, the folder for 'new' username already exists. Here are the errors:</b>"
-   $logAllErrors += "------------------------------------------------------------------------------------------------------"
-   $logAllErrors += $logNewFolderExists
-   $logAllErrors += ""
+      $logAllErrors += "------------------------------------------------------------------------------------------------------"
+      $logAllErrors += "<b>For some users, the folder for 'new' username already exists. Here are the errors:</b>"
+      $logAllErrors += "------------------------------------------------------------------------------------------------------"
+      $logAllErrors += $logNewFolderExists
+      $logAllErrors += ""
+   }
+
+   # Si on a trouvé  des dossiers OLD avec des erreurs de owner
+   if($logOldFolderIncorrectOwner.Count -gt 0)
+   {
+
+      $logAllErrors += "--------------------------------------------------------------"
+      $logAllErrors += "<b>Some 'old' folders have incorrect owner:</b>"
+      $logAllErrors += "--------------------------------------------------------------"
+      $logAllErrors += $logOldFolderIncorrectOwner
+      $logAllErrors += ""
+   }
+
+   # Si on a trouvé  des dossiers NEW avec des erreurs de owner
+   if($logNewFolderIncorrectOwner.Count -gt 0)
+   {
+
+      $logAllErrors += "--------------------------------------------------------------"
+      $logAllErrors += "<b>Some 'new' folders have incorrect owner:</b>"
+      $logAllErrors += "--------------------------------------------------------------"
+      $logAllErrors += $logNewFolderIncorrectOwner
+      $logAllErrors += ""
+   }
+
+
+   # Si des erreurs ont été rencontrées 
+   if($logAllErrors.count -gt 0)
+   {
+      $logHistory.addLineAndDisplay("Errors encountered... sending mail to admins... ")
+      # Création d'un mail
+      $mailMessage="The following errors have been found while renaming user folders. Please correct them manually.<br><br>"
+      
+      $mailMessage += stringArrayToMultiLineString -strArray $logAllErrors -lineSeparator "<br>"
+      
+      # Envoi du mail aux administrateurs 
+      sendMailToAdmins -mailSubject "MyNAS service: ERRORS while renaming user folders" -mailMessage $mailMessage 
+      
+   }
+
 }
-
-# Si on a trouvé  des dossiers OLD avec des erreurs de owner
-if($logOldFolderIncorrectOwner.Count -gt 0)
+catch
 {
+    
+	# Récupération des infos
+	$errorMessage = $_.Exception.Message
+	$errorTrace = $_.ScriptStackTrace
 
-   $logAllErrors += "--------------------------------------------------------------"
-   $logAllErrors += "<b>Some 'old' folders have incorrect owner:</b>"
-   $logAllErrors += "--------------------------------------------------------------"
-   $logAllErrors += $logOldFolderIncorrectOwner
-   $logAllErrors += ""
-}
-
-# Si on a trouvé  des dossiers NEW avec des erreurs de owner
-if($logNewFolderIncorrectOwner.Count -gt 0)
-{
-
-   $logAllErrors += "--------------------------------------------------------------"
-   $logAllErrors += "<b>Some 'new' folders have incorrect owner:</b>"
-   $logAllErrors += "--------------------------------------------------------------"
-   $logAllErrors += $logNewFolderIncorrectOwner
-   $logAllErrors += ""
-}
-
-
-# Si des erreurs ont été rencontrées 
-if($logAllErrors.count -gt 0)
-{
-   Write-Host "Errors encountered... sending mail to admins... " -NoNewline
-   # Création d'un mail
-   $mailMessage="The following errors have been found while renaming user folders. Please correct them manually.<br><br>"
-   
-   $mailMessage += stringArrayToMultiLineString -strArray $logAllErrors -lineSeparator "<br>"
-   
-   # Envoi du mail aux administrateurs 
-   sendMailToAdmins -mailSubject "MyNAS service: ERRORS while renaming user folders" -mailMessage $mailMessage 
-   
-   Write-Host "done"
+	$logHistory.addErrorAndDisplay(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
+    
+    # On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
+    $errorMessage = $errorMessage -replace "`n", "<br>"
+    
+	# Création des informations pour l'envoi du mail d'erreur
+	$valToReplace = @{
+                        scriptName = $MyInvocation.MyCommand.Name
+                        computerName = $env:computername
+                        parameters = (formatParameters -parameters $PsBoundParameters )
+                        error = $errorMessage
+                        errorTrace =  [System.Net.WebUtility]::HtmlEncode($errorTrace)
+                    }
+    # Envoi d'un message d'erreur aux admins 
+    $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 }
 
 
