@@ -42,7 +42,6 @@
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SQLDB.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "define.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "MySQL.inc.ps1"))
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func.inc.ps1"))
 
