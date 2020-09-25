@@ -1,0 +1,15 @@
+{
+    "cadi":
+    {
+        "user": "",
+        "password": "",
+        "host": "",
+        "db": "",
+        "port": ""
+    },
+    "nas":
+    {
+        "user": "",
+        "password": ""
+    }
+}

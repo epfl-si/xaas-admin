@@ -16,6 +16,7 @@ $global:RESOURCES_FOLDER            = ([IO.Path]::Combine("$PSScriptRoot", "..",
 $global:BINARY_FOLDER               = ([IO.Path]::Combine("$PSScriptRoot", "..", "bin"))
 $global:CONFIG_FOLDER               = ([IO.Path]::Combine("$PSScriptRoot", "..", "config"))
 $global:DATA_FOLDER                 = ([IO.Path]::Combine("$PSScriptRoot", "..", "data"))
+$global:LOGS_FOLDER                 = ([IO.Path]::Combine("$PSScriptRoot", "..", "logs"))
 $global:MAIL_TEMPLATE_FOLDER        = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "mail-templates"))
 $global:JSON_TEMPLATE_FOLDER        = ([IO.Path]::Combine("$PSScriptRoot", "..", $global:RESOURCES_FOLDER, "json-templates"))
 $global:ERROR_FOLDER                = ([IO.Path]::Combine("$PSScriptRoot", "..", "errors"))
