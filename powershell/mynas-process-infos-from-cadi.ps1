@@ -91,7 +91,7 @@ try
    $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
 
    # Création de l'objet pour gérer les ACLs
-   $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER, $nameGeneratorMyNAS)
+   $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER, $nameGeneratorMyNAS, $logHistory)
 
    # Création de l'objet pour faire les requêtes dans CADI
    $mysql_cadi = [SQLDB]::new([DBType]::MySQL, `

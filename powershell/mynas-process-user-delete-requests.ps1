@@ -144,7 +144,7 @@ try
    $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
 
    # Création de l'objet pour gérer les ACLs
-   $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER, $nameGeneratorMyNAS)
+   $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER, $nameGeneratorMyNAS, $logHistory)
 
    # Parcours des éléments à supprimer 
    foreach($deleteInfos in $deleteList)
