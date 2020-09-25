@@ -170,11 +170,9 @@ try
 
     $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
 
-    Disconnect-VIServer -Server $connectedvCenter -Confirm:$false 
 }
 catch
 {
-    Disconnect-VIServer -Server $connectedvCenter -Confirm:$false 
     
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
