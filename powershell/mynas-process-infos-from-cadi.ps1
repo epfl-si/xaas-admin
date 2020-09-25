@@ -57,7 +57,7 @@ $configMyNAS = [ConfigReader]::New("config-mynas.json")
 
 
 # Base pour ensuite construire l'URL qui va déclencher l'import des données sur le site web
-$baseTriggerImporURL = "https://mynas.epfl.ch/ws/DBDataImport-web.php?empty_tables={0}&configs={1}&exclude_cond={2}"
+$baseTriggerImporURL = "{0}/ws/DBDataImport-web.php?empty_tables={1}&configs={2}&exclude_cond={3}"
 
 
 #------------------------- FONCTIONS -----------------------
@@ -188,7 +188,7 @@ pushFile -targetFolder "/www/mynas/web/upload/mynas_user_quota_update_request/" 
 
 # Déclenchement de l'import des données dans la DB (avec vidage de la table juste avant)
 Write-Host ("Triggering import for pushed file ({0})..." -f $quotaUpdateCSV) 
-Invoke-WebRequest -Uri ($baseTriggerImporURL -f "mynas_user_quota_update_request", "userQuotaUpdateRequest", "") -Method Get -OutFile $quotaUpdateRequestResult
+Invoke-WebRequest -Uri ($baseTriggerImporURL -f $global:WEBSITE_URL_MYNAS, "mynas_user_quota_update_request", "userQuotaUpdateRequest", "") -Method Get -OutFile $quotaUpdateRequestResult
  
  
  
