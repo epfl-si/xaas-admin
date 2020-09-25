@@ -39,17 +39,18 @@
 
 # Inclusion des constantes
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "define.inc.ps1"))
-
-# Inclusion des fonctions spécifiques à NetApp depuis un autre fichier
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func-netapp.inc.ps1"))
-
-# Inclusion des fonctions générique depuis un autre fichier
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configMyNAS = [ConfigReader]::New("config-mynas.json")
+$configGlobal = [ConfigReader]::New("config-global.json")
 
 # -------------------------------- CONSTANTES -----------------------------
 
@@ -139,141 +140,168 @@ function getFSNoFromUID
    return $uid.substring($uid.Length-1,1)
 }
 
-# -------------------------------- PROGRAMME PRINCIPAL --------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
-# Chargement du module (si nécessaire)
-loadDataOnTapModule 
-Import-Module ActiveDirectory
-
-# Si le dossier de sortie n'existe pas, on le créé
-if(!(Test-Path -Path $global:FILES_TO_PUSH_FOLDER))
+try
 {
-   New-Item -ItemType Directory -Path $global:FILES_TO_PUSH_FOLDER | Out-Null
-}
+   # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+   $logHistory = [LogHistory]::new('mynas-push-user-quota-usage', (Join-Path $PSScriptRoot "logs"), 30)
 
-# Effacement des fichiers de sortie pour ne pas appondre les données dedans. 
-delOutputFilesIfExists $OUTPUT_QUOTAS
+   # Objet pour pouvoir envoyer des mails de notification
+   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "MyNAS", "")
+   
+   # Chargement du module (si nécessaire)
+   loadDataOnTapModule 
+   Import-Module ActiveDirectory
 
-checkEnvironment
+   # Si le dossier de sortie n'existe pas, on le créé
+   if(!(Test-Path -Path $global:FILES_TO_PUSH_FOLDER))
+   {
+      New-Item -ItemType Directory -Path $global:FILES_TO_PUSH_FOLDER | Out-Null
+   }
 
-try 
-{
-   Write-Host -NoNewline "Connecting... "
-   # Génération du mot de passe 
-   $secPassword = ConvertTo-SecureString $configMyNAS.getConfigValue("nas", "password") -AsPlainText -Force
-   # Création des credentials pour l'utilisateur
-   $credentials = New-Object System.Management.Automation.PSCredential($configMyNAS.getConfigValue("nas", "user"), $secPassword)
-   # Connexion au NetApp
-   $connectHandle = Connect-NcController -Name $global:CLUSTER_COLL_IP -Credential $credentials -HTTPS
-   #$connectHandle
-   Write-Host "OK"
+   # Effacement des fichiers de sortie pour ne pas appondre les données dedans. 
+   delOutputFilesIfExists $OUTPUT_QUOTAS
+
+   checkEnvironment
+
+   try 
+   {
+      $logHistory.addLineAndDisplay("Connecting... ")
+      # Génération du mot de passe 
+      $secPassword = ConvertTo-SecureString $configMyNAS.getConfigValue("nas", "password") -AsPlainText -Force
+      # Création des credentials pour l'utilisateur
+      $credentials = New-Object System.Management.Automation.PSCredential($configMyNAS.getConfigValue("nas", "user"), $secPassword)
+      # Connexion au NetApp
+      $connectHandle = Connect-NcController -Name $global:CLUSTER_COLL_IP -Credential $credentials -HTTPS
+   }
+   catch
+   {
+      Throw "Error connecting to "+$global:CLUSTER_COLL_IP+"!"
+   }
+
+   # Récupération de la date courante
+   $curDate = Get-Date -format yyyy-MM-dd
+
+   $somethingToPush=$false
+
+   # Parcours des No de FS à traiter,
+   #foreach($fsNo in @("8"))
+   for($fsNo=0; $fsNo -lt 10; $fsNo++)
+   {
+      $somethingToPush=$true
+
+      # Génération du nom du vServer et du FS
+      $vserverName="files$fsNo"
+      $volName="dit_files"+$fsNo+"_indiv"
+      
+      # Récupération du Vserver
+      $onVServer = Get-NcVserver -Controller $connectHandle -Name $vserverName   
+      
+      # Récupération de la liste des quotas 
+      $logHistory.addLineAndDisplay("Getting quota list for $volName... ")
+      $quotaList = Get-NcQuotaReport -Controller $connectHandle -Volume $volName -Type user -Vserver $onVServer
+      
+      # Recherche du nombre d'éléments 
+      $nbQuota = getNBElemInObject -inObject $quotaList
+      
+      # Si pas de quota, on passe au FS suivant 
+      if($nbQuota -eq 0)
+      {
+         $logHistory.addLineAndDisplay("No quota found, skipping... ")
+         continue
+      }
+      
+      # Parcours des quotas renvoyés 
+      foreach($quotaInfos in $quotaList)
+      {
+      
+            
+         # Si le quota est bien défini pour un utilisateur, 
+         # NOTE: On est obligé de contrôler plusieurs éléments car c'est un peu "foireux" comme c'est codé cette API.
+         #       Il se peut que $quotaInfos.QuotaTarget soit $null alors que $quotaInfos.QuotaUsers ne le soit pas... ce qui est
+         #       illogique. Et c'est sur le champ "$quotaInfos.QuotaTarget" que se base visiblement la commande "quota report"
+         #       de NetApp. Donc il est pertinent de contrôler aussi la valeur de ce champ.
+         # EDIT: 19.05.2015 - LC - Le raisonnement ci-dessus n'est pas toujours valable... donc mise en commentaire
+         #       d'un check ajouté auparavant.
+         if(($null -ne $quotaInfos.QuotaUsers) -and ($null -ne $quotaInfos.QuotaUsers[0].QuotaUserName)) # -and ($quotaInfos.QuotaTarget -ne $null) )
+         {
+         
+            # Recherche de l'UID LDAP de l'utilisateur 
+            $userUID = getUIDFromUsername -username $quotaInfos.QuotaUsers[0].QuotaUserName
+            
+            $uname = $quotaInfos.QuotaUsers[0].QuotaUserName
+            $logHistory.addLineAndDisplay("$uname=$userUID")
+            
+            # On skip si :
+            # - Pas d'UID trouvé, c'est que ce n'est pas un utilisateur du domaine
+            # - UID = 0 donc pas un "vrai" compte utilisateur mais plutôt un compte de service
+            if( ($null -eq $userUID) -or ($userUID -eq 0)) 
+            {
+               continue
+            }
+            
+            <# Si le quota que l'on traite ne devrait pas se trouver sur le volume courant,
+               on le skip car sinon cela faussera les informations importées dans le site web #>
+            if( (getFSNoFromUID -uid $userUID) -ne $fsNo)
+            {
+               continue
+            }
+            
+            
+            # liste pour les informations à mettre dans le fichier de sortie 
+            # Pour coller à l'ancien NAS EMC, les données doivent être formatées comme suit :
+            # $uidNAS,$uid,$MDATE,$used_mb,$nb_files,$soft_mb,$hard_mb
+            $quotaInfosOut = @()
+            $quotaInfosOut += $userUID
+            $quotaInfosOut += $userUID
+            $quotaInfosOut += $curDate
+            $quotaInfosOut += ( (getQuotaLimitValue -fromString $quotaInfos.DiskUsed)/1024) # usedMB
+            $quotaInfosOut += $quotaInfos.FilesUsed # nbFiles
+            $quotaInfosOut += [Math]::Floor((getQuotaLimitValue -fromString $quotaInfos.SoftDiskLimit)/1024) # SoftMB
+            $quotaInfosOut += [Math]::Floor((getQuotaLimitValue -fromString $quotaInfos.DiskLimit)/1024) # HardMB
+            
+            ( $quotaInfosOut -join ',') | Out-File -Append -FilePath $OUTPUT_QUOTAS -Encoding Default
+            
+         }# FIN Si le quota est bien défini pour un utilisateur
+      
+      }# FIN De boucle de parcours des quotas définis pour le volume 
+      
+   }# FIN Boucle de parcours des nos de FS à traiter 
+
+   if($somethingToPush)
+   {
+      $logHistory.addLineAndDisplay("Pushing files... ")
+      
+      # Push des fichiers sur le site web 
+      pushFile -targetFolder $REMOTE_DIRECTORY -fileToPush $OUTPUT_QUOTAS
+   }
+
 }
 catch
 {
-   Write-Error "Error connecting to "+$global:CLUSTER_COLL_IP+"!"
-   exit 1
+    
+	# Récupération des infos
+	$errorMessage = $_.Exception.Message
+	$errorTrace = $_.ScriptStackTrace
+
+	$logHistory.addErrorAndDisplay(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
+    
+    # On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
+    $errorMessage = $errorMessage -replace "`n", "<br>"
+    
+	# Création des informations pour l'envoi du mail d'erreur
+	$valToReplace = @{
+                        scriptName = $MyInvocation.MyCommand.Name
+                        computerName = $env:computername
+                        parameters = (formatParameters -parameters $PsBoundParameters )
+                        error = $errorMessage
+                        errorTrace =  [System.Net.WebUtility]::HtmlEncode($errorTrace)
+                    }
+    # Envoi d'un message d'erreur aux admins 
+    $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 }
-
-# Récupération de la date courante
-$curDate = Get-Date -format yyyy-MM-dd
-
-$somethingToPush=$false
-
-# Parcours des No de FS à traiter,
-#foreach($fsNo in @("8"))
-for($fsNo=0; $fsNo -lt 10; $fsNo++)
-{
-   $somethingToPush=$true
-
-   # Génération du nom du vServer et du FS
-   $vserverName="files$fsNo"
-   $volName="dit_files"+$fsNo+"_indiv"
-   
-   
-   # Récupération du Vserver
-   $onVServer = Get-NcVserver -Controller $connectHandle -Name $serverName   
-   
-   # Récupération de la liste des quotas 
-   Write-Host -NoNewline "Getting quota list for $volName... "
-   $quotaList = Get-NcQuotaReport -Controller $connectHandle -Volume $volName -Type user -Vserver $onVServer
-   
-   # Recherche du nombre d'éléments 
-   $nbQuota = getNBElemInObject -inObject $quotaList
-   
-   # Si pas de quota, on passe au FS suivant 
-   if($nbQuota -eq 0)
-   {
-      Write-Host "No quota found, skipping... "
-      continue
-   }
-   
-   # Parcours des quotas renvoyés 
-   foreach($quotaInfos in $quotaList)
-   {
-   
-         
-      # Si le quota est bien défini pour un utilisateur, 
-      # NOTE: On est obligé de contrôler plusieurs éléments car c'est un peu "foireux" comme c'est codé cette API.
-      #       Il se peut que $quotaInfos.QuotaTarget soit $null alors que $quotaInfos.QuotaUsers ne le soit pas... ce qui est
-      #       illogique. Et c'est sur le champ "$quotaInfos.QuotaTarget" que se base visiblement la commande "quota report"
-      #       de NetApp. Donc il est pertinent de contrôler aussi la valeur de ce champ.
-      # EDIT: 19.05.2015 - LC - Le raisonnement ci-dessus n'est pas toujours valable... donc mise en commentaire
-      #       d'un check ajouté auparavant.
-      if(($quotaInfos.QuotaUsers -ne $null) -and ($quotaInfos.QuotaUsers[0].QuotaUserName -ne $null)) # -and ($quotaInfos.QuotaTarget -ne $null) )
-      {
-         
-      
-         # Recherche de l'UID LDAP de l'utilisateur 
-         $userUID = getUIDFromUsername -username $quotaInfos.QuotaUsers[0].QuotaUserName
-         
-         $uname = $quotaInfos.QuotaUsers[0].QuotaUserName
-         Write-Host "$uname=$userUID"
-         
-         # On skip si :
-         # - Pas d'UID trouvé, c'est que ce n'est pas un utilisateur du domaine
-         # - UID = 0 donc pas un "vrai" compte utilisateur mais plutôt un compte de service
-         if( ($null -eq $userUID) -or ($userUID -eq 0)) 
-         {
-            continue
-         }
-         
-         <# Si le quota que l'on traite ne devrait pas se trouver sur le volume courant,
-            on le skip car sinon cela faussera les informations importées dans le site web #>
-         if( (getFSNoFromUID -uid $userUID) -ne $fsNo)
-         {
-            continue
-         }
-         
-         
-         # liste pour les informations à mettre dans le fichier de sortie 
-         # Pour coller à l'ancien NAS EMC, les données doivent être formatées comme suit :
-         # $uidNAS,$uid,$MDATE,$used_mb,$nb_files,$soft_mb,$hard_mb
-         $quotaInfosOut = @()
-         $quotaInfosOut += $userUID
-         $quotaInfosOut += $userUID
-         $quotaInfosOut += $curDate
-         $quotaInfosOut += ( (getQuotaLimitValue -fromString $quotaInfos.DiskUsed)/1024) # usedMB
-         $quotaInfosOut += $quotaInfos.FilesUsed # nbFiles
-         $quotaInfosOut += [Math]::Floor((getQuotaLimitValue -fromString $quotaInfos.SoftDiskLimit)/1024) # SoftMB
-         $quotaInfosOut += [Math]::Floor((getQuotaLimitValue -fromString $quotaInfos.DiskLimit)/1024) # HardMB
-         
-         ( $quotaInfosOut -join ',') | Out-File -Append -FilePath $OUTPUT_QUOTAS -Encoding Default
-         
-      }# FIN Si le quota est bien défini pour un utilisateur
-   
-   }# FIN De boucle de parcours des quotas définis pour le volume 
-   
-   Write-Host "done"
-   
-}# FIN Boucle de parcours des nos de FS à traiter 
-
-if($somethingToPush)
-{
-   Write-Host -NoNewline "Pushing files... "
-   
-   # Push des fichiers sur le site web 
-   pushFile -targetFolder $REMOTE_DIRECTORY -fileToPush $OUTPUT_QUOTAS
-}
-
-Write-Host "done"
-
