@@ -31,6 +31,7 @@
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func-netapp.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "NameGeneratorMyNAS.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configMyNAS = [ConfigReader]::New("config-mynas.json")
@@ -99,12 +100,14 @@ function setUserRenamed
 try
 {
 
-    # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new('mynas-process-username-rename', (Join-Path $PSScriptRoot "logs"), 30)
+   # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+   $logHistory = [LogHistory]::new('mynas-process-username-rename', (Join-Path $PSScriptRoot "logs"), 30)
     
    # Objet pour pouvoir envoyer des mails de notification
    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "MyNAS", "")
    
+   $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
+
    # Chargement du module (si nécessaire)
    loadDataOnTapModule 
    
@@ -185,8 +188,8 @@ try
       $userSciper          = $renameInfosArray[4]
       
       # Définition des UNC du dossier actuel et du nouveau pour les tests d'existence
-      $uncPathCur = getUserUNCPath -server $vServerName -username $curUsername
-      $uncPathNew = getUserUNCPath -server $vServerName -username $newUsername
+      $uncPathCur = $nameGeneratorMyNAS.getUserUNCPath($vServerName, $curUsername)
+      $uncPathNew = $nameGeneratorMyNAS.getUserUNCPath($vServerName, $newUsername)
 
       # Récupération du serveur CIFS (ou du vServer plutôt)
       $vserver = Get-NcVserver -Controller $connectHandle -Name $vServerName

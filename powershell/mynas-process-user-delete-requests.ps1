@@ -39,6 +39,7 @@
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func-netapp.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "NameGeneratorMyNAS.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "MyNASACLUtils.inc.ps1"))
 
 # Chargement des fichiers de configuration
@@ -140,8 +141,10 @@ try
    # Compteurs 
    $nbDeleted=0
 
+   $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
+
    # Création de l'objet pour gérer les ACLs
-   $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER)
+   $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER, $nameGeneratorMyNAS)
 
    # Parcours des éléments à supprimer 
    foreach($deleteInfos in $deleteList)
@@ -153,7 +156,7 @@ try
       $serverName,$username,$userSciper,$fullDataPath,$volumeName = $deleteInfos.split(',')
 
       # Recherche de l'UNC où se trouvent les fichiers à rebuild 
-      $directory = getUserUNCPath -server $serverName -username $username
+      $directory = $nameGeneratorMyNAS.getUserUNCPath($serverName, $username)
 
       $logHistory.addLineAndDisplay(("[{0}/{1}] Deleting directory for user {2}... " -f ($nbDeleted+1), $nbToDelete, $username), "black", "white")
 

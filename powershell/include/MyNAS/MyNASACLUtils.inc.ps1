@@ -18,6 +18,7 @@
      hidden [string] $logDir
      hidden [string] $currentLogFile
      hidden [string] $fileACL
+     hidden [string] $nameGeneratorMyNAS
  
      <#
          -------------------------------------------------------------------------------------
@@ -26,10 +27,11 @@
          IN  : $logDir       -> Chemin jusqu'au dossier de logs
          IN  : $binDir       -> Chemin jusqu'au dossier où sont les binaires
      #>
-     MyNASACLUtils([string]$logDir, [string]$binDir)
+     MyNASACLUtils([string]$logDir, [string]$binDir, [nameGeneratorMyNAS]$nameGeneratorMyNAS)
      {
          $this.logDir = $logDir
          $this.fileACL = Join-Path $binDir "fileacl.exe"
+         $this.nameGeneratorMyNAS = $nameGeneratorMyNAS
  
          # Existance de FileAcl 
          if(!(Test-Path $this.fileACL))
@@ -634,7 +636,7 @@
      {
         $this.initUserLogFile($server, $username)
  
-        $userDir = getUserUNCPath -server $server -username $username
+        $userDir = $this.nameGeneratorMyNAS.getUserUNCPath($server, $username)
 
         if(!(Test-Path -Path $userDir))
         {
@@ -659,7 +661,7 @@
      {
         $this.initUserLogFile($server, $username)
  
-        $userDir = getUserUNCPath -server $server -username $username
+        $userDir = $this.nameGeneratorMyNAS.getUserUNCPath($server, $username)
 
         if(!(Test-Path -Path $userDir))
         {
@@ -697,7 +699,7 @@
      {
         $this.initUserLogFile($server, $username)
  
-        $userUNCDirectory = getUserUNCPath -server $server -username $username
+        $userUNCDirectory = $this.nameGeneratorMyNAS.getUserUNCPath($server, $username)
  
         if(!(Test-Path -Path $userUNCDirectory))
         {

@@ -67,32 +67,6 @@ function getNBElemInObject
 }
 
 
-# --------------------------------------------------------------------------------
-
-<# 
-   BUT : Renvoie l'UNC utilisée pour accéder au dossier d'un user
- 
-   IN  : $server      -> le nom du serveur
-   IN  : $username    -> le nom de l'utilisateur
-   
-   MODIFS :
-   17.08.2018 - LC - Génération d'exception si erreur
-
-#>
-function getUserUNCPath {
-
-   param([string]$server, [string]$username)
-   
-   # Check des paramètres 
-   if($server -eq "") { Throw "Error in getUserUNCPath: missing parameter server" }
-   if($username -eq "") { Throw "Error in getUserUNCPath: missing parameter username" }
-   
-   #return [string]::Concat("\\", $server, ".epfl.ch\dit-",$server,"-t1\data\", $username);
-   return [string]::Concat("\\", $server, ".epfl.ch\data\", $username);
-   
-}
-
-
 # ------------------------------------------------------------------------
 
 <# 

@@ -47,6 +47,7 @@
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "NameGeneratorMyNAS.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "MyNASACLUtils.inc.ps1"))
 
 # Chargement des fichiers de configuration
@@ -87,8 +88,10 @@ try
    # Objet pour pouvoir envoyer des mails de notification
    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "MyNAS", "")
    
+   $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
+
    # Création de l'objet pour gérer les ACLs
-   $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER)
+   $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER, $nameGeneratorMyNAS)
 
    # Création de l'objet pour faire les requêtes dans CADI
    $mysql_cadi = [SQLDB]::new([DBType]::MySQL, `
@@ -122,9 +125,9 @@ try
    ForEach($user in $users)
    {
       # Création du chemin jusqu'au dossier
-      $filesNo = $user.sciper.Substring($user.sciper.length -1)
+      $filesNo = $nameGeneratorMyNAS.getServerNo($user.sciper)
       $server = "files{0}" -f $filesNo
-      $pathToFolder = getUserUNCPath -server $server -username $user.username
+      $pathToFolder = $nameGeneratorMyNAS.getUserUNCPath($server, $user.username)
 
       # Si le dossier n'existe pas 
       if(!(Test-Path -Path $pathToFolder))

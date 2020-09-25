@@ -25,7 +25,9 @@
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
+
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "define.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "NameGeneratorMyNAS.inc.ps1"))
 
 # Inclusion des fonctions génériques depuis un autre fichier
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func.inc.ps1"))
@@ -101,9 +103,11 @@ try
 
    # Objet pour pouvoir envoyer des mails de notification
    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "MyNAS", "")
-   
+
+   $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
+
    # Création de l'objet pour gérer les ACLs
-   $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER)
+   $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER, $nameGeneratorMyNAS)
 
    $logHistory.addLineAndDisplay("Getting infos... ")
 
@@ -149,9 +153,9 @@ try
       {
       
          # Création du chemin jusqu'au dossier
-         $filesNo = $actionInfos.action_data.sciper.Substring($actionInfos.action_data.sciper.length -1)
+         $filesNo = $nameGeneratorMyNAS.getServerNo($actionInfos.action_data.sciper)
          $server = "files{0}" -f $filesNo
-         $pathToFolder = getUserUNCPath -server $server -username $actionInfos.action_data.username
+         $pathToFolder = $nameGeneratorMyNAS.getUserUNCPath($server, $actionInfos.action_data.username)
 
          $logHistory.addLineAndDisplay( ("Rebuilding rights for user {0} ({1})" -f $actionInfos.action_data.username, $server) )
 
