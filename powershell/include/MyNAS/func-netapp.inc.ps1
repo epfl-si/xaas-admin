@@ -52,58 +52,6 @@ function fileOrFolderExists
 
 # ------------------------------------------------------------------------
 
-
-
-<#
-   BUT : Renvoie le nom du OWNER d'un dossier/fichier donné
-   
-   IN  : $controller    -> Handle sur le contrôleur NetApp sur lequel on est connecté
-   IN  : $onVServer     -> Handle sur le vServer sur lequel se trouve le Volume dans lequel se trouve
-                           le fichier/dossier pour lequel on veut le OWNER. Le chemin doit être sous la forme
-                           /path/to/folder mais il ne faut pas mettre le nom du point de montage au début.
-   IN  : $onVolume      -> Nom du volume sur lequel chercher
-   IN  : $fileOrDir     -> Chemin jusqu'au fichier/dossier dont on veut le OWNER.
-                           Le chemin doit être sous la forme "/path/toFile"
-                           
-   RET : Nom du OWNER (shortname)
-         $null si pas trouvé
-         
-#>
-function getFileOrFolderOwner
-{
-   param([NetApp.Ontapi.Filer.C.NcController] $controller, 
-         [DataONTAP.C.Types.Vserver.VserverInfo] $onVServer, 
-         [string] $onVolume,
-         [string] $fileOrDir) 
-         
-    
-   # Recherche des informations de sécurité   
-   $errorArray=@()
-   $securityInfos = Get-NcFileDirectorySecurity -Controller $controller -VserverContext $onVServer -Volume $onVolume -Path $fileOrDir -ErrorVariable "errorArray" -ErrorAction:SilentlyContinue
-   # Si une erreur s'est produite, on retourne $null
-   if($errorArray.Count -gt 0)
-   {
-      return $null
-   }
-
-   # Parcours des ACLs
-   foreach($acl in $securityInfos.Acls)
-   {
-      # Si on est sur l'ACL qui définit le OWNER
-      # Ressemble à: Owner:INTRANET\chaboude
-      if($acl -match '^Owner:')
-      {
-         # Retour du OWNER uniquement
-         return ($acl.split('\'))[1]
-      }
-   }# FIN BOUCLE de parcours des ACLs
-   
-   # Si on arrive ici, c'est qu'on n'a pas trouvé
-   return $null
-}
-
-# ------------------------------------------------------------------------
-
 <#
    BUT : Charge (si besoin) le module DataOnTap permettant de se connecter
          au NetApp

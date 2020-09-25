@@ -166,8 +166,6 @@ try
    $counters.add('nbRename', '# User renamed')
    $counters.add('nbRenameError', '# User rename errors')
 
-   $nbRenameError=0
-
    # Parcours des éléments à renommer 
    foreach($renameInfos in $renameList)
    {
@@ -186,18 +184,22 @@ try
       $newUsername         = $renameInfosArray[3]
       $userSciper          = $renameInfosArray[4]
       
+      # Définition des UNC du dossier actuel et du nouveau pour les tests d'existence
+      $uncPathCur = getUserUNCPath -server $vServerName -username $curUsername
+      $uncPathNew = getUserUNCPath -server $vServerName -username $newUsername
+
       # Récupération du serveur CIFS (ou du vServer plutôt)
       $vserver = Get-NcVserver -Controller $connectHandle -Name $vServerName
          
       $logHistory.addLineAndDisplay("Rename: $curUsername => $newUsername")
       
       # Si l'ancien dossier existe,
-      if((fileOrFolderExists -controller $connectHandle -onVServer $vserver -fileOrDir $pathToCurFolderFull) -eq $true)
+      if(Test-Path $uncPathCur -pathtype container) 
       {
          $logHistory.addLineAndDisplay(" -> Old folder exists... ")
       
          # Récupération du owner de l'ancien dossier       
-         $curFolderOwner = getFileOrFolderOwner -controller $connectHandle -onVServer $vserver -onVolume $volName -fileOrDir $pathToCurFolder
+         $domain, $curFolderOwner = ((Get-Acl $uncPathCur).owner).Split('\')
          
          # Si pas de owner trouvé 
          if($null -eq $curFolderOwner)
@@ -210,7 +212,7 @@ try
             $logHistory.addLineAndDisplay("-> Owner OK... ")
 
             # Si le nouveau dossier n'existe pas      
-            if((fileOrFolderExists -controller $connectHandle -onVServer $vserver -fileOrDir $pathToNewFolderFull) -eq $false)
+            if(!(Test-Path $uncPathNew -pathtype container) )
             {
                $logHistory.addLineAndDisplay("-> New folder doesn't exists... renaming old... ")
 
@@ -242,7 +244,7 @@ try
                $logHistory.addLineAndDisplay("-> New folder already exists... ")
 
                # Récupération de l'UID du nouveau dossier 
-               $newFolderOwner = getFileOrFolderOwner -controller $connectHandle -onVServer $vserver -onVolume $volName -fileOrDir $pathToNewFolder
+               $domain, $newFolderOwner = ((Get-Acl $uncPathNew).owner).Split('\')
                
                # Si le owner du nouveau dossier est incorrect (qu'il ne correspond pas à l'utilisateur)
                if( ($newFolderOwner -ne $newUsername) -and ($newFolderOwner -ne $curUsername))
@@ -337,13 +339,13 @@ try
          $logHistory.addLineAndDisplay("-> Old folder doesn't exists... ")
          
       # Si le nouveau dossier existe 
-      if((fileOrFolderExists -controller $connectHandle -onVServer $vserver -fileOrDir $pathToNewFolderFull) -eq $true)
+      if(Test-Path $uncPathNew -pathtype container) 
       {
             
             $logHistory.addLineAndDisplay("-> New folder exists...")
             
             # Récupération de l'UID du nouveau dossier 
-            $newFolderOwner = getFileOrFolderOwner -controller $connectHandle -onVServer $vserver -onVolume $volName -fileOrDir "/data/$newUsername"
+            $domain, $newFolderOwner = ((Get-Acl $uncPathNew).owner).Split('\')
             
             # Si le Owner sur le nouveau dossier est OK
             if( ($newFolderOwner -eq $newUsername) -or ($newFolderOwner -eq $curUsername))
