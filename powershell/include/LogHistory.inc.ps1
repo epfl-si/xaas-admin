@@ -35,7 +35,7 @@ class LogHistory
         # Si le dossier pour les logs n'existe pas encore,
         if(!(test-path $this.logFolderPath))
         {
-            New-Item -ItemType Directory -Force -Path $this.logFolderPath
+            New-Item -ItemType Directory -Force -Path $this.logFolderPath | Out-null
         }
         else # Le dossier pour les logs existe déjà
         {
