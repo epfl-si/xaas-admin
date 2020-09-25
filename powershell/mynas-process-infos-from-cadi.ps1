@@ -119,7 +119,7 @@ try
    $request = "SELECT Personnes.sciper, username FROM Accreds INNER JOIN Personnes ON Accreds.sciper = Personnes.sciper WHERE (Accreds.ordre = '1') AND (Accreds.stockindiv = 'y')  AND (Accreds.comptead = 'y') AND (DATE(Accreds.datedeb) <= CURDATE()) AND (username IS NOT NULL)"
    #$request = "SELECT Personnes.sciper, username FROM Accreds INNER JOIN Personnes ON Accreds.sciper = Personnes.sciper WHERE (Accreds.ordre = '1') AND (Accreds.stockindiv = 'y')  AND (Accreds.comptead = 'y') AND (DATE(Accreds.datedeb) <= CURDATE()) AND (username IS NOT NULL) and Personnes.sciper='292334'"
 
-
+   $logHistory.addLineAndDisplay("Getting users to create on CADI...")
    $users = $mysql_cadi.execute($request)
    $nbCreated = 0
    ForEach($user in $users)
@@ -227,7 +227,8 @@ try
       
    # Requête pour récupérer la liste des utilisateurs à supprimer dans le futur
    $usersToDeleteRequest = "SELECT sciper, date_add(datedepart, interval 190 day)AS 'whenToDelete' FROM Departs WHERE datedepart < curdate() AND  datedepart > date_add(curdate(), INTERVAL -365 day);"
-      
+   
+   $logHistory.addLineAndDisplay("Getting users to delete on CADI...")
    $users = $mysql_cadi.execute($usersToDeleteRequest)
       
    # Parcours des utilisateurs renvoyés et ajout dans le fichier CSV
