@@ -107,6 +107,8 @@ try
       New-Item  $global:FILES_TO_PUSH_FOLDER -ItemType "directory" | Out-null
    }
 
+   checkEnvironment
+
    # ---- TESTS
    # Pour récupérer les utilisateurs qui sont à la fois dans départ et arrivée...
    #$incorrectUsers = "SELECT Personnes.sciper, username FROM Accreds INNER JOIN Personnes ON Accreds.sciper = Personnes.sciper WHERE (Accreds.ordre = '1') AND (Accreds.stockindiv = 'y')  AND (Accreds.comptead = 'y') AND (DATE(Accreds.datedeb) <= CURDATE()) AND (username IS NOT NULL) AND Personnes.sciper IN (SELECT sciper FROM Departs WHERE date_add(datedepart, INTERVAL 190 day) < curdate() AND  datedepart > date_add(curdate(), INTERVAL -365 day))"
@@ -260,7 +262,7 @@ try
    # hard-coder la condition et de ne pas utiliser un encodage à la volée
    $deleteExcludeCond = "because_inactive%3D1"
 
-   Invoke-WebRequest -Uri ($baseTriggerImporURL -f "mynas_user_delete_request", "userDeleteRequest", $deleteExcludeCond) -Method Get -OutFile $userDeleteRequestResult
+   Invoke-WebRequest -Uri ($baseTriggerImporURL -f $global:WEBSITE_URL_MYNAS, "mynas_user_delete_request", "userDeleteRequest", $deleteExcludeCond) -Method Get -OutFile $userDeleteRequestResult
 
 
    $logHistory.addLineAndDisplay( "All done!" )
