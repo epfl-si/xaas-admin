@@ -10,8 +10,6 @@
 #>
 
 #Path pour MySQL
-# FIXME: UTILISER CLASSE SQLDB
-$global:MYSQL_CLIENT_PATH = "C:\Program Files\MySQL\MySQL Workbench 6.3 CE\mysql.exe"
 
 $global:FILES_TO_PUSH_FOLDER  = ([IO.Path]::Combine("$PSScriptRoot", "..", "filesToPush"))
 $global:SSH_FOLDER            = ([IO.Path]::Combine($global:DATA_FOLDER, "ssh"))
