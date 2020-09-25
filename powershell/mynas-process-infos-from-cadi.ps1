@@ -85,7 +85,7 @@ try
    $logHistory = [LogHistory]::new('mynas-process-info-from-cadi', (Join-Path $PSScriptRoot "logs"), 30)
 
    # Objet pour pouvoir envoyer des mails de notification
-   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
+   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "MyNAS", "")
    
    # Création de l'objet pour gérer les ACLs
    $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER)
