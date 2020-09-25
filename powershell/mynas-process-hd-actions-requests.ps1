@@ -21,6 +21,7 @@
 
 # Inclusion des constantes
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
