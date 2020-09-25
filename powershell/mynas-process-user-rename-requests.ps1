@@ -23,6 +23,7 @@
 # Inclusion des constantes
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
@@ -158,8 +159,13 @@ try
    # Pour la liste des dossiers renommés
    $logRenamedFolders=@()
 
-   # Compteurs 
-   $nbRenamed=0
+   # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$counters = [Counters]::new()
+
+	# Tous les Tenants
+   $counters.add('nbRename', '# User renamed')
+   $counters.add('nbRenameError', '# User rename errors')
+
    $nbRenameError=0
 
    # Parcours des éléments à renommer 
@@ -217,7 +223,7 @@ try
                   $logUsernameRenameErrors += ($curUsername+": "+$result)
                   $logHistory.addErrorAndDisplay("-> Error renaming folder")
                   
-                  $nbRenameError +=1
+                  $counters.inc('nbRenameError')
                }
                else
                {
@@ -228,7 +234,7 @@ try
                   # On initialise l'utilisateur comme ayant été renommé.
                   setUserRenamed -userSciper $userSciper
                   
-                  $nbRenamed+=1
+                  $counters.inc('nbRename')
                }# FIN Si pas d'erreur lors du renommage de dossier 
             }
             else # Le nouveau dossier existe déjà
@@ -246,7 +252,7 @@ try
                   # Ajout des infos dans le "log" 
                   $logNewFolderExists += "Incorrect Owner on new folder: $curUsername ($curFolderOwner) => $newUsername ($newFolderOwner)"
 
-                  $nbRenameError+=1
+                  $counters.inc('nbRenameError')
                }
                else # Le owner du nouveau dossier est correct
                {
@@ -263,7 +269,7 @@ try
                      # On initialise l'utilisateur comme ayant été renommé.
                      setUserRenamed -userSciper $userSciper
                      
-                     $nbRenamed+=1
+                     $counters.inc('nbRename')
 
                   }
                   else # L'ancien dossier n'est pas vide
@@ -297,7 +303,7 @@ try
                            # On initialise l'utilisateur comme ayant été renommé.
                            setUserRenamed -userSciper $userSciper
                            
-                           $nbRenamed+=1
+                           $counters.inc('nbRename')
                         }# FIN Si pas d'erreur lors du renommage de dossier 
                      }
                      else # Le nouveau dossier n'est pas vide
@@ -305,7 +311,7 @@ try
                         # enregistrement de l'information pour le renommage foireux
                         $logNewFolderExists += "New folder exists and OLD and NEW have data in it! Contact owner: $curUsername ($curFolderOwner) => $newUsername ($newFolderOwner)"
                         
-                        $nbRenameError+=1
+                        $counters.inc('nbRenameError')
                         
                      } # FIN SI le nouveau dossier n'est pas VIDE
                      
@@ -321,7 +327,7 @@ try
             
             $logOldFolderIncorrectOwner += "Owner incorrect on $pathToCurFolder : Is '$curFolderOwner' and should be '$curUsername' or '$curUsername'"
             
-            $nbRenameError += 1
+            $counters.inc('nbRenameError')
          
          } # FIN SI l'UID sur le dossier ne correspond pas
          
@@ -350,7 +356,7 @@ try
                # On initialise le dossier comme renommé
                setUserRenamed -userSciper $userSciper
                   
-               $nbRenamed += 1
+               $counters.inc('nbRename')
             }
             else # Le owner sur le nouveau dossier est INCORRECT 
             {
@@ -358,7 +364,7 @@ try
                
                $logNewFolderIncorrectOwner += "Old folder not exists and incorrect owner on new folder: Is '$newFolderOwner' and should be '$curUsername' or '$curUsername'"
 
-               $nbRenameError += 1
+               $counters.inc('nbRenameError')
                
             } # FIN SI UID sur nouveau dossier incorrect 
             
@@ -371,7 +377,7 @@ try
             
             $logNothingFound += "Nothing found for folders: '$pathToCurFolder' and '$pathToNewFolder'"
             
-            $nbRenameError += 1
+            $counters.inc('nbRenameError')
          
          } # FIN Si le nouveau dossier n'existe pas 
          
@@ -456,12 +462,7 @@ try
       
    }# FIN BOUCLE de parcours des éléments à renommer
 
-   Write-Host ""
-   Write-Host "Summary:"
-   Write-Host "--------"
-   Write-Host "Renamed : $nbRenamed"
-   Write-Host "Errors  : $nbRenameError"
-   Write-Host ""
+   $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
 
    # Si des dossiers ont été renommés
    if($logRenamedFolders.count -gt 0)
