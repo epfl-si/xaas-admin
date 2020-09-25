@@ -262,7 +262,7 @@ try
    # hard-coder la condition et de ne pas utiliser un encodage à la volée
    $deleteExcludeCond = "because_inactive%3D1"
 
-   Invoke-WebRequest -Uri ($baseTriggerImporURL -f "mynas_user_delete_request", "userDeleteRequest", $deleteExcludeCond) -Method Get -OutFile $userDeleteRequestResult
+   Invoke-WebRequest -Uri ($baseTriggerImporURL -f $global:WEBSITE_URL_MYNAS, "mynas_user_delete_request", "userDeleteRequest", $deleteExcludeCond) -Method Get -OutFile $userDeleteRequestResult
 
 
    $logHistory.addLineAndDisplay( "All done!" )
