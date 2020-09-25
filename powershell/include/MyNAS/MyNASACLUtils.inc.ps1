@@ -18,7 +18,7 @@
      hidden [string] $logDir
      hidden [string] $currentLogFile
      hidden [string] $fileACL
-     hidden [string] $nameGeneratorMyNAS
+     hidden [NameGeneratorMyNAS] $nameGeneratorMyNAS
  
      <#
          -------------------------------------------------------------------------------------
@@ -27,7 +27,7 @@
          IN  : $logDir       -> Chemin jusqu'au dossier de logs
          IN  : $binDir       -> Chemin jusqu'au dossier où sont les binaires
      #>
-     MyNASACLUtils([string]$logDir, [string]$binDir, [nameGeneratorMyNAS]$nameGeneratorMyNAS)
+     MyNASACLUtils([string]$logDir, [string]$binDir, [NameGeneratorMyNAS]$nameGeneratorMyNAS)
      {
          $this.logDir = $logDir
          $this.fileACL = Join-Path $binDir "fileacl.exe"
