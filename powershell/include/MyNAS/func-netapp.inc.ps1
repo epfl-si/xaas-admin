@@ -136,7 +136,8 @@ function removeDirectory
    
    # Recherche de la liste des fichiers qui sont dans le dossier (on masque les erreurs car expérience faite, ça fonctionne quand même.
    # C'est juste un peu plus agréable pour les yeux sans celles-ci)
-   $filesList = Read-NcDirectory -Controller $controller -VserverContext $onVServer -Path $dirPathToRemove -ErrorAction:SilentlyContinue  | Where-Object  {$_.FileType -eq "file"}
+   $filesList = Read-NcDirectory -Controller $controller -VserverContext $onVServer -Path $dirPathToRemove -ErrorAction:SilentlyContinue  | Where-Object  {
+      $_.FileType -eq "file" -or $_.FileType -eq "socket"}
    # Si on a trouvé des fichiers
    if($null -ne $filesList)
    {
