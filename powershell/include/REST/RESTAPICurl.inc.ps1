@@ -80,7 +80,6 @@ class RESTAPICurl: RESTAPI
 
 
 	
-	
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Effectue un appel à l'API REST via Curl
@@ -93,6 +92,22 @@ class RESTAPICurl: RESTAPI
 		RET : Retour de l'appel
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
+	{
+		return $this.callAPI($uri, $method, $body, "")
+	}
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Effectue un appel à l'API REST via Curl
+
+		IN  : $uri		-> URL à appeler
+		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
+		IN  : $body 	-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
+							 Si $null, on ne passe rien.
+		IN  : $extraAgrs -> Arguments supplémentaires pouvant être passés à Curl
+
+		RET : Retour de l'appel
+	#>
+	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body, [string]$extraArgs)
 	{
 		$this.lastBody = $body
 		
@@ -113,7 +128,7 @@ class RESTAPICurl: RESTAPI
 		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
 		$this.incFuncCall($false)
 		
-		$args = "--insecure -s --request {0}" -f $method
+		$curlArgs = "{0} --insecure -s --request {1}" -f $extraArgs, $method.ToUpper()
 
 		$tmpFile = $null
 
@@ -132,12 +147,12 @@ class RESTAPICurl: RESTAPI
 				(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:default
 			}
 
-			$args += ' --data "@{0}"' -f $tmpFile
+			$curlArgs += ' --data "@{0}"' -f $tmpFile
 		}
 
 		# Ajout des arguments 
 		# Explication sur le @'...'@ ici : https://stackoverflow.com/questions/18116186/escaping-quotes-and-double-quotes
-		$this.curl.StartInfo.Arguments = "{0} {1} `"{2}`"" -f ( $this.getCurlHeaders() ), $args, ($uri -replace " ","%20")
+		$this.curl.StartInfo.Arguments = "{0} {1} `"{2}`"" -f ( $this.getCurlHeaders() ), $curlArgs, ($uri -replace " ","%20")
 
 		$result = $null
 
