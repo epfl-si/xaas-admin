@@ -57,4 +57,18 @@ class NameGeneratorMyNAS
     }
 
 
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le nom d'un volume en fonction de son numéro
+
+        IN  : $numéro du volume
+
+        RET : Nom du volume
+	#>
+    [string] getVolumeName([int]$volumeNo)
+    {
+        return ("dit_files{0}_indiv" -f $volumeNo)
+    }
+
+
 }
