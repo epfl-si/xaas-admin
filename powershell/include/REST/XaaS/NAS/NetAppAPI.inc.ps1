@@ -1410,10 +1410,12 @@ class NetAppAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Met à jour une règle de quota pour un utilisateur donné
+        BUT : Met à jour une règle de quota pour un utilisateur donné. Si la règle n'existe
+                pas encore, elle est mise à jour
 
-        IN  : $rule         -> Objet représentant la règle
-        IN  : $newQuotaMB   -> Nouveau quota max autorisé en MB
+        IN  : $volume       -> Objet représentant le volume
+        IN  : $username     -> Nom d'utilisateur    
+        IN  : $quotaMB      -> Quota max autorisé en MB
 
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_rule_modify
 
@@ -1421,23 +1423,37 @@ class NetAppAPI: RESTAPICurl
                 fausse! la majorité des informations sont inutiles et génèrent une 
                 erreur
 	#>
-    [void] updateUserQuotaRule([PSObject]$rule, [int]$newQuotaMB)
+    [void] updateUserQuotaRule([PSObject]$volume, [string]$username, [int]$quotaMB)
     {
-        # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $rule.volume.uuid)
+        # Recherche de la règle de quota
+        $rule = $this.getUserQuotaRule($volume, $username)
 
-        $uri = "https://{0}/api/storage/quota/rules/{1}" -f $targetServer, $rule.uuid
+        # Si la règle n'existe pas,
+        if($null -eq $rule)
+        {
+            # On doit donc avoir une règle "héritée", du coup, on ajoute une nouvelle règle
+            $this.addUserQuotaRule($volume, $username, $quotaMB)
 
-        $replace = @{
-            limitBytes = @(($newQuotaMB * 1024 * 1024), $true)
         }
+        else # La règle existe, on peut la mettre à jour
+        {
+            # Recherche du serveur NetApp cible
+            $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
 
-        $body = $this.createObjectFromJSON("mynas-update-user-quota-rule.json", $replace)
+            $uri = "https://{0}/api/storage/quota/rules/{1}" -f $targetServer, $rule.uuid
 
-        $result = $this.callAPI($uri, "PATCH", $body)
+            $replace = @{
+                limitBytes = @(($quotaMB * 1024 * 1024), $true)
+            }
 
-        # L'opération se fait en asynchrone donc on attend qu'elle se termine
-        $this.waitForJobToFinish($targetServer, $result.job.uuid)
+            $body = $this.createObjectFromJSON("mynas-update-user-quota-rule.json", $replace)
+
+            $result = $this.callAPI($uri, "PATCH", $body)
+
+            # L'opération se fait en asynchrone donc on attend qu'elle se termine
+            $this.waitForJobToFinish($targetServer, $result.job.uuid)
+        }
+        
     }
 
 
