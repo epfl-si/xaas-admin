@@ -238,21 +238,10 @@ try
 						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
 						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
 
-    $netapp = $null
-
-    # Parcours des serveurs qui sont définis
-    $configNAS.getConfigValue($targetEnv, "serverList") | ForEach-Object {
-
-        if($null -eq $netapp)
-        {
-            # Création de l'objet pour communiquer avec le NAS
-            $netapp = [NetAppAPI]::new($_, $configNAS.getConfigValue($targetEnv, "user"), $configNAS.getConfigValue($targetEnv, "password"))
-        }
-        else
-        {
-            $netapp.addTargetServer($_)
-        }
-    }# Fin boucle de parcours des serveurs qui sont définis
+    # Création de l'objet pour se connecter aux clusters NetApp
+    $netapp = [NetAppAPI]::new($configNAS.getConfigValue($targetEnv, "serverList"), `
+                                $configNAS.getConfigValue($targetEnv, "user"), `
+                                $configNAS.getConfigValue($targetEnv, "password"))
 
     # Objet pour pouvoir envoyer des mails de notification
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
