@@ -526,11 +526,13 @@ function createOrUpdateBGEnt
 	param([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc)
 
 	# On recherche l'entitlement 
+	$logHistory.addLineAndDisplay(("-> Trying to get Entitlement for BG {0}..." -f $bg.name))
+
 	$ent = $vra.getBGEnt($bg.id)
 
 	if($null -eq $ent)
 	{
-		$logHistory.addLineAndDisplay(("-> Creating Entitlement {0}..." -f $entName))
+		$logHistory.addLineAndDisplay(("-> Entitlement not found... creating {0}..." -f $entName))
 		$ent = $vra.addEnt($entName, $entDesc, $bg.id, $bg.name)
 
 		$counters.inc('EntCreated')
@@ -545,6 +547,10 @@ function createOrUpdateBGEnt
 			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true)
 
 			$counters.inc('EntUpdated')
+		}
+		else
+		{
+			$logHistory.addLineAndDisplay(("-> Entitlement {0} is up-to-date" -f $ent.name))
 		}
 	}
 	return $ent
