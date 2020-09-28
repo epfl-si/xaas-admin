@@ -139,7 +139,7 @@ try
    $vServersQuotaToRebuild=@{}
 
    # Compteurs 
-   $nbDeleted=0
+   $nbUsersDeleted=0
 
    $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
 
@@ -158,7 +158,7 @@ try
       # Recherche de l'UNC où se trouvent les fichiers à rebuild 
       $directory = $nameGeneratorMyNAS.getUserUNCPath($serverName, $username)
 
-      $logHistory.addLineAndDisplay(("[{0}/{1}] Deleting directory for user {2}... " -f ($nbDeleted+1), $nbToDelete, $username), "black", "white")
+      $logHistory.addLineAndDisplay(("[{0}/{1}] Deleting directory for user {2}... " -f ($nbUsersDeleted+1), $nbToDelete, $username), "black", "white")
 
       # Test de l'existance du dossier.
       if(!(Test-Path $directory -pathtype container)) 
@@ -267,17 +267,17 @@ try
 
       } # FIN Si le dossier à effacer existe
 
-      $nbDeleted++
+      $nbUsersDeleted++
 
    }# FIN BOUCLE de parcours des éléments à renommer
 
    # S'il y a des vServer pour lesquels il faut rebuild le quota, 
    if($vServersQuotaToRebuild.Count -gt 0)
    {
-      $logHistory.addLineAndDisplay("Rebuilding quota for vServers... ")
+      $logHistory.addLineAndDisplay( ("Rebuilding quota for {0} vServers... " -f $vServersQuotaToRebuild.count) )
 
       # Parcours des vServers
-      foreach($serverName in $vServersQuotaToRebuild.Keys)
+      foreach($serverName in ($vServersQuotaToRebuild.Keys | Sort-Object) )
       {
          # Recherche des infos du vServer
          $vserver = Get-NcVserver -Controller $connectHandle -Name $serverName
