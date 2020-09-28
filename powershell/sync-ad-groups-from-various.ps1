@@ -74,6 +74,10 @@ enum TableauRoles
 #>
 function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation)
 {
+	# Cette petite ligne permet de transformer les tirets style "MS Office" en tirets "normaux". Si on ne fait pas ça, on aura 
+	# des problèmes par la suite dans vRA car ça pourrira le JSON...
+	$groupDesc = $groupDesc -replace '–', '-'
+
 	# On regarde si le groupe à ajouter dans le nouveau groupe existe
 	if((ADGroupExists -groupName $groupMemberGroup) -eq $false)
 	{
