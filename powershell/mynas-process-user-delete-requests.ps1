@@ -224,7 +224,7 @@ try
                $logHistory.addLineAndDisplay("Deletion failed using fileacl.exe... trying with NetApp cmdlets!")
 
                # On détermine le chemin jusqu'au dossier à supprimer au format <volname>/path/to/dir
-               $dirPathToRemove = "{0}{1}" -f $volumeName, ([Regex]::Match($fullDataPath, '\\files[0-9](.*)')).Groups[1].Value
+               $dirPathToRemove = "{0}{1}" -f $volumeName, (([Regex]::Match($fullDataPath, '\\files[0-9](.*)')).Groups[1].Value -replace "\\", "/")
 
                # Pour essayer d'effacer depuis les commandes NetApp, plus lent mais peut fonctionner..
                $nbDeleted = removeDirectory -controller $connectHandle -onVServer $onVServer -dirPathToRemove $dirPathToRemove -nbDelTot $nbDeleteTot
