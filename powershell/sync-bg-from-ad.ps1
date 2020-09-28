@@ -1211,7 +1211,7 @@ function getBGFromMappingList([Hashtable]$mappingList, [string]$customPropValue)
 #>
 
 # Objet pour sauvegarder/restaurer la progression du script en cas de plantage
-$resumeOnFail = [ResumeOnFail]::new()
+$resumeOnFail = [ResumeOnFail]::new($targetTenant)
 
 <# Pour lister les groupes AD qui existent afin de ne pas contrôler 1000x le même groupe. Cette variable est créée de manière global
 pour pouvoir être accédée par la fonction checkIfADGroupsExists #>
