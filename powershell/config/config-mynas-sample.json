@@ -9,6 +9,7 @@
     },
     "nas":
     {
+        "serverList": [""],
         "user": "",
         "password": ""
     }
