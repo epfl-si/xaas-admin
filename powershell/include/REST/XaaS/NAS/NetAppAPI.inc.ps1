@@ -1293,7 +1293,7 @@ class NetAppAPI: RESTAPICurl
 	#>
     hidden [Array] getQuotaRuleListQuery([string]$queryParams)
     {
-        $uri = "/api/storage/quota_rule_collection_get?max_records=9999"
+        $uri = "/api/storage/quota/rules/?max_records=9999"
 
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
