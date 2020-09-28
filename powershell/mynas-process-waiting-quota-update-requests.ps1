@@ -85,21 +85,10 @@ try
    # Objet pour pouvoir envoyer des mails de notification
    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "MyNAS", "")
    
-   $netapp = $null
-
-   # Parcours des serveurs qui sont définis
-   $configMyNAS.getConfigValue("nas", "serverList") | ForEach-Object {
-
-      if($null -eq $netapp)
-      {
-         # Création de l'objet pour communiquer avec le NAS
-         $netapp = [NetAppAPI]::new($_, $configMyNAS.getConfigValue("nas", "user"), $configMyNAS.getConfigValue("nas", "password"))
-      }
-      else
-      {
-         $netapp.addTargetServer($_)
-      }
-   }# Fin boucle de parcours des serveurs qui sont définis
+   # Création de l'objet pour se connecter aux clusters NetApp
+   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue("nas", "serverList"), `
+                              $configMyNAS.getConfigValue("nas", "user"), `
+                              $configMyNAS.getConfigValue("nas", "password"))
 
    # le format des lignes renvoyées est le suivant :
    # <volumeName>,<usernameShort>,<vServerName>,<Sciper>,<softQuotaKB>,<hardQuotaKB>

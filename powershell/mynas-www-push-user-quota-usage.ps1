@@ -164,21 +164,11 @@ try
    
    $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
 
-   $netapp = $null
+   # Création de l'objet pour se connecter aux clusters NetApp
+   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue("nas", "serverList"), `
+                              $configMyNAS.getConfigValue("nas", "user"), `
+                              $configMyNAS.getConfigValue("nas", "password"))
 
-   # Parcours des serveurs qui sont définis
-   $configMyNAS.getConfigValue("nas", "serverList") | ForEach-Object {
-
-      if($null -eq $netapp)
-      {
-         # Création de l'objet pour communiquer avec le NAS
-         $netapp = [NetAppAPI]::new($_, $configMyNAS.getConfigValue("nas", "user"), $configMyNAS.getConfigValue("nas", "password"))
-      }
-      else
-      {
-         $netapp.addTargetServer($_)
-      }
-   }# Fin boucle de parcours des serveurs qui sont définis
 
    # Chargement du module (si nécessaire)
    Import-Module ActiveDirectory

@@ -34,11 +34,11 @@ class NetAppAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
         BUT : Créer une instance de l'objet
         
-        IN  : $server               -> Nom du serveur
+        IN  : $serverList           -> Liste avec les noms des serveurs
         IN  : $username             -> Nom d'utilisateur
         IN  : $password             -> Mot de passe
 	#>
-	NetAppAPI([string]$server, [string]$username, [string]$password): base($server) 
+	NetAppAPI([Array]$serverList, [string]$username, [string]$password): base($server) 
 	{
         # Mise à jour des headers
         $this.headers.Add('Accept', 'application/hal+json')
@@ -53,9 +53,8 @@ class NetAppAPI: RESTAPICurl
         # Exemple: http://docs.netapp.com/ontap-9/index.jsp?topic=%2Fcom.netapp.doc.dot-rest-api%2Fhome.html
         $this.extraArgs = "-u {0}:{1}" -f $username, $password
 
-        # Ajout du serveur à la liste
-        $this.addTargetServer($server)
-
+        # Ajout des serveurs à la liste
+        $serverList | ForEach-Object { $this.addTargetServer($_) }
     }
 
 
