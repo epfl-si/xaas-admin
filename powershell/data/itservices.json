@@ -608,6 +608,12 @@
             "shortName":  "prjalumgmt",
             "snowId":  "PRJ0012151",
             "serviceManagerSciper": "296747"
+        },
+        {
+            "longName":  "audiovisuel SAVE_S3",
+            "shortName":  "save",
+            "snowId":  "SVC1307",
+            "serviceManagerSciper": "124695"
         }
     ]
 }
