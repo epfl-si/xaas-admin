@@ -84,7 +84,15 @@ class APIUtils
 	#>
 	hidden [void] incFuncCall([bool]$cacheHit)
 	{
-		$funcName = (Get-PSCallStack)[2].FunctionName
+		$funcName = ""
+		ForEach($call in (Get-PSCallStack))
+		{
+			if(@("callAPI", "incFuncCall") -notcontains $call.FunctionName)
+			{
+				$funcName = $call.FunctionName
+				break
+			}
+		}
 
 		$cacheHitStr = ""
 		# Si on a pu récupérer l'information dans le cache
