@@ -1397,11 +1397,6 @@ try
 
 			# Custom properties du Buisness Group
 			$bgEPFLID = $unitID
-
-			# Recherche du centre financier
-			$unitInfos = $ldap.getUnitInfos($bgUnitID)
-
-			$financeCenter = $unitInfos.accountingnumber
 		}
 
 
