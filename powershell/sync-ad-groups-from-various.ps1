@@ -555,6 +555,10 @@ try
 			$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "ge-unit-mapping.json"))
 			$geUnitMappingList = (Get-Content -Path $geUnitMappingFile -raw) | ConvertFrom-Json
 
+			# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
+			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "bill-to-mail.json"))
+			$billToMailList = (Get-Content -Path $billToMailFile -raw) | ConvertFrom-Json
+
 			# Parcours des facultés trouvées
 			ForEach($faculty in $facultyList)
 			{
@@ -665,49 +669,67 @@ try
 				{
 					$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty.name, $unit.name))
 
-
-					# Si c'est une unité de niveau 3 (centre), on doit chercher l'unité de niveau 4 qui fait office de "gestion"
-					if($unit.level -eq 3)
+					# Si on doit utiliser une adresse mail pour la facturation au lieu du centre financier
+					$financeCenter = $null
+					ForEach($billToMail in $billToMailList)
 					{
-						$logHistory.addLineAndDisplay("--> Level 3 unit (Center), looking for level 4 'GE' unit for finance center..." )
-
-						# Noms d'unité à rechercher. On cherche de plusieurs manières parce qu'ils ont été incapables de nommer ça d'une façon cohérente...
-						$geUnitNameList = @( ("{0}-GE" -f $unit.name)
-											("{0}-GE" -f [Regex]::match($unit.name, '[A-Za-z]+-(.*)').groups[1].value) )
-
-						# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
-						$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
-
-						$financeCenter = $null
-
-						# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
-						ForEach($geUnitName in $geUnitNameList)
+						# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturatino
+						if($unit.path -match ("{0}$" -f $billToMail.ldapOU))
 						{
-							$logHistory.addLineAndDisplay(("---> Looking for '{0}' unit..." -f $geUnitName))
-							$geUnit = $unitList | Where-Object { $_.name -eq $geUnitName }
+							$logHistory.addLineAndDisplay(("--> Using email ({0}) for finance center..." -f $billToMail.billingMail))
+							$financeCenter = $billToMail.billingMail
+							break
+						}
+					}
 
-							if($null -ne $geUnit)
+
+					# Si on n'a pas encore de centre financier de défini (donc pas d'adresse mail )
+					if($null -eq $financeCenter)
+					{
+						# Si c'est une unité de niveau 3 (centre), on doit chercher l'unité de niveau 4 qui fait office de "gestion"
+						if($unit.level -eq 3)
+						{
+							$logHistory.addLineAndDisplay("--> Level 3 unit (Center), looking for level 4 'GE' unit for finance center..." )
+
+							# Noms d'unité à rechercher. On cherche de plusieurs manières parce qu'ils ont été incapables de nommer ça d'une façon cohérente...
+							$geUnitNameList = @( ("{0}-GE" -f $unit.name)
+												("{0}-GE" -f [Regex]::match($unit.name, '[A-Za-z]+-(.*)').groups[1].value) )
+
+							# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
+							$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
+
+							$financeCenter = $null
+
+							# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
+							ForEach($geUnitName in $geUnitNameList)
 							{
-								$logHistory.addLineAndDisplay("---> Unit found, getting finance center")
-								$financeCenter = $geUnit.accountingnumber
-								break
+								$logHistory.addLineAndDisplay(("---> Looking for '{0}' unit..." -f $geUnitName))
+								$geUnit = $unitList | Where-Object { $_.name -eq $geUnitName }
+
+								if($null -ne $geUnit)
+								{
+									$logHistory.addLineAndDisplay("---> Unit found, getting finance center")
+									$financeCenter = $geUnit.accountingnumber
+									break
+								}
+							}
+
+							# Si on n'a rien trouvé... 
+							if($null -eq $financeCenter)
+							{
+								$logHistory.addLineAndDisplay("--> 'GE' unit not found... using 'normal' finance center")
+								$financeCenter = $unit.accountingnumber
+								$counters.inc('level3GEUnitNotFound')
+								# Ajout du nom de l'unité niveau 3 pour notifier par mail que pas trouvée
+								$notifications.level3GEUnitNotFound += $unit.name
 							}
 						}
-
-						# Si on n'a rien trouvé... 
-						if($null -eq $financeCenter)
+						else # Ce n'est pas une unité de niveau 3 (centre)
 						{
-							$logHistory.addLineAndDisplay("--> 'GE' unit not found... using 'normal' finance center")
 							$financeCenter = $unit.accountingnumber
-							$counters.inc('level3GEUnitNotFound')
-							# Ajout du nom de l'unité niveau 3 pour notifier par mail que pas trouvée
-							$notifications.level3GEUnitNotFound += $unit.name
 						}
-					}
-					else # Ce n'est pas une unité de niveau 3 (centre)
-					{
-						$financeCenter = $unit.accountingnumber
-					}
+
+					}# FIN SI on n'a pas encore de centre financier
 
 					# Recherche des membres de l'unité
 					$ldapMemberList = $ldap.getUnitMembers($unit['uniqueidentifier'])
