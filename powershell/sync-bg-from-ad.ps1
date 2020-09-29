@@ -1771,8 +1771,9 @@ try
 	}
 
 	# Affichage des nombres d'appels aux fonctions des objets REST
-	$vra.displayFuncCalls()
-	$nsx.displayFuncCalls()
+	$logHistory.addLineAndDisplay($vra.getFuncCallsDisplay("vRA # func calls"))
+	$logHistory.addLineAndDisplay($nsx.getFuncCallsDisplay("NSX # func calls"))
+	
 
 	# Si un fichier de progression existait, on le supprime
 	$resumeOnFail.clean()
