@@ -86,7 +86,7 @@ class Billing
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Ajoute une entité
+        BUT : Ajoute une entité et la met à jour si elle existe déjà
         
         IN  : $type             -> Type de l'entité (du type énuméré défini plus haut).
         IN  : $element          -> Id d'unité, no de service ou no de fond de projet...
@@ -98,22 +98,41 @@ class Billing
     {
         $entity = $this.getEntity($type, $element)
 
-        # Si l'entité existe déjà dans la DB, on retourne son ID
+        # Si l'entité existe déjà dans la DB
         if($null -ne $entity)
         {
+            # On commence par la mettre à jour (dans le doute)
+            $this.updateEntity([int]$entity.entityId, $type, $element, $financeCenter)
+            # Et on retourne son ID
             return [int]$entity.entityId
         }
 
         # L'entité n'existe pas, donc on l'ajoute 
         $request = "INSERT INTO BillingEntity VALUES (NULL, '{0}', '{1}', '{2}')" -f $type.toString(), $element, $financeCenter
 
-        $res =  $this.db.execute($request)
+        $this.db.execute($request) | Out-Null
 
         return [int] ($this.getEntity($type, $element)).entityId
     }
 
 
-    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Mets à jour une entité
+        
+        IN  : $id               -> ID de l'entity
+        IN  : $type             -> Type de l'entité (du type énuméré défini plus haut).
+        IN  : $element          -> Id d'unité, no de service ou no de fond de projet...
+        IN  : $financeCenter    -> No du centre financier auquel imputer la facture
+    #>
+    hidden [void] updateEntity([int]$id, [EntityType]$type, [string]$element, [string]$financeCenter)
+    {
+        # L'entité n'existe pas, donc on l'ajoute 
+        $request = "UPDATE BillingEntity SET entityType='{0}', entityElement='{1}', entityFinanceCenter='{2}' WHERE entityId={3}" -f `
+                    $type.toString(), $element, $financeCenter, $id
+
+        $this.db.execute($request) | Out-Null
+    }
 
 
     <#
@@ -175,7 +194,7 @@ class Billing
         $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', NULL)" -f `
                             $parentEntityId, $type, $name, $desc, $month, $year, $quantity, $unit, $priceLevel
 
-        $res = $this.db.execute($request)
+        $this.db.execute($request) | Out-Null
 
         return [int]($this.getItem($name, $month, $year)).itemId
     }
@@ -325,7 +344,7 @@ class Billing
     [void] cancelBill([string]$billReference)
     {
         $request = "UPDATE BillingItem SET itemBillReference=NULL WHERE itemBillReference='{0}'" -f $billReference
-        $nbUpdated = $this.db.execute($request)
+        $this.db.execute($request) | Out-Null
     }
 
 
