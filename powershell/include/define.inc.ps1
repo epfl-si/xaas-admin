@@ -107,7 +107,8 @@ $global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME = "Legacy VLAN"
 
 ## Billing
 $global:XAAS_BILLING_DATA_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "data", "billing"))
-$global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-document.html"))
-$global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-item.html"))
+$global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-pdf-document.html"))
+$global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-pdf-item.html"))
+$global:XAAS_BILLING_MAIL_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-mail.html"))
 $global:XAAS_BILLING_PDF_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "billing"))
 

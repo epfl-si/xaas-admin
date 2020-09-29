@@ -350,6 +350,43 @@ class Billing
 
     <#
 		-------------------------------------------------------------------------------------
+        BUT : Envoie une facture par email à une adresse donnée
+
+        IN  : $toMail           -> Adresse à laquelle envoyer la facture
+        IN  : $PDFBillFile      -> Chemin jusqu'au fichier PDF 
+        IN  : $mailSubject      -> Sujet du mail
+        IN  : $periodStartDate  -> Date de début de la facture
+        IN  : $periodEndDate    -> Date de fin de la facture
+    #>
+    [void] sendBillByMail([string]$toMail, [string]$PDFBillFile, [string]$mailSubject, [string]$periodStartDate, [string]$periodEndDate)
+    {
+        $mailMessage = (Get-Content -Path $global:XAAS_BILLING_MAIL_TEMPLATE -Encoding UTF8 ) -join "`n"
+
+        # Elements à remplacer dans le template du mail
+        $valToReplace = @{
+            serviceName = $this.serviceBillingInfos.serviceName
+            periodStartDate = $periodStartDate
+            periodEndDate = $periodEndDate
+        }
+
+        # Parcours des remplacements à faire
+        foreach($search in $valToReplace.Keys)
+        {
+            $replaceWith = $valToReplace.Item($search)
+
+            $search = "{{$($search)}}"
+
+            # Mise à jour dans le sujet et le mail
+            $mailMessage =  $mailMessage -replace $search, $replaceWith
+        }
+        
+        Send-MailMessage -From "noreply+vra.billing.bot@epfl.ch" -To $toMail -Subject $mailSubject `
+                        -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding Unicode -Attachments $PDFBillFile    
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
         BUT : Extrait les données pour un type d'élément à facturer
 
         IN  : $month    -> Le no du mois pour lequel extraire les infos
