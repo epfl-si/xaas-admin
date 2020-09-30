@@ -18,6 +18,7 @@
    16.06.2017 - LC - (Peut-être) suite à installation des PowerShell Toolkit 4.4, lorsque l'on fait un Set-NcQuota,
                      il ne faut plus passer l'unité dans laquelle on donne le chiffre du quota mais il faut le passer
                      en bytes.
+   30.09.2020 - LC - Refonte complète pour utiliser API REST au lieu du module DataONTAP pour PowerShell. 
 #>
 
 # Inclusion des constantes
@@ -33,44 +34,18 @@
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "NameGeneratorMyNAS.inc.ps1"))
 
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
+
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "NAS", "NetAppAPI.inc.ps1"))
+
 # Chargement des fichiers de configuration
 $configMyNAS = [ConfigReader]::New("config-mynas.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 
 # ------------------------------------------------------------------------
 # ---------------------------- FONCTIONS ---------------------------------
-
-<#
-   BUT : Renomme un dossier utilisateur
-   
-   IN  : $controller    -> handle sur la connexion sur le contrôleur NetApp
-   IN  : $onVserver     -> Handle sur le vServer concerné
-   IN  : $curPath       -> Chemin actuel absolu jusqu'au dossier à renommer ("vol/<volName>/<pathToFolder>")
-   IN  : $newPath       -> Nom du nouveau dossier. On doit donner le chemin complet également... ("vol/<volName>/<pathToFolder>")
-   
-   RET : 
-   $true    -> Renommage OK
-   Sinon, message d'erreur renvoyé.
-#>
-function renameFolder
-{
-   param([NetApp.Ontapi.Filer.C.NcController] $controller, 
-         [DataONTAP.C.Types.Vserver.VserverInfo] $onVServer, 
-         [string] $curPath,
-         [string] $newPath) 
-         
-   # Renommage du dossier + gestion des erreurs 
-   $errorArray=@()
-   Rename-NcFile -Controller $controller -VserverContext $vserver -Path $curPath -NewPath $newPath -ErrorVariable "errorArray" -ErrorAction:SilentlyContinue | Out-Null
-   # Si une erreur s'est produite, on retourne l'erreur
-   if($errorArray.Count -gt 0)
-   {
-      return $errorArray[0].ToString()
-   }   
-   return $true
-}
-
-# ------------------------------------------------------------------------
 
 <#
    BUT : Initialise un utilisateur comme renommé en appelant le WebService 
@@ -81,14 +56,27 @@ function renameFolder
 function setUserRenamed 
 {
    param($userSciper)
-   
    # Création de l'URL 
    $url = $global:WEBSITE_URL_MYNAS+"ws/set-user-renamed.php?sciper="+$userSciper
    
    # Appel de l'URL pour initialiser l'utilisateur comme renommé 
-   $res = getWebPageLines -url $url
+   getWebPageLines -url $url | Out-Null
 }
 
+
+# ------------------------------------------------------------------------
+<#
+   BUT : Permet de savoir si un dossier est vide
+         
+   IN  : $folderPath -> chemin jusqu'au dossier
+
+   RET : $true | $false
+#>
+
+function isFolderEmpty([string]$folderPath)
+{
+   return (Get-ChildItem $folderPath| Measure-Object).Count -eq 0
+}
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -106,31 +94,21 @@ try
    # Objet pour pouvoir envoyer des mails de notification
    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "MyNAS", "")
    
-   $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
+   # Création de l'objet pour se connecter aux clusters NetApp
+   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue("nas", "serverList"), `
+                              $configMyNAS.getConfigValue("nas", "user"), `
+                              $configMyNAS.getConfigValue("nas", "password"))
 
-   # Chargement du module (si nécessaire)
-   loadDataOnTapModule 
+   $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
    
    checkEnvironment
 
-   try 
-   {
-      $logHistory.addLineAndDisplay("Connecting... ")
-      # Génération du mot de passe 
-      $secPassword = ConvertTo-SecureString $configMyNAS.getConfigValue("nas", "password") -AsPlainText -Force
-      # Création des credentials pour l'utilisateur
-      $credentials = New-Object System.Management.Automation.PSCredential($configMyNAS.getConfigValue("nas", "user"), $secPassword)
-      # Connexion au NetApp
-      $connectHandle = Connect-NcController -Name $global:CLUSTER_COLL_IP -Credential $credentials -HTTPS
-   }
-   catch
-   {
-      Throw ("Error connecting to "+$global:CLUSTER_COLL_IP+"!")
-   }
 
    $logHistory.addLineAndDisplay("Getting infos... ")
    # Récupération de la liste des renommages à effectuer
    $renameList = getWebPageLines -url ($global:WEBSITE_URL_MYNAS+"ws/get-users-to-rename.php?fs_mig_type=mig")
+
+   $renameList = @("files0,dit_files0_indiv,chaboude,krejci,168105")
 
    if($renameList -eq $false)
    {
@@ -173,26 +151,14 @@ try
    foreach($renameInfos in $renameList)
    {
       # les infos contenues dans $renameInfos ont la structure suivante :
-      # <cifsServerName>,<volName>,<pathToUserFolders>,<oldName>,<newName>,<Sciper>
+      # <cifsServerName>,<volName>,<oldName>,<newName>,<Sciper>
       
       # Transformation en tableau puis mise dans des variables plus "parlantes"...
-      $renameInfosArray    = $renameInfos.split(',')
-      $vServerName         = $renameInfosArray[0]
-      $volName             = $renameInfosArray[1]
-      $pathToCurFolder     = ([string]::Concat("/data/",$renameInfosArray[2]))
-      $pathToCurFolderFull = "$volName$pathToCurFolder"
-      $pathToNewFolder     = ([string]::Concat("/data/",$renameInfosArray[3]))
-      $pathToNewFolderFull = "$volName$pathToNewFolder"
-      $curUsername         = $renameInfosArray[2]
-      $newUsername         = $renameInfosArray[3]
-      $userSciper          = $renameInfosArray[4]
+      $vServerName, $volName, $curUsername, $newUsername, $userSciper = $renameInfos.split(',')
       
       # Définition des UNC du dossier actuel et du nouveau pour les tests d'existence
       $uncPathCur = $nameGeneratorMyNAS.getUserUNCPath($vServerName, $curUsername)
       $uncPathNew = $nameGeneratorMyNAS.getUserUNCPath($vServerName, $newUsername)
-
-      # Récupération du serveur CIFS (ou du vServer plutôt)
-      $vserver = Get-NcVserver -Controller $connectHandle -Name $vServerName
          
       $logHistory.addLineAndDisplay("Rename: $curUsername => $newUsername")
       
@@ -207,7 +173,7 @@ try
          # Si pas de owner trouvé 
          if($null -eq $curFolderOwner)
          {
-            $logOwnerNotFound += $pathToCurFolder
+            $logOwnerNotFound += $uncPathCur
          }      
          #Si le owner correspond, 
          elseif( ($curFolderOwner -eq $newUsername) -or ($curFolderOwner -eq $curUsername))
@@ -219,19 +185,12 @@ try
             {
                $logHistory.addLineAndDisplay("-> New folder doesn't exists... renaming old... ")
 
-         
                # Renommage du dossier + gestion des erreurs 
-               $result = renameFolder -controller $connectHandle -onVServer $vserver -curPath $pathToCurFolderFull -newPath $pathToNewFolderFull
-               if($result -ne $true)
+               try
                {
-                  # Ajout de l'erreur à la liste 
-                  $logUsernameRenameErrors += ($curUsername+": "+$result)
-                  $logHistory.addErrorAndDisplay("-> Error renaming folder")
-                  
-                  $counters.inc('nbRenameError')
-               }
-               else
-               {
+                  # Tentative de renommage
+                  Rename-Item -Path $uncPathCur -NewName $uncPathNew -Force
+
                   $logRenamedFolders += ($curUsername+" => "+$newUsername)
                   
                   $logHistory.addLineAndDisplay("-> Setting as renamed... ")
@@ -240,7 +199,16 @@ try
                   setUserRenamed -userSciper $userSciper
                   
                   $counters.inc('nbRename')
-               }# FIN Si pas d'erreur lors du renommage de dossier 
+               }
+               catch
+               {
+                  # Ajout de l'erreur à la liste 
+                  $logUsernameRenameErrors += ($curUsername+": "+$result)
+                  $logHistory.addErrorAndDisplay("-> Error renaming folder")
+                  
+                  $counters.inc('nbRenameError')
+               }
+
             }
             else # Le nouveau dossier existe déjà
             {
@@ -251,7 +219,7 @@ try
                
                # Si le owner du nouveau dossier est incorrect (qu'il ne correspond pas à l'utilisateur)
                if( ($newFolderOwner -ne $newUsername) -and ($newFolderOwner -ne $curUsername))
-               {
+               {no
                   $logHistory.addErrorAndDisplay("-> New folder owner incorrect!")
                   
                   # Ajout des infos dans le "log" 
@@ -263,12 +231,12 @@ try
                {
                   $logHistory.addLineAndDisplay("-> Owner OK... ")
                   # Si l'ancien dossier est vide
-                  if((isFolderEmpty -controller $connectHandle -onVServer $vserver -folderPath $pathToCurFolderFull) -eq $true)
+                  if(isFolderEmpty -folderPath $uncPathCur)
                   {
                      $logHistory.addLineAndDisplay("-> Old empty, deleting... ")
                      
                      # Suppression de "l'ancien" dossier
-                     $nbDel = removeDirectory -controller $connectHandle -onVServer $vserver -dirPathToRemove $pathToCurFolderFull
+                     Remove-item -path $uncPathCur -Recurse -Force
                      
                      $logHistory.addLineAndDisplay("-> Setting as renamed... ")
                      # On initialise l'utilisateur comme ayant été renommé.
@@ -282,25 +250,21 @@ try
                      $logHistory.addLineAndDisplay("-> Old folder not empty... ")
 
                      # Si le nouveau dossier est vide, 
-                     if((isFolderEmpty -controller $connectHandle -onVServer $vserver -folderPath $pathToNewFolderFull) -eq $true)
+                     if(isFolderEmpty -folderPath $uncPathNew)
                      {
                         # Ancien avec donnée  +  nouveau vide  => suppression nouveau vide + renommage ancien
                         $logHistory.addLineAndDisplay("-> Deleting new... ")
                         
-                        $nbDel = removeDirectory -controller $connectHandle -onVServer $vserver -dirPathToRemove $pathToNewFolderFull
+                        # Suppression de "l'ancien" dossier
+                        Remove-item -path $uncPathNew -Recurse -Force
                         
                         $logHistory.addLineAndDisplay("-> Renaming old... ")
 
-                        # Renommage de l'ancien dossier + gestion des erreurs 
-                        $result = renameFolder -controller $connectHandle -onVServer $vserver -curPath $pathToCurFolderFull -newPath $pathToNewFolderFull
-                        if($result -ne $true)
+                        try
                         {
-                           # Ajout de l'erreur à la liste 
-                           $logUsernameRenameErrors += ($curUsername+": "+$result)
-                           $logHistory.addErrorAndDisplay("-> Error renaming folder")
-                        }
-                        else
-                        {
+                           # Tentative de renommage
+                           Rename-Item -Path $uncPathCur -NewName $uncPathNew -Force
+
                            $logRenamedFolders += ($curUsername+" => "+$newUsername+ "  (New existed but empty so was deleted)")
                            
                            $logHistory.addLineAndDisplay("-> Setting as renamed... ")
@@ -309,7 +273,14 @@ try
                            setUserRenamed -userSciper $userSciper
                            
                            $counters.inc('nbRename')
-                        }# FIN Si pas d'erreur lors du renommage de dossier 
+                        }
+                        catch
+                        {
+                           # Ajout de l'erreur à la liste 
+                           $logUsernameRenameErrors += ($curUsername+": "+$result)
+                           $logHistory.addErrorAndDisplay("-> Error renaming folder")
+                        }
+
                      }
                      else # Le nouveau dossier n'est pas vide
                      {
@@ -330,7 +301,7 @@ try
          {      
             $logHistory.addErrorAndDisplay("-> Incorrect owner ($curFolderOwner)! ")
             
-            $logOldFolderIncorrectOwner += "Owner incorrect on $pathToCurFolder : Is '$curFolderOwner' and should be '$curUsername' or '$curUsername'"
+            $logOldFolderIncorrectOwner += "Owner incorrect on $uncPathCur : Is '$curFolderOwner' and should be '$curUsername' or '$curUsername'"
             
             $counters.inc('nbRenameError')
          
@@ -380,7 +351,7 @@ try
 
             $logHistory.addLineAndDisplay("-> New folder doesn't exists!")
             
-            $logNothingFound += "Nothing found for folders: '$pathToCurFolder' and '$pathToNewFolder'"
+            $logNothingFound += "Nothing found for folders: '$uncPathCur' and '$uncPathNew'"
             
             $counters.inc('nbRenameError')
          
@@ -396,73 +367,23 @@ try
       $newUserFullName = ([string]::Concat("INTRANET\",$newUsername))
       
       # Récupération des infos de quota pour l'ancien nom
-      $quotaInfos = Get-NcQuota -Controller $connectHandle -Volume $volName -Vserver $vserver -Target $curUserFullName
+      $logHistory.addLineAndDisplay(("-> Getting quota rule for user {0}" -f $curUserFullName))
+      $volume = $netapp.getVolumeByName($volName)
+      $quotaRule = $netapp.getUserQuotaRule($volume, $curUserFullName)
       
-      $errorArray=@()
-      # Suppression de l'entrée de quota avec l'ancien nom
-      Remove-NcQuota -Controller $connectHandle -Volume $volName -VserverContext $vserver -Target $curUserFullName -Qtree "" -Type user -ErrorVariable "errorArray" -ErrorAction:SilentlyContinue
-      
-      # Transformation des quotas. On les a en "KB" avec le get-NcQuota mais il faut les passer en Bytes pour le Set-NcQuota... ceci depuis que 
-      # les PowerShell Toolkit version 4.4 ont été installés. Avant, fallait simplement spécifier l'unité...
-      $softQuota = ([int]$quotaInfos.SoftDiskLimit) *1024
-      $hardQuota = ([int]$quotaInfos.DiskLimit) *1024
-      
-      # Si pas d'erreur 
-      if($errorArray.Count -eq 0)
+      # Si on a une règle de quota, on la supprime
+      if($null -ne $quotaRule)
       {
-      
-         # Resize du volume pour appliquer la modification 
-         $res = resizeQuota -controller $connectHandle -onVServer $vserver -volumeName $volName
-         
-         # Si ça a foiré
-         if($res.JobState -eq "failure")
-         {
-            # Envoi d'un mail aux admins 
-            sendMailToAdmins -mailMessage ([string]::Concat("Error doing 'quota resize' on volume $volName<br><b>Error:</b><br>", $res.JobCompletion)) `
-                              -mailSubject "MyNAS Service: Error processing username rename requests"
-
-            # On remet en place la règle qu'on a voulu supprimer
-            
-            try
-            {
-               # On essaie de chercher l'utilisateur dans AD
-               $val = Get-ADUser -Identity $curUserFullName -Properties * 
-
-               Set-NcQuota -Controller $connectHandle -VserverContext $vserver -Volume $volName `
-                        -Target $curUserFullName -Type user -Qtree "" `
-                        -DiskLimit $hardQuota `
-                        -SoftDiskLimit $softQuota
-            }
-            catch
-            {
-               $logHistory.addErrorAndDisplay(("-> No AD user found for '{0}'"  -f $curUserFullName))
-            }
-                              
-            # On sort
-            exit 1
-         }
-      }# FIN Si pas d'erreur dans la suppression de l'entrée de quota 
-      
-      try
-      {
-         # On essaie de chercher l'utilisateur dans AD
-         $val = Get-ADUser -Identity $newUserFullName -Properties * 
-
-         # Remise de l'entrée de quota mais avec le nouveau nom
-         Set-NcQuota -Controller $connectHandle -VserverContext $vserver -Volume $volName `
-         -Target $newUserFullName -Type user -Qtree "" `
-         -DiskLimit $hardQuota `
-         -SoftDiskLimit $softQuota
+         $netapp.deleteUserQuotaRule($volume, $quotaRule)
+         $hardMB =  $quotaRule.space.hard_limit / 1024 / 1024
+         $logHistory.addLineAndDisplay(("-> Quota rule found. Creating rule for new username ({0}) with {1} MB..." -f $newUserFullName, $hardMB))
+         # Ajout de la nouvelle entrée pour l'utilisateur avec son nouveau username
+         $netapp.addUserQuotaRule($volume, $newUserFullName, $hardMB)
       }
-      catch
+      else
       {
-            $logHistory.addErrorAndDisplay(("-> No AD user found for '{0}'"  -f $newUserFullName))
+         $logHistory.addLineAndDisplay("-> No quota rule found")
       }
-      
-      
-      
-      # Resize du volume pour appliquer la modification 
-      $res = resizeQuota -controller $connectHandle -onVServer $vserver -volumeName $volName
       
       
    }# FIN BOUCLE de parcours des éléments à renommer

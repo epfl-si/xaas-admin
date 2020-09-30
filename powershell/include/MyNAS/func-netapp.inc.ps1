@@ -79,27 +79,6 @@ function loadDataOnTapModule
    }
 }
 
-# ------------------------------------------------------------------------
-
-<#
-   BUT : Permet de savoir si un dossier se trouvant sur un vServer est vide ou pas.
-   
-   IN  : $controller       -> Handle sur la connexion au système NetApp
-   IN  : $onVServer        -> Handle sur le vServer sur lequel se trouve le dossier à contrôler
-   IN  : $folderPath       -> Chemin absolu jusqu'au dossier (/vol/<vol_name>/<path_to_folder>)
-   
-   RET : $true|$false
-#>
-function isFolderEmpty
-{
-   param([NetApp.Ontapi.Filer.C.NcController] $controller, 
-         [DataONTAP.C.Types.Vserver.VserverInfo] $onVServer, 
-         [string] $folderPath) 
-
-   $file = Get-NcFile -Controller $connectHandle -VserverContext $vserver -Path $folderPath
-   
-   return $file.IsEmpty
-}
 
 # ------------------------------------------------------------------------
 

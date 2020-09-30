@@ -1349,7 +1349,7 @@ class NetAppAPI: RESTAPICurl
                 utilisé. Pour avoir les détails, il faut utiliser la fonction getUserQuotaRule()
 
         IN  : $volume       -> Objet représentant le volume
-        IN  : $username     -> Nom d'utilisateur    
+        IN  : $username     -> Nom d'utilisateur (format INTRANET\<username>) 
 
         RET : Objet avec les informations
 	#>
@@ -1370,7 +1370,7 @@ class NetAppAPI: RESTAPICurl
         BUT : Ajoute une règle de quota pour un utilisateur donné
 
         IN  : $volume       -> Objet représentant le volume
-        IN  : $username     -> Nom d'utilisateur    
+        IN  : $username     -> Nom d'utilisateur (format INTRANET\username)
         IN  : $quotaMB      -> Quota max autorisé en MB
 
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_rule_create
@@ -1413,7 +1413,7 @@ class NetAppAPI: RESTAPICurl
                 pas encore, elle est mise à jour
 
         IN  : $volume       -> Objet représentant le volume
-        IN  : $username     -> Nom d'utilisateur    
+        IN  : $username     -> Nom d'utilisateur (format INTRANET\<username>)
         IN  : $quotaMB      -> Quota max autorisé en MB
 
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_rule_modify
