@@ -79,6 +79,98 @@ function isFolderEmpty([string]$folderPath)
 }
 
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Parcours les différentes notification qui ont été ajoutées dans le tableau
+		  durant l'exécution et effectue un traitement si besoin.
+
+		  La liste des notifications possibles peut être trouvée dans la déclaration
+		  de la variable $notifications plus bas dans le caode.
+
+	IN  : $notifications-> Dictionnaire
+#>
+function handleNotifications
+{
+	param([System.Collections.IDictionary] $notifications)
+
+	# Parcours des catégories de notifications
+	ForEach($notif in $notifications.Keys)
+	{
+		# S'il y a des notifications de ce type
+		if($notifications[$notif].count -gt 0)
+		{
+			# Suppression des doublons 
+			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
+
+			$valToReplace = @{}
+
+			switch($notif)
+			{
+
+				# Erreurs de renommage des dossiers utilisateurs
+				'usernameRenameErrors'
+				{
+					$valToReplace.folderList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Users folder not renamed"
+					$templateName = "user-rename-error"
+            }
+            
+            # Pas possible de renommer correctement car des données dans l'ancien et le nouveau dossier
+            'bothFoldersData'
+            {
+               $valToReplace.folderList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - User rename - Old and new folder exists"
+					$templateName = "both-folders-data"
+            }
+
+            'oldFolderIncorrectOwner'
+            {
+               $valToReplace.folderList = ($uniqueNotifications -join "</li>`n<li>")
+               $valToReplace.folderType = "vieux"
+					$mailSubject = "Error - User rename - Incorrect owner on old folder"
+					$templateName = "incorrect-owner"
+            }
+
+            'newFolderIncorrectOwner'
+            {
+               $valToReplace.folderList = ($uniqueNotifications -join "</li>`n<li>")
+               $valToReplace.folderType = "nouveaux"
+					$mailSubject = "Error - User rename - Incorrect owner on new folder"
+					$templateName = "incorrect-owner"
+            }
+
+            'bothFoldersNotFound'
+            {
+               $valToReplace.folderList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Users folder not renamed - none of the folders exists"
+					$templateName = "both-folders-not-found"
+            }
+
+            'ownerNotFoundForFolder'
+            {
+               $valToReplace.folderList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Users folder not renamed - Owner not found"
+					$templateName = "owner-not-found"
+            }
+
+				default
+				{
+					# Passage à l'itération suivante de la boucle
+					$logHistory.addWarningAndDisplay(("Notification '{0}' not handled in code !" -f $notif))
+					continue
+				}
+
+			}
+
+			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
+			$notificationMail.send($mailSubject, $templateName, $valToReplace)
+
+		} # FIN S'il y a des notifications pour la catégorie courante
+
+	}# FIN BOUCLE de parcours des catégories de notifications
+}
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -92,7 +184,7 @@ try
    $logHistory = [LogHistory]::new('mynas-process-username-rename', (Join-Path $PSScriptRoot "logs"), 30)
     
    # Objet pour pouvoir envoyer des mails de notification
-   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "MyNAS", "")
+   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
    
    # Création de l'objet pour se connecter aux clusters NetApp
    $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue("nas", "serverList"), `
@@ -101,9 +193,23 @@ try
 
    $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
    
-   checkEnvironment
+   <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
+	aux administrateurs du service
+	!! Attention !!
+	A chaque fois qu'un élément est ajouté dans le IDictionnary ci-dessous, il faut aussi penser à compléter la
+	fonction 'handleNotifications()'
 
-
+	(cette liste sera accédée en variable globale même si c'est pas propre XD)
+   #>
+   $notifications = @{
+      usernameRenameErrors = @()
+      bothFoldersData = @()
+      oldFolderIncorrectOwner = @()
+      newFolderIncorrectOwner = @()
+      bothFoldersNotFound = @()
+      ownerNotFoundForFolder = @()
+   }
+   
    $logHistory.addLineAndDisplay("Getting infos... ")
    # Récupération de la liste des renommages à effectuer
    $renameList = getWebPageLines -url ($global:WEBSITE_URL_MYNAS+"ws/get-users-to-rename.php?fs_mig_type=mig")
@@ -128,23 +234,12 @@ try
    }
 
 
-   # Tableau pour mettre la liste des 'username' qui ont foiré pour le renommage 
-   $logUsernameRenameErrors=@()
-   $logNewFolderExists=@()
-   $logOldFolderIncorrectOwner=@()
-   $logNewFolderIncorrectOwner=@()
-   $logAlreadyRenamed=@()
-   $logNothingFound=@()
-   $logOwnerNotFound=@()
-
-   # Pour la liste des dossiers renommés
-   $logRenamedFolders=@()
-
    # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
 
 	# Tous les Tenants
    $counters.add('nbRename', '# User renamed')
+   $counters.add('nbAlreadyRenamed', '# User already renamed')
    $counters.add('nbRenameError', '# User rename errors')
 
    # Parcours des éléments à renommer 
@@ -173,7 +268,7 @@ try
          # Si pas de owner trouvé 
          if($null -eq $curFolderOwner)
          {
-            $logOwnerNotFound += $uncPathCur
+            $notifications.ownerNotFoundForFolder += $uncPathCur
          }      
          #Si le owner correspond, 
          elseif( ($curFolderOwner -eq $newUsername) -or ($curFolderOwner -eq $curUsername))
@@ -190,8 +285,6 @@ try
                {
                   # Tentative de renommage
                   Rename-Item -Path $uncPathCur -NewName $uncPathNew -Force
-
-                  $logRenamedFolders += ($curUsername+" => "+$newUsername)
                   
                   $logHistory.addLineAndDisplay("-> Setting as renamed... ")
                   
@@ -203,7 +296,7 @@ try
                catch
                {
                   # Ajout de l'erreur à la liste 
-                  $logUsernameRenameErrors += ($curUsername+": "+$result)
+                  $notifications.usernameRenameErrors += ($uncPathCur+" to "+$uncPathNew)
                   $logHistory.addErrorAndDisplay("-> Error renaming folder")
                   
                   $counters.inc('nbRenameError')
@@ -219,11 +312,12 @@ try
                
                # Si le owner du nouveau dossier est incorrect (qu'il ne correspond pas à l'utilisateur)
                if( ($newFolderOwner -ne $newUsername) -and ($newFolderOwner -ne $curUsername))
-               {no
+               {
                   $logHistory.addErrorAndDisplay("-> New folder owner incorrect!")
                   
                   # Ajout des infos dans le "log" 
-                  $logNewFolderExists += "Incorrect Owner on new folder: $curUsername ($curFolderOwner) => $newUsername ($newFolderOwner)"
+                  $notifications.newFolderIncorrectOwner += ("{0}: Is INTRANET\{1} and should be INTRANET\{2} or INTRANET\{3}" -f `
+                                                             $uncPathNew, $newFolderOwner, $newUsername, $curUsername)
 
                   $counters.inc('nbRenameError')
                }
@@ -265,8 +359,6 @@ try
                            # Tentative de renommage
                            Rename-Item -Path $uncPathCur -NewName $uncPathNew -Force
 
-                           $logRenamedFolders += ($curUsername+" => "+$newUsername+ "  (New existed but empty so was deleted)")
-                           
                            $logHistory.addLineAndDisplay("-> Setting as renamed... ")
                            
                            # On initialise l'utilisateur comme ayant été renommé.
@@ -277,7 +369,7 @@ try
                         catch
                         {
                            # Ajout de l'erreur à la liste 
-                           $logUsernameRenameErrors += ($curUsername+": "+$result)
+                           $notifications.usernameRenameErrors += ($uncPathCur+" to "+$uncPathNew)
                            $logHistory.addErrorAndDisplay("-> Error renaming folder")
                         }
 
@@ -285,7 +377,7 @@ try
                      else # Le nouveau dossier n'est pas vide
                      {
                         # enregistrement de l'information pour le renommage foireux
-                        $logNewFolderExists += "New folder exists and OLD and NEW have data in it! Contact owner: $curUsername ($curFolderOwner) => $newUsername ($newFolderOwner)"
+                        $notifications.bothFoldersData += ("Old: {0} - New: {1}" -f $uncPathCur, $uncPathNew)
                         
                         $counters.inc('nbRenameError')
                         
@@ -301,7 +393,7 @@ try
          {      
             $logHistory.addErrorAndDisplay("-> Incorrect owner ($curFolderOwner)! ")
             
-            $logOldFolderIncorrectOwner += "Owner incorrect on $uncPathCur : Is '$curFolderOwner' and should be '$curUsername' or '$curUsername'"
+            $notifications.oldFolderIncorrectOwner += ("{0} : Is 'INTRANET\{1}' and should be 'INTRANET\{2}' or 'INTRANET\{3}'" -f $uncPathCur, $curFolderOwner, $curUsername, $newUsername)
             
             $counters.inc('nbRenameError')
          
@@ -326,20 +418,19 @@ try
             {       
 
                $logHistory.addLineAndDisplay("-> Owner OK... setting as renamed... ")
-               
-               $logAlreadyRenamed += "$curUsername ($curFolderOwner) => $newUsername ($newFolderOwner)"
 
                # On initialise le dossier comme renommé
                setUserRenamed -userSciper $userSciper
                   
-               $counters.inc('nbRename')
+               $counters.inc('nbAlreadyRenamed')
             }
             else # Le owner sur le nouveau dossier est INCORRECT 
             {
                $logHistory.addErrorAndDisplay("Incorrect owner")
                
-               $logNewFolderIncorrectOwner += "Old folder not exists and incorrect owner on new folder: Is '$newFolderOwner' and should be '$curUsername' or '$curUsername'"
-
+               $notifications.newFolderIncorrectOwner += ("{0}: Is INTRANET\{1} and should be INTRANET\{2} or INTRANET\{3}" -f `
+                                                             $uncPathNew, $newFolderOwner, $newUsername, $curUsername)
+               
                $counters.inc('nbRenameError')
                
             } # FIN SI UID sur nouveau dossier incorrect 
@@ -351,7 +442,7 @@ try
 
             $logHistory.addLineAndDisplay("-> New folder doesn't exists!")
             
-            $logNothingFound += "Nothing found for folders: '$uncPathCur' and '$uncPathNew'"
+            $notifications.bothFoldersNotFound += ("{0}<br>{1}" -f $uncPathCur, $uncPathNew)
             
             $counters.inc('nbRenameError')
          
@@ -389,80 +480,9 @@ try
    }# FIN BOUCLE de parcours des éléments à renommer
 
    $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
-
-   # Si des dossiers ont été renommés
-   if($logRenamedFolders.count -gt 0)
-   {
-      
-      
-      $mailMessage = stringArrayToMultiLineString -strArray $logRenamedFolders -lineSeparator "<br>"
-      
-      # S'il y avait des dossiers déjà renommés, 
-      if($logAlreadyRenamed.count -gt 0)
-      {
-         #$mailMessage += "<br>-------------------------------------------------"
-         $mailMessage += "<br><b>Some folders were already renamed<b><br>"
-         #$mailMessage += "-------------------------------------------------"
-         
-         $mailMessage += stringArrayToMultiLineString -strArray $logAlreadyRenamed -lineSeparator "<br>"
-         
-      }# FIN SI il y avait des dossiers déjà renommés
-      
-      # Envoi du mail 
-      sendMailToAdmins -mailSubject "MyNAS service: User folder have been renamed" -mailMessage $mailMessage
-      
-   }# FIN SI des dossiers ont été renommés 
-
-   # Pour regrouper toutes les erreurs 
-   $logAllErrors = @()
-
-   # Si on a trouvé des utilisateurs avec des dossier existants
-   if($logNewFolderExists.Count -gt 0)
-   {
-
-      $logAllErrors += "------------------------------------------------------------------------------------------------------"
-      $logAllErrors += "<b>For some users, the folder for 'new' username already exists. Here are the errors:</b>"
-      $logAllErrors += "------------------------------------------------------------------------------------------------------"
-      $logAllErrors += $logNewFolderExists
-      $logAllErrors += ""
-   }
-
-   # Si on a trouvé  des dossiers OLD avec des erreurs de owner
-   if($logOldFolderIncorrectOwner.Count -gt 0)
-   {
-
-      $logAllErrors += "--------------------------------------------------------------"
-      $logAllErrors += "<b>Some 'old' folders have incorrect owner:</b>"
-      $logAllErrors += "--------------------------------------------------------------"
-      $logAllErrors += $logOldFolderIncorrectOwner
-      $logAllErrors += ""
-   }
-
-   # Si on a trouvé  des dossiers NEW avec des erreurs de owner
-   if($logNewFolderIncorrectOwner.Count -gt 0)
-   {
-
-      $logAllErrors += "--------------------------------------------------------------"
-      $logAllErrors += "<b>Some 'new' folders have incorrect owner:</b>"
-      $logAllErrors += "--------------------------------------------------------------"
-      $logAllErrors += $logNewFolderIncorrectOwner
-      $logAllErrors += ""
-   }
-
-
-   # Si des erreurs ont été rencontrées 
-   if($logAllErrors.count -gt 0)
-   {
-      $logHistory.addLineAndDisplay("Errors encountered... sending mail to admins... ")
-      # Création d'un mail
-      $mailMessage="The following errors have been found while renaming user folders. Please correct them manually.<br><br>"
-      
-      $mailMessage += stringArrayToMultiLineString -strArray $logAllErrors -lineSeparator "<br>"
-      
-      # Envoi du mail aux administrateurs 
-      sendMailToAdmins -mailSubject "MyNAS service: ERRORS while renaming user folders" -mailMessage $mailMessage 
-      
-   }
+   
+	# Gestion des erreurs s'il y en a
+	handleNotifications -notifications $notifications
 
 }
 catch
