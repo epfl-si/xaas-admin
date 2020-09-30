@@ -168,44 +168,6 @@ function getWebPageLines
 # ------------------------------------------------------------------
 
 <#
-   BUT : Envoie un mail aux admins du service (NAS ou MyNAS vu que c'est la même adresse mail)
-   
-   IN  : $mailSubject   -> Le sujet du mail
-   IN  : $mailMessage   -> Le contenu du message
-
-   FIXME: Remplacer par l'envoi de mails fait dans XaaS
-#>
-function sendMailToAdmins
-{
-   param([string] $mailSubject, [string] $mailMessage)
-
-   #SMTP server name
-   $smtpServer = "mail.epfl.ch"
-
-   #Creating a Mail object
-   $msg = new-object Net.Mail.MailMessage
-
-   #Creating SMTP server object
-   $smtp = new-object Net.Mail.SmtpClient($smtpServer)
-
-   #Email structure
-   $msg.From = $global:FROM_MAIL
-   $msg.ReplyTo = $global:ADMIN_MAIL
-   $msg.To.Add($global:ADMIN_MAIL)
-   
-   
-   $msg.subject = "$mailSubject"
-   $msg.body = $mailMessage
-   $msg.IsBodyHTML=$true
- 
-   #Sending email
-   $smtp.Send($msg)
-
-}
-
-# ------------------------------------------------------------------
-
-<#
    BUT : Transforme un tableau contenant des "string" dans un string multi-lignes, 
          avec une ligne par case de tableau.
          

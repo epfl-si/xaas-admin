@@ -26,11 +26,5 @@ $global:WEBSITE_URL_MYNAS="https://mynas.epfl.ch/"
 $global:MYNAS_SSH_KEY  = ([IO.Path]::Combine($global:SSH_FOLDER, "sshkey-wwwmynas.ppk"))
 $global:MYNAS_SSH_USER = "wwwmynas"
 
-# Sécuristation des e-mails: utilisation de noreply@epfl.ch
-# FIXME: UTILISER L'ENVOI DE MAIL COMME POUR LES SCRIPTS IAAS
-$global:FROM_MAIL="noreply+sanas-mon-2@epfl.ch"
-$global:ADMIN_MAIL="dit-nas-admins@groupes.epfl.ch"
-#$global:ADMIN_MAIL="lucien.chaboudez@epfl.ch"
-
 # Mail
 $global:MYNAS_MAIL_SUBJECT_PREFIX = "MyNAS Service"

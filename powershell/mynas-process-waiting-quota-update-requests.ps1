@@ -64,10 +64,63 @@ function setQuotaUpdateDone
    $url = $global:WEBSITE_URL_MYNAS+"ws/set-quota-update-done.php?sciper="+$userSciper
    
    # Appel de l'URL pour initialiser l'utilisateur comme renommé 
-   $res = getWebPageLines -url $url
+   getWebPageLines -url $url | Out-Null
 }
 
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Parcours les différentes notification qui ont été ajoutées dans le tableau
+		  durant l'exécution et effectue un traitement si besoin.
+
+		  La liste des notifications possibles peut être trouvée dans la déclaration
+		  de la variable $notifications plus bas dans le caode.
+
+	IN  : $notifications-> Dictionnaire
+#>
+function handleNotifications
+{
+	param([System.Collections.IDictionary] $notifications)
+
+	# Parcours des catégories de notifications
+	ForEach($notif in $notifications.Keys)
+	{
+		# S'il y a des notifications de ce type
+		if($notifications[$notif].count -gt 0)
+		{
+			# Suppression des doublons 
+			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
+
+			$valToReplace = @{}
+
+			switch($notif)
+			{
+
+				# Erreurs de renommage des dossiers utilisateurs
+				'quotaUpdatedUser'
+				{
+					$valToReplace.updateList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Info - {0} user(s) quota(s) updated" -f $uniqueNotifications.count
+					$templateName = "quota-updated-user"
+            }
+     
+
+				default
+				{
+					# Passage à l'itération suivante de la boucle
+					$logHistory.addWarningAndDisplay(("Notification '{0}' not handled in code !" -f $notif))
+					continue
+				}
+
+			}
+
+			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
+			$notificationMail.send($mailSubject, $templateName, $valToReplace)
+
+		} # FIN S'il y a des notifications pour la catégorie courante
+
+	}# FIN BOUCLE de parcours des catégories de notifications
+}
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -84,7 +137,19 @@ try
     
    # Objet pour pouvoir envoyer des mails de notification
    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
-   
+
+   <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
+	aux administrateurs du service
+	!! Attention !!
+	A chaque fois qu'un élément est ajouté dans le IDictionnary ci-dessous, il faut aussi penser à compléter la
+	fonction 'handleNotifications()'
+
+	(cette liste sera accédée en variable globale même si c'est pas propre XD)
+   #>
+   $notifications = @{
+      quotaUpdatedUser = @()
+   }
+
    # Création de l'objet pour se connecter aux clusters NetApp
    $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue("nas", "serverList"), `
                               $configMyNAS.getConfigValue("nas", "user"), `
@@ -111,9 +176,6 @@ try
       exit 0
    }
 
-   $doneMailMessage="Users updated:<br><table border='1' style='border-collapse:collapse;padding:3px;'><tr><td><b>Username</b></td><td><b>Old quota [MB]</b></td><td><b>New quota [MB]</b></td></tr>"
-
-   $oneQuotaUpdateDone=$false
 
    # Pour la liste des volumes
    $volList = @{}
@@ -121,14 +183,11 @@ try
    # Parcours des éléments à renommer 
    foreach($updateInfos in $quotaUpdateList)
    {
-      $quotaInfosArray = $updateInfos.split(',')
-
       # Extraction des infos
       $volumeName, $username, $vserverName, $sciper, $softKB, $hardKB = $updateInfos.split(',')
 
       # Génréation des informations 
       $usernameAndDomain="INTRANET\"+$username
-   
       
       $logHistory.addLineAndDisplay("Changing quota for $usernameAndDomain ")
       
@@ -164,10 +223,8 @@ try
          setQuotaUpdateDone -userSciper $sciper
             
          # Ajout de l'info au message qu'on aura dans le mail 
-         $doneMailMessage += ([string]::Concat("<tr><td>",$username ,"</td><td>", $currentQuota, "</td><td>", ([Math]::Floor($quotaInfosArray[5]/1024)), "</td></tr>"))
+         $notifications.quotaUpdatedUser += ("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>" -f $username, $currentQuota, ([Math]::Floor($hardKB/1024)))
          
-         $oneQuotaUpdateDone=$true
-
       }
       else # Le quota est correct
       {
@@ -176,15 +233,9 @@ try
 
    }# FIN BOUCLE de parcours des quotas à modifier
 
+   # Gestion des erreurs s'il y en a
+   handleNotifications -notifications $notifications
 
-   # Si on a fait au moins une extension de quota
-   if($oneQuotaUpdateDone)
-   {
-      $doneMailMessage += "</table>"
-
-      # Envoi d'un mail pour dire que tout s'est bien passé
-      sendMailToAdmins -mailMessage $doneMailMessage -mailSubject ([string]::Concat("MyNAS Service: Quota updated for ",$nbUpdates ," users"))
-   }
 }
 catch
 {
