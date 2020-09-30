@@ -40,7 +40,6 @@
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func-netapp.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "NameGeneratorMyNAS.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "MyNASACLUtils.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configMyNAS = [ConfigReader]::New("config-mynas.json")
@@ -85,7 +84,7 @@ try
    $logHistory = [LogHistory]::new('mynas-process-user-delete', (Join-Path $PSScriptRoot "logs"), 30)
 
    # Objet pour pouvoir envoyer des mails de notification
-   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, "MyNAS", "")
+   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
    
    # Chargement du module (si nécessaire)
    loadDataOnTapModule 
@@ -119,7 +118,7 @@ try
       Throw "Error getting delete list"
    }
 
-   #$deleteList = $deleteList[-200..-1]
+   $deleteList = $deleteList[-100..-1]
 
 
    # Recherche du nombre de suppression à effectuer 
@@ -142,9 +141,6 @@ try
    $nbUsersDeleted=0
 
    $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
-
-   # Création de l'objet pour gérer les ACLs
-   $myNASAclUtils = [MyNASACLUtils]::new($global:LOGS_FOLDER, $global:BINARY_FOLDER, $nameGeneratorMyNAS, $logHistory)
 
    # Parcours des éléments à supprimer 
    foreach($deleteInfos in $deleteList)
@@ -196,15 +192,10 @@ try
                Continue
             }
 
-            # Récupération du Vserver
-            $onVServer = Get-NcVserver -Controller $connectHandle -Name $serverName
-
             $logHistory.addLineAndDisplay("Using fileacl.exe...")
 
             try
             {
-               # Ajout des droits pour les admins
-               $myNASAclUtils.grantAdminAccess($serverName, $username)
                $logHistory.addLineAndDisplay("Deleting files...")
                # Pour s'affranchir des longs noms de fichiers
                $fullDataPathLong = "\\?\UNC{0}" -f $fullDataPath.substring(1)
@@ -226,8 +217,11 @@ try
                # On détermine le chemin jusqu'au dossier à supprimer au format <volname>/path/to/dir
                $dirPathToRemove = "{0}{1}" -f $volumeName, (([Regex]::Match($fullDataPath, '\\files[0-9](.*)')).Groups[1].Value -replace "\\", "/")
 
+               # Récupération du Vserver
+               $onVServer = Get-NcVserver -Controller $connectHandle -Name $serverName
+
                # Pour essayer d'effacer depuis les commandes NetApp, plus lent mais peut fonctionner..
-               $nbDeleted = removeDirectory -controller $connectHandle -onVServer $onVServer -dirPathToRemove $dirPathToRemove -nbDelTot $nbDeleteTot
+               removeDirectory -controller $connectHandle -onVServer $onVServer -dirPathToRemove $dirPathToRemove -nbDelTot $nbDeleteTot | Out-Null
             }
             
 
@@ -285,14 +279,14 @@ try
          $logHistory.addLineAndDisplay("Resizing quota on vServer $serverName")
          
          # Resize du volume pour appliquer la modification 
-         $res = resizeQuota -controller $connectHandle -onVServer $vserver -volumeName $vServersQuotaToRebuild.Get_Item($serverName)
+         resizeQuota -controller $connectHandle -onVServer $vserver -volumeName $vServersQuotaToRebuild.Get_Item($serverName) | Out-Null
          
          
       }# FIN BOUCLE de parcours des vServers
       
    }
 
-   $logHistory.addLineAndDisplay( ("{0} users have been deleted" -f $nbDeleted))
+   $logHistory.addLineAndDisplay( ("{0} users have been deleted" -f $nbUsersDeleted))
 
 }
 catch

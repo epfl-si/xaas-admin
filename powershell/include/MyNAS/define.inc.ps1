@@ -9,10 +9,10 @@
    1.0 - Version de base
 #>
 
-#Path pour MySQL
 
-$global:FILES_TO_PUSH_FOLDER  = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", "filesToPush"))
-$global:SSH_FOLDER            = ([IO.Path]::Combine($global:DATA_FOLDER, "ssh"))
+$global:FILES_TO_PUSH_FOLDER        = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", "filesToPush"))
+$global:SSH_FOLDER                  = ([IO.Path]::Combine($global:DATA_FOLDER, "ssh"))
+$global:MYNAS_MAIL_TEMPLATE_FOLDER  = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "mail-templates", "MyNAS"))
 
 
 # Adresse IP du cluster Collaboratif
@@ -31,3 +31,6 @@ $global:MYNAS_SSH_USER = "wwwmynas"
 $global:FROM_MAIL="noreply+sanas-mon-2@epfl.ch"
 $global:ADMIN_MAIL="dit-nas-admins@groupes.epfl.ch"
 #$global:ADMIN_MAIL="lucien.chaboudez@epfl.ch"
+
+# Mail
+$global:MYNAS_MAIL_SUBJECT_PREFIX = "MyNAS Service"
