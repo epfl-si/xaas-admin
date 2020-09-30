@@ -118,7 +118,7 @@ try
       Throw "Error getting delete list"
    }
 
-   $deleteList = $deleteList[-100..-1]
+   #$deleteList = $deleteList[-100..-1]
 
 
    # Recherche du nombre de suppression à effectuer 
