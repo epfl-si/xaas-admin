@@ -101,22 +101,11 @@ try
    # Chargement du module (si nécessaire)
    loadDataOnTapModule 
 
-   try 
-   {
-      $logHistory.addLineAndDisplay("Connecting... ")
-      # Génération du mot de passe 
-      $secPassword = ConvertTo-SecureString $configMyNAS.getConfigValue("nas", "password") -AsPlainText -Force
-      # Création des credentials pour l'utilisateur
-      $credentials = New-Object System.Management.Automation.PSCredential($configMyNAS.getConfigValue("nas", "user"), $secPassword)
-      # Connexion au NetApp
-      $connectHandle = Connect-NcController -Name $global:CLUSTER_COLL_IP -Credential $credentials -HTTPS
-      #$connectHandle
-      $logHistory.addLineAndDisplay("Connected")
-   }
-   catch
-   {
-      Throw "Error connecting to "+$global:CLUSTER_COLL_IP+"!"
-   }
+   # Génération du mot de passe pour plus tard
+   $secPassword = ConvertTo-SecureString $configMyNAS.getConfigValue("nas", "password") -AsPlainText -Force
+   # Création des credentials pour l'utilisateur
+   $credentials = New-Object System.Management.Automation.PSCredential($configMyNAS.getConfigValue("nas", "user"), $secPassword)
+
 
    $logHistory.addLineAndDisplay("Getting infos... ")
    # Récupération de la liste des suppressions à effectuer
@@ -147,6 +136,7 @@ try
    # La liste des volumes/vServer, pour éviter de faire trop de requêtes du côté du NetApp
    $volumeList = @{}
    $vServerList = @{}
+   $netAppHostConnectionList = @()
 
    $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
 
@@ -208,13 +198,33 @@ try
             # Si on n'a pas encore l'objet représentant le vServer, on le recherche
             if($vServerList.Keys -notcontains $serverName)
             {
-               $vServerList.$serverName = Get-NcVserver -Controller $connectHandle -Name $serverName
-            }
+               # On regarde sur quel cluster NetApp se trouve le vServer
+
+               $svm = $netapp.getSVMByName($serverName)
+               $netappHost = $netapp.getSVMClusterHost($svm)
+
+               # Si on n'a pas encore de connexion sur le host netapp retourné
+               if(($netAppHostConnectionList | Where-Object { $_.host -eq $netappHost}).count -eq 0)
+               {
+                  # Ajout des infos de connexion (et accessoirement connexion)
+                  $netAppHostConnectionList += @{
+                     host = $netappHost
+                     connection = Connect-NcController -Name $netappHost -Credential $credentials -HTTPS
+                  }
+               }
+
+               # Enregistrement des infos pour les récupérer juste après
+               $vServerList.$serverName = @{
+                  server = Get-NcVserver -Controller $connectHandle -Name $serverName
+                  clusterHost = ($netAppHostConnectionList | Where-Object { $_.host -eq $netappHost}).connection
+               }
+            }# Fin si on n'a pas encore l'objet représentant le vServer
+
             
             <# Pour essayer d'effacer depuis les commandes NetApp, plus lent mais ça fonctionne dans tous les cas. On peut en effet se retrouver avec des fichiers "lock"
                qui ne sont pas visibles avec les commandes Get-ChildItem de PowerShell et donc impossibles à effacer... et ils empêchent l'effacement des dossiers
                via Remove-Item vu que les dossiers ne sont pas considérés comme "vides".  #>
-            removeDirectory -controller $connectHandle -onVServer $vServerList.$serverName -dirPathToRemove $dirPathToRemove
+            removeDirectory -controller $vServerList.$serverName.clusterHost -onVServer $vServerList.$serverName.server -dirPathToRemove $dirPathToRemove
          
             # Suppression de l'entrée de quota 
             $logHistory.addLineAndDisplay("Removing quota rule... ")

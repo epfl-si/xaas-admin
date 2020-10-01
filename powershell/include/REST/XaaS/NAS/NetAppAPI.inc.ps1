@@ -366,6 +366,19 @@ class NetAppAPI: RESTAPICurl
 
 
     <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne le nom du serveur qui héberge la SVM donnée
+        
+        IN  : $svm  -> Objet réprésentant la SVM
+
+        RET : Nom du serveur
+	#>
+    [string] getSVMClusterHost([PSObject]$svm)
+    {
+        return $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
+    }
+
+    <#
         =====================================================================================
                                             AGGREGATS
         =====================================================================================
