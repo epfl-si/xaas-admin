@@ -27,26 +27,13 @@
    
    RET : TRUE|FALSE
 #>
-function fileOrFolderExists
+function fileOrFolderExists([NetApp.Ontapi.Filer.C.NcController] $controller, [DataONTAP.C.Types.Vserver.VserverInfo] $onVServer, [string] $fileOrDir)
 {
-   param([NetApp.Ontapi.Filer.C.NcController] $controller, 
-         [DataONTAP.C.Types.Vserver.VserverInfo] $onVServer, 
-         [string] $fileOrDir)
 
-   
    # Recherche des infos sur le dossier que l'on doit supprimer 
-   $errorArray=@()
-   $res = Get-NcFile -Controller $controller -VserverContext $onVServer -Path $fileOrDir -ErrorVariable "errorArray" -ErrorAction:SilentlyContinue
+   Get-NcFile -Controller $controller -VserverContext $onVServer -Path $fileOrDir -ErrorVariable "errorArray" -ErrorAction:SilentlyContinue | Out-Null
    
-   # Si le dossier n'existe pas, on quitte
-   if($errorArray.Count -gt 0)
-   {
-      return $false
-   }
-   else
-   {
-      return $true
-   }
+   return ($errorArray.Count -eq 0)
 }
 
 
@@ -95,11 +82,8 @@ function loadDataOnTapModule
    REMARQUE !!! Cette fonction marche mais son utilisation est déconseillée car les performances sont vraiment
                 nulles... 
 #>
-function removeDirectory
+function removeDirectory([NetApp.Ontapi.Filer.C.NcController] $controller, [DataONTAP.C.Types.Vserver.VserverInfo] $onVServer, [string] $dirPathToRemove)
 {
-   param([NetApp.Ontapi.Filer.C.NcController] $controller, 
-         [DataONTAP.C.Types.Vserver.VserverInfo] $onVServer, 
-         [string] $dirPathToRemove)
    
    # Si le dossier n'existe pas, on quitte 
    if((fileOrFolderExists -fileOrDir $dirPathToRemove -controller $controller -onVServer $onVServer) -eq $false)
@@ -136,83 +120,3 @@ function removeDirectory
    Remove-NcDirectory -Controller $controller -VserverContext $onVServer -Path $dirPathToRemove -Confirm:$false -ErrorVariable "errorArray"  -ErrorAction:SilentlyContinue
    
 }
-
-# ------------------------------------------------------------------------
-
-<# 
-   BUT : Effectue un "resize" sur un volume pour appliquer les modifications faites dans les règles de quota.
-         La fonction ne rend la main qu'une fois que le resize est terminé.
-   
-   IN  : $controller       -> Handle sur le contrôleur NetApp sur lequel faire la requête
-   IN  : $onVServer        -> Handle sur le vServer sur lequel le fichier/dossier 'fileOrDir' se trouve
-   IN  : $volumeName       -> Nom du volume sur lequel faire le resize.
-#>
-function resizeQuota
-{
-   param([NetApp.Ontapi.Filer.C.NcController] $controller, 
-         [DataONTAP.C.Types.Vserver.VserverInfo] $onVServer, 
-         [string] $volumeName)
-   
-   $res = Start-NcQuotaResize -Controller $controller -VserverContext $onVServer -Volume $volumeName 
-
-   # On attend que le job soit terminé
-   while( ($res.JobState -eq "running") -or ($res.JobState -eq "queued"))
-   {
-      Start-Sleep -Milliseconds 2000
-      $res = Get-NcJob -Controller $controller -Id $res.JobId
-   }
-   
-   return $res
-}
-
-# ------------------------------------------------------------------------
-
-<# 
-   BUT : Ajoute un membre dans un groupe local de serveur CIFS si celui-ci ne s'y trouve pas déjà
-   
-   IN  : $controller       -> Handle sur le contrôleur NetApp sur lequel faire la requête
-   IN  : $onVServer        -> Handle sur le vServer CIFS concerné par l'action
-   IN  : $groupName        -> Nom du groupe auquel ajouter le membre 
-                              EX: BUILTIN\Administrators
-   IN  : $memberName       -> Nom du membre à ajouter
-                              EX: INTRANET\ditex-adminsU
-#>
-function addMemberToLocalCIFSGroup
-{
-   param([NetApp.Ontapi.Filer.C.NcController] $controller, 
-         [DataONTAP.C.Types.Vserver.VserverInfo] $onVServer, 
-         [string] $groupName, [string] $memberName)
-   
-   # On commence par rechercher les membres du groupe concerné
-   $groupMembers = Get-NcCifsLocalGroupMember -Controller $controller -Vserver $onVServer -Name $groupName
-   
-   # Pour dire si on a trouvé ou pas le membre
-   $memberFound=$false
-   
-   # Parcours des membres
-   foreach($member in $groupMembers)
-   {
-      if($member.Member -eq $memberName)
-      {
-         $memberFound = $true
-         break
-      }
-   }# FIN Boucle de parcours des membres
-   
-   # Si le membre n'a pas été trouvé, on doit l'ajouter 
-   if(!$memberFound)
-   {
-      $res = Add-NcCifsLocalGroupMember -Controller $controller -VserverContext $onVServer -Name $groupName -Member $memberName 
-   }# FIN SI membre pas trouvé dans le groupe 
-   
-}
-
-
-
-
-
-
-
-
-
-
