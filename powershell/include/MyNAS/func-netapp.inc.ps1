@@ -92,8 +92,6 @@ function loadDataOnTapModule
    IN  : $controller       -> Handle sur le contrôleur NetApp sur lequel faire la requête
    IN  : $onVServer        -> Handle sur le vServer sur lequel le fichier/dossier 'fileOrDir' se trouve
 
-   RET : Le nombre d'éléments effacés
-   
    REMARQUE !!! Cette fonction marche mais son utilisation est déconseillée car les performances sont vraiment
                 nulles... 
 #>
@@ -101,39 +99,26 @@ function removeDirectory
 {
    param([NetApp.Ontapi.Filer.C.NcController] $controller, 
          [DataONTAP.C.Types.Vserver.VserverInfo] $onVServer, 
-         [string] $dirPathToRemove,[int]$nbDelTot)
+         [string] $dirPathToRemove)
    
-   $DISPLAY_STEP=250
-   
-   $nbDel = 0
-
    # Si le dossier n'existe pas, on quitte 
    if((fileOrFolderExists -fileOrDir $dirPathToRemove -controller $controller -onVServer $onVServer) -eq $false)
    {
-      return $nbDel
+      return 
    }
    
    # Recherche de la liste des fichiers qui sont dans le dossier (on masque les erreurs car expérience faite, ça fonctionne quand même.
    # C'est juste un peu plus agréable pour les yeux sans celles-ci)
-   $filesList = Read-NcDirectory -Controller $controller -VserverContext $onVServer -Path $dirPathToRemove -ErrorAction:SilentlyContinue  | Where-Object  {
-      $_.FileType -eq "file" -or $_.FileType -eq "socket"}
+   $filesList = Read-NcDirectory -Controller $controller -VserverContext $onVServer -Path $dirPathToRemove -ErrorAction:SilentlyContinue  | Where-Object  { $_.FileType -ne "directory"}
    # Si on a trouvé des fichiers
    if($null -ne $filesList)
    {
       # Parcours des fichiers se trouvant dans le dossier et suppression
       foreach($fileInDir in $filesList)
       {
-         $errorArray = @()
          # Tentative de suppression du fichier + gestion des erreurs 
          Remove-NcFile -Controller $controller -VserverContext $onVServer -Path $fileInDir.Path -Confirm:$false -ErrorVariable "errorArray" -ErrorAction:SilentlyContinue
-         # Si pas d'erreur 
-         if($errorArray.Count -eq 0)
-         {
-            $nbDel++
-            $nbDelTot++
-            # Affichage de l'avancement tous les $DISPLAY_STEP éléments
-            if(($nbDelTot % $DISPLAY_STEP)-eq 0){Write-Host "$nbDelTot " -NoNewline}
-         }
+         
       }# FIN BOUCLE de parcours des fichiers 
    }# FIN Si on a trouvé des fichiers 
    
@@ -144,23 +129,12 @@ function removeDirectory
    {
       #$dirInDir.Path
       # Récursivité dans le dossier courant 
-      $nbDel += removeDirectory -controller $controller -onVServer $onVServer -dirPathToRemove $dirInDir.Path -nbDelTot $nbDelTot
+      removeDirectory -controller $controller -onVServer $onVServer -dirPathToRemove $dirInDir.Path
    }
-   $errorArray = @()
    
    # Suppression du dossier courant 
    Remove-NcDirectory -Controller $controller -VserverContext $onVServer -Path $dirPathToRemove -Confirm:$false -ErrorVariable "errorArray"  -ErrorAction:SilentlyContinue
-   # Si pas d'erreur 
-   if($errorArray.Count -eq 0)
-   {
-      $nbDel++
-      $nbDelTot++
-      # Affichage de l'avancement tous les $DISPLAY_STEP éléments
-      if(($nbDelTot%$DISPLAY_STEP)-eq 0){Write-Host "$nbDelTot " -NoNewline}
-   }
    
-   
-   return $nbDel
 }
 
 # ------------------------------------------------------------------------
