@@ -32,6 +32,7 @@
 # Inclusion des constantes
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
@@ -40,6 +41,12 @@
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func-netapp.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "NameGeneratorMyNAS.inc.ps1"))
+
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
+
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "NAS", "NetAppAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configMyNAS = [ConfigReader]::New("config-mynas.json")
@@ -66,7 +73,7 @@ function setUserDeleted
    
    #Write-Host "setUserDeleted: $url"
    # Appel de l'URL pour initialiser l'utilisateur comme renommé 
-   $res = getWebPageLines -url $url
+   getWebPageLines -url $url | Out-Null
 }
 
 
@@ -86,10 +93,13 @@ try
    # Objet pour pouvoir envoyer des mails de notification
    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
    
+   # Création de l'objet pour se connecter aux clusters NetApp
+   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue("nas", "serverList"), `
+                              $configMyNAS.getConfigValue("nas", "user"), `
+                              $configMyNAS.getConfigValue("nas", "password"))
+
    # Chargement du module (si nécessaire)
    loadDataOnTapModule 
-
-   checkEnvironment
 
    try 
    {
@@ -118,8 +128,6 @@ try
       Throw "Error getting delete list"
    }
 
-   #$deleteList = $deleteList[-100..-1]
-
 
    # Recherche du nombre de suppression à effectuer 
    $nbToDelete = getNBElemInObject -inObject $deleteList
@@ -133,12 +141,12 @@ try
       exit 0
    }
 
-
-   # Tableau pour mettre la liste des vServers concernés
-   $vServersQuotaToRebuild=@{}
-
    # Compteurs 
    $nbUsersDeleted=0
+
+   # La liste des volumes/vServer, pour éviter de faire trop de requêtes du côté du NetApp
+   $volumeList = @{}
+   $vServerList = @{}
 
    $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
 
@@ -164,7 +172,7 @@ try
          # On dit que le dossier est effacé sinon on va à nouveau le retrouver à la prochaine exécution du script
          setUserDeleted -userSciper $userSciper
       }
-      else
+      else # Si le dossier existe
       {
          try
          {
@@ -192,67 +200,50 @@ try
                Continue
             }
 
-            $logHistory.addLineAndDisplay("Using fileacl.exe...")
+            $logHistory.addLineAndDisplay(("Deleting files ({0})..." -f $fullDataPath))
+            
+            # On détermine le chemin jusqu'au dossier à supprimer au format <volname>/path/to/dir
+            $dirPathToRemove = "{0}{1}" -f $volumeName, (([Regex]::Match($fullDataPath, '\\files[0-9](.*)')).Groups[1].Value -replace "\\", "/")
 
-            try
+            # Si on n'a pas encore l'objet représentant le vServer, on le recherche
+            if($vServerList.Keys -notcontains $serverName)
             {
-               $logHistory.addLineAndDisplay("Deleting files...")
-               # Pour s'affranchir des longs noms de fichiers
-               $fullDataPathLong = "\\?\UNC{0}" -f $fullDataPath.substring(1)
-               Remove-Item -Recurse -Force $fullDataPathLong -ErrorVariable processError -ErrorAction SilentlyContinue
-            }
-            catch
-            {
-               # Initialise la variable pour "simuler" une erreur qui aura probablement eu lieu durant le "grantAdminAccess" 
-               # afin de forcer à effacer le dossier de la 2e manière
-               $processError = $true
+               $vServerList.$serverName = Get-NcVserver -Controller $connectHandle -Name $serverName
             }
             
-
-            # Si on n'a pas pu effacer le dossier via la manière "classique"
-            if($processError)
-            {
-               $logHistory.addLineAndDisplay("Deletion failed using fileacl.exe... trying with NetApp cmdlets!")
-
-               # On détermine le chemin jusqu'au dossier à supprimer au format <volname>/path/to/dir
-               $dirPathToRemove = "{0}{1}" -f $volumeName, (([Regex]::Match($fullDataPath, '\\files[0-9](.*)')).Groups[1].Value -replace "\\", "/")
-
-               # Récupération du Vserver
-               $onVServer = Get-NcVserver -Controller $connectHandle -Name $serverName
-
-               # Pour essayer d'effacer depuis les commandes NetApp, plus lent mais peut fonctionner..
-               removeDirectory -controller $connectHandle -onVServer $onVServer -dirPathToRemove $dirPathToRemove -nbDelTot $nbDeleteTot | Out-Null
-            }
-            
-
+            <# Pour essayer d'effacer depuis les commandes NetApp, plus lent mais ça fonctionne dans tous les cas. On peut en effet se retrouver avec des fichiers "lock"
+               qui ne sont pas visibles avec les commandes Get-ChildItem de PowerShell et donc impossibles à effacer... et ils empêchent l'effacement des dossiers
+               via Remove-Item vu que les dossiers ne sont pas considérés comme "vides".  #>
+            removeDirectory -controller $connectHandle -onVServer $vServerList.$serverName -dirPathToRemove $dirPathToRemove
+         
             # Suppression de l'entrée de quota 
-            $logHistory.addLineAndDisplay("Removing quota entry... ")
+            $logHistory.addLineAndDisplay("Removing quota rule... ")
 
-            # Si l'entrée de quota existe, on la supprime. Dans le cas où l'entrée avait les valeurs de la règle de quota par défaut,
-            # elle sera supprimée automatiquement après suppressio des données utilisateurs.
-            if($null -ne (Get-NcQuota -Controller $connectHandle -Vserver $onVServer -Volume $volumeName -Target ("INTRANET\"+$username)))
+            # Si on n'a pas encore l'objet représentant le volume, on le recherche
+            if($volumeList.Keys -notcontains $volumeName)
             {
-               Remove-NcQuota -Controller $connectHandle -VserverContext $onVServer -Volume $volumeName -Target ("INTRANET\"+$username) -Type user -Qtree ""
+               $volumeList.$volumeName = $netapp.getVolumeByName($volumeName)
             }
 
-
-            # On check aussi l'entrée de quota pour l'entrée INTRANET\sciper
-            if($null -ne (Get-NcQuota -Controller $connectHandle -Vserver $onVServer -Volume $volumeName -Target ("INTRANET\"+$sciper)))
+            # Parcours des owners possibles
+            ForEach($owner in $allowedOwners)
             {
-               Remove-NcQuota -Controller $connectHandle -VserverContext $onVServer -Volume $volumeName -Target ("INTRANET\"+$sciper) -Type user -Qtree ""
-            }
+               $logHistory.addLineAndDisplay(("> Looking for quota rule for username {0}..." -f $owner))
+               # Recherche de la règle de quota avec le nom d'utilisateur courant
+               $quotaRule = $netapp.getUserQuotaRule($volumeList.$volumeName, $owner)
+               # On ne trouvera de règle de quota que si l'utilisateur n'a pas le quota par défaut appliqué sur le volume (comme c'est le cas pour les étudiants)
+               if($null -ne $quotaRule)
+               {
+                  $logHistory.addLineAndDisplay("> Rule exists, deleting it...")
+                  $netapp.deleteUserQuotaRule($volumeList.$volumeName, $quotaRule)
+               }
+            }# FIN BOUCLE de parcours des règles de quota
 
             $logHistory.addLineAndDisplay("User deleted")
 
             # On note l'utilisateur comme effacé
             setUserDeleted -userSciper $userSciper
             
-            # Si on n'a pas encore traité le vServer courant, on l'ajoute à la liste de ceux pour lesquels il faudra rebuild le quota.
-            if(!$vServersQuotaToRebuild.ContainsKey($serverName)) 
-            {
-               # Ajout des infos pour après 
-               $vServersQuotaToRebuild.Add($serverName, $volumeName)
-            }
          }
          catch
          {
@@ -265,26 +256,6 @@ try
 
    }# FIN BOUCLE de parcours des éléments à renommer
 
-   # S'il y a des vServer pour lesquels il faut rebuild le quota, 
-   if($vServersQuotaToRebuild.Count -gt 0)
-   {
-      $logHistory.addLineAndDisplay( ("Rebuilding quota for {0} vServers... " -f $vServersQuotaToRebuild.count) )
-
-      # Parcours des vServers
-      foreach($serverName in ($vServersQuotaToRebuild.Keys | Sort-Object) )
-      {
-         # Recherche des infos du vServer
-         $vserver = Get-NcVserver -Controller $connectHandle -Name $serverName
-         
-         $logHistory.addLineAndDisplay("Resizing quota on vServer $serverName")
-         
-         # Resize du volume pour appliquer la modification 
-         resizeQuota -controller $connectHandle -onVServer $vserver -volumeName $vServersQuotaToRebuild.Get_Item($serverName) | Out-Null
-         
-         
-      }# FIN BOUCLE de parcours des vServers
-      
-   }
 
    $logHistory.addLineAndDisplay( ("{0} users have been deleted" -f $nbUsersDeleted))
 
