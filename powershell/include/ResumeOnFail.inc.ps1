@@ -17,12 +17,16 @@ class ResumeOnFail
 
     <#
 	-------------------------------------------------------------------------------------
-		BUT : Constructeur de classe
+        BUT : Constructeur de classe
+        
+        IN  : $execIdentifier       -> pour identifier l'exécution en cours car le même
+                                        script peut être exécuté au même moment mais avec des
+                                        paramètres différents
 	#>
-    ResumeOnFail()
+    ResumeOnFail([string]$identifier)
     {
         # Création du chemin d'accès au fichier de suivi de la progression
-        $this.progressFile =  "{0}.progress" -f (((Get-PSCallStack)[1]).ScriptName)
+        $this.progressFile =  ("{0}.{1}.progress" -f (((Get-PSCallStack)[1]).ScriptName), $identifier.ToLower())
     }
 
 
