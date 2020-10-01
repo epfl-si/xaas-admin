@@ -526,11 +526,13 @@ function createOrUpdateBGEnt
 	param([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc)
 
 	# On recherche l'entitlement 
+	$logHistory.addLineAndDisplay(("-> Trying to get Entitlement for BG {0}..." -f $bg.name))
+
 	$ent = $vra.getBGEnt($bg.id)
 
 	if($null -eq $ent)
 	{
-		$logHistory.addLineAndDisplay(("-> Creating Entitlement {0}..." -f $entName))
+		$logHistory.addLineAndDisplay(("-> Entitlement not found... creating {0}..." -f $entName))
 		$ent = $vra.addEnt($entName, $entDesc, $bg.id, $bg.name)
 
 		$counters.inc('EntCreated')
@@ -545,6 +547,10 @@ function createOrUpdateBGEnt
 			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true)
 
 			$counters.inc('EntUpdated')
+		}
+		else
+		{
+			$logHistory.addLineAndDisplay(("-> Entitlement {0} is up-to-date" -f $ent.name))
 		}
 	}
 	return $ent
@@ -1211,7 +1217,7 @@ function getBGFromMappingList([Hashtable]$mappingList, [string]$customPropValue)
 #>
 
 # Objet pour sauvegarder/restaurer la progression du script en cas de plantage
-$resumeOnFail = [ResumeOnFail]::new()
+$resumeOnFail = [ResumeOnFail]::new($targetTenant)
 
 <# Pour lister les groupes AD qui existent afin de ne pas contrôler 1000x le même groupe. Cette variable est créée de manière global
 pour pouvoir être accédée par la fonction checkIfADGroupsExists #>
@@ -1397,10 +1403,6 @@ try
 			# Custom properties du Buisness Group
 			$bgEPFLID = $unitID
 
-			# Recherche du centre financier
-			$unitInfos = $ldap.getUnitInfos($bgUnitID)
-
-			$financeCenter = $unitInfos.accountingnumber
 		}
 
 
