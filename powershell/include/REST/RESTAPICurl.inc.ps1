@@ -137,15 +137,16 @@ class RESTAPICurl: RESTAPI
 			# Génération d'un nom de fichier temporaire et ajout du JSON dans celui-ci
 			$tmpFile = (New-TemporaryFile).FullName
 
-			# Si on a passé une simple chaine de caractères, on la prend tel quel
-			if($body.GetType().Name -eq "String")
+			# Si on a passé autre chose qu'une simple chaine de caractères, 
+			if($body.GetType().Name -ne "String")
 			{
-				$body | Out-File -FilePath $tmpFile -Encoding:utf8
+				# On transforme en JSON
+				$body = (ConvertTo-Json -InputObject $body -Depth 20)
 			}
-			else # On a passé un objet, on le converti en JSON
-			{
-				(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:utf8
-			}
+
+			# On ne fait pas un "Out-File -Encoding:utf8" car ça ajoute un BOM en entête et certaines API REST n'aiment pas ça...
+			$Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
+			[System.IO.File]::WriteAllLines($tmpFile, $body, $Utf8NoBomEncoding)
 
 			$curlArgs += ' --data "@{0}"' -f $tmpFile
 		}
