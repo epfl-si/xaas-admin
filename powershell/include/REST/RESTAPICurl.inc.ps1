@@ -125,11 +125,11 @@ class RESTAPICurl: RESTAPI
 			# Si on a passé une simple chaine de caractères, on la prend tel quel
 			if($body.GetType().Name -eq "String")
 			{
-				$body | Out-File -FilePath $tmpFile -Encoding:default
+				$body | Out-File -FilePath $tmpFile -Encoding:utf8
 			}
 			else # On a passé un objet, on le converti en JSON
 			{
-				(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:default
+				(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:utf8
 			}
 
 			$args += ' --data "@{0}"' -f $tmpFile
