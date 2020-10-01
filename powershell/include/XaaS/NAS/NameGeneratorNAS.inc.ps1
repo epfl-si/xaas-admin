@@ -103,7 +103,20 @@ class NameGeneratorNAS
       return ("{0}_{1}_app" -f $this.details.faculty, $this.details.desiredVolName)
    }
 
-   
+
+   <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le nom de l'export policy à utiliser pour le volume
+
+      IN  : $forVolumeName -> Nom du volume pour lequel on veut le nom de l'export policy
+
+      RET : Le nom de l'export policy
+	#>
+   [string] getExportPolicyName([string]$forVolumeName)
+   {
+      return $forVolumeName
+   }
+
    <#
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la regex à utiliser pour chercher un nom de volume Collaboratif

@@ -327,6 +327,9 @@ try
                 }
             }
 
+            # -----------------------------------------------
+            # 1. Création du volume
+
             $logHistory.addLine( ("Creating Volume {0} on SVM {1} and aggregate {2}..." -f $volName, $svmObj.name, $svmObj.aggregates[0].name) )
 
             # Définition du chemin de montage du volume
@@ -346,30 +349,48 @@ try
             }
             # Il faut mainteannt créer le nécessaire pour accéder au volume
 
+
+            # -----------------------------------------------
+            # 2. Mise en place des accès
+
             # En fonction du type d'accès qui a été demandé
             switch($access.toLower())
             {
+                # ------------ CIFS
                 "cifs"
                 {
                     $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $volName, $mountPath) )
                     $netapp.addCIFSShare($volName, $svmObj, $mountPath)
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
-                    $result.cifsShare = $volName
                     $result.mountPath = ("\\{0}\{1}" -f $svm, $volName)
 
-                    $logHistory.addLine(("Checking if Export Policy '{0}' exists on SVM '{1}'..." -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name))
-                    $denyExportPol = $netapp.getExportPolicyByName($svmObj, $global:EXPORT_POLICY_DENY_NFS_ON_CIFS)
-
-                    if($null -eq $denyExportPol)
+                    # En fonction du type de volume
+                    switch($volType)
                     {
-                        $logHistory.addLine("Export Policy doesn't exists, creating...")
-                        # Création de l'export policy
-                        $denyExportPol = $netapp.addExportPolicy($global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj)
-                    }
+                        # ---- Volume Applicatif
+                        $global:VOL_TYPE_APP
+                        {
+                            Throw "Not handled"
+                        }
 
-                    $logHistory.addLine(("Applying Export Policy '{0}' to SVM '{1}' on Volume '{2}'" -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name, $volName))
-                    $netapp.applyExportPolicyOnVolume($denyExportPol, $newVol)
+                        # ---- Volume Collaboratif
+                        $global:VOL_TYPE_COLL:
+                        {
+                            $logHistory.addLine(("Checking if Export Policy '{0}' exists on SVM '{1}'..." -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name))
+                            $exportPol = $netapp.getExportPolicyByName($svmObj, $global:EXPORT_POLICY_DENY_NFS_ON_CIFS)
+
+                            if($null -eq $exportPol)
+                            {
+                                $logHistory.addLine("Export Policy doesn't exists, creating...")
+                                # Création de l'export policy
+                                $exportPol = $netapp.addExportPolicy($global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj)
+                            }
+                        }
+                    }# FIN EN FONCTION du type de volume
+                    
+                    $logHistory.addLine(("Applying Export Policy '{0}' to SVM '{1}' on Volume '{2}'" -f $exportPol.name, $svmObj.name, $volName))
+                    $netapp.applyExportPolicyOnVolume($exportPol, $newVol)
 
 
                     # --- ACLs
@@ -401,11 +422,26 @@ try
                     
                 }
 
+                # ------------ NFS
                 "nfs3"
                 {
-                    
+                    $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volName)
+
+                    $logHistory.addLine(("Creating export policy '{0}'..." -f $exportPolicyName))
+                    # Création de l'export policy 
+                    $exportPolicy = $netapp.addExportPolicy($exportPolicyName, $svmObj)
+
+                    $logHistory.addLine("Add rules to export policy...")
+                    $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split "-"))
+
+                    # On ajoute le nom du share CIFS au résultat renvoyé par le script
+                    $result.mountPath = ("{0}:/{1}" -f $svm, $volName)
                 }
             }# FIN En fonction du type d'accès demandé 
+
+
+            # -----------------------------------------------
+            # 3. Politique de snapshot
 
             # Si volume collaboratif
             if($volType -eq $global:VOL_TYPE_COLL)
@@ -617,16 +653,12 @@ try
     # Ajout du résultat dans les logs 
     $logHistory.addLine(($output | ConvertTo-Json -Depth 100))
 
-    $vra.disconnect()
-
 }
 catch
 {
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
 	$errorTrace = $_.ScriptStackTrace
-
-    $vra.disconnect()
 
     # Ajout de l'erreur et affichage
     $output.error = "{0}`n`n{1}" -f $errorMessage, $errorTrace
@@ -649,3 +681,5 @@ catch
     # Envoi d'un message d'erreur aux admins 
     $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
 }
+
+$vra.disconnect()
