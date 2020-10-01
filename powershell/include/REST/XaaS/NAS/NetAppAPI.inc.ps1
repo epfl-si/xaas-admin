@@ -1067,6 +1067,11 @@ class NetAppAPI: RESTAPICurl
         # On commence par supprimer les règles existantes
         $this.deleteExportPolicyRuleList($exportPolicy)
 
+        # Filtrage pour virer les IPs "vides" 
+        $ROIPList   = $ROIPList | Where-Object { $_.Trim() -ne "" }
+        $RWIPList   = $RWIPList | Where-Object { $_.Trim() -ne "" }
+        $RootIPList = $RootIPList | Where-Object { $_.Trim() -ne "" }
+
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::ExportPolicy, $exportPolicy.id)
 
