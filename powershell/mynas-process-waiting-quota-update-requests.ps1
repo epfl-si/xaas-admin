@@ -157,20 +157,17 @@ try
 
    # le format des lignes renvoyées est le suivant :
    # <volumeName>,<usernameShort>,<vServerName>,<Sciper>,<softQuotaKB>,<hardQuotaKB>
-   $quotaUpdateList = getWebPageLines -url ("$global:WEBSITE_URL_MYNAS/ws/get-quota-updates.php?fs_mig_type=mig")
+   $quotaUpdateList = downloadPage -url ("$global:WEBSITE_URL_MYNAS/ws/v2/get-quota-updates.php") | ConvertFrom-Json
 
    if($quotaUpdateList -eq $false)
    {
       Throw "Error getting quota update list!"
    }
 
-   # Recherche du nombre de mises à jour de quota à effectuer 
-   $nbUpdates=getNBElemInObject -inObject $quotaUpdateList
-
-   $logHistory.addLineAndDisplay("$nbUpdates quota(s) to update")
+   $logHistory.addLineAndDisplay(("{0} quota(s) to update" -f $quotaUpdateList.count))
 
    # Si rien à faire,
-   if($nbUpdates -eq 0)
+   if($quotaUpdateList.count -eq 0)
    {  
       $logHistory.addLineAndDisplay("Nothing to do, exiting...")
       exit 0
@@ -183,23 +180,21 @@ try
    # Parcours des éléments à renommer 
    foreach($updateInfos in $quotaUpdateList)
    {
-      # Extraction des infos
-      $volumeName, $username, $vserverName, $sciper, $softKB, $hardKB = $updateInfos.split(',')
-
+      
       # Génréation des informations 
-      $usernameAndDomain="INTRANET\"+$username
+      $usernameAndDomain="INTRANET\"+$updateInfos.username
       
       $logHistory.addLineAndDisplay("Changing quota for $usernameAndDomain ")
       
       # Si on n'a pas encore les infos du volume en cache,
-      if($volList.Keys -notcontains $volumeName)
+      if($volList.Keys -notcontains $updateInfos.volumeName)
       {
          # Recherche des infos du volume sur lequel on doit travailler
-         $volList.$volumeName = $netapp.getVolumeByName($volumeName)
+         $volList.($updateInfos.volumeName) = $netapp.getVolumeByName($updateInfos.volumeName)
       }
 
       # Recherche du quota actuel 
-      $currentQuota = $netapp.getUserQuotaRule($volList.$volumeName, $usernameAndDomain)
+      $currentQuota = $netapp.getUserQuotaRule($volList.($updateInfos.volumeName), $usernameAndDomain)
       
       # Si pas trouvé, c'est que l'utilisateur a le quota par défaut
       if($null -eq $currentQuota)
@@ -212,18 +207,18 @@ try
       }
       
       # Si le quota est différent ou que l'entrée de quota n'existe pas,
-      if(($null -eq $currentQuota) -or ($currentQuota.space.hard_limit -ne ($hardKB * 1024)))
+      if(($null -eq $currentQuota) -or ($currentQuota.space.hard_limit -ne ($updateInfos.hardKB * 1024)))
       {
-         $logHistory.addLineAndDisplay(("-> Updating quota... Current: "+$currentQuotaMB+" MB - New: "+([Math]::Floor($hardKB/1024))+" MB... ") )
+         $logHistory.addLineAndDisplay(("-> Updating quota... Current: "+$currentQuotaMB+" MB - New: "+([Math]::Floor($updateInfos.hardKB/1024))+" MB... ") )
          
          # Exécution de la requête (et attente que le resize soit fait)
-         $netapp.updateUserQuotaRule($volList.$volumeName, $usernameAndDomain, $hardKB/1024)
+         $netapp.updateUserQuotaRule($volList.($updateInfos.volumeName), $usernameAndDomain, $updateInfos.hardKB/1024)
          
          # On initialise la requête comme ayant été traitée
-         setQuotaUpdateDone -userSciper $sciper
+         setQuotaUpdateDone -userSciper $updateInfos.sciper
             
          # Ajout de l'info au message qu'on aura dans le mail 
-         $notifications.quotaUpdatedUser += ("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>" -f $username, $currentQuota, ([Math]::Floor($hardKB/1024)))
+         $notifications.quotaUpdatedUser += ("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>" -f $updateInfos.username, $currentQuota, ([Math]::Floor($updateInfos.hardKB/1024)))
          
       }
       else # Le quota est correct
