@@ -51,13 +51,13 @@ $configGlobal = [ConfigReader]::New("config-global.json")
    BUT : Initialise un utilisateur comme renommé en appelant le WebService 
          adéquat.
          
-   IN  : $userSciper    -> Sciper de l'utilisateur qu'on veut initialiser comme renommé.
+   IN  : $renameInfos.sciper    -> Sciper de l'utilisateur qu'on veut initialiser comme renommé.
 #>
 function setUserRenamed 
 {
-   param($userSciper)
+   param($sciper)
    # Création de l'URL 
-   $url = $global:WEBSITE_URL_MYNAS+"ws/set-user-renamed.php?sciper="+$userSciper
+   $url = $global:WEBSITE_URL_MYNAS+"ws/set-user-renamed.php?sciper="+$sciper
    
    # Appel de l'URL pour initialiser l'utilisateur comme renommé 
    getWebPageLines -url $url | Out-Null
@@ -212,22 +212,17 @@ try
    
    $logHistory.addLineAndDisplay("Getting infos... ")
    # Récupération de la liste des renommages à effectuer
-   $renameList = getWebPageLines -url ($global:WEBSITE_URL_MYNAS+"ws/get-users-to-rename.php?fs_mig_type=mig")
-
-   $renameList = @("files0,dit_files0_indiv,chaboude,krejci,168105")
+   $renameList = downloadPage -url ($global:WEBSITE_URL_MYNAS+"ws/v2/get-users-to-rename.php") | ConvertFrom-Json
 
    if($renameList -eq $false)
    {
       Throw "Error getting rename list!"
    }
 
-   # Recherche du nombre de renommages à effectuer 
-   $nbRenames=getNBElemInObject -inObject $renameList
-
-   $logHistory.addLineAndDisplay("$nbRenames folder(s) to rename")
+   $logHistory.addLineAndDisplay(("{0} folder(s) to rename" -f $renameList.Count))
 
    # Si rien à faire,
-   if($nbRenames -eq 0)
+   if($renameList.Count -eq 0)
    {  
       $logHistory.addLineAndDisplay("Nothing to do, exiting...")
       exit 0
@@ -242,20 +237,18 @@ try
    $counters.add('nbAlreadyRenamed', '# User already renamed')
    $counters.add('nbRenameError', '# User rename errors')
 
+   # Pour savoir si les dossiers sont présents
+   $noNewFolder = $false
+   $noOldFolder = $false
+
    # Parcours des éléments à renommer 
    foreach($renameInfos in $renameList)
    {
-      # les infos contenues dans $renameInfos ont la structure suivante :
-      # <cifsServerName>,<volName>,<oldName>,<newName>,<Sciper>
-      
-      # Transformation en tableau puis mise dans des variables plus "parlantes"...
-      $vServerName, $volName, $curUsername, $newUsername, $userSciper = $renameInfos.split(',')
-      
       # Définition des UNC du dossier actuel et du nouveau pour les tests d'existence
-      $uncPathCur = $nameGeneratorMyNAS.getUserUNCPath($vServerName, $curUsername)
-      $uncPathNew = $nameGeneratorMyNAS.getUserUNCPath($vServerName, $newUsername)
+      $uncPathCur = $nameGeneratorMyNAS.getUserUNCPath($renameInfos.vserver, $renameInfos.oldUsername)
+      $uncPathNew = $nameGeneratorMyNAS.getUserUNCPath($renameInfos.vserver, $renameInfos.newUsername)
          
-      $logHistory.addLineAndDisplay("Rename: $curUsername => $newUsername")
+      $logHistory.addLineAndDisplay(("Rename: {0} => {1}" -f $renameInfos.oldUsername, $renameInfos.newUsername))
       
       # Si l'ancien dossier existe,
       if(Test-Path $uncPathCur -pathtype container) 
@@ -271,7 +264,7 @@ try
             $notifications.ownerNotFoundForFolder += $uncPathCur
          }      
          #Si le owner correspond, 
-         elseif( ($curFolderOwner -eq $newUsername) -or ($curFolderOwner -eq $curUsername))
+         elseif( ($curFolderOwner -eq $renameInfos.newUsername) -or ($curFolderOwner -eq $renameInfos.oldUsername) )
          {
             $logHistory.addLineAndDisplay("-> Owner OK... ")
 
@@ -289,7 +282,7 @@ try
                   $logHistory.addLineAndDisplay("-> Setting as renamed... ")
                   
                   # On initialise l'utilisateur comme ayant été renommé.
-                  setUserRenamed -userSciper $userSciper
+                  setUserRenamed -sciper $renameInfos.sciper
                   
                   $counters.inc('nbRename')
                }
@@ -311,13 +304,13 @@ try
                $domain, $newFolderOwner = ((Get-Acl $uncPathNew).owner).Split('\')
                
                # Si le owner du nouveau dossier est incorrect (qu'il ne correspond pas à l'utilisateur)
-               if( ($newFolderOwner -ne $newUsername) -and ($newFolderOwner -ne $curUsername))
+               if( ($newFolderOwner -ne $renameInfos.newUsername) -and ($newFolderOwner -ne $renameInfos.oldUsername))
                {
                   $logHistory.addErrorAndDisplay("-> New folder owner incorrect!")
                   
                   # Ajout des infos dans le "log" 
                   $notifications.newFolderIncorrectOwner += ("{0}: Is INTRANET\{1} and should be INTRANET\{2} or INTRANET\{3}" -f `
-                                                             $uncPathNew, $newFolderOwner, $newUsername, $curUsername)
+                                                             $uncPathNew, $newFolderOwner, $renameInfos.newUsername, $renameInfos.oldUsername)
 
                   $counters.inc('nbRenameError')
                }
@@ -334,7 +327,7 @@ try
                      
                      $logHistory.addLineAndDisplay("-> Setting as renamed... ")
                      # On initialise l'utilisateur comme ayant été renommé.
-                     setUserRenamed -userSciper $userSciper
+                     setUserRenamed -sciper $renameInfos.sciper
                      
                      $counters.inc('nbRename')
 
@@ -362,7 +355,7 @@ try
                            $logHistory.addLineAndDisplay("-> Setting as renamed... ")
                            
                            # On initialise l'utilisateur comme ayant été renommé.
-                           setUserRenamed -userSciper $userSciper
+                           setUserRenamed -sciper $renameInfos.sciper
                            
                            $counters.inc('nbRename')
                         }
@@ -393,7 +386,7 @@ try
          {      
             $logHistory.addErrorAndDisplay("-> Incorrect owner ($curFolderOwner)! ")
             
-            $notifications.oldFolderIncorrectOwner += ("{0} : Is 'INTRANET\{1}' and should be 'INTRANET\{2}' or 'INTRANET\{3}'" -f $uncPathCur, $curFolderOwner, $curUsername, $newUsername)
+            $notifications.oldFolderIncorrectOwner += ("{0} : Is 'INTRANET\{1}' and should be 'INTRANET\{2}' or 'INTRANET\{3}'" -f $uncPathCur, $curFolderOwner, $renameInfos.oldUsername, $renameInfos.newUsername)
             
             $counters.inc('nbRenameError')
          
@@ -403,10 +396,12 @@ try
       else # L'ancien dossier n'existe plus
       {      
          $logHistory.addLineAndDisplay("-> Old folder doesn't exists... ")
+
+         $noOldFolder = $true
          
-      # Si le nouveau dossier existe 
-      if(Test-Path $uncPathNew -pathtype container) 
-      {
+         # Si le nouveau dossier existe 
+         if(Test-Path $uncPathNew -pathtype container) 
+         {
             
             $logHistory.addLineAndDisplay("-> New folder exists...")
             
@@ -414,13 +409,13 @@ try
             $domain, $newFolderOwner = ((Get-Acl $uncPathNew).owner).Split('\')
             
             # Si le Owner sur le nouveau dossier est OK
-            if( ($newFolderOwner -eq $newUsername) -or ($newFolderOwner -eq $curUsername))
+            if( ($newFolderOwner -eq $renameInfos.newUsername) -or ($newFolderOwner -eq $renameInfos.oldUsername))
             {       
 
                $logHistory.addLineAndDisplay("-> Owner OK... setting as renamed... ")
 
                # On initialise le dossier comme renommé
-               setUserRenamed -userSciper $userSciper
+               setUserRenamed -sciper $renameInfos.sciper
                   
                $counters.inc('nbAlreadyRenamed')
             }
@@ -429,7 +424,7 @@ try
                $logHistory.addErrorAndDisplay("Incorrect owner")
                
                $notifications.newFolderIncorrectOwner += ("{0}: Is INTRANET\{1} and should be INTRANET\{2} or INTRANET\{3}" -f `
-                                                             $uncPathNew, $newFolderOwner, $newUsername, $curUsername)
+                                                             $uncPathNew, $newFolderOwner, $renameInfos.newUsername, $renameInfos.oldUsername)
                
                $counters.inc('nbRenameError')
                
@@ -441,6 +436,8 @@ try
             # A ce stade, ni l'ancien ni le nouveau dossier n'existent... 
 
             $logHistory.addLineAndDisplay("-> New folder doesn't exists!")
+
+            $noNewFolder = $true
             
             $notifications.bothFoldersNotFound += ("{0}<br>{1}" -f $uncPathCur, $uncPathNew)
             
@@ -453,13 +450,13 @@ try
       # ---------------- QUOTAS ---------------
       
       # Génération du nom actuel du user avec le domaine devant 
-      $curUserFullName = ([string]::Concat("INTRANET\",$curUsername))
+      $curUserFullName = ([string]::Concat("INTRANET\",$renameInfos.oldUsername))
       # Génération du nouveau nom du user
-      $newUserFullName = ([string]::Concat("INTRANET\",$newUsername))
+      $newUserFullName = ([string]::Concat("INTRANET\",$renameInfos.newUsername))
       
       # Récupération des infos de quota pour l'ancien nom
       $logHistory.addLineAndDisplay(("-> Getting quota rule for user {0}" -f $curUserFullName))
-      $volume = $netapp.getVolumeByName($volName)
+      $volume = $netapp.getVolumeByName($renameInfos.volumeName)
       $quotaRule = $netapp.getUserQuotaRule($volume, $curUserFullName)
       
       # Si on a une règle de quota, on la supprime
@@ -476,6 +473,14 @@ try
          $logHistory.addLineAndDisplay("-> No quota rule found")
       }
       
+      # Si aucun des dossiers n'existe
+      if($noNewFolder -and $noOldFolder)
+      {
+         $logHistory.addLineAndDisplay("-> None of the folders exists, just setting user as renamed")
+         # On initialise le dossier comme renommé car il se peut qu'il y ait eu un problème par le passé qui a fait que le renommage des dossiers 
+         # n'ai pas bien fonctionné et donc entre temps le dossier utilisateur a été effacé...
+         setUserRenamed -sciper $renameInfos.sciper
+      }
       
    }# FIN BOUCLE de parcours des éléments à renommer
 

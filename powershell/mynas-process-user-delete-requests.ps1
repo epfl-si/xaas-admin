@@ -116,7 +116,7 @@ try
       Throw "Error getting delete list"
    }
 
-   $logHistory.addLineAndDisplay(("{0} folder(s) to delete") -f $deleteList.count)
+   $logHistory.addLineAndDisplay(("{0} folder(s) to delete" -f $deleteList.count))
 
    # Si rien à faire,
    if($deleteList.count -eq 0)
