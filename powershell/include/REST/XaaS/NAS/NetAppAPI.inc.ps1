@@ -825,7 +825,13 @@ class NetAppAPI: RESTAPICurl
     {
         $uri = "/api/protocols/nfs/export-policies/{0}" -f $id
 
-        return $this.callAPI($uri, "GET", $null, "", $true)
+        $res = $this.callAPI($uri, "GET", $null, "", $true)
+
+        if($null -ne $res)
+        {
+            return $res[0]
+        }
+        return $res
     }
 
 
@@ -1225,7 +1231,13 @@ class NetAppAPI: RESTAPICurl
     {
         $uri = "/api/storage/snapshot-policies/{0}" -f $id
 
-        return $this.callAPI($uri, "GET", $null, "", $true)
+        $res = $this.callAPI($uri, "GET", $null, "", $true)
+
+        if($null -ne $res)
+        {
+            return $res[0]
+        }
+        return $res
     }
 
 

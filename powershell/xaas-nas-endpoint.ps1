@@ -267,7 +267,7 @@ try
 
                     # Choix de la SVM
                     $logHistory.addLine("Choosing SVM for volume...")
-                    $svmObj = chooseAppSVM -netapp $netapp -svmList = $appSVMList.$access
+                    $svmObj = chooseAppSVM -netapp $netapp -svmList $appSVMList.$access
                     $logHistory.addLine( ("SVM will be '{0}'" -f $svmObj.name) )
 
                     # Pas d'espace réservé pour les snapshots
@@ -293,6 +293,11 @@ try
 
                     # Recherche de la SVM
                     $svmObj = $netapp.getSVMByName($svm)
+
+                    if($null -eq $svmObj)
+                    {
+                        Throw ("SVM '{0}' doesn't exists" -f $svm)
+                    }
 
                     # Il faut qu'on mette les snapshot en place
                     $logHistory.addLine("Getting Snapshot Policy...")
@@ -375,7 +380,7 @@ try
                         }
 
                         # ---- Volume Collaboratif
-                        $global:VOL_TYPE_COLL:
+                        $global:VOL_TYPE_COLL
                         {
                             $logHistory.addLine(("Checking if Export Policy '{0}' exists on SVM '{1}'..." -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name))
                             $exportPol = $netapp.getExportPolicyByName($svmObj, $global:EXPORT_POLICY_DENY_NFS_ON_CIFS)
@@ -432,7 +437,7 @@ try
                     $exportPolicy = $netapp.addExportPolicy($exportPolicyName, $svmObj)
 
                     $logHistory.addLine("Add rules to export policy...")
-                    $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split "-"))
+                    $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","))
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
                     $result.mountPath = ("{0}:/{1}" -f $svm, $volName)
@@ -471,7 +476,7 @@ try
             }
             else
             {
-                $logHistory.addLine( ("Getting SVM {0}..." -f $vol.svm.name) )
+                $logHistory.addLine( ("Getting SVM '{0}'..." -f $vol.svm.name) )
                 $svmObj = $netapp.getSVMByID($vol.svm.uuid)
 
                 $logHistory.addLine("Getting CIFS Shares for Volume...")
@@ -481,8 +486,22 @@ try
                 # Suppression des shares CIFS
                 ForEach($share in $shareList)
                 {
-                    $logHistory.addLine( ("Deleting CIFS Share {0}..." -f $share.name) )
+                    $logHistory.addLine( ("Deleting CIFS Share '{0}'..." -f $share.name) )
                     $netapp.deleteCIFSShare($share)
+                }
+
+                # Export Policy NFS
+                $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volName)
+                $logHistory.addLine(("Getting NFS export policy '{0}'"))
+                $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
+                if($null -ne $exportPolicy)
+                {
+                    $logHistory.addLine(("> Deleting export policy '{0}'...") -f $exportPolicyName)
+                    $netapp.deleteExportPolicy($exportPolicy)
+                }
+                else
+                {
+                    $logHistory.addLine("> Export policy doesn't exists")
                 }
 
                 $logHistory.addLine( ("Deleting Volume {0}" -f $volName) )
