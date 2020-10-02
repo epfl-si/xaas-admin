@@ -109,22 +109,17 @@ try
 
    $logHistory.addLineAndDisplay("Getting infos... ")
    # Récupération de la liste des suppressions à effectuer
-   $deleteList = getWebPageLines -url ($global:WEBSITE_URL_MYNAS+"ws/get-users-to-delete.php")
-
+   $deleteList = downloadPage -url ($global:WEBSITE_URL_MYNAS+"ws/v2/get-users-to-delete.php") | ConvertFrom-JSON
 
    if($deleteList -eq $false)
    {
       Throw "Error getting delete list"
    }
 
-
-   # Recherche du nombre de suppression à effectuer 
-   $nbToDelete = getNBElemInObject -inObject $deleteList
-
-   $logHistory.addLineAndDisplay("$nbToDelete folder(s) to delete")
+   $logHistory.addLineAndDisplay(("{0} folder(s) to delete") -f $deleteList.count)
 
    # Si rien à faire,
-   if($nbToDelete -eq 0)
+   if($deleteList.count -eq 0)
    {  
       $logHistory.addLineAndDisplay("Nothing to do, exiting...")
       exit 0
@@ -143,16 +138,11 @@ try
    # Parcours des éléments à supprimer 
    foreach($deleteInfos in $deleteList)
    {
-      # les infos contenues dans $deleteInfos ont la structure suivante :
-      # <vServerName>,<username>,<sciper>,<fullDataPath>,<volumeName>
-      
-      # Extraction des infos renvoyées
-      $serverName,$username,$userSciper,$fullDataPath,$volumeName = $deleteInfos.split(',')
 
       # Recherche de l'UNC où se trouvent les fichiers à rebuild 
-      $directory = $nameGeneratorMyNAS.getUserUNCPath($serverName, $username)
+      $directory = $nameGeneratorMyNAS.getUserUNCPath($deleteInfos.vserver, $deleteInfos.username)
 
-      $logHistory.addLineAndDisplay(("[{0}/{1}] Deleting directory for user {2}... " -f ($nbUsersDeleted+1), $nbToDelete, $username), "black", "white")
+      $logHistory.addLineAndDisplay(("[{0}/{1}] Deleting directory for user {2}... " -f ($nbUsersDeleted+1), $deleteList.count, $deleteInfos.username), "black", "white")
 
       # Test de l'existance du dossier.
       if(!(Test-Path $directory -pathtype container)) 
@@ -160,7 +150,7 @@ try
          $logHistory.addLineAndDisplay("User directory $directory already deleted")
 
          # On dit que le dossier est effacé sinon on va à nouveau le retrouver à la prochaine exécution du script
-         setUserDeleted -userSciper $userSciper
+         setUserDeleted -userSciper $deleteInfos.sciper
       }
       else # Si le dossier existe
       {
@@ -169,8 +159,8 @@ try
             
             # Utilisateurs pour déterminer que c'est le bon owner
             $allowedOwners = @(
-               "INTRANET\{0}" -f $username
-               "INTRANET\{0}" -f $userSciper # On teste aussi le sciper dans le cas où il y aurait eu un problème et que ça aurait trainé jusqu'à ce que l'utilisateur soit "désactivé" dans AD
+               "INTRANET\{0}" -f $deleteInfos.username
+               "INTRANET\{0}" -f $deleteInfos.sciper # On teste aussi le sciper dans le cas où il y aurait eu un problème et que ça aurait trainé jusqu'à ce que l'utilisateur soit "désactivé" dans AD
             )
             $owner = (Get-Acl $directory).owner
             # Si ce n'est pas le bon owner sur le dossier
@@ -184,23 +174,23 @@ try
                $logHistory.addWarningAndDisplay( ("Wrong owner ({0}) on directory! Skipping" -f $owner))
 
                # On peut donc initialiser l'utilisateur comme "effacé" du côté MyNAS afin de ne pas retomber dans ce cas de figure la prochaine fois
-               setUserDeleted -userSciper $userSciper
+               setUserDeleted -userSciper $deleteInfos.sciper
 
                # On passe au suivant
                Continue
             }
 
-            $logHistory.addLineAndDisplay(("Deleting files ({0})..." -f $fullDataPath))
+            $logHistory.addLineAndDisplay(("Deleting files ({0})..." -f $deleteInfos.fullDataPath))
             
             # On détermine le chemin jusqu'au dossier à supprimer au format <volname>/path/to/dir
-            $dirPathToRemove = "{0}{1}" -f $volumeName, (([Regex]::Match($fullDataPath, '\\files[0-9](.*)')).Groups[1].Value -replace "\\", "/")
+            $dirPathToRemove = "{0}{1}" -f $deleteInfos.volumeName, (([Regex]::Match($deleteInfos.fullDataPath, '\\files[0-9](.*)')).Groups[1].Value -replace "\\", "/")
 
             # Si on n'a pas encore l'objet représentant le vServer, on le recherche
-            if($vServerList.Keys -notcontains $serverName)
+            if($vServerList.Keys -notcontains $deleteInfos.vserver)
             {
                # On regarde sur quel cluster NetApp se trouve le vServer
 
-               $svm = $netapp.getSVMByName($serverName)
+               $svm = $netapp.getSVMByName($deleteInfos.vserver)
                $netappHost = $netapp.getSVMClusterHost($svm)
 
                # Si on n'a pas encore de connexion sur le host netapp retourné
@@ -214,8 +204,8 @@ try
                }
 
                # Enregistrement des infos pour les récupérer juste après
-               $vServerList.$serverName = @{
-                  server = Get-NcVserver -Controller $connectHandle -Name $serverName
+               $vServerList.($deleteInfos.vserver) = @{
+                  server = Get-NcVserver -Controller $connectHandle -Name $deleteInfos.vserver
                   clusterHost = ($netAppHostConnectionList | Where-Object { $_.host -eq $netappHost}).connection
                }
             }# Fin si on n'a pas encore l'objet représentant le vServer
@@ -224,15 +214,15 @@ try
             <# Pour essayer d'effacer depuis les commandes NetApp, plus lent mais ça fonctionne dans tous les cas. On peut en effet se retrouver avec des fichiers "lock"
                qui ne sont pas visibles avec les commandes Get-ChildItem de PowerShell et donc impossibles à effacer... et ils empêchent l'effacement des dossiers
                via Remove-Item vu que les dossiers ne sont pas considérés comme "vides".  #>
-            removeDirectory -controller $vServerList.$serverName.clusterHost -onVServer $vServerList.$serverName.server -dirPathToRemove $dirPathToRemove
+            removeDirectory -controller $vServerList.($deleteInfos.vserver).clusterHost -onVServer $vServerList.($deleteInfos.vserver).server -dirPathToRemove $dirPathToRemove
          
             # Suppression de l'entrée de quota 
             $logHistory.addLineAndDisplay("Removing quota rule... ")
 
             # Si on n'a pas encore l'objet représentant le volume, on le recherche
-            if($volumeList.Keys -notcontains $volumeName)
+            if($volumeList.Keys -notcontains $deleteInfos.volumeName)
             {
-               $volumeList.$volumeName = $netapp.getVolumeByName($volumeName)
+               $volumeList.($deleteInfos.volumeName) = $netapp.getVolumeByName($deleteInfos.volumeName)
             }
 
             # Parcours des owners possibles
@@ -240,24 +230,24 @@ try
             {
                $logHistory.addLineAndDisplay(("> Looking for quota rule for username {0}..." -f $owner))
                # Recherche de la règle de quota avec le nom d'utilisateur courant
-               $quotaRule = $netapp.getUserQuotaRule($volumeList.$volumeName, $owner)
+               $quotaRule = $netapp.getUserQuotaRule($volumeList.($deleteInfos.volumeName), $owner)
                # On ne trouvera de règle de quota que si l'utilisateur n'a pas le quota par défaut appliqué sur le volume (comme c'est le cas pour les étudiants)
                if($null -ne $quotaRule)
                {
                   $logHistory.addLineAndDisplay("> Rule exists, deleting it...")
-                  $netapp.deleteUserQuotaRule($volumeList.$volumeName, $quotaRule)
+                  $netapp.deleteUserQuotaRule($volumeList.($deleteInfos.volumeName), $quotaRule)
                }
             }# FIN BOUCLE de parcours des règles de quota
 
             $logHistory.addLineAndDisplay("User deleted")
 
             # On note l'utilisateur comme effacé
-            setUserDeleted -userSciper $userSciper
+            setUserDeleted -userSciper $deleteInfos.sciper
             
          }
          catch
          {
-            $logHistory.addErrorAndDisplay(("Error deleting user folder {0}" -f $fullDataPath))
+            $logHistory.addErrorAndDisplay(("Error deleting user folder {0}" -f $deleteInfos.fullDataPath))
          }
 
       } # FIN Si le dossier à effacer existe

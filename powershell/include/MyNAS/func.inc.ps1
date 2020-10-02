@@ -130,24 +130,36 @@ function delOutputFilesIfExists
 }
 
 
+<#
+   -----------------------------------------------------------------------
+   BUT : Télécharge une page web
+
+   IN  : $url  -> URL de la page
+#>
+function downloadPage([string]$url)
+{
+   $webClient = New-Object Net.WebClient
+
+   # Récupération de la page web
+   $content = $webClient.DownloadString($url)
+   
+   $webClient.Dispose()
+
+   return $content
+}
+
 # ------------------------------------------------------------------------
 
 # BUT : Récupère le contenu d'une page web et la renvoie dans un tableau,
 #       une ligne par cellule de tableau
 #
 # IN  : url   -> URL à télécharger
-function getWebPageLines 
+function getWebPageLines([string]$url)
 {
-   param([string]$url)
    
    $linesList = @();
    
-   $webClient = New-Object Net.WebClient
-
-   # Récupération de la page web
-   $lines = $webClient.DownloadString($url)
-   
-   $webClient.Dispose()
+   $lines = downloadPage -url $url
    
    # parcours de la liste des lignes
    foreach ($line in $lines.split("`n"))
