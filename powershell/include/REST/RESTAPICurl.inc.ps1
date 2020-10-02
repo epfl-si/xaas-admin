@@ -140,7 +140,7 @@ class RESTAPICurl: RESTAPI
 			}
 			else # On doit utiliser l'encodage par défaut de PowerShell (Windows-1252)
 			{
-				$body | Out-File -FilePath $tmpFile -Encoding:utf8
+				$body | Out-File -FilePath $tmpFile -Encoding:default
 			}
 
 			$curlArgs += ' --data "@{0}"' -f $tmpFile
