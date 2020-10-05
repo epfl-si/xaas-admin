@@ -94,7 +94,7 @@ class NameGeneratorNAS
 
    <#
 		-------------------------------------------------------------------------------------
-		BUT : Renvoie le nom d'un volume applicatif
+		BUT : Renvoie le nom d'un volume (dans ce cas c'est très probablement applicatif)
 
       RET : Le nom du volume
 	#>

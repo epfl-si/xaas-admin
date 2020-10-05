@@ -4,7 +4,7 @@ USAGES:
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action delete -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action volExists -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action appVolExists -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action canHaveNewVol -bgName <bgName> -access cifs|nfs3
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action resize -sizeGB <sizeGB>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getVolSize [-volName <volName>]
@@ -94,7 +94,7 @@ $ACTION_DELETE              = "delete"
 $ACTION_RESIZE              = "resize"
 $ACTION_GET_SIZE            = "getVolSize"
 $ACTION_GET_SVM_LIST        = "getSVMList"
-$ACTION_VOL_EXISTS          = "volExists"
+$ACTION_APP_VOL_EXISTS      = "appVolExists"
 $ACTION_CAN_HAVE_NEW_VOL    = "canHaveNewVol"
 
 # Type de volume
@@ -173,6 +173,13 @@ function chooseAppSVM([NetAppAPI]$netapp, [Array]$svmList)
     {
         # Recherche des infos de la SVM puis de son aggregat
         $svm = $netapp.getSVMByName($svmName)
+
+        # Si la SVM n'a pas été trouvée, il doit y avoir une erreur dans le fichier de données
+        if($null -eq $svm)
+        {
+            Throw ("Defined applicative SVM ({0}) not found. Please check 'data/xaas/nas/applicatives-svm.json' content")
+        }
+
         $aggr = $netapp.getAggregateById($svm.aggregates[0].uuid)
 
         # Si l'aggregat courant est moins utilisé
@@ -328,17 +335,23 @@ try
                 # ---- Volume Applicatif
                 $global:VOL_TYPE_APP
                 {
+                    $nameGeneratorNAS.setApplicativeDetails("si", $volName)
+
                     # Chargement des informations sur le mapping des facultés
                     $appSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "applicative-svm.json"))
                     $appSVMList = (Get-Content -Path $appSVMFile -raw) | ConvertFrom-Json
 
                     # Choix de la SVM
                     $logHistory.addLine("Choosing SVM for volume...")
-                    $svmObj = chooseAppSVM -netapp $netapp -svmList $appSVMList.$access
+                    $svmObj = chooseAppSVM -netapp $netapp -svmList $appSVMList.($targetEnv.ToLower()).($access.ToLower())
                     $logHistory.addLine( ("SVM will be '{0}'" -f $svmObj.name) )
 
                     # Pas d'espace réservé pour les snapshots
                     $snapSpacePercent = 0
+
+                    # Génération du "nouveau" nom du volume
+                    $volName = $nameGeneratorNAS.getVolName()
+                    $logHistory.addLine(("Final Volume name will be '{0}'" -f $volName))
                 }
 
                 # ---- Volume Collaboratif
@@ -507,7 +520,7 @@ try
                     $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","))
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
-                    $result.mountPath = ("{0}:/{1}" -f $svm, $volName)
+                    $result.mountPath = ("{0}:/{1}" -f $svmObj.name, $volName)
                 }
             }# FIN En fonction du type d'accès demandé 
 
@@ -659,13 +672,25 @@ try
 
 
         # -- Savoir si un volume existe
-        $ACTION_VOL_EXISTS
+        $ACTION_APP_VOL_EXISTS
         {
-            $output.results += @{
-                volName = $volName
+            $res = @{
+                reqVolName = $volName
+            }
+
+            # Si on veut savoir pour un volume applicatif, 
+            $nameGeneratorNAS.setApplicativeDetails("si", $volName)
+                
+            # on regarde quel nom devrait avoir le volume applicatif
+            $volName = $nameGeneratorNAS.getVolName()
+            # Et on l'enregistre dans le résultat 
+            $res.appVolName = $volName
+
+            $res += @{
                 exists = ($null -ne $netapp.getVolumeByName($volName))
             }
 
+            $output.results += $res
         }
 
 
