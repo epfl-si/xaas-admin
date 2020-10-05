@@ -1065,10 +1065,12 @@ class NetAppAPI: RESTAPICurl
         IN  : $ROIPList         -> tableau avec la liste des IP Read-Only
         IN  : $RWIPList         -> Tableau avec la liste des IP Read-Write
         IN  : $RootIPList       -> Tableau avec la liste des IP Root
+        IN  : $protocol         -> "cifs"|"nfs3"
+
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_rule_create
 	#>
-    [void] updateExportPolicyRules([PSObject]$exportPolicy, [Array]$ROIPList, [Array]$RWIPList, [Array]$RootIPList)
+    [void] updateExportPolicyRules([PSObject]$exportPolicy, [Array]$ROIPList, [Array]$RWIPList, [Array]$RootIPList, [string]$protocol)
     {
         # On commence par supprimer les règles existantes
         $this.deleteExportPolicyRuleList($exportPolicy)
@@ -1091,6 +1093,7 @@ class NetAppAPI: RESTAPICurl
             $replace = @{
                 clientMatch = $ip
                 roRule = "any"
+                protocol = $protocol.toString()
             }
 
             # Si l'IP a ausi les accès Root
@@ -1132,6 +1135,7 @@ class NetAppAPI: RESTAPICurl
                 clientMatch = $ip
                 rwRule = "any"
                 roRule = "any"
+                protocol = $protocol.toString()
             }
 
             if($RootIPList -contains $ip)
@@ -1161,6 +1165,7 @@ class NetAppAPI: RESTAPICurl
                 superUser = "any"
                 rwRule = "any"
                 roRule = "any"
+                protocol = $protocol.toString()
             }
 
             $doneIPs += $ip

@@ -5,7 +5,7 @@
       }
     ],
     "protocols": [
-      "nfs3"
+      "{{protocol}}"
     ],
     "ro_rule": [
       "{{roRule}}"

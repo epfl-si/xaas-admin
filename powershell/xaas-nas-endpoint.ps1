@@ -215,14 +215,15 @@ function getCorrectVolumeSize([int]$requestedSizeGB, [int]$snapSpacePercent)
     -------------------------------------------------------------------------------------
     BUT : Efface un volume et tout ce qui lui est lié
 
-    IN  : $netapp       -> Objet de la classe NetAPPAPI permettant d'accéder au NAS
-    IN  : $volumeName   -> Nom du volume à effacer
-    IN  : $output       -> Objet représentant l'output du script. Peut être $null
-                            si on n'a pas envie de le modifier
+    IN  : $nameGeneratorNAS -> Objet de la clases NameGeneratorNAS pour gérer la nomenclature
+    IN  : $netapp           -> Objet de la classe NetAPPAPI permettant d'accéder au NAS
+    IN  : $volumeName       -> Nom du volume à effacer
+    IN  : $output           -> Objet représentant l'output du script. Peut être $null
+                                si on n'a pas envie de le modifier
 
     RET : Objet $output potentiellement modifié.
 #>
-function deleteVolume([NetAPPAPI]$netapp, [string]$volumeName, [PSObject]$output)
+function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [string]$volumeName, [PSObject]$output)
 {
     $logHistory.addLine( ("Getting Volume {0}..." -f $volumeName) )
     # Recherche du volume à effacer et effacement
@@ -255,7 +256,11 @@ function deleteVolume([NetAPPAPI]$netapp, [string]$volumeName, [PSObject]$output
             $netapp.deleteCIFSShare($share)
         }
 
-        # Export Policy NFS
+        $logHistory.addLine( ("Deleting Volume {0}" -f $volumeName) )
+        $netapp.deleteVolume($vol.uuid)
+
+        # Export Policy (on la supprime tout à la fin sinon on se prend une erreur "gnagna elles utilisée par le volume"
+        # donc on vire le volume ET ENSUITE l'export policy)
         $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volumeName)
         $logHistory.addLine(("Getting NFS export policy '{0}'"))
         $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
@@ -268,12 +273,46 @@ function deleteVolume([NetAPPAPI]$netapp, [string]$volumeName, [PSObject]$output
         {
             $logHistory.addLine("> Export policy doesn't exists")
         }
-
-        $logHistory.addLine( ("Deleting Volume {0}" -f $volumeName) )
-        $netapp.deleteVolume($vol.uuid)
     }
 
     return $output
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Ajoute une export policy pour un volume avec les règles adéquates
+
+    IN  : $nameGeneratorNAS ->  Objet pour générer les noms pour le NAS
+    IN  : $netapp       -> Objet de la classe NetAPPAPI permettant d'accéder au NAS
+    IN  : $volumeName   -> Nom du volume à effacer
+    IN  : $svmObj       -> Objet représentant la SVM sur laquelle ajouter l'export policy
+    IN  : $IPsRO        -> Chaine de caractères avec les IP RO
+    IN  : $IPsRW        -> Chaine de caractères avec les IP RW
+    IN  : $IPsRoot      -> Chaine de caractères avec les IP Root
+    IN  : $protocol     -> Le protocole d'accès ([NetAppProtocol])
+    IN  : $result       -> Objet représentant l'output du script. Peut être $null
+                            si on n'a pas envie de le modifier
+
+    RET : Tableau avec :
+            - l'export policy ajoutée
+            - l'objet renvoyé par le script (JSON) avec les infos du point de montage
+#>
+function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$netapp, [string]$volumeName, [PSObject]$svmObj, [string]$IPsRO, [string]$IPsRW, [string]$IPsRoot, [string]$protocol, [PSObject]$result)
+{
+    $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volumeName)
+
+    $logHistory.addLine(("Creating export policy '{0}'..." -f $exportPolicyName))
+    # Création de l'export policy 
+    $exportPolicy = $netapp.addExportPolicy($exportPolicyName, $svmObj)
+
+    $logHistory.addLine("Add rules to export policy...")
+    $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","), $protocol)
+
+    # On ajoute le nom du share CIFS au résultat renvoyé par le script
+    $result.mountPath = ("{0}:/{1}" -f $svmObj.name, $volumeName)
+
+    return @($exportPolicy, $result)
 }
 
 
@@ -456,7 +495,9 @@ try
                         # ---- Volume Applicatif
                         $global:VOL_TYPE_APP
                         {
-                            Throw "Not handled"
+                            # Ajout de l'export policy
+                            $exportPol, $result = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
+                                                        -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol $access.ToLower() -result $result
                         }
 
                         # ---- Volume Collaboratif
@@ -471,59 +512,50 @@ try
                                 # Création de l'export policy
                                 $exportPol = $netapp.addExportPolicy($global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj)
                             }
+
+                            # --- ACLs
+
+                            # Recherche du Business Group
+                            $bg = $vra.getBG($bgName)
+                            # Récupération des utilisateurs qui ont le droit de demander des volumes
+                            $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
+
+                            # Récupération des ACLs actuelles
+                            $acl = Get-ACL $result.mountPath
+                            
+                            # Parcours des utilisateurs/groupes à ajouter
+                            ForEach($userOrGroupFQDN in $userAndGroupList)
+                            {
+                                # $userOrGroup contient un groupe ou un utilisateur au format <userOrGroup>@intranet.epfl.ch.
+                                # Il faut donc reformater ceci pour avoir INTRANET\<userOrGroup>
+                                $userOrGroup, $null = $userOrGroupFQDN -split '@'
+                                $userOrGroup = "INTRANET\{0}" -f $userOrGroup
+                                $ar = New-Object  system.security.accesscontrol.filesystemaccessrule($userOrGroup,  "FullControl", "ContainerInherit,ObjectInherit",  "None", "Allow")
+                                $acl.AddAccessRule($ar)
+                            }
+
+                            Set-Acl $result.mountPath $acl
+                            # On vire les accès Everyone (on ne peut pas le faire avant sinon on se coupe l'herbe sous le pied pour ce qui est de l'établissement des droits)
+                            $acl.access | Where-Object { $_.IdentityReference -eq "Everyone"} | ForEach-Object { $acl.RemoveAccessRule($_)} | Out-Null
+                            # Et on fini par mettre à jour sans les Everyone
+                            Set-Acl $result.mountPath $acl
                         }
                     }# FIN EN FONCTION du type de volume
                     
-                    $logHistory.addLine(("Applying Export Policy '{0}' to SVM '{1}' on Volume '{2}'" -f $exportPol.name, $svmObj.name, $volName))
-                    $netapp.applyExportPolicyOnVolume($exportPol, $newVol)
-
-
-                    # --- ACLs
-
-                    # Recherche du Business Group
-                    $bg = $vra.getBG($bgName)
-                    # Récupération des utilisateurs qui ont le droit de demander des volumes
-                    $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
-
-                    # Récupération des ACLs actuelles
-                    $acl = Get-ACL $result.mountPath
-                    
-                    # Parcours des utilisateurs/groupes à ajouter
-                    ForEach($userOrGroupFQDN in $userAndGroupList)
-                    {
-                        # $userOrGroup contient un groupe ou un utilisateur au format <userOrGroup>@intranet.epfl.ch.
-                        # Il faut donc reformater ceci pour avoir INTRANET\<userOrGroup>
-                        $userOrGroup, $null = $userOrGroupFQDN -split '@'
-                        $userOrGroup = "INTRANET\{0}" -f $userOrGroup
-                        $ar = New-Object  system.security.accesscontrol.filesystemaccessrule($userOrGroup,  "FullControl", "ContainerInherit,ObjectInherit",  "None", "Allow")
-                        $acl.AddAccessRule($ar)
-                    }
-
-                    Set-Acl $result.mountPath $acl
-                    # On vire les accès Everyone (on ne peut pas le faire avant sinon on se coupe l'herbe sous le pied pour ce qui est de l'établissement des droits)
-                    $acl.access | Where-Object { $_.IdentityReference -eq "Everyone"} | ForEach-Object { $acl.RemoveAccessRule($_)} | Out-Null
-                    # Et on fini par mettre à jour sans les Everyone
-                    Set-Acl $result.mountPath $acl
-                    
                 }
+
 
                 # ------------ NFS
                 "nfs3"
                 {
-                    $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volName)
-
-                    $logHistory.addLine(("Creating export policy '{0}'..." -f $exportPolicyName))
-                    # Création de l'export policy 
-                    $exportPolicy = $netapp.addExportPolicy($exportPolicyName, $svmObj)
-
-                    $logHistory.addLine("Add rules to export policy...")
-                    $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","))
-
-                    # On ajoute le nom du share CIFS au résultat renvoyé par le script
-                    $result.mountPath = ("{0}:/{1}" -f $svmObj.name, $volName)
+                    # Ajout de l'export policy
+                    $exportPol, $result = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
+                                                -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol $access.ToLower() -result $result
                 }
             }# FIN En fonction du type d'accès demandé 
 
+            $logHistory.addLine(("Applying Export Policy '{0}' to SVM '{1}' on Volume '{2}'" -f $exportPol.name, $svmObj.name, $volName))
+            $netapp.applyExportPolicyOnVolume($exportPol, $newVol)
 
             # -----------------------------------------------
             # 3. Politique de snapshot
@@ -545,7 +577,7 @@ try
         $ACTION_DELETE 
         {
             # Effacement du volume 
-            $output = deleteVolume -netapp $netapp -volumeName $volName -output $output
+            $output = deleteVolume -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -output $output
         }# FIN Action Delete
 
 
@@ -732,7 +764,7 @@ catch
     {
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating Volume '{0}', deleting it so everything is clean" -f $volName))
-        deleteVolume -netapp $netapp -volumeName $volName -output $null
+        deleteVolume -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -output $null
     }
 
 	# Récupération des infos
