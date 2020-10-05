@@ -203,6 +203,73 @@ function getCorrectVolumeSize([int]$requestedSizeGB, [int]$snapSpacePercent)
     
 }
 
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Efface un volume et tout ce qui lui est lié
+
+    IN  : $netapp       -> Objet de la classe NetAPPAPI permettant d'accéder au NAS
+    IN  : $volumeName   -> Nom du volume à effacer
+    IN  : $output       -> Objet représentant l'output du script. Peut être $null
+                            si on n'a pas envie de le modifier
+
+    RET : Objet $output potentiellement modifié.
+#>
+function deleteVolume([NetAPPAPI]$netapp, [string]$volumeName, [PSObject]$output)
+{
+    $logHistory.addLine( ("Getting Volume {0}..." -f $volumeName) )
+    # Recherche du volume à effacer et effacement
+    $vol = $netapp.getVolumeByName($volumeName)
+
+    # Si le volume n'existe pas
+    if($null -eq $vol)
+    {
+        # Si on a passé un objet, 
+        if($null -ne $output)
+        {
+            $output.error = ("Volume {0} doesn't exists" -f $volumeName)
+        }
+        
+        $logHistory.addLine($output.error)
+    }
+    else
+    {
+        $logHistory.addLine( ("Getting SVM '{0}'..." -f $vol.svm.name) )
+        $svmObj = $netapp.getSVMByID($vol.svm.uuid)
+
+        $logHistory.addLine("Getting CIFS Shares for Volume...")
+        $shareList = $netapp.getVolCIFSShareList($volumeName)
+        $logHistory.addLine(("{0} CIFS shares found..." -f $shareList.count))
+
+        # Suppression des shares CIFS
+        ForEach($share in $shareList)
+        {
+            $logHistory.addLine( ("Deleting CIFS Share '{0}'..." -f $share.name) )
+            $netapp.deleteCIFSShare($share)
+        }
+
+        # Export Policy NFS
+        $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volumeName)
+        $logHistory.addLine(("Getting NFS export policy '{0}'"))
+        $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
+        if($null -ne $exportPolicy)
+        {
+            $logHistory.addLine(("> Deleting export policy '{0}'...") -f $exportPolicyName)
+            $netapp.deleteExportPolicy($exportPolicy)
+        }
+        else
+        {
+            $logHistory.addLine("> Export policy doesn't exists")
+        }
+
+        $logHistory.addLine( ("Deleting Volume {0}" -f $volumeName) )
+        $netapp.deleteVolume($vol.uuid)
+    }
+
+    return $output
+}
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -464,49 +531,8 @@ try
         # -- Effacement d'un Volume
         $ACTION_DELETE 
         {
-            $logHistory.addLine( ("Getting Volume {0}..." -f $volName) )
-            # Recherche du volume à effacer et effacement
-            $vol = $netapp.getVolumeByName($volName)
-
-            # Si le volume n'existe pas
-            if($null -eq $vol)
-            {
-                $output.error = ("Volume {0} doesn't exists" -f $volName)
-                $logHistory.addLine($output.error)
-            }
-            else
-            {
-                $logHistory.addLine( ("Getting SVM '{0}'..." -f $vol.svm.name) )
-                $svmObj = $netapp.getSVMByID($vol.svm.uuid)
-
-                $logHistory.addLine("Getting CIFS Shares for Volume...")
-                $shareList = $netapp.getVolCIFSShareList($volName)
-                $logHistory.addLine(("{0} CIFS shares found..." -f $shareList.count))
-
-                # Suppression des shares CIFS
-                ForEach($share in $shareList)
-                {
-                    $logHistory.addLine( ("Deleting CIFS Share '{0}'..." -f $share.name) )
-                    $netapp.deleteCIFSShare($share)
-                }
-
-                # Export Policy NFS
-                $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volName)
-                $logHistory.addLine(("Getting NFS export policy '{0}'"))
-                $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
-                if($null -ne $exportPolicy)
-                {
-                    $logHistory.addLine(("> Deleting export policy '{0}'...") -f $exportPolicyName)
-                    $netapp.deleteExportPolicy($exportPolicy)
-                }
-                else
-                {
-                    $logHistory.addLine("> Export policy doesn't exists")
-                }
-
-                $logHistory.addLine( ("Deleting Volume {0}" -f $volName) )
-                $netapp.deleteVolume($vol.uuid)
-            }
+            # Effacement du volume 
+            $output = deleteVolume -netapp $netapp -volumeName $volName -output $output
         }# FIN Action Delete
 
 
@@ -675,6 +701,15 @@ try
 }
 catch
 {
+
+    # Si on était en train de créer un volume
+    if($action -eq $ACTION_CREATE)
+    {
+        # On efface celui-ci pour ne rien garder qui "traine"
+        $logHistory.addLine(("Error while creating Volume '{0}', deleting it so everything is clean" -f $volName))
+        deleteVolume -netapp $netapp -volumeName $volName -output $null
+    }
+
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
 	$errorTrace = $_.ScriptStackTrace
