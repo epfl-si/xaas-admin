@@ -97,6 +97,8 @@ $ACTION_GET_SVM_LIST        = "getSVMList"
 $ACTION_APP_VOL_EXISTS      = "appVolExists"
 $ACTION_CAN_HAVE_NEW_VOL    = "canHaveNewVol"
 
+$global:APP_VOL_DEFAULT_FAC = "si"
+
 # Type de volume
 $global:VOL_TYPE_COLL       = "col"
 $global:VOL_TYPE_APP        = "app"
@@ -374,7 +376,7 @@ try
                 # ---- Volume Applicatif
                 $global:VOL_TYPE_APP
                 {
-                    $nameGeneratorNAS.setApplicativeDetails("si", $volName)
+                    $nameGeneratorNAS.setApplicativeDetails($global:APP_VOL_DEFAULT_FAC, $volName)
 
                     # Chargement des informations sur le mapping des facultés
                     $appSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "applicative-svm.json"))
@@ -711,7 +713,7 @@ try
             }
 
             # Si on veut savoir pour un volume applicatif, 
-            $nameGeneratorNAS.setApplicativeDetails("si", $volName)
+            $nameGeneratorNAS.setApplicativeDetails($global:APP_VOL_DEFAULT_FAC, $volName)
                 
             # on regarde quel nom devrait avoir le volume applicatif
             $volName = $nameGeneratorNAS.getVolName()
