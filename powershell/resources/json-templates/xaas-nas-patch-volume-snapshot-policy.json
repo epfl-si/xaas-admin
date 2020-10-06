@@ -1,0 +1,6 @@
+{
+    "snapshot_policy": {
+        "uuid": "{{snapPolicyUuid}}",
+        "name": "{{snapPolicyName}}"
+    }
+}
