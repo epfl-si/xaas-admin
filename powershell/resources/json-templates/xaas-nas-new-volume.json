@@ -1,0 +1,32 @@
+{
+    "aggregates": [
+      {
+        "name": "{{aggregateName}}",
+        "uuid": "{{aggregateUUID}}"
+      }
+    ],
+    "autosize": {
+      "mode": "off"
+    },
+    "guarantee": {
+      "type": "none"
+    },
+    "svm": {
+      "name": "{{svmName}}",
+      "uuid": "{{svmUUID}}"
+    },
+    "nas": {
+      "security_style":"{{securityStyle}}",
+      "path": "{{mountPath}}"
+    },
+    "name": "{{volName}}",
+    "size": "{{sizeInBytes}}",
+    "space": {
+      "snapshot": {
+        "reserve_percent": "{{snapSpacePercent}}"
+      }
+    },
+    "tiering": {
+      "policy": "auto"
+    }
+}

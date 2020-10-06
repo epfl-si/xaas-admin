@@ -1,0 +1,18 @@
+{
+    "dev": {
+        "serverList": [""],
+        "user": "",
+        "password": ""
+    },
+    "test": {
+        "serverList": [""],
+        "user":"",
+        "password":""
+    },
+    "prod": {
+        "serverList": [""],
+        "user":"",
+        "password":""
+    }
+} 
+

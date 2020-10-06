@@ -1621,14 +1621,14 @@ class NameGenerator
             # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
-                # <tenantShort>_<faculty>_<unit>
+                # epfl_<fac>_<unit>
                 $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
             }
 
             # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES
             {
-                # <tenantShort>_<serviceShort>
+                # its_<serviceShortName>
                 $name = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('serviceShortName'))
             }
 
