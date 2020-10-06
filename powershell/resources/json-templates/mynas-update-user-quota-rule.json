@@ -1,0 +1,6 @@
+{
+  "space": {
+    "hard_limit": "{{limitBytes}}",
+    "soft_limit": "{{limitBytes}}"
+  }
+}

@@ -1,0 +1,19 @@
+{
+    "clients": [
+      {
+        "match": "{{clientMatch}}"
+      }
+    ],
+    "protocols": [
+      "{{protocol}}"
+    ],
+    "ro_rule": [
+      "{{roRule}}"
+    ],
+    "rw_rule": [
+      "{{rwRule}}"
+    ],
+    "superuser": [
+      "{{superUser}}"
+    ]
+  }
