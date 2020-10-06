@@ -57,7 +57,7 @@ class NetAppAPI: RESTAPICurl
         $serverList | ForEach-Object { $this.addTargetServer($_) }
     }
 
-
+    
     <#
 	-------------------------------------------------------------------------------------
         BUT : Ajoute un serveur. On peut en effet avoir plusieurs serveurs dans le NetApp donc
@@ -861,7 +861,13 @@ class NetAppAPI: RESTAPICurl
     {
         $uri = "/api/protocols/nfs/export-policies/{0}" -f $id
 
-        return $this.callAPI($uri, "GET", $null, "", $true)
+        $res = $this.callAPI($uri, "GET", $null, "", $true)
+
+        if($null -ne $res)
+        {
+            return $res[0]
+        }
+        return $res
     }
 
 
@@ -1095,13 +1101,20 @@ class NetAppAPI: RESTAPICurl
         IN  : $ROIPList         -> tableau avec la liste des IP Read-Only
         IN  : $RWIPList         -> Tableau avec la liste des IP Read-Write
         IN  : $RootIPList       -> Tableau avec la liste des IP Root
+        IN  : $protocol         -> "cifs"|"nfs3"
+
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_rule_create
 	#>
-    [void] updateExportPolicyRules([PSObject]$exportPolicy, [Array]$ROIPList, [Array]$RWIPList, [Array]$RootIPList)
+    [void] updateExportPolicyRules([PSObject]$exportPolicy, [Array]$ROIPList, [Array]$RWIPList, [Array]$RootIPList, [string]$protocol)
     {
         # On commence par supprimer les règles existantes
         $this.deleteExportPolicyRuleList($exportPolicy)
+
+        # Filtrage pour virer les IPs "vides" 
+        $ROIPList   = $ROIPList | Where-Object { $_.Trim() -ne "" }
+        $RWIPList   = $RWIPList | Where-Object { $_.Trim() -ne "" }
+        $RootIPList = $RootIPList | Where-Object { $_.Trim() -ne "" }
 
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::ExportPolicy, $exportPolicy.id)
@@ -1116,6 +1129,7 @@ class NetAppAPI: RESTAPICurl
             $replace = @{
                 clientMatch = $ip
                 roRule = "any"
+                protocol = $protocol.toString()
             }
 
             # Si l'IP a ausi les accès Root
@@ -1157,6 +1171,7 @@ class NetAppAPI: RESTAPICurl
                 clientMatch = $ip
                 rwRule = "any"
                 roRule = "any"
+                protocol = $protocol.toString()
             }
 
             if($RootIPList -contains $ip)
@@ -1186,6 +1201,7 @@ class NetAppAPI: RESTAPICurl
                 superUser = "any"
                 rwRule = "any"
                 roRule = "any"
+                protocol = $protocol.toString()
             }
 
             $doneIPs += $ip
@@ -1256,7 +1272,13 @@ class NetAppAPI: RESTAPICurl
     {
         $uri = "/api/storage/snapshot-policies/{0}" -f $id
 
-        return $this.callAPI($uri, "GET", $null, "", $true)
+        $res = $this.callAPI($uri, "GET", $null, "", $true)
+
+        if($null -ne $res)
+        {
+            return $res[0]
+        }
+        return $res
     }
 
 
