@@ -1,0 +1,26 @@
+{
+    "test": 
+    {
+        "cifs":
+        [
+            "nas-mcc-t-test"
+        ],
+        "nfs3":
+        [
+            "nas-mcc-t-test"
+        ]
+    },
+    "prod" :
+    {
+        "cifs":
+        [
+            "nas-app-ma-cifs1",
+            "nas-app-ma-cifs2"
+        ],
+        "nfs3":
+        [
+            "nas-app-ma-nfs1",
+            "nas-app-ma-nfs2"
+        ]
+    }
+}
