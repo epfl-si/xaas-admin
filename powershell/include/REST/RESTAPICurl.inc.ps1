@@ -28,6 +28,7 @@ class RESTAPICurl: RESTAPI
 	
 	hidden [System.Diagnostics.Process]$curl
 	hidden [PSObject]$process
+	hidden [bool]$useUTF8Encoding
 	
     <#
 	-------------------------------------------------------------------------------------
@@ -57,6 +58,7 @@ class RESTAPICurl: RESTAPI
 
 		$this.curl.StartInfo.CreateNoWindow = $false
 
+		$this.useUTF8Encoding = $true
     }
 
 	<#
@@ -144,9 +146,17 @@ class RESTAPICurl: RESTAPI
 				$body = (ConvertTo-Json -InputObject $body -Depth 20)
 			}
 
-			# On ne fait pas un "Out-File -Encoding:utf8" car ça ajoute un BOM en entête et certaines API REST n'aiment pas ça...
-			$Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
-			[System.IO.File]::WriteAllLines($tmpFile, $body, $Utf8NoBomEncoding)
+			# Si on doit utiliser l'encodage UTF-8
+			if($this.useUTF8Encoding)
+			{
+				# On ne fait pas un "Out-File -Encoding:utf8" car ça ajoute un BOM en entête et certaines API REST n'aiment pas ça...
+				$Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
+				[System.IO.File]::WriteAllLines($tmpFile, $body, $Utf8NoBomEncoding)
+			}
+			else # On doit utiliser l'encodage par défaut de PowerShell (Windows-1252)
+			{
+				$body | Out-File -FilePath $tmpFile -Encoding:default
+			}
 
 			$curlArgs += ' --data "@{0}"' -f $tmpFile
 		}
@@ -243,7 +253,17 @@ class RESTAPICurl: RESTAPI
 
 		return $result
 
+	}
 
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Pour dire qu'on ne veut pas utiliser du UTF8 pour l'encodage des fichiers envoyés par
+				Curl mais plutôt l'encodage PowerShell par défaut, Windows-1252. 
+	#>
+	[void] usePSDefaultEncoding()
+	{
+		$this.useUTF8Encoding = $false
 	}
     
 }
