@@ -105,7 +105,12 @@ try
     $counters.add('VMNotInvSphere', '# VM not in vSphere')
 
     # Objet pour pouvoir envoyer des mails de notification
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
+	$valToReplace = @{
+		targetEnv = $targetEnv
+		targetTenant = $targetTenant
+	}
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
     # -------------------------------------------------------------------------------------------
 

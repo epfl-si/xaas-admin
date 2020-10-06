@@ -82,7 +82,6 @@ class RESTAPICurl: RESTAPI
 
 
 	
-	
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Effectue un appel à l'API REST via Curl
@@ -95,6 +94,22 @@ class RESTAPICurl: RESTAPI
 		RET : Retour de l'appel
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
+	{
+		return $this.callAPI($uri, $method, $body, "")
+	}
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Effectue un appel à l'API REST via Curl
+
+		IN  : $uri		-> URL à appeler
+		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
+		IN  : $body 	-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
+							 Si $null, on ne passe rien.
+		IN  : $extraAgrs -> Arguments supplémentaires pouvant être passés à Curl
+
+		RET : Retour de l'appel
+	#>
+	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body, [string]$extraArgs)
 	{
 		$this.lastBody = $body
 		
@@ -115,7 +130,7 @@ class RESTAPICurl: RESTAPI
 		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
 		$this.incFuncCall($false)
 		
-		$curlArgs = "--insecure -s --request {0}" -f $method
+		$curlArgs = "{0} --insecure -s --request {1}" -f $extraArgs, $method.ToUpper()
 
 		$tmpFile = $null
 
