@@ -1,8 +1,0 @@
-{
-    "svm": {
-      "name": "{{svmName}}",
-      "uuid": "{{svmUUID}}"
-    },
-    "name": "{{shareName}}",
-    "path": "{{path}}"
-}

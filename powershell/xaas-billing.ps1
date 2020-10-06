@@ -234,11 +234,7 @@ try
     }
 
     # Objet pour pouvoir envoyer des mails de notification
-	$valToReplace = @{
-		targetEnv = $targetEnv
-	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
-												($global:VRA_MAIL_SUBJECT_PREFIX_NO_TENANT -f $targetEnv), $valToReplace)
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, "None")
 
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
@@ -264,16 +260,17 @@ try
         copernicBillError = @()
 
     }
-
+    
     # Pour accéder à la base de données
-	$sqldb = [SQLDB]::new([DBType]::MSSQL, `
-                        $configVra.getConfigValue($targetEnv, "dbmssql", "host"), `
-                        $configVra.getConfigValue($targetEnv, "dbmssql", "dbName"), `
-                        $configVra.getConfigValue($targetEnv, "dbmssql", "user"), `
-                        $configVra.getConfigValue($targetEnv, "dbmssql", "password"), `
-                        $configVra.getConfigValue($targetEnv, "dbmssql", "port"))
+    $mysql = [SQLDB]::new([DBType]::MySQL, `
+                          $configVra.getConfigValue($targetEnv, "db", "host"), `
+                          $configVra.getConfigValue($targetEnv, "db", "dbName"), `
+                          $configVra.getConfigValue($targetEnv, "db", "user"), `
+                          $configVra.getConfigValue($targetEnv, "db", "password"), `
+                          $configVra.getConfigValue($targetEnv, "db", "port"))
 
     $ldap = [EPFLLDAP]::new()
+
 
     $vraTenantList = @{}
 
@@ -310,7 +307,7 @@ try
 
     # Création de l'objet pour faire les opérations pour le service donné. On le créée d'une manière dynamique en utilisant la bonne classe
     # en fonction du type de service à facturer
-    $expression = '$billingObject = [{0}]::new($vraTenantList, $sqldb, $ldap, $itServicesList, $serviceBillingInfos, $targetEnv)' -f $serviceBillingInfos.billingClassName
+    $expression = '$billingObject = [{0}]::new($vraTenantList, $mysql, $ldap, $itServicesList, $serviceBillingInfos, $targetEnv)' -f $serviceBillingInfos.billingClassName
     Invoke-expression $expression
 
     # Pour accéder à Copernic
@@ -677,7 +674,7 @@ try
     # Résumé des actions entreprises
     $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
 
-    $sqldb.disconnect()
+    $mysql.disconnect()
 
 }
 catch

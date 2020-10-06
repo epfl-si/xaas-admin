@@ -27,29 +27,31 @@ class NotificationMail
 {
     hidden [string]$sendToAddress
     hidden [string]$templateFolder
-    hidden [string]$mailSubjectPrefix
-    hidden [System.Collections.IDictionary]$defaultValToReplace
+    hidden [string]$env
+    hidden [string]$tenant
 
     <#
     -------------------------------------------------------------------------------------
         BUT : Constructeur de classe
 
-        IN  : $sendToAddress        -> Adresse mail à laquelle envoyer les mails
-        IN  : $templateFolder       -> Chemin jusqu'au dossier où se trouvent les templates
-                                        pour l'envoi de mail.
-                                        NOTE: Celui-ci devra aussi contenir un fichier "_header.html"
-                                        ainsi qu'un "_footer.html"
-        IN  : $mailSubjectPrefix    -> Préfix à utiliser pour le sujet des mails envoyés par la classe
-        IN  : $defaultValToReplace  -> Tableau associatif avec les valeurs à utiliser/remplacer dans 
-                                        tous les mails qui pourront être envoyés par la classe.
-                                        Ex: targetEnv et targetTenant
+        IN  : $sendToAddress    -> Adresse mail à laquelle envoyer les mails
+        IN  : $templateFolder   -> Chemin jusqu'au dossier où se trouvent les templates
+                                    pour l'envoi de mail.
+        IN  : $env              -> Environnement sur lequel on travaille
+                                $TARGET_ENV_DEV
+                                $TARGET_ENV_TEST
+                                $TARGET_ENV_PROD
+        IN  : $tenant           -> Tenant sur lequel on travaille
+                                $VRA_TENANT_DEFAULT
+                                $VRA_TENANT_EPFL
+                                $VRA_TENANT_ITSERVICES
     #>
-    NotificationMail([string]$sendToAddress, [string]$templateFolder, [string]$mailSubjectPrefix, [System.Collections.IDictionary]$defaultValToReplace)
+    NotificationMail([string]$sendToAddress, [string]$templateFolder, [string]$env, [string]$tenant)
     {
         $this.sendToAddress = $sendToAddress
         $this.templateFolder = $templateFolder
-        $this.mailSubjectPrefix = $mailSubjectPrefix
-        $this.defaultValToReplace = $defaultValToReplace
+        $this.env = $env
+        $this.tenant = $tenant
     }
 
 
@@ -108,25 +110,31 @@ class NotificationMail
     [void] send([string] $mailSubject, [string]$templateName,  [System.Collections.IDictionary]$valToReplace)
     {
         # On commence par contrôler l'existence des fichiers
-        $this.checkTemplateFile("_header")
-        $this.checkTemplateFile("_footer")
+        $this.checkTemplateFile("header")
+        $this.checkTemplateFile("footer")
         $this.checkTemplateFile($templateName)
 
         # Mise à jour du sujet du mail
-        $mailSubject = "{0}: {1}" -f $this.mailSubjectPrefix, $mailSubject
+        $mailSubject = "vRA Service [{0}->{1}]: {2}" -f $this.env, $this.tenant, $mailSubject
 
         # Fichier temporaire pour la création du mail
         $tmpMailFile = (New-TemporaryFile).FullName
 
         # 1. Ajout du header
-        Get-Content -Path $this.getPathToTemplateFile("_header") | Out-File $tmpMailFile -Encoding default
+        Get-Content -Path $this.getPathToTemplateFile("header") | Out-File $tmpMailFile -Encoding default
 
 
         # 2. Contenu du mail
         $mailMessage = Get-Content -Path $this.getPathToTemplateFile($templateName)
 
+        if($null -eq $valToReplace)
+        {
+            $valToReplace = @{}
+        }
+
         # Ajout des infos sur le tenant et environnement
-        $valToReplace += $this.defaultValToReplace
+        $valToReplace.targetTenant = $this.tenant
+        $valToReplace.targetEnv = $this.env
 
         # Parcours des remplacements à faire
         foreach($search in $valToReplace.Keys)
@@ -135,7 +143,8 @@ class NotificationMail
 
             $search = "{{$($search)}}"
 
-            # Mise à jour dans le mail
+            # Mise à jour dans le sujet et le mail
+            $mailSubject = $mailSubject -replace $search, $replaceWith
             $mailMessage =  $mailMessage -replace $search, $replaceWith
         }
         
@@ -143,7 +152,7 @@ class NotificationMail
 
 
         # 3. Ajout du footer
-        Get-Content -Path $this.getPathToTemplateFile("_footer") | Out-File $tmpMailFile -Encoding default -Append
+        Get-Content -Path $this.getPathToTemplateFile("footer") | Out-File $tmpMailFile -Encoding default -Append
 
 
         $mailMessage = Get-Content $tmpMailFile -Encoding UTF8 | Out-String

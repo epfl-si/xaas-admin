@@ -4,20 +4,20 @@
         "server": "",
         "appName": "",  // Nom de l'application cliente (nom du "compte" pour accéder)
         "callerSciper": "", // Sciper de la personne pour laquelle on exécutera les commandes
-        "password": "" // mot de passe fourni par les admins de groups.epfl.ch pour "appName"
+        "password": "" 
     },
     "test":
     {
         "server": "",
         "appName": "",  // Nom de l'application cliente (nom du "compte" pour accéder)
         "callerSciper": "", // Sciper de la personne pour laquelle on exécutera les commandes
-        "password": "" // mot de passe fourni par les admins de groups.epfl.ch pour "appName"
+        "password": "" 
     },
     "prod":
     {
         "server": "",
         "appName": "",  // Nom de l'application cliente (nom du "compte" pour accéder)
         "callerSciper": "", // Sciper de la personne pour laquelle on exécutera les commandes
-        "password": "" // mot de passe fourni par les admins de groups.epfl.ch pour "appName"
+        "password": "" 
     }
 }

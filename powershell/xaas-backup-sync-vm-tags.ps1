@@ -97,20 +97,14 @@ try
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $counters = [Counters]::new()
-    $counters.add('BGProcessed', '# BG Processed')
+	$counters = [Counters]::new()
     $counters.add('UpdatedTags', '# VM Updated tags')
     $counters.add('CorrectTags', '# VM Correct tags')
     $counters.add('ProcessedVM', '# VM Processed')
     $counters.add('VMNotInvSphere', '# VM not in vSphere')
 
     # Objet pour pouvoir envoyer des mails de notification
-	$valToReplace = @{
-		targetEnv = $targetEnv
-		targetTenant = $targetTenant
-	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
-												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
 
     # -------------------------------------------------------------------------------------------
 
@@ -140,8 +134,7 @@ try
     $vra.getBGList() | ForEach-Object {
 
         $logHistory.addLineAndDisplay("Processing BG {0} ..." -f $_.Name)
-        $counters.inc('BGProcessed')
-        
+
         # Parcours des VM se trouvant dans le Business Group
         $vra.getBGItemList($_, "Virtual Machine") | ForEach-Object {
 
