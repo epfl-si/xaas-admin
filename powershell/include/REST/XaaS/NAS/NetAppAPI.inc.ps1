@@ -57,6 +57,7 @@ class NetAppAPI: RESTAPICurl
         $serverList | ForEach-Object { $this.addTargetServer($_) }
     }
 
+    
     <#
 	-------------------------------------------------------------------------------------
         BUT : Ajoute un serveur. On peut en effet avoir plusieurs serveurs dans le NetApp donc
@@ -69,6 +70,28 @@ class NetAppAPI: RESTAPICurl
     {
         # Ajout à la liste
         $this.serverList += $server
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Encode un nom d'utilisateur pour qu'il soit utilisable dans du JSON
+        
+        IN  : $username -> le nom d'utilisateur
+
+        RET : le nom d'utilisateur encodé
+	#>
+    hidden [string] encodeUsernameForJSON([string]$username)
+    {
+        # Si on a INTRANET\<user>
+        if($username -match 'INTRANET\\[a-z0-9]+')
+        {
+            # Alors oui, on a l'impression que ceci ne va rien faire du tout niveau remplacement MAIS NON! 
+            # Pourquoi? parce que le premier paramètre est interprété (donc transformé en \) et le 2e est pris tel quel
+            # C'est vicieux hein ??
+            $username = $username -replace "\\", "\\"
+        }
+        return $username
     }
 
 
@@ -341,6 +364,19 @@ class NetAppAPI: RESTAPICurl
         return $this.getSVMById($result.uuid)
     }
 
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne le nom du serveur qui héberge la SVM donnée
+        
+        IN  : $svm  -> Objet réprésentant la SVM
+
+        RET : Nom du serveur
+	#>
+    [string] getSVMClusterHost([PSObject]$svm)
+    {
+        return $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
+    }
 
     <#
         =====================================================================================
@@ -1296,5 +1332,266 @@ class NetAppAPI: RESTAPICurl
     }
 
 
+    <#
+        =====================================================================================
+                                        QUOTA RULES
+        =====================================================================================
+    #>
 
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des règles de quota avec les paramètres passés.
+
+        IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+        
+        https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_rule_collection_get
+	#>
+    hidden [Array] getQuotaRuleListQuery([string]$queryParams)
+    {
+        $uri = "/api/storage/quota/rules/?max_records=9999"
+
+        # Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+        
+        return $this.callAPI($uri, "GET", $null, "records")
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des règles de quota pour un volume
+
+        IN  : $volume       -> Objet représentant le volume
+
+        RET : Liste
+	#>
+    [Array] getVolumeQuotaRuleList([PSObject]$volume)
+    {
+        # Bizarrement, on doit spécifiquement mettre les champs que l'on veut car ceux-ci ne sont pas retournés par défaut !?!
+        return $this.getQuotaRuleListQuery( ("volume.uuid={0}&fields=users,space,files" -f $volume.uuid) )
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne les informations sur la règle de quota pour un utilisateur sur un volume donné.
+                Attention, on n'a que la règle, on n'a pas d'informations sur ce qui est réellement
+                utilisé. Pour avoir les détails, il faut utiliser la fonction getUserQuotaRule()
+
+        IN  : $volume       -> Objet représentant le volume
+        IN  : $username     -> Nom d'utilisateur (format INTRANET\<username>) 
+
+        RET : Objet avec les informations
+	#>
+    [PSObject] getUserQuotaRule([PSObject]$volume, [string]$username)
+    {
+        $res = $this.getQuotaRuleListQuery( ("volume.uuid={0}&users.name={1}&fields=users,space,files" -f $volume.uuid, $username) )
+
+        if($res.count -eq 0)
+        {
+            return $null
+        }
+        return $res[0]
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Ajoute une règle de quota pour un utilisateur donné
+
+        IN  : $volume       -> Objet représentant le volume
+        IN  : $username     -> Nom d'utilisateur (format INTRANET\username)
+        IN  : $quotaMB      -> Quota max autorisé en MB
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_rule_create
+
+        INFO:
+        Contraitement à l'utilisation du PowerShell où il fallait spécifiquement faire un "Resize quota"
+        du volume après la modification d'un quota (pour que ça soit pris en compte), là, c'est fait 
+        automatiquement, ce qui est agréable mais peut être chiant s'il s'avère que l'on créé
+        beaucoup de règles à la suite, à espérer que NetApp fasse le job sans se tirer une balle dans le 
+        cluster au niveau des performances... C'est pour ça aussi qu'on attend que le job se termine
+	#>
+    [void] addUserQuotaRule([PSObject]$volume, [string]$username, [int]$quotaMB)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
+
+        $uri = "https://{0}/api/storage/quota/rules/" -f $targetServer
+
+        $replace = @{
+            limitBytes = @(($quotaMB * 1024 * 1024), $true)
+            svmName = $volume.svm.name
+            svmUUID = $volume.svm.uuid
+            username = $this.encodeUsernameForJSON($username)
+            volName = $volume.name
+            volUUID = $volume.uuid
+        }
+
+        $body = $this.createObjectFromJSON("mynas-new-user-quota-rule.json", $replace)
+
+        $result = $this.callAPI($uri, "POST", $body)
+
+        # L'opération se fait en asynchrone donc on attend qu'elle se termine
+        $this.waitForJobToFinish($targetServer, $result.job.uuid)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Met à jour une règle de quota pour un utilisateur donné. Si la règle n'existe
+                pas encore, elle est mise à jour
+
+        IN  : $volume       -> Objet représentant le volume
+        IN  : $username     -> Nom d'utilisateur (format INTRANET\<username>)
+        IN  : $quotaMB      -> Quota max autorisé en MB
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_rule_modify
+
+        NOTE: La documentation sur le BODY à fournir pour cette requête est complètement
+                fausse! la majorité des informations sont inutiles et génèrent une 
+                erreur
+	#>
+    [void] updateUserQuotaRule([PSObject]$volume, [string]$username, [int]$quotaMB)
+    {
+        # Recherche de la règle de quota
+        $rule = $this.getUserQuotaRule($volume, $username)
+
+        # Si la règle n'existe pas,
+        if($null -eq $rule)
+        {
+            # On doit donc avoir une règle "héritée", du coup, on ajoute une nouvelle règle
+            $this.addUserQuotaRule($volume, $username, $quotaMB)
+
+        }
+        else # La règle existe, on peut la mettre à jour
+        {
+            # Recherche du serveur NetApp cible
+            $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
+
+            $uri = "https://{0}/api/storage/quota/rules/{1}" -f $targetServer, $rule.uuid
+
+            $replace = @{
+                limitBytes = @(($quotaMB * 1024 * 1024), $true)
+            }
+
+            $body = $this.createObjectFromJSON("mynas-update-user-quota-rule.json", $replace)
+
+            $result = $this.callAPI($uri, "PATCH", $body)
+
+            # L'opération se fait en asynchrone donc on attend qu'elle se termine
+            $this.waitForJobToFinish($targetServer, $result.job.uuid)
+        }
+        
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime une règle de quota sur un volume
+
+        IN  : $volume       -> Objet représentant le volume
+        IN  : $rule         -> Objet représentant la règle à effacer
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_rule_delete
+	#>
+    [void] deleteUserQuotaRule([PSObject]$volume, [PSObject]$rule)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
+        
+        $uri = "https://{0}/api/storage/quota/rules/{1}" -f $targetServer, $rule.uuid
+
+        $this.callAPI($uri, "DELETE", $null)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime une règle de quota pour un utilisateur sur un volume
+
+        IN  : $volume       -> Objet représentant le volume
+        IN  : $username     -> Nom d'utilisateur pour lequel effacer la règle de quota
+	#>
+    [void] deleteUserQuotaRule([PSObject]$volume, [string]$username)
+    {
+        $rule = $this.getUserQuotaRule($volume, $username)
+
+        if($null -ne $rule)
+        {
+            $this.deleteUserQuotaRule($volume, $rule)
+        }
+    }
+    
+    
+    <#
+        =====================================================================================
+                                        QUOTA REPORT
+        =====================================================================================
+    #>
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des rapports de quota avec les paramètres passés.
+
+        IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+        
+        https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_report_collection_get
+	#>
+    hidden [Array] getQuotaReportListQuery([string]$queryParams)
+    {
+        $uri = "/api/storage/quota/reports/?max_records=9999"
+
+        # Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+        
+        return $this.callAPI($uri, "GET", $null, "records")
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la liste des rapports de quota pour un volume
+
+        IN  : $volume       -> Objet représentant le volume
+
+        RET : Liste
+	#>
+    [Array] getVolumeQuotaReportList([PSObject]$volume)
+    {
+        # Bizarrement, on doit spécifiquement mettre les champs que l'on veut car ceux-ci ne sont pas retournés par défaut !?!
+        return $this.getQuotaReportListQuery( ("volume.uuid={0}&fields=users,space,files" -f $volume.uuid) )
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne les informations de quota pour un utilisateur sur un volume donné
+
+        IN  : $volume       -> Objet représentant le volume
+        IN  : $username     -> Nom d'utilisateur
+
+        RET : Objet avec les informations
+	#>
+    [PSObject] getUserQuotaReport([PSObject]$volume, [string]$username)
+    {
+        $res = $this.getQuotaReportListQuery( ("volume.uuid={0}&users.name={1}" -f $volume.uuid, $username) )
+
+        if($res.count -eq 0)
+        {
+            return $null
+        }
+        return $res[0]
+    }
 }

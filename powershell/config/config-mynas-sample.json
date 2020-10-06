@@ -1,0 +1,16 @@
+{
+    "cadi":
+    {
+        "user": "",
+        "password": "",
+        "host": "",
+        "db": "",
+        "port": ""
+    },
+    "nas":
+    {
+        "serverList": [""],
+        "user": "",
+        "password": ""
+    }
+}
