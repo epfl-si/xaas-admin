@@ -1,5 +1,5 @@
 <#
-   BUT : Récupère les quotas des différents FS et push les informations sur le serveur web
+   BUT : Récupère les quotas des différents FS et push les informations sur le serveur web.
    
    AUTEUR : Lucien Chaboudez
    DATE   : Août 2014
