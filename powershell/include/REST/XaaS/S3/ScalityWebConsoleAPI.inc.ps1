@@ -3,7 +3,7 @@
          de manière pas si simple vu qu'on doit décortiquer la manière de faire dans le 
          site https://s3.epfl.ch/_/console/ afin de savoir quels appels sont fait à l'API
 
-         La classe parente est RESTAPICurl et celle-ci fourni juste une méthode, celle pour
+         La classe parente est RESTAPI et celle-ci fourni juste une méthode, celle pour
          charger le nécessaire depuis des fichiers JSON.
 
    AUTEUR : Lucien Chaboudez

@@ -1,8 +1,0 @@
-{
-    "nas": {
-        "export_policy": {
-            "id": "{{exportPolicyId}}",
-            "name": "{{exportPolicyName}}"
-        }
-    }
-}

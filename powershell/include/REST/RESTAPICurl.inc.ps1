@@ -28,7 +28,6 @@ class RESTAPICurl: RESTAPI
 	
 	hidden [System.Diagnostics.Process]$curl
 	hidden [PSObject]$process
-	hidden [bool]$useUTF8Encoding
 	
     <#
 	-------------------------------------------------------------------------------------
@@ -58,7 +57,6 @@ class RESTAPICurl: RESTAPI
 
 		$this.curl.StartInfo.CreateNoWindow = $false
 
-		$this.useUTF8Encoding = $true
     }
 
 	<#
@@ -82,6 +80,7 @@ class RESTAPICurl: RESTAPI
 
 
 	
+	
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Effectue un appel à l'API REST via Curl
@@ -94,22 +93,6 @@ class RESTAPICurl: RESTAPI
 		RET : Retour de l'appel
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
-	{
-		return $this.callAPI($uri, $method, $body, "")
-	}
-	<#
-		-------------------------------------------------------------------------------------
-		BUT : Effectue un appel à l'API REST via Curl
-
-		IN  : $uri		-> URL à appeler
-		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
-		IN  : $body 	-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
-							 Si $null, on ne passe rien.
-		IN  : $extraAgrs -> Arguments supplémentaires pouvant être passés à Curl
-
-		RET : Retour de l'appel
-	#>
-	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body, [string]$extraArgs)
 	{
 		$this.lastBody = $body
 		
@@ -130,7 +113,7 @@ class RESTAPICurl: RESTAPI
 		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
 		$this.incFuncCall($false)
 		
-		$curlArgs = "{0} --insecure -s --request {1}" -f $extraArgs, $method.ToUpper()
+		$args = "--insecure -s --request {0}" -f $method
 
 		$tmpFile = $null
 
@@ -139,31 +122,22 @@ class RESTAPICurl: RESTAPI
 			# Génération d'un nom de fichier temporaire et ajout du JSON dans celui-ci
 			$tmpFile = (New-TemporaryFile).FullName
 
-			# Si on a passé autre chose qu'une simple chaine de caractères, 
-			if($body.GetType().Name -ne "String")
+			# Si on a passé une simple chaine de caractères, on la prend tel quel
+			if($body.GetType().Name -eq "String")
 			{
-				# On transforme en JSON
-				$body = (ConvertTo-Json -InputObject $body -Depth 20)
+				$body | Out-File -FilePath $tmpFile -Encoding:utf8
+			}
+			else # On a passé un objet, on le converti en JSON
+			{
+				(ConvertTo-Json -InputObject $body -Depth 20) | Out-File -FilePath $tmpFile -Encoding:utf8
 			}
 
-			# Si on doit utiliser l'encodage UTF-8
-			if($this.useUTF8Encoding)
-			{
-				# On ne fait pas un "Out-File -Encoding:utf8" car ça ajoute un BOM en entête et certaines API REST n'aiment pas ça...
-				$Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
-				[System.IO.File]::WriteAllLines($tmpFile, $body, $Utf8NoBomEncoding)
-			}
-			else # On doit utiliser l'encodage par défaut de PowerShell (Windows-1252)
-			{
-				$body | Out-File -FilePath $tmpFile -Encoding:default
-			}
-
-			$curlArgs += ' --data "@{0}"' -f $tmpFile
+			$args += ' --data "@{0}"' -f $tmpFile
 		}
 
 		# Ajout des arguments 
 		# Explication sur le @'...'@ ici : https://stackoverflow.com/questions/18116186/escaping-quotes-and-double-quotes
-		$this.curl.StartInfo.Arguments = "{0} {1} `"{2}`"" -f ( $this.getCurlHeaders() ), $curlArgs, ($uri -replace " ","%20")
+		$this.curl.StartInfo.Arguments = "{0} {1} `"{2}`"" -f ( $this.getCurlHeaders() ), $args, ($uri -replace " ","%20")
 
 		$result = $null
 
@@ -253,17 +227,7 @@ class RESTAPICurl: RESTAPI
 
 		return $result
 
-	}
 
-
-	<#
-		-------------------------------------------------------------------------------------
-		BUT : Pour dire qu'on ne veut pas utiliser du UTF8 pour l'encodage des fichiers envoyés par
-				Curl mais plutôt l'encodage PowerShell par défaut, Windows-1252. 
-	#>
-	[void] usePSDefaultEncoding()
-	{
-		$this.useUTF8Encoding = $false
 	}
     
 }

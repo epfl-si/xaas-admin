@@ -2,11 +2,8 @@ config-billing.json
 config-global.json
 config-grants.json
 config-groups.json
-config-mynas.json
 config-nsx.json
 config-vra.json
 config-vsphere.json
 config-xaas-backup.json
-config-xaas-nas.json
 config-xaas-s3.json
-

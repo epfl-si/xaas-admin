@@ -35,7 +35,7 @@ class LogHistory
         # Si le dossier pour les logs n'existe pas encore,
         if(!(test-path $this.logFolderPath))
         {
-            New-Item -ItemType Directory -Force -Path $this.logFolderPath | Out-null
+            New-Item -ItemType Directory -Force -Path $this.logFolderPath
         }
         else # Le dossier pour les logs existe déjà
         {
@@ -64,18 +64,8 @@ class LogHistory
 	-------------------------------------------------------------------------------------
         BUT : Ajoute une ligne au fichier Log et l'affiche aussi dans la console
 
-        IN  : $line     -> La ligne à ajouter (et à afficher)
-        IN  : $color    -> Couleur du texte 
-        IN  : $bgColor  -> Couleur du fond du texte
-
-        NOTE: pour les couleurs possibles, voir ici:
-            https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/write-host?view=powershell-7
-    #>
-    [void] addLineAndDisplay([string]$line, [string]$color, [string]$bgColor)
-    {
-        Write-host $line -BackgroundColor $bgColor -ForegroundColor $color
-        $this.addLine($line)
-    }
+        IN  : $line -> La ligne à ajouter (et à afficher)
+	#>
 	[void] addLineAndDisplay([string]$line)
 	{
         Write-host $line
