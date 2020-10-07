@@ -151,7 +151,8 @@ try
 
             $logHistory.addLineAndDisplay("-> vRA VM {0} ..." -f $vmName)
             
-            $vRATag = getVMCustomPropValue -vm $_ -customPropName $VRA_CUSTOM_PROPERTY_BACKUP_TAG
+            # Recherche de la custom property représentant le Tag de backup
+            $vRATag = getvRAObjectCustomPropValue -object $_ -customPropName $VRA_CUSTOM_PROPERTY_BACKUP_TAG
 
             $vSphereTag = $null
 
