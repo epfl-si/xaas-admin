@@ -137,6 +137,7 @@ class NotificationMail
 
             # Mise à jour dans le mail
             $mailMessage =  $mailMessage -replace $search, $replaceWith
+            $mailSubject =  $mailSubject -replace $search, $replaceWith
         }
         
         $mailMessage | Out-File $tmpMailFile -Encoding default -Append
