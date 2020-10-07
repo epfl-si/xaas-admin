@@ -20,6 +20,8 @@ USAGES:
         en paramètre.
     
 #>
+param([string]$targetEnv, 
+      [string]$targetTenant)
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -45,7 +47,6 @@ USAGES:
 # Chargement des fichiers propres au NAS NetApp
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "NAS", "NetAppAPI.inc.ps1"))
 
-
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configVra = [ConfigReader]::New("config-vra.json")
@@ -58,8 +59,7 @@ $configNAS = [ConfigReader]::New("config-xaas-nas.json")
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-param([string]$targetEnv, 
-      [string]$targetTenant)
+
 
 
 # Inclusion des fichiers nécessaires (génériques)
@@ -444,6 +444,13 @@ function handleNotifications
 
 try
 {
+    # Contrôle que l'utilisateur pour exécuter le script soit correct
+    $domain, $username = $global:WEBDAV_AD_USER -split '\\'
+    if($username -ne $env:USERNAME)
+    {
+        Throw ("Script must be executed with 'INTRANET\{0}' user, is currently executed with 'INTRANET\{1}'" -f $username, $env:USERNAME)
+    }
+
     $logName = 'xaas-nas-sync-webdav-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
