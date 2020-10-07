@@ -21,6 +21,14 @@ enum NetAppObjectType
     ExportPolicy
 }
 
+enum NetAppSharePermission
+{
+    no_access
+    read
+    change
+    full_control
+}
+
 
 class NetAppAPI: RESTAPICurl
 {
@@ -109,6 +117,10 @@ class NetAppAPI: RESTAPICurl
                                         Si $null, on ne passe rien.
         IN  : $getPropertyName      -> (optionnel) nom de la propriété dans laquelle regarder pour le résultat lorsque l'on 
                                         fait un GET
+        IN  : $stopAtFirstResult    -> (optionnel) $true|$false. Pris en compte uniquement quand $uri ne pointe pas sur un 
+                                        serveur spécifique mais est du style /api/.../...
+                                        Fait en sorte de s'arrêter au premier résultat trouvé et ne pas interroger les autres
+                                        serveurs    
         
 		RET : Retour de l'appel
     #>
@@ -152,6 +164,11 @@ class NetAppAPI: RESTAPICurl
             # Si on devait interroger un server donné
             if($uri -match "^https:")
             {
+                # Si la property existe
+                if(($getPropertyName -ne "") -and ([bool]($res.PSobject.Properties.name -eq $getPropertyName)))
+                {
+                    $res = $res.$getPropertyName
+                }
                 # On retourne le résultat
                 return $res
             }
@@ -670,7 +687,7 @@ class NetAppAPI: RESTAPICurl
 
     <#
         =====================================================================================
-                                        SHARES CIFS
+                                        CIFS SHARES
         =====================================================================================
     #>
 
@@ -801,6 +818,88 @@ class NetAppAPI: RESTAPICurl
         return $this.callAPI($uri, "GET", $null, "", $true)
     }
 
+
+    <#
+        =====================================================================================
+                                        CIFS SHARES ACLS
+        =====================================================================================
+    #>
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne les ACLs d'un share.
+        
+        IN  : $svm          -> Objet représentant la SVM sur laquelle le share se trouve
+        IN  : $shareName    -> Le nom du share
+
+        RET : Tableau avec les ACLs
+
+        NOTE: On doit manuellement spéficifer qu'on veut les 3 champs parce que par défaut il n'y
+                en a que 2 et il manque "permission"...
+	#>
+    [Array] getCIFSShareACLList([PSObject]$svm, [string]$shareName)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
+
+        $uri = "https://{0}/api/protocols/cifs/shares/{1}/{2}/acls/?fields=permission,type,user_or_group" -f $targetServer, $svm.uuid, [System.Net.WebUtility]::UrlEncode($shareName)
+
+        return $this.callAPI($uri, "GET", $null, "records")
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Ajoute une ACL à un share.
+        
+        IN  : $svm                  -> Objet représentant la SVM sur laquelle le share se trouve
+        IN  : $shareName            -> Le nom du share
+        IN  : $userOrGroupAtDomain  -> Nom d'utilisateur ou groupe (format INTRANET\<...>) pour 
+                                        lequel il faut mettre des droits
+        IN  : $permission           -> Type de permission à mettre. Voir les possibilité en haut
+                                        du fichier courant
+	#>
+    [void] addCIFSShareACL([PSObject]$svm, [string]$shareName, [string]$userOrGroupAtDomain, [NetAppSharePermission]$permission)
+    {
+        # Encodage si besoin
+        $userOrGroupAtDomain = $this.encodeUsernameForJSON($userOrGroupAtDomain)
+
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
+
+        $uri = "https://{0}/api/protocols/cifs/shares/{1}/{2}/acls/" -f $targetServer, $svm.uuid, [System.Net.WebUtility]::UrlEncode($shareName)
+
+        $replace = @{
+            permission = $permission.toString()
+            userOrGroupAtDomain = $userOrGroupAtDomain
+        }
+
+        $body = $this.createObjectFromJSON("xaas-nas-new-cifs-share-acl.json", $replace)
+
+        $this.callAPI($uri, "POST", $body) | Out-Null
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime une ACLs d'un share
+        
+        IN  : $svm                  -> Objet représentant la SVM sur laquelle le share se trouve
+        IN  : $shareName            -> Le nom du share
+        IN  : $userOrGroupAtDomain  -> Nom d'utilisateur ou groupe (format INTRANET\<...>) pour 
+                                        lequel il faut supprimer des droits
+
+	#>
+    [void] deleteCIFSShareACL([PSObject]$svm, [string]$shareName, [string]$userOrGroupAtDomain)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
+
+        $uri = "https://{0}/api/protocols/cifs/shares/{1}/{2}/acls/{3}/windows" -f `
+                $targetServer, $svm.uuid, [System.Net.WebUtility]::UrlEncode($shareName), [System.Net.WebUtility]::UrlEncode($userOrGroupAtDomain)
+
+        $this.callAPI($uri, "DELETE", $null) | Out-Null
+    }
 
 
     <#
