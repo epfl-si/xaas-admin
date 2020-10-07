@@ -243,7 +243,8 @@ try
    $users | ForEach-Object {
       #<sciper>,<when_to_delete>,<because_inactive>
       # Le dernier champ, c'est pour dire que l'utilisateur ne va pas être effacé parce qu'il est inactif
-      ("{0},{1},0" -f $_.sciper, $_.whenToDelete) | Out-File -Append -Encoding Default -FilePath $userDeleteCSV
+      $deleteDate = $_.whenToDelete.ToString("yyyy-MM-dd")
+      ("{0},{1},0" -f $_.sciper, $deleteDate) | Out-File -Append -Encoding Default -FilePath $userDeleteCSV
    }
    $logHistory.addLineAndDisplay( ("{0} users to delete" -f $users.Count) )
 

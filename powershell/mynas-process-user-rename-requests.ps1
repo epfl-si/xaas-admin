@@ -237,13 +237,13 @@ try
    $counters.add('nbAlreadyRenamed', '# User already renamed')
    $counters.add('nbRenameError', '# User rename errors')
 
-   # Pour savoir si les dossiers sont présents
-   $noNewFolder = $false
-   $noOldFolder = $false
-
    # Parcours des éléments à renommer 
    foreach($renameInfos in $renameList)
    {
+      # Pour savoir si les dossiers sont présents
+      $noNewFolder = $false
+      $noOldFolder = $false
+      
       # Définition des UNC du dossier actuel et du nouveau pour les tests d'existence
       $uncPathCur = $nameGeneratorMyNAS.getUserUNCPath($renameInfos.vserver, $renameInfos.oldUsername)
       $uncPathNew = $nameGeneratorMyNAS.getUserUNCPath($renameInfos.vserver, $renameInfos.newUsername)
@@ -499,8 +499,8 @@ catch
 
 	$logHistory.addErrorAndDisplay(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
     
-    # On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
-    $errorMessage = $errorMessage -replace "`n", "<br>"
+   # On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
+   $errorMessage = $errorMessage -replace "`n", "<br>"
     
 	# Création des informations pour l'envoi du mail d'erreur
 	$valToReplace = @{

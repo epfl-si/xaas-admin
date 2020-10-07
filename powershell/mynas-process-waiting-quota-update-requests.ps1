@@ -101,7 +101,7 @@ function handleNotifications
 				{
 					$valToReplace.updateList = ($uniqueNotifications -join "</li>`n<li>")
 					$mailSubject = "Info - {0} user(s) quota(s) updated" -f $uniqueNotifications.count
-					$templateName = "quota-updated-user"
+					$templateName = "quota-updated-users"
             }
      
 
