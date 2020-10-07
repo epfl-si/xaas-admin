@@ -166,18 +166,18 @@ function formatParameters($parameters)
 
 <#
 	-------------------------------------------------------------------------------------
-	BUT : Renvoie la valeur d'une "Custom Property" donnée pour la VM passée
+	BUT : Renvoie la valeur d'une "Custom Property" donnée pour un objet vRA passé
 
-	IN  : $vm				-> Objet représentant la VM
+	IN  : $object			-> Objet représentant l'élément dans lequel chercher la custom prop
 	IN  : $customPropName	-> Nom de la Custom property à chercher
 	
 	RET : Valeur de la custom property
 			$null si pas trouvé
 #>
-function getVMCustomPropValue([object]$vm, [string]$customPropName)
+function getvRAObjectCustomPropValue([PSObject]$object, [string]$customPropName)
 {
 	# Recherche de la valeur de la "Custom Property" en PowerShell "optmisé"
-	return ($vm.resourceData.entries | Where-Object {$_.key -eq $customPropName}).value.value 
+	return ($object.resourceData.entries | Where-Object {$_.key -eq $customPropName}).value.value 
 }
 
 
@@ -329,3 +329,5 @@ function objectPropertyExists([PSCustomObject]$obj, [string]$propertyName)
 {
 	return ((($obj).PSobject.Properties | Select-Object -ExpandProperty "Name") -contains $propertyName)
 }
+
+
