@@ -114,8 +114,6 @@ $global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"
 $global:SNAPSHOT_POLICY = "epfl-default"
 $global:SNAPSHOT_SPACE_PERCENT = 30
 
-# -------------------------------------------- CONSTANTES ---------------------------------------------------
-
 <#
     -------------------------------------------------------------------------------------
     BUT : Retourne le prochain nom de volume utilisable
