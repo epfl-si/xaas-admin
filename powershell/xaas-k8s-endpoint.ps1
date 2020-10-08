@@ -75,7 +75,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 
 # Chargement des fichiers propres au PKS VMware
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "K8s", "K8sAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "K8s", "PKSAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
@@ -134,7 +134,12 @@ try
 	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
 						 $targetTenant, 
 						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+                         $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+    
+    # Création d'une connexion au serveur PKS pour accéder à ses API REST
+	$pks = [PKSAPI]::new($configK8s.getConfigValue($targetEnv, "pks", "server"), 
+                            $configK8s.getConfigValue($targetEnv, "pks", "user"), 
+                            $configK8s.getConfigValue($targetEnv, "pks", "password"))
 
 
     # Objet pour pouvoir envoyer des mails de notification
