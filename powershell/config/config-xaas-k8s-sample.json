@@ -1,0 +1,45 @@
+{
+    "dev": {
+        "pks":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "harbor":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        }
+    },
+    "test": {
+        "pks":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "harbor":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        }
+    },
+    "prod": {
+        "pks":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "harbor":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        }
+    }
+} 
+
