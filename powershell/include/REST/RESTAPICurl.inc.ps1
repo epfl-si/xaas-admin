@@ -199,7 +199,7 @@ class RESTAPICurl: RESTAPI
 				}
 				
 				# Si rien reçu ou code d'erreur
-				if($null -ne $result.error_code)
+				if(([bool]($result.PSobject.Properties.name -match "error_code")) -and ($null -ne $result.error_code))
 				{
 					# Si on a fait le max de tentative, on peut lever une erreur
 					if($currentAttemptNo -eq $nbCurlAttempts)
