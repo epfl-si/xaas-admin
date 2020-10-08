@@ -85,13 +85,27 @@ class PKSAPI: RESTAPICurl
 		# Appel de la fonction parente
 		$res = ([RESTAPICurl]$this).callAPI($uri, $method, $body, $extraArgs)
 
-		# Si on a un messgae d'erreur
+		# Si on a un message d'erreur
 		if([bool]($res.PSobject.Properties.name -match "error") -and ($res.error -ne ""))
 		{
 			# Création de l'erreur de base 
-			$err = "{0}::{1}(): {2} -> {3}" -f $this.gettype().Name, (Get-PSCallStack)[0].FunctionName, $res.error, $res.error_description
+			Throw ("{0}::{1}(): {2} -> {3}" -f $this.gettype().Name, (Get-PSCallStack)[0].FunctionName, $res.error, $res.error_description)
+		}
 
-			Throw $err
+		# Check si pas trouvé
+		if([bool]($res.PSobject.Properties.name -match "body"))
+		{
+			# Si on a un message qui dit "machin truc not found"
+			if($res.body -like "*not found*")
+			{
+				# On n'a rien trouvé
+				return $null
+			}
+			else # on doit donc probablement avoir un message d'erreur
+			{
+				Throw ("{0}::{1}(): {2}" -f $this.gettype().Name, (Get-PSCallStack)[0].FunctionName, $res.body)
+			}
+			
 		}
 
 		return $res
@@ -131,7 +145,7 @@ class PKSAPI: RESTAPICurl
         return $this.callAPI($uri, "GET", $null)
 	}
 	
-	
+
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des clusters
@@ -142,5 +156,120 @@ class PKSAPI: RESTAPICurl
 	}
 
 
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie les infos d'un cluster d'une manière détaillée
 
+		IN  : $clusterName		-> Le nom du cluster
+
+		NOTE: Cette fonction a été implémentée mais à priori, la fonction 'getCluster(..)' renvoie
+				exactement la même chose...
+	#>
+	[PSObject] getClusterDetails([string]$clusterName)
+	{
+		$uri = "https://{0}:9021/v1/clusterdetails/{1}" -f $this.server, [System.Net.WebUtility]::UrlEncode($clusterName)
+
+		return $this.callAPI($uri, "GET", $null)
+		
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie les infos d'un cluster
+
+		IN  : $clusterName		-> Le nom du cluster
+	#>
+	[PSObject] getCluster([string]$clusterName)
+	{
+		$uri = "https://{0}:9021/v1/clusters/{1}" -f $this.server, [System.Net.WebUtility]::UrlEncode($clusterName)
+
+		return $this.callAPI($uri, "GET", $null)
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Supprime un cluster
+
+		IN  : $clusterName		-> Le nom du cluster
+	#>
+	[void] deleteCluster([string]$clusterName)
+	{
+		$uri = "https://{0}:9021/v1/clusters/{1}" -f $this.server, [System.Net.WebUtility]::UrlEncode($clusterName)
+
+		$this.callAPI($uri, "DELETE", $null) | Out-Null
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute un cluster
+
+		IN  : $clusterName		-> Le nom du cluster
+	#>
+	[void] addCluster([string]$clusterName)
+	{
+		$uri = "https://{0}:9021/v1/clusters/" -f $this.server
+
+		# Valeur à mettre pour la configuration du BG
+		$replace = @{}
+
+		$body = $this.createObjectFromJSON("xaas-k8s-new-cluster.json", $replace)
+			
+		$this.callAPI($uri, "POST", $body) | Out-Null
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Met un cluster à jour
+
+		IN  : $clusterName		-> Le nom du cluster
+	#>
+	[void] updateCluster([string]$clusterName)
+	{
+		$uri = "https://{0}:9021/v1/clusters/{1}" -f $this.server, [System.Net.WebUtility]::UrlEncode($clusterName)
+
+		# Valeur à mettre pour la configuration du BG
+		$replace = @{}
+
+		$body = $this.createObjectFromJSON("xaas-k8s-patch-cluster.json", $replace)
+			
+		$this.callAPI($uri, "POST", $body) | Out-Null
+	}
+
+
+	<#
+        =====================================================================================
+											PLANS
+        =====================================================================================
+	#>
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des plans qui existent
+	#>
+	[Array] getPlanList()
+    {
+        $uri = "https://{0}:9021/v1/plans" -f $this.server
+        
+        return $this.callAPI($uri, "GET", $null)
+	}
+
+
+	<#
+        =====================================================================================
+											USAGE
+        =====================================================================================
+	#>
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie l'utilisation des clusters
+	#>
+	[Array] getUsages()
+    {
+        $uri = "https://{0}:9021/v1/usages" -f $this.server
+        
+        return $this.callAPI($uri, "GET", $null)
+	}
 }

@@ -1,0 +1,56 @@
+{
+    "compute_profile_name": "string",
+    "kubernetes_profile_name": "string",
+    "name": "string",
+    "network_profile_name": "string",
+    "parameters": {
+      "authorization_mode": "string",
+      "cluster_tags": [
+        {
+          "category": "string",
+          "name": "string",
+          "value": "string"
+        }
+      ],
+      "compute_profile": "string",
+      "custom_ca_certs": [
+        {
+          "ca_cert": "string",
+          "domain_name": "string"
+        }
+      ],
+      "k8s_customization_parameters": {
+        "insecure_registries": [
+          "string"
+        ],
+        "unset_http_proxy": [
+          "string"
+        ],
+        "vsphere_cloud_provider_config_key": "string"
+      },
+      "kubernetes_master_host": "string",
+      "kubernetes_master_port": 8443,
+      "kubernetes_setting_cluster_details": {
+        "kubelet_drain_delete_local_data": "string",
+        "kubelet_drain_force": "string",
+        "kubelet_drain_force_node": "string",
+        "kubelet_drain_grace_period": "string",
+        "kubelet_drain_ignore_daemonsets": "string",
+        "kubelet_drain_timeout": "string"
+      },
+      "kubernetes_setting_plan_details": {
+        "kubelet_drain_delete_local_data": "string",
+        "kubelet_drain_force": "string",
+        "kubelet_drain_force_node": "string",
+        "kubelet_drain_grace_period": "string",
+        "kubelet_drain_ignore_daemonsets": "string",
+        "kubelet_drain_timeout": "string"
+      },
+      "kubernetes_worker_instances": 0,
+      "node_pool_instances": "string",
+      "nsxt_network_details": "string",
+      "nsxt_network_profile": "string",
+      "worker_haproxy_ip_addresses": "string"
+    },
+    "plan_name": "string"
+  }

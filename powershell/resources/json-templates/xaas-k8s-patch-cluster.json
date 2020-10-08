@@ -1,0 +1,30 @@
+{
+    "cluster_tags": [
+      {
+        "category": "string",
+        "name": "string",
+        "value": "string"
+      }
+    ],
+    "compute_profile_name": "string",
+    "custom_ca_certs": [
+      {
+        "ca_cert": "string",
+        "domain_name": "string"
+      }
+    ],
+    "delete_all_tags": true,
+    "insecure_registries": [
+      "string"
+    ],
+    "kubelet_drain_delete_local_data": "string",
+    "kubelet_drain_force": "string",
+    "kubelet_drain_force_node": "string",
+    "kubelet_drain_grace_period": "string",
+    "kubelet_drain_ignore_daemonsets": "string",
+    "kubelet_drain_timeout": "string",
+    "kubernetes_profile_name": "string",
+    "kubernetes_worker_instances": 0,
+    "network_profile_name": "string",
+    "node_pool_instances": "string"
+  }
