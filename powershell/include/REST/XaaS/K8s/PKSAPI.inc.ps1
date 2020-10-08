@@ -1,5 +1,5 @@
 <#
-   BUT : Contient les fonctions donnant accès à l'API de K8s (Kubernetes)
+   BUT : Contient les fonctions donnant accès à l'API de PKS (Kubernetes)
 
    AUTEUR : Lucien Chaboudez
    DATE   : Octobre 2020
@@ -111,27 +111,20 @@ class PKSAPI: RESTAPICurl
 		return $res
 	}
 	
-    <#
-		-------------------------------------------------------------------------------------
-		BUT : Ferme une connexion via l'API REST
-
-	#>
-	[Void] disconnect()
-	{
-		# FIXME: Implement
-		Throw "Implement"
-		$uri = "https://{0}/logout" -f $this.server
-
-		$this.callAPI($uri, "Post", $null)
-    }
-    
 
 	<#
         =====================================================================================
 											CLUSTERS
         =====================================================================================
 	#>
-	
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des clusters avec possibilité de filtrer
+
+		IN  : $queryParams	-> Paramètres pour la query
+
+		RET : Tableau avec les résultats
+	#>
 	hidden [Array] getClusterListQuery([string]$queryParams)
     {
         $uri = "https://{0}:9021/v1/clusters" -f $this.server
