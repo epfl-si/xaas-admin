@@ -696,6 +696,11 @@ try
             # Liste des SVM pour la faculté (avec la bonne nommenclature)
             $svmList = $netapp.getSVMList() | Where-Object { $_.name -match ('^{0}[0-9].*' -f $targetFaculty)}
             
+            if($svmList.GetType() -ne "Array")
+            {
+                $svmList = @($svmList)
+            }
+
             # Si on a une liste hard-codée de SVM pour la faculté
             if([bool]($facultyToSVM.PSobject.Properties.name.toLower() -eq $faculty.toLower()))
             {
