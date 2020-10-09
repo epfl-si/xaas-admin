@@ -205,10 +205,11 @@ class PKSAPI: RESTAPICurl
 	{
 		$uri = "https://{0}:9021/v1/clusters/" -f $this.server
 
+		Throw "To implement"
 		# Valeur à mettre pour la configuration du BG
 		$replace = @{}
 
-		$body = $this.createObjectFromJSON("xaas-k8s-new-cluster.json", $replace)
+		$body = $this.createObjectFromJSON("xaas-k8s-new-pks-cluster.json", $replace)
 			
 		$this.callAPI($uri, "POST", $body) | Out-Null
 	}
@@ -224,10 +225,11 @@ class PKSAPI: RESTAPICurl
 	{
 		$uri = "https://{0}:9021/v1/clusters/{1}" -f $this.server, [System.Net.WebUtility]::UrlEncode($clusterName)
 
+		Throw "To implement"
 		# Valeur à mettre pour la configuration du BG
 		$replace = @{}
 
-		$body = $this.createObjectFromJSON("xaas-k8s-patch-cluster.json", $replace)
+		$body = $this.createObjectFromJSON("xaas-k8s-patch-pks-cluster.json", $replace)
 			
 		$this.callAPI($uri, "POST", $body) | Out-Null
 	}

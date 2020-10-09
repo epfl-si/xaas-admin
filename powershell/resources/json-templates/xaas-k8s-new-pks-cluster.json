@@ -1,0 +1,8 @@
+{
+    "name": "string",
+    "network_profile_name": "string",
+    "parameters": {
+      "kubernetes_master_host": "string"
+    },
+    "plan_name": "string"
+  }

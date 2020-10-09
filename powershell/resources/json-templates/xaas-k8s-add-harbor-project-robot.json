@@ -1,0 +1,10 @@
+{
+    "access": [
+      {
+        "action": "push",
+        "resource": "/project/{{projectId}}/repository"
+      }
+    ],
+    "name": "{{name}}",
+    "description": "{{description}}"
+  }
