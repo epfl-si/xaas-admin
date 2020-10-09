@@ -61,11 +61,13 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGeneratorBase.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "K8s", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "K8s", "NameGeneratorK8s.inc.ps1"))
 
 # Chargement des fichiers pour API REST
@@ -76,6 +78,7 @@ param([string]$targetEnv,
 
 # Chargement des fichiers propres au PKS VMware
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "K8s", "PKSAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "K8s", "HarborAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
@@ -99,6 +102,20 @@ $ACTION_NEW_STORAGE             = "newStorage"
 
 
 
+# -------------------------------------------- FONCTIONS ---------------------------------------------------
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Recherche et renvoie le prochain nom de cluster qu'on peut utiliser
+
+    IN  : $str -> la chaine de caractères à transformer
+
+    RET : Le nom du cluster
+#>
+function getNextClusterName([PKSAPI]$pks, [NameGeneratorK8s]$nameGeneratorK8s)
+{
+
+}
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -126,9 +143,7 @@ try
     $targetTenant = $targetTenant.ToLower()
 
     # Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
-    $nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
-    
-    $nameGeneratorK8s = [NameGeneratorK8s]::new()
+    $nameGeneratorK8s = [NameGeneratorK8s]::new($targetEnv, $targetTenant)
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
@@ -157,7 +172,8 @@ try
         # --- Nouveau
         $ACTION_CREATE
         {
-
+            # Initialisation pour récupérer les noms des éléments
+            $nameGeneratorK8s.initDetailsFromBGName($bgName)
         }
 
 

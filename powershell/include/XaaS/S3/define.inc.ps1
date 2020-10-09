@@ -3,10 +3,6 @@
 
    AUTEUR : Lucien Chaboudez
    DATE   : Juillet 2019
-
-   ----------
-   HISTORIQUE DES VERSIONS
-   1.0 - Version de base
 #>
 
 # Les types d'accès possibles 
