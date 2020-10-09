@@ -163,19 +163,21 @@ class NameGenerator
     #>
     [void] initDetailsFromBGName([string]$bgName)
     {
-        $bgParts = $bgName.split("_")
+        $bgDetails = $this.getDetailsFromBGName($bgName)
+
         $withDetails = @{}
         switch($this.tenant)
         {
             # Tenant EPFL
             $global:VRA_TENANT__EPFL 
             { 
+                
                 # le nom du BG est au format <tenantShort>_<faculty>_<unit>
                 $withDetails = @{
                     financeCenter = ''
-                    facultyName = $bgParts[1]
+                    facultyName = $bgDetails.faculty
                     facultyID = ''
-                    unitName = $bgParts[2]
+                    unitName = $bgDetails.unit
                     unitID = '' 
                 }
             }
@@ -185,7 +187,7 @@ class NameGenerator
             { 
                 # le nom du BG est au format <tenantShort>_<serviceShort>
                 $withDetails = @{
-                    serviceShortName = $bgParts[1]
+                    serviceShortName = $bgDetails.serviceShortName
                     serviceName = ''
                     snowServiceId = ''
                 }
@@ -196,7 +198,7 @@ class NameGenerator
             {
                 # le nom du BG est au format <tenantShort>_<projectId>
                 $withDetails = @{
-                    projectId = $bgParts[1]
+                    projectId = $bgDetails.projectId
                     financeCenter = ''
                     projectAcronym = ''
                 }
@@ -1996,6 +1998,8 @@ class NameGenerator
                 .unit
             ITServices
                 .serviceShortName
+            Research
+                .projectId
     #>
     [PSObject] getDetailsFromBGName([string]$bgName)
     {   
@@ -2008,6 +2012,11 @@ class NameGenerator
                 # Le nom du BG est au format: epfl_<fac>_<unit>
                 $dummy, $faculty, $unit = [regex]::Match($bgName, '^epfl_([a-z]+)_([a-z0-9_]+)').Groups | Select-Object -ExpandProperty value
                 
+                if($null -eq $faculty -or $null -eq $unit)
+                {
+                    Throw ("Wrong BG name given ({0}) for {1} Tenant" -f $bgName, $this.tenant)
+                }
+
                 $result = @{
                     faculty = $faculty
                     # On remet les "-" dans le nom d'unité si besoin
@@ -2021,6 +2030,11 @@ class NameGenerator
                 # Le nom du BG est au format: its_<serviceShortName>
                 $dummy, $serviceShortName = [regex]::Match($bgName, '^its_([a-z0-9]+)').Groups | Select-Object -ExpandProperty value
 
+                if($null -eq $serviceShortName)
+                {
+                    Throw ("Wrong BG name given ({0}) for {1} Tenant" -f $bgName, $this.tenant)
+                }
+
                 $result = @{
                     serviceShortName = $serviceShortName
                 }
@@ -2031,6 +2045,11 @@ class NameGenerator
             {
                 # Le nom du BG est au format: rsrch_<projectId>
                 $dummy, $projectId = [regex]::Match($bgName, '^rsrch_([0-9]+)').Groups | Select-Object -ExpandProperty value
+
+                if($null -eq $projectId)
+                {
+                    Throw ("Wrong BG name given ({0}) for {1} Tenant" -f $bgName, $this.tenant)
+                }
 
                 $result = @{
                     projectId = $projectId
