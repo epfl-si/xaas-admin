@@ -23,7 +23,7 @@ class NameGeneratorBase
     # les informations en fonction des noms à générer.
     hidden [System.Collections.IDictionary]$details 
 
-    
+
     <#
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
@@ -39,7 +39,7 @@ class NameGeneratorBase
 
 		RET : Instance de l'objet
 	#>
-    NameGeneratorBase([string]$env, [string]$tenant): base($env, $tenant)
+    NameGeneratorBase([string]$env, [string]$tenant)
     {
         if($global:TARGET_ENV_LIST -notcontains $env)
         {
