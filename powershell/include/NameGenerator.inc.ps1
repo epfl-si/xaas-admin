@@ -78,20 +78,6 @@ class NameGenerator: NameGeneratorBase
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Transforme et renvoie le nom de faculté pour supprimer les caractères indésirables
-                Les - vont être supprimés
-
-        IN  : $facultyName -> Le nom de la faculté
-
-        RET : La chaine corrigée
-    #>
-    hidden [string]sanitizeFacultyName([string]$facultyName)
-    {
-        return $facultyName.replace("-", "")
-    }
-
-    <#
-        -------------------------------------------------------------------------------------
         BUT : Transforme et renvoie le nom de faculté passée pour qu'il corresponde
                 aux attentes du nommage des groupes et autres. 
                 Les - vont être supprimés et tout sera mis en minuscule
@@ -102,7 +88,7 @@ class NameGenerator: NameGeneratorBase
     #>
     hidden [string]transformFacultyForGroupName([string]$facultyName)
     {
-        return $this.sanitizeFacultyName($facultyName).ToLower()
+        return $this.sanitizeName($facultyName).ToLower()
     }
     
     <#
@@ -956,7 +942,7 @@ class NameGenerator: NameGeneratorBase
             # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
-                $name = "sg.epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
+                $name = "sg.epfl_{0}" -f $this.sanitizeName($this.getDetail('facultyName')).ToLower()
                 $desc = "Tenant: {0}\nFaculty: {1}" -f $this.tenant, $this.getDetail('facultyName')
             }
 
@@ -1004,7 +990,7 @@ class NameGenerator: NameGeneratorBase
             # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
-                $tagName = "st.epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
+                $tagName = "st.epfl_{0}" -f $this.sanitizeName($this.getDetail('facultyName')).ToLower()
             }
 
             # Tenant ITServices
@@ -1050,7 +1036,7 @@ class NameGenerator: NameGeneratorBase
             # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
-                $name = "epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName'))
+                $name = "epfl_{0}" -f $this.sanitizeName($this.getDetail('facultyName'))
                 $desc = "Section for Tenant {0} and Faculty {1}" -f $this.tenant, $this.getDetail('facultyName').toUpper()
             }
 
@@ -1101,7 +1087,7 @@ class NameGenerator: NameGeneratorBase
             # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
-                $ruleMiddle = $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
+                $ruleMiddle = $this.sanitizeName($this.getDetail('facultyName')).ToLower()
             }
 
 
@@ -1187,55 +1173,10 @@ class NameGenerator: NameGeneratorBase
         return '{0}OU={1},OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch' -f $tenantOU, $envOU
     }
 
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom court de l'environnement.
-              Ceci est utilisé pour la génération des noms des groupes
-
-		RET : Nom court de l'environnement
-    #>
-    hidden [string] getEnvShortName()
-    {
-        switch($this.env)
-        {
-            $global:TARGET_ENV__DEV {return 'd'}
-            $global:TARGET_ENV__TEST {return 't'}
-            $global:TARGET_ENV__PROD {return 'p'}
-        }
-        return ""
-    }    
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom court du tenant.
-              Ceci est utilisé pour la génération des noms des groupes
-
-		RET : Nom court du tenant
-    #>
-    hidden [string] getTenantShortName()
-    {
-        $res = switch($this.tenant)
-        {
-            $global:VRA_TENANT__DEFAULT { 'def' }
-            $global:VRA_TENANT__EPFL { 'epfl' }
-            $global:VRA_TENANT__ITSERVICES { 'its' }
-            $global:VRA_TENANT__RESEARCH { 'rsrch'}
-            default { '' }
-        }
-        
-        return $res
-    } 
-
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-    <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
-
-    
 
     <#
         -------------------------------------------------------------------------------------

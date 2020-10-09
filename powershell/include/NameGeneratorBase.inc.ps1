@@ -277,7 +277,6 @@ class NameGeneratorBase
     }
 
 
-
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie la valeur d'un détail, donné par son nom. Si pas trouvé, une exception
@@ -295,5 +294,67 @@ class NameGeneratorBase
         }
 
         return $this.details.$name
+    }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom court de l'environnement.
+              Ceci est utilisé pour la génération des noms des groupes
+
+		RET : Nom court de l'environnement
+    #>
+    hidden [string] getEnvShortName()
+    {
+        switch($this.env)
+        {
+            $global:TARGET_ENV__DEV {return 'd'}
+            $global:TARGET_ENV__TEST {return 't'}
+            $global:TARGET_ENV__PROD {return 'p'}
+        }
+        return ""
+    }    
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom court du tenant.
+              Ceci est utilisé pour la génération des noms des groupes
+
+		RET : Nom court du tenant
+    #>
+    hidden [string] getTenantShortName()
+    {
+        $res = switch($this.tenant)
+        {
+            $global:VRA_TENANT__DEFAULT { 'def' }
+            $global:VRA_TENANT__EPFL { 'epfl' }
+            $global:VRA_TENANT__ITSERVICES { 'its' }
+            $global:VRA_TENANT__RESEARCH { 'rsrch'}
+            default { '' }
+        }
+        
+        return $res
+    } 
+    
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Transforme et renvoie une chaîne de caractère (un nom) pour supprimer les caractères indésirables
+                Les - vont être supprimés
+
+        IN  : $name     -> chaîne de caractères à "nettoyer"
+        IN  : $maxChars -> Le nombre max de caractères de la chaine
+
+        RET : La chaine corrigée
+    #>
+    hidden [string]sanitizeName([string]$name)
+    {
+        return $name.replace("-", "")
+    }
+    hidden [string]sanitizeName([string]$name, [int]$maxChars)
+    {
+        $name = $this.sanitizeName($name)
+        return (truncateString -str $name -maxChars $maxChars)
     }
 }
