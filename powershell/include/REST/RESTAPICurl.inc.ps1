@@ -98,7 +98,7 @@ class RESTAPICurl: RESTAPI
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
-		return $this.callAPI($uri, $method, $body, "")
+		return ([RESTAPICurl]$this).callAPI($uri, $method, $body, "")
 	}
 	<#
 		-------------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ class RESTAPICurl: RESTAPI
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body, [string]$extraArgs)
 	{
-		return $this.callAPI($uri, $method, $body, "", $false)
+		return ([RESTAPICurl]$this).callAPI($uri, $method, $body, $extraArgs, $false)
 	}
 	<#
 		-------------------------------------------------------------------------------------
