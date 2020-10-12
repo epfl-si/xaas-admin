@@ -131,7 +131,7 @@ class NSXAPI: RESTAPICurl
         $body = $this.createObjectFromJSON("nsx-nsgroup.json", $replace)
         
 		# Création du NS Group
-        $dummy = $this.callAPI($uri, "Post", $body)
+        $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
         return $this.getNSGroupByName($name)
@@ -148,7 +148,7 @@ class NSXAPI: RESTAPICurl
     {
         $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $nsGroup.id
 
-        $dummy = $this.callAPI($uri, "Delete", $null)
+        $this.callAPI($uri, "Delete", $null) | Out-Null
     }
 
 
@@ -292,7 +292,7 @@ class NSXAPI: RESTAPICurl
         $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $section.id
         
 		# Création de la section de firewall
-        $dummy = $this.callAPI($uri, "PUT", $section)       
+        $this.callAPI($uri, "PUT", $section) | Out-Null
         
     }
 
@@ -309,7 +309,7 @@ class NSXAPI: RESTAPICurl
         $uri = "https://{0}/api/v1/firewall/sections/{1}?cascade=true" -f $this.server, $id
         
 		# Création de la section de firewall
-        $dummy = $this.callAPI($uri, "Delete", $null)       
+        $this.callAPI($uri, "Delete", $null) | Out-Null
         
     }
 
@@ -363,13 +363,13 @@ class NSXAPI: RESTAPICurl
     
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Ajoute les règles dans une section de firewall
+        BUT : Renvoie la liste des règles pour une section de Firewall
         
         IN  : $firewallSectionId    -> ID de la section de firewall
         
         RET : La liste des règles pour la section donnée
     #>
-    [Array] getFirewallSectionRules([string]$firewallSectionId)
+    [Array] getFirewallSectionRulesList([string]$firewallSectionId)
     {
         $uri = "https://{0}/api/v1/firewall/sections/{1}/rules" -f $this.server, $firewallSectionId
 
@@ -410,7 +410,112 @@ class NSXAPI: RESTAPICurl
         $body = $this.createObjectFromJSON("nsx-firewall-section-rules.json", $replace)
 
         # Création des règles
-        $dummy = $this.callAPI($uri, "Post", $body)
+        $this.callAPI($uri, "Post", $body) | Out-Null
     }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	    									IP POOLS
+		-------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------
+	#>
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des Pools IP existants
+        
+        RET : La liste des règles pour la section donnée
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
+    #>
+    [Array] getIPPoolList()
+    {
+        $uri = "https://{0}/api/v1/pools/ip-pools" -f $this.server
+
+        return $this.callAPI($uri, "GET", $null).results
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie une pool IP par son nom
+        
+        IN  : $name -> nom de la pool que l'on désire
+
+        RET : Info sur la pool 
+                $null si pas trouvé
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
+    #>
+    [PSObject] getIPPoolByName([string]$name)
+    {
+        return $this.getIPPoolList() | Where-Object { $_.display_name -eq $name }
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie un pool IP par son ID
+        
+        IN  : $poolId -> nom du pool que l'on désire
+
+        RET : Info sur la pool 
+                $null si pas trouvé
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
+    #>
+    [PSObject] getIPPoolByID([string]$poolId)
+    {
+        $uri = "https://{0}/api/v1/pools/ip-pools/{1}" -f $this.server, $poolId
+
+        return $this.callAPI($uri, "GET", $null).results
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie une adresse IP disponible dans un pool
+        
+        IN  : $id -> nom du pool dans lequel piocher l'adresse IP
+
+        RET : Adresse IP
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
+    #>
+    [string] getIPAddressInPool([string]$poolId)
+    {
+        $uri = "https://{0}/api/v1/pools/ip-pools/{1}?action=ALLOCATE" -f $this.server, $poolId
+
+        return $this.callAPI($uri, "POST", $null).allocation_id
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Libère une adresse IP disponible dans un pool
+        
+        IN  : $id -> nom du pool dans lequel piocher l'adresse IP
+
+        RET : Adresse IP
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
+    #>
+    [void] releaseIPAddressInPool([string]$poolId, [string]$ipAddress)
+    {
+        $uri = "https://{0}/api/v1/pools/ip-pools/{1}?action=RELEASE" -f $this.server, $poolId
+
+        # Valeur à mettre pour la configuration des règles
+        $replace = @{
+            ipAddress = $ipAddress
+        }
+
+        $body = $this.createObjectFromJSON("nsx-release-ip-address.json", $replace)
+
+        # Création des règles
+        $this.callAPI($uri, "Post", $body) | Out-Null
+    }
+    
 
 }

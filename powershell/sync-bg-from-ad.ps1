@@ -1120,7 +1120,7 @@ function createFirewallSectionRulesIfNotExists
 	$allRules = $nsxFWRuleNames | ConvertTo-Json
 
 	# Recherche des règles existantes 
-	$rules = $nsx.getFirewallSectionRules($nsxFWSection.id)
+	$rules = $nsx.getFirewallSectionRulesList($nsxFWSection.id)
 
 	# Si les règles n'existent pas
 	if($rules.Count -eq 0)
