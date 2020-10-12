@@ -11,6 +11,12 @@
             "server": "",
             "user": "",
             "password": ""
+        },
+        "dns":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
         }
     },
     "test": {
@@ -25,6 +31,12 @@
             "server": "",
             "user": "",
             "password": ""
+        },
+        "dns":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
         }
     },
     "prod": {
@@ -35,6 +47,12 @@
             "password": ""
         },
         "harbor":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "dns":
         {
             "server": "",
             "user": "",

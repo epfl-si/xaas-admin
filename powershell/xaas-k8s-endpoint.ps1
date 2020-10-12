@@ -64,6 +64,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGeneratorBase.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLDNS.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
@@ -141,6 +142,7 @@ function getNextClusterName([PKSAPI]$pks, [NameGeneratorK8s]$nameGeneratorK8s)
 }
 
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -179,6 +181,10 @@ try
                             $configK8s.getConfigValue($targetEnv, "pks", "user"), 
                             $configK8s.getConfigValue($targetEnv, "pks", "password"))
 
+    # Création du nécessaire pour interagir avec le DNS EPFL
+	$EPFLDNS = [EPFLDNS]::new($configK8s.getConfigValue($targetEnv, "dns", "server"), 
+                                $configK8s.getConfigValue($targetEnv, "dns", "user"), 
+                                $configK8s.getConfigValue($targetEnv, "dns", "password"))
 
     # Objet pour pouvoir envoyer des mails de notification
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
