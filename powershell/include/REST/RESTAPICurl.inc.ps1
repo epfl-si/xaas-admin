@@ -98,6 +98,7 @@ class RESTAPICurl: RESTAPI
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
+		# On fait un "cast" pour être sûr d'appeler la fonction de la classe courante et pas une surcharge éventuelle
 		return ([RESTAPICurl]$this).callAPI($uri, $method, $body, "")
 	}
 	<#
@@ -114,6 +115,7 @@ class RESTAPICurl: RESTAPI
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body, [string]$extraArgs)
 	{
+		# On fait un "cast" pour être sûr d'appeler la fonction de la classe courante et pas une surcharge éventuelle
 		return ([RESTAPICurl]$this).callAPI($uri, $method, $body, $extraArgs, $false)
 	}
 	<#
