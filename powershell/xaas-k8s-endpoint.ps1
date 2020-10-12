@@ -114,7 +114,30 @@ $ACTION_NEW_STORAGE             = "newStorage"
 #>
 function getNextClusterName([PKSAPI]$pks, [NameGeneratorK8s]$nameGeneratorK8s)
 {
+    $regex = $nameGeneratorK8s.getClusterRegex()
 
+    $no = 1
+
+    # On recherche maintenant la liste de tous les clusters, 
+    # NDLR: Pour une fois, on utilise vraiment la puissance de PowerShell pour le traitement, ça a un côté limite émouvant... mais il 
+    # ne faut pas oublier une chose, "un grand pouvoir implique de grandes responsabilités"
+    $pks.getClusterList() | `
+        Where-Object { [Regex]::Match($_.name, $regex).Length -gt 0 } | ` # On filtre sur les bons noms avec la regex
+        Select-Object -ExpandProperty name | ` # On récupère uniquement le nom
+        Sort-Object | ` # Et on trie dans l'ordre croissant des noms
+        ForEach-Object { # Et on boucle
+
+            # Si le numéro du cluster courant n'existe pas, 
+            if([int]([Regex]::Match($_, $regex).Groups[1].value) -ne $no)
+            {
+                # on le prend
+                return
+            }
+            $no++
+        }
+    
+    # Arrivé ici, $no contient le numéro du prochain cluster, on peut donc le générer
+    return $nameGeneratorK8s.getClusterName($no)
 }
 
 
@@ -174,6 +197,9 @@ try
         {
             # Initialisation pour récupérer les noms des éléments
             $nameGeneratorK8s.initDetailsFromBGName($bgName)
+
+            # Recherche du nom du nouveau cluster
+            $clusterName = getNextClusterName -pks $pks -nameGeneratorK8s $nameGeneratorK8s
         }
 
 

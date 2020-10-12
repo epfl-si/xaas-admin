@@ -36,6 +36,48 @@ class NameGeneratorK8s: NameGeneratorBase
 
    <#
       -------------------------------------------------------------------------------------
+      BUT : Renvoie la partie centrale pour le nom d'un cluster en fonction du tenant
+   #>
+   hidden [string] getClusterNameMiddle()
+   {
+      $middle = ""
+      switch($this.tenant)
+      {
+         $global:VRA_TENANT__EPFL
+         {
+            $middle = ("{0}{1}" -f $this.sanitizeName($this.getDetail('facultyName'), $global:CLUSTER_NAME_FACULTY_PART_MAX_CHAR).ToLower(), `
+                                   $this.sanitizeName($this.getDetail('unitName').ToLower()))
+         }
+
+         $global:VRA_TENANT__ITSERVICES
+         {
+            $middle = ($this.sanitizeName($this.getDetail('serviceShortName')))
+         }
+
+         $global:VRA_TENANT__RESEARCH
+         {
+            $middle = ($this.sanitizeName($this.getDetail('projectId')))
+         }
+      }
+      return $middle
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie la regex à utiliser pour chercher les noms de cluster pour le tenant/env
+            courant
+
+      RET : La regex
+   #>
+   [string] getClusterRegex()
+   {
+      return ('{0}{1}k{2}([0-9]+)' -f $this.getTenantShortName(), $this.getClusterNameMiddle(), $this.getEnvShortName())
+   }
+
+   
+   <#
+      -------------------------------------------------------------------------------------
       BUT : Renvoie le nom du cluster avec le numéro donné
 
       IN  : $number   -> Numéro du cluster qu'on désire
@@ -45,20 +87,13 @@ class NameGeneratorK8s: NameGeneratorBase
    [string] getClusterName([int]$number)
    {
       $numberStr = $number.ToString().PadLeft($global:CLUSTER_NAME_NB_DIGIT, "0")
-        
-      switch($this.tenant)
-      {
-         $global:VRA_TENANT__EPFL
-         {
-            return ("{0}{1}" -f $this.getTenantShortName() )
-         }
-
-         $global:VRA_TENANT__ITSERVICES
-         {
-
-         }
-
-         $global:VRA_TENANT__RESEARCH
-      }
+      
+      return ("{0}{1}k{3}{4}" -f $this.getTenantShortName(), ` # Nom court du tenant
+               $this.getClusterNameMiddle(), `
+               $this.getEnvShortName(), `
+               $numberStr)
    }
+
+
+
 }
