@@ -1,14 +1,14 @@
 <#
 USAGES:
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action delete -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action appVolExists -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action canHaveNewVol -bgName <bgName> -access cifs|nfs3
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action resize -sizeGB <sizeGB>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getVolSize [-volName <volName>]
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl -action getSVMList -bgName <bgName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action appVolExists -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action canHaveNewVol -bgName <bgName> -access cifs|nfs3
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action resize -sizeGB <sizeGB>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolSize [-volName <volName>]
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getSVMList -bgName <bgName>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -114,8 +114,6 @@ $global:MAX_VOL_PER_UNIT    = 10
 $global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"
 $global:SNAPSHOT_POLICY = "epfl-default"
 $global:SNAPSHOT_SPACE_PERCENT = 30
-
-# -------------------------------------------- CONSTANTES ---------------------------------------------------
 
 <#
     -------------------------------------------------------------------------------------
@@ -358,7 +356,12 @@ try
                                 $configNAS.getConfigValue($targetEnv, "password"))
 
     # Objet pour pouvoir envoyer des mails de notification
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
+	$valToReplace = @{
+		targetEnv = $targetEnv
+		targetTenant = $targetTenant
+    }
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+                                                    ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
     # -------------------------------------------------------------------------
     # En fonction de l'action demandée
@@ -690,6 +693,11 @@ try
             # Liste des SVM pour la faculté (avec la bonne nommenclature)
             $svmList = $netapp.getSVMList() | Where-Object { $_.name -match ('^{0}[0-9].*' -f $targetFaculty)}
             
+            if($svmList.GetType() -ne "Array")
+            {
+                $svmList = @($svmList)
+            }
+
             # Si on a une liste hard-codée de SVM pour la faculté
             if([bool]($facultyToSVM.PSobject.Properties.name.toLower() -eq $faculty.toLower()))
             {
