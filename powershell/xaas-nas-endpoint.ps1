@@ -64,6 +64,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGeneratorBase.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 
@@ -341,9 +342,7 @@ try
     $targetTenant = $targetTenant.ToLower()
 
     # Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
-    $nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
-    
-    $nameGeneratorNAS = [NameGeneratorNAS]::new()
+    $nameGeneratorNAS = [NameGeneratorNAS]::new($targetEnv, $targetTenant)
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
@@ -401,10 +400,8 @@ try
                 # ---- Volume Collaboratif
                 $global:VOL_TYPE_COLL
                 {
-                    # Récupération du nom de la faculté et de l'unité
-                    $details = $nameGenerator.getDetailsFromBGName($bgName)
-
-                    $nameGeneratorNAS.setCollaborativeDetails($details.faculty, $details.unit)
+                    # Initialisation des détails
+                    $nameGeneratorNAS.setCollaborativeDetails($bgName)
 
                     $logHistory.addLine( "Generating volume name..." )
                     # Recheche du prochain nom de volume
@@ -671,7 +668,7 @@ try
         $ACTION_GET_SVM_LIST 
         {
             # Récupération du nom de la faculté et de l'unité
-            $details = $nameGenerator.getDetailsFromBGName($bgName)
+            $details = $nameGeneratorNAS.getDetailsFromBGName($bgName)
             $faculty = $details.faculty
 
             # Chargement des informations sur le mapping des facultés
@@ -740,10 +737,7 @@ try
         $ACTION_CAN_HAVE_NEW_VOL
         {
            
-            # Récupération du nom de la faculté et de l'unité
-            $details = $nameGenerator.getDetailsFromBGName($bgName)
-
-            $nameGeneratorNAS.setCollaborativeDetails($details.faculty, $details.unit)
+            $nameGeneratorNAS.setCollaborativeDetails($bgName)
 
             $logHistory.addLine( "Looking for next volume name..." )
             # Recheche du prochain nom de volume

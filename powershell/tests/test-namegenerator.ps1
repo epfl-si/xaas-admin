@@ -18,6 +18,7 @@ USAGES:
 #>
 . ([IO.Path]::Combine("$PSScriptRoot", "..", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "..", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "..", "include", "NameGeneratorBase.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "..", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "..", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ClassTester.inc.ps1"))
