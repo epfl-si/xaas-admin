@@ -42,7 +42,6 @@ class NameGeneratorNAS: NameGeneratorBase
 	#>
    NameGeneratorNAS([string]$env, [string]$tenant): base($env, $tenant)
    {
-      $this.type = $null
    }
 
    <#
