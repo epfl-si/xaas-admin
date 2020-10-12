@@ -277,13 +277,14 @@ class NameGeneratorBase
     }
 
 
-
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie la valeur d'un détail, donné par son nom. Si pas trouvé, une exception
                 est levée.
 
         IN  : $name -> Nom du détail que l'on désire.
+                        Voir l'entête de la fonction 'initDetails' pour savoir quels sont les
+                        possibilités pour le paramètre $name
 
         RET : La valeur du détail
     #>
@@ -341,15 +342,21 @@ class NameGeneratorBase
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Transforme et renvoie le nom de faculté pour supprimer les caractères indésirables
+        BUT : Transforme et renvoie une chaîne de caractère (un nom) pour supprimer les caractères indésirables
                 Les - vont être supprimés
 
-        IN  : $facultyName -> Le nom de la faculté
+        IN  : $name     -> chaîne de caractères à "nettoyer"
+        IN  : $maxChars -> Le nombre max de caractères de la chaine
 
         RET : La chaine corrigée
     #>
-    hidden [string]sanitizeFacultyName([string]$facultyName)
+    hidden [string]sanitizeName([string]$name)
     {
-        return $facultyName.replace("-", "")
+        return $name.replace("-", "")
+    }
+    hidden [string]sanitizeName([string]$name, [int]$maxChars)
+    {
+        $name = $this.sanitizeName($name)
+        return (truncateString -str $name -maxChars $maxChars)
     }
 }

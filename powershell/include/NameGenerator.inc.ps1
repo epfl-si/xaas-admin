@@ -86,7 +86,7 @@ class NameGenerator: NameGeneratorBase
     #>
     hidden [string]transformFacultyForGroupName([string]$facultyName)
     {
-        return $this.sanitizeFacultyName($facultyName).ToLower()
+        return $this.sanitizeName($facultyName).ToLower()
     }
     
     <#
@@ -940,7 +940,7 @@ class NameGenerator: NameGeneratorBase
             # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
-                $name = "sg.epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
+                $name = "sg.epfl_{0}" -f $this.sanitizeName($this.getDetail('facultyName')).ToLower()
                 $desc = "Tenant: {0}\nFaculty: {1}" -f $this.tenant, $this.getDetail('facultyName')
             }
 
@@ -988,7 +988,7 @@ class NameGenerator: NameGeneratorBase
             # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
-                $tagName = "st.epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
+                $tagName = "st.epfl_{0}" -f $this.sanitizeName($this.getDetail('facultyName')).ToLower()
             }
 
             # Tenant ITServices
@@ -1034,7 +1034,7 @@ class NameGenerator: NameGeneratorBase
             # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
-                $name = "epfl_{0}" -f $this.sanitizeFacultyName($this.getDetail('facultyName'))
+                $name = "epfl_{0}" -f $this.sanitizeName($this.getDetail('facultyName'))
                 $desc = "Section for Tenant {0} and Faculty {1}" -f $this.tenant, $this.getDetail('facultyName').toUpper()
             }
 
@@ -1085,7 +1085,7 @@ class NameGenerator: NameGeneratorBase
             # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
-                $ruleMiddle = $this.sanitizeFacultyName($this.getDetail('facultyName')).ToLower()
+                $ruleMiddle = $this.sanitizeName($this.getDetail('facultyName')).ToLower()
             }
 
 
@@ -1171,12 +1171,10 @@ class NameGenerator: NameGeneratorBase
         return '{0}OU={1},OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch' -f $tenantOU, $envOU
     }
 
-   
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
-    
 
     <#
         -------------------------------------------------------------------------------------
