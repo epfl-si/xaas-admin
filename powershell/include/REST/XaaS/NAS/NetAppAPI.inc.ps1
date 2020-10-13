@@ -525,6 +525,34 @@ class NetAppAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
+        BUT : Retourne le protocol d'accès
+        
+        IN  : $vol   -> Objet représentant le volume
+
+        RET : "nfs3"|"cifs" Pour que ça puisse être réutilisé directement dans la fonction updateExportPolicyRules
+                $null si pas trouvé
+	#>
+    [string] getVolumeAccessProtocol([PSObject]$vol)
+    {
+        $uri = "/api/storage/volumes/{0}?fields=nas.security_style" -f $vol.uuid
+
+        $vol = $this.callAPI($uri, "GET", $null, "", $true)
+
+        if($null -eq $vol)
+        {
+            return $null
+        }
+
+        if($vol.nas.security_style -eq "unix")
+        {
+            return "nfs3"
+        }
+        return "cifs"
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
         BUT : Retourne les informations d'un Volume en fonction de son nom
         
         IN  : $name   -> Nom du volume
