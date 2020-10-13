@@ -1718,13 +1718,14 @@ try
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
 	$vra.getBGList() | ForEach-Object {
 
-		# Recherche si le BG est d'un des types donné
+		# Recherche si le BG est d'un des types donné, pour ne pas virer des BG "admins"
 		$isBGOfType = isBGOfType -bg $_ -typeList @($global:VRA_BG_TYPE__SERVICE, $global:VRA_BG_TYPE__UNIT, $global:VRA_BG_TYPE__PROJECT)
 
 		# Si la custom property qui donne les infos n'a pas été trouvée
 		if($null -eq $isBGOfType)
 		{
-			$notifications['bgWithoutCustomPropType'] += $bg.name
+			$notifications['bgWithoutCustomPropType'] += $_.name
+			$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Business Group '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, $_.name))
 		}
 		elseif($isBGOfType -and ($doneBGList -notcontains $_.name))
 		{
