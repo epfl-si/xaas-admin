@@ -1155,7 +1155,7 @@ class NetAppAPI: RESTAPICurl
             if($doneIPs -contains $ip){ Continue }
 
             $replace = @{
-                clientMatch = $ip
+                clientMatch = $ip.Trim()
                 roRule = "any"
                 protocol = $protocol.toString()
             }
@@ -1196,7 +1196,7 @@ class NetAppAPI: RESTAPICurl
             if($doneIPs -contains $ip){ continue }
 
             $replace = @{
-                clientMatch = $ip
+                clientMatch = $ip.Trim()
                 rwRule = "any"
                 roRule = "any"
                 protocol = $protocol.toString()
@@ -1225,7 +1225,7 @@ class NetAppAPI: RESTAPICurl
             if($doneIPs -contains $ip){ continue }
 
             $replace = @{
-                clientMatch = $ip
+                clientMatch = $ip.Trim()
                 superUser = "any"
                 rwRule = "any"
                 roRule = "any"
