@@ -857,17 +857,12 @@ class NetAppAPI: RESTAPICurl
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_policy_get
 	#>
-    [Array] getExportPolicyById([string]$id)
+    [PSObject] getExportPolicyById([string]$id)
     {
         $uri = "/api/protocols/nfs/export-policies/{0}" -f $id
 
-        $res = $this.callAPI($uri, "GET", $null, "", $true)
+        return $this.callAPI($uri, "GET", $null, "", $true)
 
-        if($null -ne $res)
-        {
-            return $res[0]
-        }
-        return $res
     }
 
 
@@ -880,7 +875,7 @@ class NetAppAPI: RESTAPICurl
         RET : L'export policy
                 $null si pas trouvé
 	#>
-    [Array] getExportPolicyByName([string]$name)
+    [PSObject] getExportPolicyByName([string]$name)
     {
         $result = $this.getExportPolicyListQuery( ("name={0}" -f $name) )
 
@@ -903,7 +898,7 @@ class NetAppAPI: RESTAPICurl
         RET : L'export policy
                 $null si pas trouvé
 	#>
-    [Array] getExportPolicyByName([PSObject]$svm, [string]$name)
+    [PSObject] getExportPolicyByName([PSObject]$svm, [string]$name)
     {
         $result = $this.getExportPolicyListQuery( ("svm.name={0}&name={1}" -f $svm.name, $name) )
 
@@ -1033,9 +1028,42 @@ class NetAppAPI: RESTAPICurl
 
         RET : Liste des règles d'export policies
 	#>
-    [Array] getExportPolicyRuleList([PSObject]$exportPolicy)
+    [PSObject] getExportPolicyRuleList([PSObject]$exportPolicy)
     {
-        return $this.getExportPolicyRuleListQuery($exportPolicy.id, "")
+        $result = @{
+            RO = @()
+            RW = @()
+            Root = @()
+        }
+        
+        # C'te bande de branquigoles chez NetApp... ils fournissent le nécessaire pour retourner les infos sur les export policies MAIS
+        # ils ne remplissent pas les champs avec les valeurs dont on a besoin !!! bananes !!
+        $this.getExportPolicyRuleListQuery($exportPolicy.id, "fields=clients,protocols,ro_rule,rw_rule,superuser") | ForEach-Object {
+
+            # Si RO
+            if($_.ro_rule[0] -eq "any")
+            {
+                # Si RW aussi 
+                if($_.rw_rule[0] -eq "any")
+                {
+                    # Si Root
+                    if($_.superuser[0] -eq "any")
+                    {
+                        $result.Root += $_.clients[0].match
+                    }
+                    else # Que RW
+                    {
+                        $result.RW += $_.clients[0].match
+                    }
+                }
+                else # Que RO
+                {
+                    $result.RO += $_.clients[0].match
+                }
+            }
+        }
+
+        return $result
     }
 
 
@@ -1268,17 +1296,12 @@ class NetAppAPI: RESTAPICurl
         
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/snapshot_policy_get
 	#>
-    [Array] getSnapshotPolicyById([string]$id)
+    [PSObject] getSnapshotPolicyById([string]$id)
     {
         $uri = "/api/storage/snapshot-policies/{0}" -f $id
 
-        $res = $this.callAPI($uri, "GET", $null, "", $true)
+        return $this.callAPI($uri, "GET", $null, "", $true)
 
-        if($null -ne $res)
-        {
-            return $res[0]
-        }
-        return $res
     }
 
 
@@ -1291,7 +1314,7 @@ class NetAppAPI: RESTAPICurl
         RET : La policy de snapshot
                 $null si pas trouvé
 	#>
-    [Array] getSnapshotPolicyByName([string]$name)
+    [PSObject] getSnapshotPolicyByName([string]$name)
     {
         $result = $this.getSnapshotPolicyListQuery( ("name={0}" -f $name) )
 

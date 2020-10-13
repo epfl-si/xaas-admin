@@ -9,6 +9,7 @@ USAGES:
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action resize -sizeGB <sizeGB>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolSize [-volName <volName>]
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getSVMList -bgName <bgName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getIPList -volName <volName>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -98,6 +99,7 @@ $ACTION_GET_SIZE            = "getVolSize"
 $ACTION_GET_SVM_LIST        = "getSVMList"
 $ACTION_APP_VOL_EXISTS      = "appVolExists"
 $ACTION_CAN_HAVE_NEW_VOL    = "canHaveNewVol"
+$ACTION_GET_IP_LIST         = "getIPList"
 
 $global:APP_VOL_DEFAULT_FAC = "si"
 
@@ -760,6 +762,34 @@ try
             $logHistory.addLine( ("Next volume name is '{0}'" ) -f $volName)
             $output.results += @{
                 canHaveNewVol = ($null -ne $volName)
+            }
+        }
+
+
+        # -- Retour de la liste des IP d'accès
+        $ACTION_GET_IP_LIST
+        {
+            $logHistory.addLine(("Getting Volume '{0}'..." -f $volName))
+            $vol = $netapp.getVolumeByName($volName)
+
+            # Si volume pas trouvé, c'est qu'on a probablement donné un nom unique en paramètre
+            if($null -eq $vol)
+            {
+                $output.error = ("Volume {0} doesn't exists" -f $volName)
+                $logHistory.addLine($output.error)
+            }
+            else
+            {
+                # Pour la suite, on va avoir besoin de la SVM
+                $svmObj = $netapp.getSVMByID($vol.svm.uuid)
+
+                $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volName)
+                $logHistory.addLine(("Getting Export Policy '{0}' for volume '{1}'..." -f $exportPolicyName, $volName))
+                $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
+
+                $logHistory.addLine(("Getting Rules from Export Policy '{0}'..." -f $exportPolicyName))
+                $output.results += $netapp.getExportPolicyRuleList($exportPolicy)
+
             }
 
         }
