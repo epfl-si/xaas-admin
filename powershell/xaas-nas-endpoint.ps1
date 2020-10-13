@@ -1,7 +1,7 @@
 <#
 USAGES:
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm> [-withSnap]
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> [-withSnap]
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action appVolExists -volName <volName>
@@ -9,6 +9,8 @@ USAGES:
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action resize -sizeGB <sizeGB>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolSize [-volName <volName>]
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getSVMList -bgName <bgName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getIPList -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action updateIPList -volName <volName> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -51,6 +53,7 @@ param([string]$targetEnv,
       # Volume
       [string]$volName,
       [int]$sizeGB,
+      [switch]$withSnap,
       # Accès
       [string]$access,
       [string]$IPsRoot,
@@ -97,6 +100,8 @@ $ACTION_GET_SIZE            = "getVolSize"
 $ACTION_GET_SVM_LIST        = "getSVMList"
 $ACTION_APP_VOL_EXISTS      = "appVolExists"
 $ACTION_CAN_HAVE_NEW_VOL    = "canHaveNewVol"
+$ACTION_GET_IP_LIST         = "getIPList"
+$ACTION_UPDATE_IP_LIST      = "updateIPList"
 
 $global:APP_VOL_DEFAULT_FAC = "si"
 
@@ -421,15 +426,25 @@ try
                     }
 
                     # Il faut qu'on mette les snapshot en place
-                    $logHistory.addLine("Getting Snapshot Policy...")
-                    $snapPolicy = $netapp.getSnapshotPolicyByName($global:SNAPSHOT_POLICY)
-                    # Si on ne trouve pas la policy de snapshot,
-                    if($null -eq $snapPolicy)
+                    if($withSnap)
                     {
-                        Throw ("Snapshot policy '{0}' doesn't exists" -f $global:SNAPSHOT_POLICY)
-                    }
+                        $logHistory.addLine("Getting Snapshot Policy...")
+                        $snapPolicy = $netapp.getSnapshotPolicyByName($global:SNAPSHOT_POLICY)
+                        # Si on ne trouve pas la policy de snapshot,
+                        if($null -eq $snapPolicy)
+                        {
+                            Throw ("Snapshot policy '{0}' doesn't exists" -f $global:SNAPSHOT_POLICY)
+                        }
 
-                    $snapSpacePercent = $global:SNAPSHOT_SPACE_PERCENT
+                        $snapSpacePercent = $global:SNAPSHOT_SPACE_PERCENT
+
+                    }
+                    else # Pas besoin de snapshots 
+                    {
+                        $logHistory.addLine("Snapshots not required")
+                        $snapSpacePercent = 0
+                    }
+                    
 
                 }
 
@@ -562,8 +577,8 @@ try
             # -----------------------------------------------
             # 3. Politique de snapshot
 
-            # Si volume collaboratif
-            if($volType -eq $global:VOL_TYPE_COLL)
+            # Si volume collaboratif ET qu'il faut avoir les snapshots
+            if(( $volType -eq $global:VOL_TYPE_COLL) -and $withSnap)
             {
                 # On applique la policy de snapshot
                 $logHistory.addLine(("Applying Snapshot Policy '{0}' on Volume '{1}'" -f $global:SNAPSHOT_POLICY, $volName))
@@ -640,23 +655,27 @@ try
 
                 $volSizeInfos = $netapp.getVolumeSizeInfos($vol)
 
-                $volSizeGB = $vol.space.size / 1024 / 1024 / 1024
+                $volSizeB = $vol.space.size
                 # Suppression de l'espace réservé pour les snapshots
-                $userSizeGB = $volSizeGB * (1 - ($volSizeInfos.space.snapshot.reserve_percent/100))
-                $snapSizeGB = $volSizeGB * ($volSizeInfos.space.snapshot.reserve_percent/100)
+                $userSizeB = $volSizeB * (1 - ($volSizeInfos.space.snapshot.reserve_percent/100))
+                $snapSizeB = $volSizeB * ($volSizeInfos.space.snapshot.reserve_percent/100)
 
                 $output.results += @{
+                    # Infos "globales"
                     volName = $vol.name
+                    totSizeB = (truncateToNbDecimal -number ($volSizeB) -nbDecimals 2)
+                    # Taille niveau "utilisateur"
                     user = @{
-                        sizeGB = (truncateToNbDecimal -number $userSizeGB -nbDecimals 2)
-                        usedGB = (truncateToNbDecimal -number ($vol.space.used / 1024 / 1024 / 1024) -nbDecimals 2)
+                        sizeB = (truncateToNbDecimal -number $userSizeB -nbDecimals 2)
+                        usedB = (truncateToNbDecimal -number $vol.space.used -nbDecimals 2)
                         usedFiles = $volSizeInfos.files.used
                         maxFiles = $volSizeInfos.files.maximum
                     }
+                    # Taille niveau "snapshot"
                     snap = @{
                         reservePercent = $volSizeInfos.space.snapshot.reserve_percent
-                        reserveSizeGB = (truncateToNbDecimal -number $snapSizeGB -nbDecimals 2)
-                        usedGB = (truncateToNbDecimal -number ($volSizeInfos.space.snapshot.used / 1024 / 1024 / 1024) -nbDecimals 2)
+                        reserveSizeKB = (truncateToNbDecimal -number $snapSizeB -nbDecimals 2)
+                        usedB = (truncateToNbDecimal -number $volSizeInfos.space.snapshot.used -nbDecimals 2)
                     }
                 }
             }
@@ -746,7 +765,68 @@ try
             $output.results += @{
                 canHaveNewVol = ($null -ne $volName)
             }
+        }
 
+
+        # -- Retour de la liste des IP d'accès
+        $ACTION_GET_IP_LIST
+        {
+            $logHistory.addLine(("Getting Volume '{0}'..." -f $volName))
+            $vol = $netapp.getVolumeByName($volName)
+
+            # Si volume pas trouvé, c'est qu'on a probablement donné un nom unique en paramètre
+            if($null -eq $vol)
+            {
+                $output.error = ("Volume {0} doesn't exists" -f $volName)
+                $logHistory.addLine($output.error)
+            }
+            else
+            {
+                # Pour la suite, on va avoir besoin de la SVM
+                $svmObj = $netapp.getSVMByID($vol.svm.uuid)
+
+                $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volName)
+                $logHistory.addLine(("Getting Export Policy '{0}' for volume '{1}'..." -f $exportPolicyName, $volName))
+                $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
+
+                $logHistory.addLine(("Getting Rules from Export Policy '{0}'..." -f $exportPolicyName))
+                $output.results += $netapp.getExportPolicyRuleList($exportPolicy)
+
+            }
+        }
+
+
+        # -- Mise à jour de la liste des IP
+        $ACTION_UPDATE_IP_LIST
+        {
+
+            $logHistory.addLine(("Getting Volume '{0}'..." -f $volName))
+            $vol = $netapp.getVolumeByName($volName)
+
+            # Si volume pas trouvé, c'est qu'on a probablement donné un nom unique en paramètre
+            if($null -eq $vol)
+            {
+                $output.error = ("Volume {0} doesn't exists" -f $volName)
+                $logHistory.addLine($output.error)
+            }
+            else
+            {
+                # Pour la suite, on va avoir besoin de la SVM
+                $svmObj = $netapp.getSVMByID($vol.svm.uuid)
+
+                $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volName)
+                $logHistory.addLine(("Getting Export Policy '{0}' for volume '{1}'..." -f $exportPolicyName, $volName))
+                $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
+
+                $logHistory.addLine(("Getting access protocole for volume '{0}'..." -f $volName))
+                $protocol = $netapp.getVolumeAccessProtocol($vol)
+
+                $logHistory.addLine("Updating rules in export policy...")
+                $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","), $protocol)
+
+            }
+            
+            
         }
 
     }
