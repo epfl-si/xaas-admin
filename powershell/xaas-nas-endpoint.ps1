@@ -655,27 +655,27 @@ try
 
                 $volSizeInfos = $netapp.getVolumeSizeInfos($vol)
 
-                $volSizeKB = $vol.space.size / 1024 
+                $volSizeB = $vol.space.size
                 # Suppression de l'espace réservé pour les snapshots
-                $userSizeKB = $volSizeKB * (1 - ($volSizeInfos.space.snapshot.reserve_percent/100))
-                $snapSizeKB = $volSizeKB * ($volSizeInfos.space.snapshot.reserve_percent/100)
+                $userSizeB = $volSizeB * (1 - ($volSizeInfos.space.snapshot.reserve_percent/100))
+                $snapSizeB = $volSizeB * ($volSizeInfos.space.snapshot.reserve_percent/100)
 
                 $output.results += @{
                     # Infos "globales"
                     volName = $vol.name
-                    totSizeKB = (truncateToNbDecimal -number ($volSizeKB) -nbDecimals 2)
+                    totSizeB = (truncateToNbDecimal -number ($volSizeB) -nbDecimals 2)
                     # Taille niveau "utilisateur"
                     user = @{
-                        sizeKB = (truncateToNbDecimal -number $userSizeKB -nbDecimals 2)
-                        usedKB = (truncateToNbDecimal -number ($vol.space.used / 1024) -nbDecimals 2)
+                        sizeB = (truncateToNbDecimal -number $userSizeB -nbDecimals 2)
+                        usedB = (truncateToNbDecimal -number $vol.space.used -nbDecimals 2)
                         usedFiles = $volSizeInfos.files.used
                         maxFiles = $volSizeInfos.files.maximum
                     }
                     # Taille niveau "snapshot"
                     snap = @{
                         reservePercent = $volSizeInfos.space.snapshot.reserve_percent
-                        reserveSizeKB = (truncateToNbDecimal -number $snapSizeKB -nbDecimals 2)
-                        usedKB = (truncateToNbDecimal -number ($volSizeInfos.space.snapshot.used / 1024) -nbDecimals 2)
+                        reserveSizeKB = (truncateToNbDecimal -number $snapSizeB -nbDecimals 2)
+                        usedB = (truncateToNbDecimal -number $volSizeInfos.space.snapshot.used -nbDecimals 2)
                     }
                 }
             }
