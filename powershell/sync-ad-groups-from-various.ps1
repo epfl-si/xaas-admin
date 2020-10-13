@@ -29,6 +29,7 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGeneratorBase.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
@@ -453,7 +454,12 @@ try
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 
 	# Objet pour pouvoir envoyer des mails de notification
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
+	$valToReplace = @{
+		targetEnv = $targetEnv
+		targetTenant = $targetTenant
+	}
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
 	# Pour s'interfacer avec l'application Groups
 	$groupsApp = [GroupsAPI]::new($configGroups.getConfigValue($targetEnv, "server"),`
@@ -468,14 +474,6 @@ try
 							$configVra.getConfigValue($targetEnv, "dbmssql", "user"), `
 							$configVra.getConfigValue($targetEnv, "dbmssql", "password"), `
 							$configVra.getConfigValue($targetEnv, "dbmssql", "port"))
-
-	# Pour accéder à la base de données
-	$mysql = [SQLDB]::new([DBType]::MySQL, `
-							$configVra.getConfigValue($targetEnv, "db", "host"), `
-							$configVra.getConfigValue($targetEnv, "db", "dbName"), `
-							$configVra.getConfigValue($targetEnv, "db", "user"), `
-							$configVra.getConfigValue($targetEnv, "db", "password"), `
-							$configVra.getConfigValue($targetEnv, "db", "port"))
 
 	Import-Module ActiveDirectory
 
@@ -870,7 +868,6 @@ try
 					{
 						$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
 						updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName()
-						updateVRAUsersForBG -sqldb $mysql -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName()
 					}
 
 
@@ -899,7 +896,6 @@ try
 				{
 					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
 					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower())
-					updateVRAUsersForBG -sqldb $mysql -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower())
 				}
 
 
@@ -922,7 +918,6 @@ try
 			{
 				$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
 				updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all"
-				updateVRAUsersForBG -sqldb $mysql -userList $adminMembers -role AdminEPFL -bgName "all"
 			}
 			
 		}
@@ -1316,7 +1311,6 @@ try
 
 				# Suppression des accès pour le business group correspondant au groupe AD courant.
 				updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName()
-				updateVRAUsersForBG -sqldb $mysql -userList @() -role User -bgName $nameGenerator.getBGName()
 			}
 			
 		}
@@ -1371,7 +1365,6 @@ try
 
 	# Fermeture de la connexion à la base de données
 	$sqldb.disconnect()
-	$mysql.disconnect()
 
 }
 catch # Dans le cas d'une erreur dans le script

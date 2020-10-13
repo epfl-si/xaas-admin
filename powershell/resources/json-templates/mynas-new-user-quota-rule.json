@@ -1,0 +1,23 @@
+{
+  "space": {
+    "hard_limit": "{{limitBytes}}",
+    "soft_limit": "{{limitBytes}}"
+  },
+  "qtree": {
+    "name":""
+  },
+  "svm": {
+    "name": "{{svmName}}",
+    "uuid": "{{svmUUID}}"
+  },
+  "type": "user",
+  "users": [
+    {
+      "name": "{{username}}"
+    }
+  ],
+  "volume": {
+    "name": "{{volName}}",
+    "uuid": "{{volUUID}}"
+  }
+}

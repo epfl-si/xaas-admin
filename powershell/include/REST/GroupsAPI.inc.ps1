@@ -31,11 +31,14 @@ class GroupsAPI: RESTAPICurl
 	GroupsAPI([string] $server, [string] $appName, [string] $callerSciper, [string]$password) : base($server) # Ceci appelle le constructeur parent
 	{
         $this.headers.Add('Accept', 'application/json')
-        $this.headers.Add('Content-Type', 'application/json')
+        $this.headers.Add('Content-Type', 'application/x-www-form-urlencoded')
         
         $this.appName = $appName
         $this.callerSciper = $callerSciper
         $this.password = $password
+
+        # L'API sur https://groups.epfl.ch ne supporte pas l'UTF-8 donc on utilise l'encodage par défaut
+        $this.usePSDefaultEncoding()
     }
 
 

@@ -60,6 +60,7 @@
    Les fichiers doivent avoir été inclus au programme principal avant que le fichier courant puisse être inclus.
    - ../include/define.inc.ps1
    - ../include/functions.inc.ps1
+   - ../include/NameGeneratorBase.inc.ps1
    - ../include/NameGenerator.inc.ps1
    - ../include/Counters.inc.ps1
 
