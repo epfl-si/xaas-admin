@@ -1724,7 +1724,7 @@ try
 		# Si la custom property qui donne les infos n'a pas été trouvée
 		if($null -eq $isBGOfType)
 		{
-			$notifications['bgWithoutCustomPropType'] += $bg.name
+			$notifications['bgWithoutCustomPropType'] += $_.name
 			$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Business Group '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, $_.name))
 		}
 		elseif($isBGOfType -and ($doneBGList -notcontains $_.name))
