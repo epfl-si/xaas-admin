@@ -11,6 +11,11 @@
 
 #>
 
+enum K8sDNSEntryType
+{
+   EntryMain
+   EntryIngress
+}
 
 class NameGeneratorK8s: NameGeneratorBase
 {
@@ -95,5 +100,22 @@ class NameGeneratorK8s: NameGeneratorBase
    }
 
 
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom DNS à utiliser pour un cluster et un "type" d'entrée donnée
+
+      IN  : $clusterName      -> Nom du cluster
+      IN  : $entrType         -> Le type d'entrée, principal ou pour Ingress.
+
+      RET : Le nom de l'entrée DNS
+   #>
+   [string] getClusterDNSName([string]$clusterName, [K8sDNSEntryType]$entryType)
+   {
+      return switch($entryType)
+      {
+         EntryMain { $clusterName }
+         EntryIngress { ("ingress.{0}" -f $clusterName) }
+      }
+   }
 
 }
