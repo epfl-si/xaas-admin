@@ -1,7 +1,7 @@
 <#
 USAGES:
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm> [-withSnap]
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> [-withSnap]
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action appVolExists -volName <volName>
@@ -51,6 +51,7 @@ param([string]$targetEnv,
       # Volume
       [string]$volName,
       [int]$sizeGB,
+      [switch]$withSnap,
       # Accès
       [string]$access,
       [string]$IPsRoot,
@@ -421,15 +422,25 @@ try
                     }
 
                     # Il faut qu'on mette les snapshot en place
-                    $logHistory.addLine("Getting Snapshot Policy...")
-                    $snapPolicy = $netapp.getSnapshotPolicyByName($global:SNAPSHOT_POLICY)
-                    # Si on ne trouve pas la policy de snapshot,
-                    if($null -eq $snapPolicy)
+                    if($withSnap)
                     {
-                        Throw ("Snapshot policy '{0}' doesn't exists" -f $global:SNAPSHOT_POLICY)
-                    }
+                        $logHistory.addLine("Getting Snapshot Policy...")
+                        $snapPolicy = $netapp.getSnapshotPolicyByName($global:SNAPSHOT_POLICY)
+                        # Si on ne trouve pas la policy de snapshot,
+                        if($null -eq $snapPolicy)
+                        {
+                            Throw ("Snapshot policy '{0}' doesn't exists" -f $global:SNAPSHOT_POLICY)
+                        }
 
-                    $snapSpacePercent = $global:SNAPSHOT_SPACE_PERCENT
+                        $snapSpacePercent = $global:SNAPSHOT_SPACE_PERCENT
+
+                    }
+                    else # Pas besoin de snapshots 
+                    {
+                        $logHistory.addLine("Snapshots not required")
+                        $snapSpacePercent = 0
+                    }
+                    
 
                 }
 
@@ -562,8 +573,8 @@ try
             # -----------------------------------------------
             # 3. Politique de snapshot
 
-            # Si volume collaboratif
-            if($volType -eq $global:VOL_TYPE_COLL)
+            # Si volume collaboratif ET qu'il faut avoir les snapshots
+            if(( $volType -eq $global:VOL_TYPE_COLL) -and $withSnap)
             {
                 # On applique la policy de snapshot
                 $logHistory.addLine(("Applying Snapshot Policy '{0}' on Volume '{1}'" -f $global:SNAPSHOT_POLICY, $volName))
