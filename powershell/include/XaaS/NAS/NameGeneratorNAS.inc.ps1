@@ -21,34 +21,45 @@ enum NASStorageType
    Collaborative
 }
 
-class NameGeneratorNAS
+class NameGeneratorNAS: NameGeneratorBase
 {
    hidden [NASStorageType] $type
-   hidden [Hashtable] $details
    
    <#
 		-------------------------------------------------------------------------------------
-      BUT : Constructeur de classe pour un volume de type Collaboratif
-      
-      RET : Instance de l'objet
+		BUT : Constructeur de classe.
+
+        IN  : $env      -> Environnement sur lequel on travaille
+                           $TARGET_ENV_DEV
+                           $TARGET_ENV_TEST
+                           $TARGET_ENV_PROD
+        IN  : $tenant   -> Tenant sur lequel on travaille
+                           $VRA_TENANT_DEFAULT
+                           $VRA_TENANT_EPFL
+                           $VRA_TENANT_ITSERVICES
+
+		RET : Instance de l'objet
 	#>
-   NameGeneratorNAS() { }
+   NameGeneratorNAS([string]$env, [string]$tenant): base($env, $tenant)
+   {
+   }
 
    <#
 		-------------------------------------------------------------------------------------
 		BUT : Initialise les détails pour un volume de type Collaboratif
 
-      IN  : $faculty   -> Nom de la faculté
-      IN  : $unitName  -> Nom de l'unité
+      IN  : $bgName  -> Nom du BG
 	#>
-   [void] setCollaborativeDetails([string]$faculty, [string]$unit)
+   [void] setCollaborativeDetails([string]$bgName)
    {
       $this.type = [NASStorageType]::Collaborative
 
+      $details = $this.getDetailsFromBGName($bgName)
+
       $this.details = @{
-         faculty = $faculty.toLower()
+         faculty = $details.faculty.toLower()
          # On reformate le nom d'unité
-         unit = ($unit.toLower() -replace "-", "")
+         unit = ($details.unit.toLower() -replace "-", "")
       }
    }
 
