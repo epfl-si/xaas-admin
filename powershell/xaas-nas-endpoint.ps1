@@ -485,6 +485,7 @@ try
             # Pour le retour du script
             $result = @{
                 volName = $volName
+                volUUID = $newVol.uuid
                 sizeGB = $sizeGB
                 svm = $svmObj.name
             }
@@ -663,6 +664,7 @@ try
                 $output.results += @{
                     # Infos "globales"
                     volName = $vol.name
+                    volUUID = $vol.uuid
                     totSizeB = (truncateToNbDecimal -number ($volSizeB) -nbDecimals 2)
                     # Taille niveau "utilisateur"
                     user = @{
