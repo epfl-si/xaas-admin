@@ -710,7 +710,7 @@ try
             }
             
             # Liste des SVM pour la faculté (avec la bonne nommenclature)
-            $svmList = $netapp.getSVMList() | Where-Object { $_.name -match ('^{0}[0-9].*' -f $targetFaculty)}
+            $svmList = $netapp.getSVMList() | Where-Object { $_.name -match ('^{0}[0-9].*' -f $targetFaculty)} | Select-Object -ExpandProperty name
             
             if($svmList.GetType() -ne "Array")
             {
