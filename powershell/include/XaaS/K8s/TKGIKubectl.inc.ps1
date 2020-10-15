@@ -1,6 +1,7 @@
 <#
-   BUT : Contient une classe avec les fonctions de base pour faire des appels via la
-            commande TKGI.exe
+   BUT : Contient une classe avec les fonctions de base pour faire des appels via les commandes
+            - tkgi.exe
+            - kubectl.exe
 	
     PREREQUIS : Pour fonctionner, cette classe nécessite le binaire tkgi.exe, il doit
                 se trouver dans le dossier "powershell/bin"
@@ -11,7 +12,7 @@
    DATE   : Octobre 2020
 
 #>
-class TKGI
+class TKGIKubectl
 {
 	
 	hidden [System.Diagnostics.Process]$batchFile
@@ -19,42 +20,50 @@ class TKGI
     hidden [string]$server
     hidden [string]$loginCmd
     hidden [string]$logoutCmd
-    hidden [string]$pathToTKGI
+    hidden [Hashtable]$pathTo
+    hidden [string]$password
+    hidden [Array]$cmdList
 	
     <#
 	-------------------------------------------------------------------------------------
 		BUT : Créer une instance de l'objet et ouvre une connexion au serveur
 
         IN  : $server			-> Nom DNS du serveur
-        IN  : $clientName       -> Nom du client à utiliser pour se connecter à l'API
-                                    ATTENTION: ce n'est pas un utilisateur du domaine, c'est celui 
-                                               défini dans le fichier de configuration de K8s
-        IN  : $clientSecret     -> Secret pour se connecter avec le client name. Même remarque que
-                                    pour $clientName 
+        IN  : $username         -> Nom d'utilisateur
+        IN  : $password         -> Mot de passe
         IN  : $certificateFile  -> Nom du fichier certificat à utiliser. Doit se
                                     trouver dans le dossier spécifié par
                                     $global:K8S_CERT_FOLDER
 	#>
-    TKGI([string] $server, [string]$clientName, [string]$clientSecret, [string]$certificateFile)
+    TKGIKubectl([string] $server, [string]$username, [string]$password, [string]$certificateFile)
     {
         $this.server = $server
+        $this.password = $password
         $certificateFileFull = [IO.Path]::Combine($global:K8S_CERT_FOLDER, $certificateFile)
 
-        # Check TKGI
-		$this.pathToTKGI = [IO.Path]::Combine($global:BINARY_FOLDER, "tkgi.exe")
-		# On check qu'on a bien le tout pour faire le job 
-		if(!(Test-Path $this.pathToTKGI))
-		{
-			Throw ("Binary file 'tkgi.exe' is missing... (in folder {0})" -f $this.this.pathToTKGI)
+        # Ajout des chemins sur les binaires et test de la présence
+        $this.pathTo = @{
+            tkgi = [IO.Path]::Combine($global:BINARY_FOLDER, "tkgi.exe")
+            kubectl = [IO.Path]::Combine($global:BINARY_FOLDER, "kubectl.exe")
         }
+        
+        ForEach($binName in $this.pathTo.Keys)
+        {
+            # On check qu'on a bien le tout pour faire le job 
+            if(!(Test-Path $this.pathTo.$binName))
+            {
+                Throw ("Binary file '{0}.exe' is missing... (in folder {1})" -f $binName, $global:BINARY_FOLDER)
+            }
+        }
+		
         if(!(Test-Path $certificateFileFull))
 		{
 			Throw ("Certificate file '{0}' is missing... (in folder {1})" -f $certificateFile, $global:K8S_CERT_FOLDER)
         }
         
         # Ligne pour se connecter à l'API
-        $this.loginCmd = "{0} login -a https://{1} --client-name {2} --client-secret {3} --ca-cert {4}" -f $this.pathToTKGI, $server, $clientName, $clientSecret, $certificateFileFull
-        $this.logoutCmd = "{0} logout" -f $this.pathToTKGI
+        $this.loginCmd = "{0} login -a https://{1} -u {2} -p {3} --ca-cert {4}" -f $this.pathTo.tkgi, $server, $username, $password, $certificateFileFull
+        $this.logoutCmd = "{0} logout" -f $this.pathTo.tkgi
 
 		# Création du nécessaire pour exécuter un process CURL
 		$this.batchFile = New-Object System.Diagnostics.Process
@@ -66,20 +75,22 @@ class TKGI
         $this.batchFile.StartInfo.RedirectStandardError = $true
 
         $this.batchFile.StartInfo.CreateNoWindow = $false
+
+        # Liste des commandes à exécuter. Sera remplie via les méthodes:
+        # - addCmd
+        # - addCmdWithPassword
+        $this.cmdList = @()
     }
 
 
     <#
 	-------------------------------------------------------------------------------------
 		BUT : Exécute une liste de commandes
-
-        IN  : $commandList      -> Tableau avec la liste des commandes à exécuter.
-                                    Pas besoin de mettre "tkgi.exe" au début des commandes
         
         RET : Tableau associatif avec en clef la commande passée et en valeur, le résultat (string) de
                 la commande
 	#>
-    [HashTable] exec([Array]$commandList)
+    [Array] exec()
     {
         $cmdFile = (New-TemporaryFile).FullName
         # On met une extension qui permettra de l'exécuter correctement par la suite via cmd.exe
@@ -87,11 +98,15 @@ class TKGI
         Rename-Item -Path $cmdFile -NewName $batchFilePath
 
         $cmdResults = @{}
+        if($this.cmdList.count -eq 0) 
+        {
+            return $cmdResults
+        }
 
         # Création des lignes de commandes à exécuter
         $this.loginCmd | Out-File -FilePath $batchFilePath -Encoding:default
-        $commandList | ForEach-Object{ 
-            ("{0} {1}" -f $this.pathToTKGI, $_) | Out-File -FilePath $batchFilePath -Append -Encoding:default
+        $this.cmdList | ForEach-Object{ 
+            $_ | Out-File -FilePath $batchFilePath -Append -Encoding:default
         } 
         $this.logoutCmd | Out-File -FilePath $batchFilePath -Append -Encoding:default
 
@@ -112,33 +127,33 @@ class TKGI
         if($this.batchFile.ExitCode -eq 0)
         {
             # J'admets, cette ligne de commande, je l'ai trouvée sur le net, j'aurais jamais trouvé tout seul XD
-            $separator = [string[]]@($this.pathToTKGI)
+            # On définit le séparateur en utilisant le chemin jusqu'au script:
+            # Ex: PS D:\IDEVING\IaaS\git\xaas-admin\powershell>
+            $separator = [string[]]@([Regex]::Matches($output, '(.*?>)(.*)').Groups[1].Value)
 
             # On explose les résultats des différentes commandes via le chemin jusqu'à "tkgi.exe" 
             # et on les parcoure
             $output.Split($separator, [System.StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object {
 
-                # Suppression de chemin jusqu'au dossier courant qui se trouve entre les commandes: 
-                # Ex: PS D:\IDEVING\IaaS\git\xaas-admin\powershell>
-                $cmdRes = ($_ -replace '(.*?)>', '').Trim()
-
-                if($cmdRes -eq "")
+                if($_.Trim() -eq "")
                 {
                     # Passage à l'itération suivante
                     return
                 }
                 # Extraction du nom de la commande passée
-                $cmdName = ($cmdRes -split "`n")[0].Trim()
+                $cmdName = ($_ -split "`n")[0].Trim()
 
                 # Si la commande faisait partie de ce qu'on devait exécuter
-                if($commandList -contains $cmdName)
+                if($this.cmdList -contains $cmdName)
                 {
+                    $cmdNameShort = [Regex]::Matches($cmdName, '(.*?)(tkgi|kubectl)\.exe(.*)').Groups[3].Value.Trim()
                     # Ajout de la commande et de son résultat dans ce qu'on renvoie
-                    $cmdResults.Add($cmdName, ($cmdRes -split $cmdName)[1].Trim())
+                    $cmdResults.Add($cmdNameShort, ($_ -split $cmdNameShort)[1].Trim())
                 }
             }
 
-
+            # Reset de la liste 
+            $this.cmdList = @()
         }
         else
         {
@@ -151,17 +166,42 @@ class TKGI
 
     <#
 	-------------------------------------------------------------------------------------
-		BUT : Exécute une commande unique
+		BUT : Ajoute une commande TKGI à la liste
 
         IN  : $command			-> La commande à exécuter
                                     Pas besoin de mettre "tkgi.exe" au début de la commande
-        
-        RET : Tableau associatif avec en clef la commande passée et en valeur, le résultat (string) de
-                la commande
 	#>
-    [HashTable] exec([string]$command)
+    [void] addTkgiCmd([string]$command)
     {
-        return $this.exec( @($command) )
+        $this.cmdList += ("{0} {1}" -f $this.pathTo.tkgi, $command)
     }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute une commande TKGI qui a besoin d'avoir à nouveau le mot de passe
+
+        IN  : $command			-> La commande à exécuter
+                                    Pas besoin de mettre "tkgi.exe" au début de la commande
+	#>
+    [void] addTkgiCmdWithPassword([string]$command)
+    {
+        $this.cmdList += ("echo({0}|{1} {2}" -f $this.password, $this.pathTo.tkgi, $command)
+        
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute une commande Kubectl
+
+        IN  : $command			-> La commande à exécuter
+                                    Pas besoin de mettre "tkgi.exe" au début de la commande
+	#>
+    [void] addKubectlCmd([string]$command)
+    {
+        $this.cmdList += ("{0} {1}" -f $this.pathTo.kubectl, $command)
+    }
+  
 
 }
