@@ -4,7 +4,8 @@
         {
             "server": "",
             "user": "",
-            "password": ""
+            "password": "",
+            "certificate":""
         },
         "harbor":
         {
@@ -24,7 +25,8 @@
         {
             "server": "",
             "user": "",
-            "password": ""
+            "password": "",
+            "certificate":""
         },
         "harbor":
         {
@@ -44,7 +46,8 @@
         {
             "server": "",
             "user": "",
-            "password": ""
+            "password": "",
+            "certificate":""
         },
         "harbor":
         {
