@@ -88,6 +88,5 @@ class EPFLDNS
         # On exécute la commande en local mais avec des credentials spécifiques
         Invoke-Command -ComputerName $this.psEndpointServer -ScriptBlock $scriptBlockContent -Authentication CredSSP -credential $this.credentials `
                         -ArgumentList $this.dnsServer, $name, $zone
-
     }
 }

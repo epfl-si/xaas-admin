@@ -76,6 +76,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "NSXAPI.inc.ps1"))
 
 # Chargement des fichiers propres au PKS VMware
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "K8s", "PKSAPI.inc.ps1"))
@@ -143,6 +144,73 @@ function getNextClusterName([PKSAPI]$pks, [NameGeneratorK8s]$nameGeneratorK8s)
 }
 
 
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Efface un cluster
+
+    IN  : $pks              -> Objet permettant d'accéder à l'API de PKS
+    IN  : $nsx              -> Objet permettant d'accéder à l'API de NSX
+    IN  : $EPFLDNS          -> Objet permettant de jouer avec le DNS
+    IN  : $nameGeneratorK8s -> Objet pour la génération des noms
+    IN  : $clusterName      -> Nom du cluster à supprimer
+    IN  : $ipPoolName       -> Nom du pool IP dans NSX
+#>
+function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGeneratorK8s]$nameGeneratorK8s, [string]$clusterName, [string]$ipPoolName)
+{
+    
+    # - Cluster
+    $cluster = $pks.getCluster($clusterName)
+    if($null -ne $cluster)
+    {
+        $logHistory.addLine(("Deleting cluster '{0}'..." -f $clusterName))
+        $pks.deleteCluster($clusterName)
+    }
+    else
+    {
+        $logHistory.addLine(("Cluster '{0}' doesn't exists" -f $clusterName))
+    }
+
+
+    # - Adresses IP
+    # Recherche du pool dans lequel on va demander les adresses IP
+    $pool = $nsx.getIPPoolByName($ipPoolName)
+    $hostnameList = @(
+        # On efface d'abord l'entrée 'ingress' car elle a été créé en dernier
+        $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryIngress)    
+        $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryMain)
+    )
+    $logHistory.addLine("Deleting IPs...")
+    ForEach($hostname in $hostnameList)
+    {
+        $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostname))
+        try
+        {
+            # Si l'entrée n'existe pas dans le DNS, ça va générer une exception
+            $ip = [System.Net.Dns]::GetHostAddresses( ("{0}.{1}" -f $hostname, $global:K8S_DNS_ZONE_NAME))
+            $logHistory.addLine("> Unregistering IP for host in DNS...")
+            $EPFLDNS.unregisterDNSIP($hostname, $ip, $global:K8S_DNS_ZONE_NAME)
+        }
+        catch
+        {
+            $logHistory.addLine(("> IP doesn't exists in DNS"))
+        }
+        
+        # Si l'IP est allouée dans NSX,
+        if($nsx.isIPAllocated($pool.id, $ip))
+        {
+            $logHistory.addLine("> Releasing IP in NSX...")
+            $nsx.releaseIPAddressInPool($pool.id, $ip)
+        }
+        else
+        {
+            $logHistory.addLine("> IP is not allocated in NSX")
+        }
+        
+    }# FIN BOUCLE de parcours des IP à supprimer
+    
+    
+}
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -189,11 +257,18 @@ try
 
     # Création du nécessaire pour interagir avec le DNS EPFL
 	$EPFLDNS = [EPFLDNS]::new($configK8s.getConfigValue($targetEnv, "dns", "server"), 
+                                $configK8s.getConfigValue($targetEnv, "dns", "psEndpointServer"), 
                                 $configK8s.getConfigValue($targetEnv, "dns", "user"), 
                                 $configK8s.getConfigValue($targetEnv, "dns", "password"))
 
+                                
     # Objet pour pouvoir envoyer des mails de notification
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, $targetEnv, $targetTenant)
+    $valToReplace = @{
+		targetEnv = $targetEnv
+		targetTenant = $targetTenant
+	}
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+                        ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
     # -------------------------------------------------------------------------
     # En fonction de l'action demandée
@@ -210,33 +285,55 @@ try
             # Initialisation pour récupérer les noms des éléments
             $nameGeneratorK8s.initDetailsFromBGName($bgName)
 
+            $logHistory.addLine("Generating cluster name...")
             # Recherche du nom du nouveau cluster
             $clusterName = getNextClusterName -pks $pks -nameGeneratorK8s $nameGeneratorK8s
+            $logHistory.addLine(("Cluster name will be '{0}" -f $clusterName))
 
             # Génération des noms pour le DNS
+            $logHistory.addLine("Generating DNS hostnames...")
             $dnsHostName = $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryMain)
+            $dnsHostNameIngress = $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryIngress)
+            $logHistory.addLine(("DNS hosnames will be '{0}' for main cluster and '{1}' for Ingress part" -f $dnsHostName, $dnsHostNameIngress))
 
-            #$ipMain = $nsx.allocateIPAddressInPool($pool.id)
-            #$ipIngress = $nsx.allocateIPAddressInPool($pool.id)
+            $ipPoolName = $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName")
+            $logHistory.addLine(("Getting NSX IP pool '{0}'..." -f $ipPoolName))
+            # Recherche du pool dans lequel on va demander les adresses IP
+            $pool = $nsx.getIPPoolByName($ipPoolName)
+            $logHistory.addLine(("There are {0} free IP addresses in pool (for total of {1})" -f $pool.pool_usage.free_ids, $pool.pool_usage.total_ids))
+            # Si plus assez d'adresses IP de libre
+            if($pool.pool_usage.free_ids -lt 2)
+            {
+                Throw ("Not enough free IPs in NSX '{0}' IP pool (only {1} left)" -f $ipPoolName, $pool.pool_usage.free_ids)
+            }
 
-            #$EPFLDNS.registerDNSIP($dnsHostName, $ipMain, $global:K8S_DNS_ZONE_NAME)
+            $logHistory.addLine("Allocating IP addresses...")
+            $ipMain = $nsx.allocateIPAddressInPool($pool.id)
+            $ipIngress = $nsx.allocateIPAddressInPool($pool.id)
+            $logHistory.addLine(("IP adresses will be: {0} for cluster and {1} for Ingress" -f $ipMain, $ipIngress))
+            
+            $logHistory.addLine(("Adding DNS entries in {0} zone..." -f $global:K8S_DNS_ZONE_NAME))
+            $EPFLDNS.registerDNSIP($dnsHostName, $ipMain, $global:K8S_DNS_ZONE_NAME)
+            $EPFLDNS.registerDNSIP($dnsHostNameIngress, $ipIngress, $global:K8S_DNS_ZONE_NAME)
 
-            # $cluster = $pks.addCluster($clusterName, $plan, $netProfile, $dnsHostName)
+            $logHistory.addLine(("Creating cluster '{0}' with '{1}' plan and '{2}' network profil..." -f $clusterName, $plan, $netProfile))
+            $cluster = $pks.addCluster($clusterName, $plan, $netProfile, $dnsHostName)
 
             # $cluster
 
-            # $output.results += @{
-            #     name = $clusterName
-            #     uuid = $cluster.uuid
-            #     dnsHostName = $dnsHostName
-            # }
+            $output.results += @{
+                name = $clusterName
+                uuid = $cluster.uuid
+                dnsHostName = $dnsHostName
+            }
         }
 
 
         # --- Effacer
         $ACTION_DELETE
         {
-
+            deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName `
+                        -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName")
         }
 
 
@@ -334,6 +431,14 @@ try
 catch
 {
     
+    # Si on était en train de créer un cluster
+    if($action -eq $ACTION_CREATE)
+    {
+        # On efface celui-ci pour ne rien garder qui "traine"
+        $logHistory.addLine(("Error while creating cluster '{0}', deleting it so everything is clean" -f $clusterName))
+        deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName -ipPoolName $ipPoolName
+    }
+
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
 	$errorTrace = $_.ScriptStackTrace

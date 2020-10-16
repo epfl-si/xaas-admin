@@ -529,4 +529,37 @@ class NSXAPI: RESTAPICurl
     }
     
 
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Libère une adresse IP disponible dans un pool.
+        
+        IN  : $poolId -> ID du pool dans lequel on veut lister les adresses IP
+
+        RET : Tableau avec les adresses IP
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool%20Management/ListIpPoolAllocations
+    #>
+    [Array] getPoolIPAllocatedAddressList([string]$poolId)
+    {
+        $uri = "https://{0}/api/v1/pools/ip-pools/{1}/allocations" -f $this.server, $poolId
+
+        # Création des règles
+        return $this.callAPI($uri, "GET", $null).results | Select-Object -ExpandProperty allocation_id
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Permet de savoir si une IP est allouée dans le pool donné
+        
+        IN  : $poolId       -> ID du pool dans lequel on veut veut savoir si une IP est allouée
+        IN  : $ipAddress    -> Adresse IP dont on veut savoir si elle a été allouée
+
+        RET : $true ou $false pour dire si alloué ou pas.
+    #>
+    [bool] isIPAllocated([string]$poolId, [string]$ipAddress)
+    {
+        return $this.getPoolIPAllocatedAddressList($poolId) -contains $ipAddress
+    }
+
 }
