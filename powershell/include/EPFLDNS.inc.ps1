@@ -7,26 +7,30 @@
 #>
 class EPFLDNS
 {
-    [System.Management.Automation.PSCredential]$credentials
-    [string] $server
+    hidden [System.Management.Automation.PSCredential]$credentials
+    hidden [string] $dnsServer
+    hidden [string] $psEndpointServer
 
 
     <#
 	-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe
 
-		IN  : $server       -> Nom du serveur DNS
-		IN  : $username     -> Nom d'utilisateur pour faire la connexion
-        IN  : $password     -> Mot de passe
+        IN  : $dnsServer        -> Nom du serveur DNS
+        IN  : $psEndpointServer -> Nom du serveur endpoint PowerShell que l'on va utiliser
+                                    comme gateway. Doit se terminer par "intranet.epfl.ch"
+		IN  : $username         -> Nom d'utilisateur pour faire la connexion
+        IN  : $password         -> Mot de passe
         
         RET : Instance de la classe
 	#>
-    EPFLDNS([string]$server, [string]$username, [string]$password)
+    EPFLDNS([string]$dnsServer, [string]$psEndpointServer, [string]$username, [string]$password)
     {
         $this.credentials = New-Object System.Management.Automation.PSCredential -ArgumentList @($username, `
                                             (ConvertTo-SecureString -String $password -AsPlainText -Force))
         
-        $this.server = $server
+        $this.dnsServer = $dnsServer
+        $this.psEndpointServer = $psEndpointServer
     }
 
 
@@ -51,8 +55,8 @@ class EPFLDNS
         }
 
         # On exécute la commande en local mais avec des credentials spécifiques
-        Invoke-Command -ComputerName $env:COMPUTERNAME -ScriptBlock $scriptBlockContent -Authentication CredSSP -credential $this.credentials `
-                        -ArgumentList $this.server, $name, $ip, $zone 
+        Invoke-Command -ComputerName $this.psEndpointServer -ScriptBlock $scriptBlockContent -Authentication CredSSP -credential $this.credentials `
+                        -ArgumentList $this.dnsServer, $name, $ip, $zone 
     }
 
 
@@ -82,8 +86,8 @@ class EPFLDNS
         }
 
         # On exécute la commande en local mais avec des credentials spécifiques
-        Invoke-Command -ComputerName $env:COMPUTERNAME -ScriptBlock $scriptBlockContent -Authentication CredSSP -credential $this.credentials `
-                        -ArgumentList $this.server, $name, $zone
+        Invoke-Command -ComputerName $this.psEndpointServer -ScriptBlock $scriptBlockContent -Authentication CredSSP -credential $this.credentials `
+                        -ArgumentList $this.dnsServer, $name, $zone
 
     }
 }
