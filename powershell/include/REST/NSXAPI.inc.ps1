@@ -476,7 +476,7 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Renvoie une adresse IP disponible dans un pool
+        BUT : Alloue et renvoie une adresse IP disponible dans un pool
         
         IN  : $id -> nom du pool dans lequel piocher l'adresse IP
 
@@ -484,21 +484,32 @@ class NSXAPI: RESTAPICurl
 
         https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
     #>
-    [string] getIPAddressInPool([string]$poolId)
+    [string] allocateIPAddressInPool([string]$poolId)
     {
         $uri = "https://{0}/api/v1/pools/ip-pools/{1}?action=ALLOCATE" -f $this.server, $poolId
 
-        return $this.callAPI($uri, "POST", $null).allocation_id
+         # Valeur à mettre pour la configuration des règles
+         $replace = @{
+            ipAddress = @("null", $true)
+        }
+
+        $body = $this.createObjectFromJSON("nsx-allocate-release-ip-address.json", $replace)
+
+        return $this.callAPI($uri, "POST", $body).allocation_id
     }
 
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Libère une adresse IP disponible dans un pool
+        BUT : Libère une adresse IP disponible dans un pool.
         
         IN  : $id -> nom du pool dans lequel piocher l'adresse IP
 
         RET : Adresse IP
+
+        NOTE : Il faut savoir que la restitution d'adresse IP est beaucoup plus lente que l'allocation.
+                L'appel à la commande sera rapide mais d'ici à ce que l'IP soit libérée de manière
+                effective dans le pool, il pourra s'écouler quelques minutes.
 
         https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
     #>
@@ -511,7 +522,7 @@ class NSXAPI: RESTAPICurl
             ipAddress = $ipAddress
         }
 
-        $body = $this.createObjectFromJSON("nsx-release-ip-address.json", $replace)
+        $body = $this.createObjectFromJSON("nsx-allocate-release-ip-address.json", $replace)
 
         # Création des règles
         $this.callAPI($uri, "Post", $body) | Out-Null
