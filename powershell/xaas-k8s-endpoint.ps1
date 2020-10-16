@@ -85,6 +85,7 @@ param([string]$targetEnv,
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configVra = [ConfigReader]::New("config-vra.json")
 $configK8s = [ConfigReader]::New("config-xaas-k8s.json")
+$configNSX = [ConfigReader]::New("config-nsx.json")
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
@@ -181,6 +182,11 @@ try
                             $configK8s.getConfigValue($targetEnv, "pks", "user"), 
                             $configK8s.getConfigValue($targetEnv, "pks", "password"))
 
+    # Connexion à NSX pour pouvoir allouer/restituer des adresses IP
+    $nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), `
+                            $configNSX.getConfigValue($targetEnv, "user"), `
+                            $configNSX.getConfigValue($targetEnv, "password"))
+
     # Création du nécessaire pour interagir avec le DNS EPFL
 	$EPFLDNS = [EPFLDNS]::new($configK8s.getConfigValue($targetEnv, "dns", "server"), 
                                 $configK8s.getConfigValue($targetEnv, "dns", "user"), 
@@ -206,6 +212,24 @@ try
 
             # Recherche du nom du nouveau cluster
             $clusterName = getNextClusterName -pks $pks -nameGeneratorK8s $nameGeneratorK8s
+
+            # Génération des noms pour le DNS
+            $dnsHostName = $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryMain)
+
+            #$ipMain = $nsx.allocateIPAddressInPool($pool.id)
+            #$ipIngress = $nsx.allocateIPAddressInPool($pool.id)
+
+            #$EPFLDNS.registerDNSIP($dnsHostName, $ipMain, $global:K8S_DNS_ZONE_NAME)
+
+            # $cluster = $pks.addCluster($clusterName, $plan, $netProfile, $dnsHostName)
+
+            # $cluster
+
+            # $output.results += @{
+            #     name = $clusterName
+            #     uuid = $cluster.uuid
+            #     dnsHostName = $dnsHostName
+            # }
         }
 
 

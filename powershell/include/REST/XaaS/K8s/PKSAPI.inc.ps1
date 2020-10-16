@@ -200,18 +200,29 @@ class PKSAPI: RESTAPICurl
 		BUT : Ajoute un cluster
 
 		IN  : $clusterName		-> Le nom du cluster
+		IN  : $planName			-> Le nom du plan
+		IN  : $netProfileName	-> Le nom du network profile
+		IN  : $dnsHostName		-> Nom DNS à utiliser
+
+		RET : Objet représentant le cluster
 	#>
-	[void] addCluster([string]$clusterName)
+	[PSObject] addCluster([string]$clusterName, [string]$planName, [string]$netProfileName, [string]$dnsHostName)
 	{
 		$uri = "https://{0}:9021/v1/clusters/" -f $this.server
 
-		Throw "To implement"
 		# Valeur à mettre pour la configuration du BG
-		$replace = @{}
+		$replace = @{
+			clusterName = $clusterName
+			planName = $planName
+			netProfileName = $netProfileName
+			dnsHostName = $dnsHostName
+		}
 
 		$body = $this.createObjectFromJSON("xaas-k8s-new-pks-cluster.json", $replace)
 			
 		$this.callAPI($uri, "POST", $body) | Out-Null
+
+		return $this.getCluster($clusterName)
 	}
 
 
@@ -247,6 +258,23 @@ class PKSAPI: RESTAPICurl
 	[Array] getPlanList()
     {
         $uri = "https://{0}:9021/v1/plans" -f $this.server
+        
+        return $this.callAPI($uri, "GET", $null)
+	}
+
+
+	<#
+        =====================================================================================
+										NETWORK PROFILES
+        =====================================================================================
+	#>
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des network profiles qui existent
+	#>
+	[Array] getNetworkProfileList()
+    {
+        $uri = "https://{0}:9021/v1/network-profiles" -f $this.server
         
         return $this.callAPI($uri, "GET", $null)
 	}

@@ -1,8 +1,8 @@
 {
-    "name": "string",
-    "network_profile_name": "string",
+    "name": "{{clusterName}}",
+    "network_profile_name": "{{netProfileName}}",
     "parameters": {
-      "kubernetes_master_host": "string"
+      "kubernetes_master_host": "{{dnsHostName}}"
     },
-    "plan_name": "string"
+    "plan_name": "{{planName}}"
   }

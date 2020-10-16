@@ -12,3 +12,6 @@ $global:CLUSTER_NAME_NB_DIGIT = 4
 
 # Nombre max de caractères que peut contenir le nom de la faculté dans un nom de cluster
 $global:CLUSTER_NAME_FACULTY_PART_MAX_CHAR = 6
+
+# Nom de la zone DNS
+$global:K8S_DNS_ZONE_NAME = "xaas.epfl.ch"
