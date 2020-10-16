@@ -1,9 +1,18 @@
 <#
-   BUT : Contient une classe avec les fonctions de base pour faire des appels via les commandes
+    BUT : Contient une classe avec les fonctions de base pour faire des appels via les commandes
             - tkgi.exe
             - kubectl.exe
+    
+    REMARQUE: Il est intéressant de savoir que les binaires en question utilisent la sortie STDERR 
+                pour afficher des éléments informatifs tel que:
+                - état du login
+                - demande de mot de passe dans un prompt
+                - message pour dire que pas de résultat pour ce qu'on a demandé
+              Donc, c'est "naturellement" filtré entre STDOUT et STDERR au niveau de l'exécution
+              du process et de la récupération de la sortie. C'est pratique mais un peu perturbant
+              quand on n'est pas au courant de cette petite subtilité...
 	
-    PREREQUIS : Pour fonctionner, cette classe nécessite le binaire tkgi.exe, il doit
+    PREREQUIS : Pour fonctionner, cette classe nécessite les binaires mentionnés plus haut, ils doivent
                 se trouver dans le dossier "powershell/bin"
                 Il faut aussi avoir un certificat pour la connexion
 				
@@ -16,8 +25,6 @@ class TKGIKubectl
 {
 	
 	hidden [System.Diagnostics.Process]$batchFile
-    hidden [PSObject]$process
-    hidden [string]$server
     hidden [string]$loginCmd
     hidden [string]$logoutCmd
     hidden [Hashtable]$pathTo
@@ -37,7 +44,6 @@ class TKGIKubectl
 	#>
     TKGIKubectl([string] $server, [string]$username, [string]$password, [string]$certificateFile)
     {
-        $this.server = $server
         $this.password = $password
         $certificateFileFull = [IO.Path]::Combine($global:K8S_CERT_FOLDER, $certificateFile)
 
