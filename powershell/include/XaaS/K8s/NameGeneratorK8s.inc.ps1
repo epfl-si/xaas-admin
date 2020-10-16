@@ -93,7 +93,7 @@ class NameGeneratorK8s: NameGeneratorBase
    {
       $numberStr = $number.ToString().PadLeft($global:CLUSTER_NAME_NB_DIGIT, "0")
       
-      return ("{0}{1}k{3}{4}" -f $this.getTenantShortName(), ` # Nom court du tenant
+      return ("{0}{1}k{2}{3}" -f $this.getTenantShortName(), ` # Nom court du tenant
                $this.getClusterNameMiddle(), `
                $this.getEnvShortName(), `
                $numberStr)
@@ -111,11 +111,13 @@ class NameGeneratorK8s: NameGeneratorBase
    #>
    [string] getClusterDNSName([string]$clusterName, [K8sDNSEntryType]$entryType)
    {
-      return switch($entryType)
+      switch($entryType)
       {
-         EntryMain { $clusterName }
-         EntryIngress { ("ingress.{0}" -f $clusterName) }
+         EntryMain { return $clusterName }
+         EntryIngress { return ("ingress.{0}" -f $clusterName) }
       }
+
+      Throw "Invalid value given for 'entryType'"
    }
 
 }
