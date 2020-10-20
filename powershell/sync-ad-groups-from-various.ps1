@@ -63,18 +63,21 @@ enum TableauRoles
 	BUT : Regarde si un groupe Active Directory existe et si ce n'est pas le cas, il 
 		  est créé.
 
-	IN  : $groupName		-> Nom du groupe à créer
-	IN  : $groupDesc		-> Description du groupe à créer.
-	IN  : $groupMemberGroup	-> Nom du groupe à ajouter dans le groupe $groupName
-	IN  : $OU				-> OU Active Directory dans laquelle créer le groupe
-	IN  : $simulation		-> $true|$false pour dire si on est en mode simulation ou pas.
+	IN  : $groupName				-> Nom du groupe à créer
+	IN  : $groupDesc				-> Description du groupe à créer.
+	IN  : $groupMemberGroup			-> Nom du groupe à ajouter dans le groupe $groupName
+	IN  : $OU						-> OU Active Directory dans laquelle créer le groupe
+	IN  : $simulation				-> $true|$false pour dire si on est en mode simulation ou pas.
+	IN  : $updateExistingContent    -> $true|$false pour dire si on doit mettre à jour le contenu
+										d'un groupe existant
 
 	RET : $true	-> OK
 		  $false -> le groupe ($groupMemberGroup) à ajouter dans le groupe $groupName 
 		  			n'existe pas.
 #>
-function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation)
+function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation, [bool]$updateExistingContent)
 {
+	 
 	# Cette petite ligne permet de transformer les tirets style "MS Office" en tirets "normaux". Si on ne fait pas ça, on aura 
 	# des problèmes par la suite dans vRA car ça pourrira le JSON...
 	$groupDesc = $groupDesc -replace '–', '-'
@@ -86,14 +89,18 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 		return $false
 	}
 
+	$alreadyExists = ADGroupExists -groupName $groupName
+
 	# Si le groupe n'existe pas encore 
-	if((ADGroupExists -groupName $groupName) -eq $false)
+	if($alreadyExists -eq $false)
 	{
 		if(-not $simulation)
 		{
 			$logHistory.addLineAndDisplay(("--> Creating AD group '{0}'..." -f $groupName))
 			# Création du groupe
 			New-ADGroup -Name $groupName -Description $groupDesc -GroupScope DomainLocal -Path $OU
+
+			$counters.inc('ADGroupsCreated')
 		}
 	}
 	else
@@ -105,14 +112,19 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 
 	if(-not $simulation)
 	{
+			# Si le groupe vient d'être CREE
+			# OU
+			# qu'il existe déjà et qu'on a le droit de mettre à jour son contenu,
+			if( ($alreadyExists -eq $false) -or ($alreadyExists -and $updateExistingContent))
+			{
+				$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
+				# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
+				Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
+				# Et on remet les bons membres
+				Add-ADGroupMember $groupName -Members $groupMemberGroup
+			}
 
-			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
-			# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
-			Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
-			# Et on remet les bons membres
-			Add-ADGroupMember $groupName -Members $groupMemberGroup
-
-			$counters.inc('ADGroupsCreated')
+			
 	}
 	
 	return $true
@@ -594,7 +606,7 @@ try
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						if($notifications['missingEPFLADGroups'] -notcontains $approveGroupNameGroups)
 						{
@@ -629,7 +641,7 @@ try
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $adminGroupNameAD -groupDesc $adminGroupDescAD -groupMemberGroup $adminGroupNameGroups `
-					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 					$notifications['missingEPFLADGroups'] += $adminGroupNameGroups
@@ -640,7 +652,7 @@ try
 
 
 				if((createADGroupWithContent -groupName $supportGroupNameAD -groupDesc $supportGroupDescAD -groupMemberGroup $supportGroupNameGroups `
-					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 					$notifications['missingEPFLADGroups'] += $supportGroupNameGroups
@@ -968,7 +980,7 @@ try
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
 						if($notifications['missingITSADGroups'] -notcontains $approveGroupNameGroups)
@@ -999,7 +1011,7 @@ try
 	
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					$notifications['missingITSADGroups'] += $admSupGroupNameGroups
@@ -1028,7 +1040,7 @@ try
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					if($notifications['missingADGroups'] -notcontains $userSharedGroupNameGroupsAD)
@@ -1134,7 +1146,7 @@ try
 					
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroupsAD `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
 						if($notifications['missingADGroups'] -notcontains $approveGroupNameGroupsAD)
@@ -1166,7 +1178,7 @@ try
 				$roleAdmSupGroupOK = $true
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					$notifications['missingRSRCHADGroups'] += $admSupGroupNameGroups
@@ -1197,7 +1209,7 @@ try
 				$roleSharedGroupOk = $true
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					if($notifications['missingADGroups'] -notcontains $userSharedGroupNameGroupsAD)
