@@ -10,7 +10,7 @@ USAGES:
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action bucketExists -bucketName <bucketName>
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action bucketIsEmpty -bucketName <bucketName>
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action getBuckets 
-    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action getBucketsUsage 
+    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research|backupadmins -action getBucketsUsage 
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
