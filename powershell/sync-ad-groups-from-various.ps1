@@ -274,30 +274,54 @@ function removeInexistingADAccounts([Array] $accounts)
 			Pour le moment, on ne fait ceci que pour le tenant EPFL car c'est le seul
 			qui est facturé
 
-	IN  : $sqldb	-> Objet permettant d'accéder à la DB
-	IN  : $ADGroup	-> Groupe AD avec les utilisateurs à ajouter
-	IN  : $role		-> Role à donner aux utilisateurs du groupe
-	IN  : $bgName	-> Nom du Business Group qui est accessible
-					   Peut être de la forme basique epfl_<faculty>_<unit>
-					   Ou alors simplement un seul élément si c'est un nom de faculté
+	IN  : $sqldb		-> Objet permettant d'accéder à la DB
+	IN  : $ADGroup		-> Groupe AD avec les utilisateurs à ajouter
+	IN  : $role			-> Role à donner aux utilisateurs du groupe
+	IN  : $bgName		-> Nom du Business Group qui est accessible
+					   		Peut être de la forme basique epfl_<faculty>_<unit>
+					   		Ou alors simplement un seul élément si c'est un nom de faculté
+	IN  : $targetTenant	-> Nom du tenant sur lequel on est.
+							On gère uniquement les tenants ITServices et EPFL
 #>
-function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$role, [string]$bgName)
+function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$role, [string]$bgName, [string]$targetTenant)
 {
 
 	switch($role)
 	{
 		User
 		{
-			# Extraction des infos ($dummy va contenir le nom complte du BG, dont on n'a pas besoin)
-			# Gère les noms  de BG au format epfl_<fac>_<unit>
-			$dummy, $criteriaList = [regex]::Match($bgName, '^([a-z]+)_([a-z]+)_(\w+)').Groups | Select-Object -ExpandProperty value
+			if($targetTenant -eq $global:VRA_TENANT__EPFL)
+			{
+				# Gère les noms  de BG au format epfl_<fac>_<unit>
+				$regex = '^([a-z]+)_([a-z]+)_(\w+)'
+			}
+			elseif($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
+			{
+				# Gère les noms  de BG au format its_<serviceShortName>
+				$regex = '^([a-z]+)_([a-z0-9]+)'
+			}
+			else
+			{
+				Throw ("Tenant '{0}' not handled" -f $targetTenant)
+			}
+			
+			# Extraction des infos ($dummy va contenir le nom comple du BG, dont on n'a pas besoin)
+			$dummy, $criteriaList = [regex]::Match($bgName, $regex).Groups | Select-Object -ExpandProperty value
 		}
 
 		AdminFac
 		{
+			if($targetTenant -eq $global:VRA_TENANT__EPFL)
+			{
+				# Gère les noms  de BG au format epfl_<fac>
+				$regex = '^([a-z]+)_([a-z]+)'
+			}
+			else
+			{
+				Throw ("Tenant '{0}' not handled" -f $targetTenant)
+			}
 			# Extraction des infos ($dummy va contenir le nom complte du BG, dont on n'a pas besoin)
-			# Gère les noms  de BG au format epfl_<fac>
-			$dummy, $criteriaList = [regex]::Match($bgName, '^([a-z]+)_([a-z]+)').Groups | Select-Object -ExpandProperty value
+			$dummy, $criteriaList = [regex]::Match($bgName, $regex).Groups | Select-Object -ExpandProperty value
 		}
 
 		AdminEPFL
@@ -857,7 +881,7 @@ try
 					if($ldapMemberList.Count -gt 0)
 					{
 						$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
-						updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName()
+						updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
 					}
 
 
@@ -885,7 +909,7 @@ try
 				if($facApprovalMembers.Count -gt 0)
 				{
 					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
-					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower())
+					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower()) -targetTenant $targetTenant
 				}
 
 
@@ -907,7 +931,7 @@ try
 			if($adminMembers.Count -gt 0)
 			{
 				$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
-				updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all"
+				updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
 			}
 			
 		}
@@ -1052,6 +1076,21 @@ try
 				{
 					# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
 					$doneADGroupList += $userSharedGroupNameAD
+				}
+
+				###### Roles pour Tableau --> Utilisateurs dans les Business Groups
+				if(($groupsUsernameList = Get-ADGroupMember $userSharedGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
+				{
+					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $groupsUsernameList.Count, [TableauRoles]::User.ToString() ))
+					updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+				}
+				
+				# ###### Roles pour Tableau --> Admin du service
+				# Recherche de la liste des membres
+				if(($adminMembers = Get-ADGroupMember $admSupGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).Count -gt 0)
+				{
+					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
+					updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
 				}
 				
 	
@@ -1300,7 +1339,7 @@ try
 											financeCenter = ''})
 
 				# Suppression des accès pour le business group correspondant au groupe AD courant.
-				updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName()
+				updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
 			}
 			
 		}
