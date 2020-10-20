@@ -39,6 +39,8 @@ class NameGeneratorK8s: NameGeneratorBase
    { }
 
 
+
+
    <#
       -------------------------------------------------------------------------------------
       BUT : Renvoie la partie centrale pour le nom d'un cluster en fonction du tenant
@@ -50,8 +52,8 @@ class NameGeneratorK8s: NameGeneratorBase
       {
          $global:VRA_TENANT__EPFL
          {
-            $middle = ("{0}{1}" -f $this.sanitizeName($this.getDetail('facultyName'), $global:CLUSTER_NAME_FACULTY_PART_MAX_CHAR).ToLower(), `
-                                   $this.sanitizeName($this.getDetail('unitName').ToLower()))
+            $middle = ("{0}{1}" -f $this.sanitizeName($this.getDetail('facultyName'), $global:CLUSTER_NAME_FACULTY_PART_MAX_CHAR), `
+                                   $this.sanitizeName($this.getDetail('unitName')))
          }
 
          $global:VRA_TENANT__ITSERVICES
@@ -114,10 +116,44 @@ class NameGeneratorK8s: NameGeneratorBase
       switch($entryType)
       {
          EntryMain { return $clusterName }
-         EntryIngress { return ("ingress.{0}" -f $clusterName) }
+         EntryIngress { return ("i.{0}" -f $clusterName) }
       }
 
       Throw "Invalid value given for 'entryType'"
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom d'un projet
+
+      RET : Le nom du projet
+   #>
+   [string] getHarborProjectName()
+   {
+      $middle = ""
+      switch($this.tenant)
+      {
+         $global:VRA_TENANT__EPFL
+         {
+            $middle = $this.sanitizeName($this.getDetail('facultyName'), $global:CLUSTER_NAME_FACULTY_PART_MAX_CHAR)
+         }
+
+         $global:VRA_TENANT__ITSERVICES
+         {
+            $middle = ($this.sanitizeName($this.getDetail('serviceShortName')))
+         }
+
+         $global:VRA_TENANT__RESEARCH
+         {
+            $middle = ($this.sanitizeName($this.getDetail('projectId')))
+         }
+      }
+      
+
+      return ("{0}{1}{2}" -f $this.getTenantShortName(), ` # Nom court du tenant
+               $middle, `
+               $this.getEnvShortName())
    }
 
 }

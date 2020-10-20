@@ -70,6 +70,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "K8s", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "K8s", "NameGeneratorK8s.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "K8s", "TKGIKubectl.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -146,7 +147,7 @@ function getNextClusterName([PKSAPI]$pks, [NameGeneratorK8s]$nameGeneratorK8s)
 
 <#
     -------------------------------------------------------------------------------------
-    BUT : Efface un cluster
+    BUT : Efface un cluster, sans sommation, ni prévenir la famille à la fin.
 
     IN  : $pks              -> Objet permettant d'accéder à l'API de PKS
     IN  : $nsx              -> Objet permettant d'accéder à l'API de NSX
@@ -157,21 +158,30 @@ function getNextClusterName([PKSAPI]$pks, [NameGeneratorK8s]$nameGeneratorK8s)
 #>
 function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGeneratorK8s]$nameGeneratorK8s, [string]$clusterName, [string]$ipPoolName)
 {
-    
-    # - Cluster
+    # Le nom du cluster peut être encore vide dans le cas où une erreur surviendrait avait que le nom soit initialisé. 
+    # Dans ce cas, on ne fait rien
+    if($clusterName -eq "")
+    {
+        $logHistory.addLine("Cluster to delete has empty name, maybe it wasn't initialized before and error occured and the this 'delete' function was called.")
+        return
+    }
+
+    # --- Cluster
     $cluster = $pks.getCluster($clusterName)
     if($null -ne $cluster)
     {
-        $logHistory.addLine(("Deleting cluster '{0}'..." -f $clusterName))
+        $logHistory.addLine(("Deleting cluster '{0}'. This also can take a while... so... another coffee ?..." -f $clusterName))
+        # On attend que le cluster ait été effacé avant de rendre la main et passer à la suite du job
         $pks.deleteCluster($clusterName)
+        $logHistory.addLine("Cluster deleted")
     }
     else
     {
         $logHistory.addLine(("Cluster '{0}' doesn't exists" -f $clusterName))
     }
+    
 
-
-    # - Adresses IP
+    # --- Adresses IP
     # Recherche du pool dans lequel on va demander les adresses IP
     $pool = $nsx.getIPPoolByName($ipPoolName)
     $hostnameList = @(
@@ -179,26 +189,32 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
         $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryIngress)    
         $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryMain)
     )
+    
     $logHistory.addLine("Deleting IPs...")
+    # On commence par nettoyer le cache local pour être sûr de bien interroger le DNS et pas le cache... 
+    Clear-DnsClientCache 
     ForEach($hostname in $hostnameList)
     {
-        $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostname))
         try
         {
             # Si l'entrée n'existe pas dans le DNS, ça va générer une exception
-            $ip = [System.Net.Dns]::GetHostAddresses( ("{0}.{1}" -f $hostname, $global:K8S_DNS_ZONE_NAME))
-            $logHistory.addLine("> Unregistering IP for host in DNS...")
-            $EPFLDNS.unregisterDNSIP($hostname, $ip, $global:K8S_DNS_ZONE_NAME)
+            $ip = ([System.Net.Dns]::GetHostAddresses( ("{0}.{1}" -f $hostname, $global:K8S_DNS_ZONE_NAME))).IPAddressToString   
         }
         catch
         {
+            # Pas trouvé, on passe au hostname suivant
             $logHistory.addLine(("> IP doesn't exists in DNS"))
+            Continue
         }
         
+        $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostname))
+        $logHistory.addLine("> Unregistering IP for host in DNS...")
+        $EPFLDNS.unregisterDNSIP($hostname, $ip, $global:K8S_DNS_ZONE_NAME)
+
         # Si l'IP est allouée dans NSX,
         if($nsx.isIPAllocated($pool.id, $ip))
         {
-            $logHistory.addLine("> Releasing IP in NSX...")
+            $logHistory.addLine("> Releasing IP in NSX (it will take some time before it is available again in pool)...")
             $nsx.releaseIPAddressInPool($pool.id, $ip)
         }
         else
@@ -207,10 +223,70 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
         }
         
     }# FIN BOUCLE de parcours des IP à supprimer
-    
+
+    # Si on avait pu trouver le cluster
+    if($null -ne $cluster)
+    {
+        $logHistory.addLine("Deleting Load Balancer application profiles...")
+        $appProfileList = $nsx.getClusterLBAppProfileList($cluster.uuid)
+
+        if($null -eq $appProfileList)
+        {
+            $logHistory.addLine("No application profile found... cleaning has been correctly done by PSK while deleting cluster")
+        }
+        # Parcours des application profiles à supprimer
+        Foreach($appProfile in $appProfileList)
+        {
+            $logHistory.addLine(("> {0}..." -f $appProfile.display_name))
+            $nsx.deleteLBAppProfile($appProfile.id)
+        }
+    }
+    else
+    {
+        $logHistory.addLine("Cluster not found before so we can't delete associated Load Balancer application profiles :-/")
+    }
     
 }
 
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Cherche quelle est l'adresse IP "ingress" qui a été attribuée automatiquement
+            au cluster par PKS en allant la chercher dans NSX.
+
+    IN  : $clusterIP        -> Adresse IP du cluster, pour pouvoir retrouver celle pour Ingress
+    IN  : $nsx              -> Objet permettant d'accéder à l'API de NSX
+#>
+function searchClusterIngressIPAddress([string]$clusterIP, [NSXAPI]$nsx)
+{
+    $loadBalancerServices = $nsx.getLBServiceList()
+
+    # Parcours des services trouvés
+    ForEach($service in $loadBalancerServices)
+    {
+        $ipList = @()
+
+        # Parcours des serveurs virtuels du LoadBalancer pour récupérer leurs IP
+        ForEach($virtualServerId in $service.virtual_server_ids)
+        {
+            $ipList += $nsx.getLBVirtualServer($virtualServerId).ip_address
+        }
+
+        # Si l'adresse IP du cluster se trouve dans la liste du service courant
+        if($ipList -contains $clusterIP)
+        {
+            # On retourne l'ip qui reste
+            return $ipList | Where-Object { $_ -ne $clusterIP} | Get-Unique
+        }
+    }
+
+    return $null
+}
+
+function waitUntilDNSUpdate([array]$hostnameList)
+{
+
+}
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -250,6 +326,11 @@ try
                             $configK8s.getConfigValue($targetEnv, "pks", "user"), 
                             $configK8s.getConfigValue($targetEnv, "pks", "password"))
 
+    # Création d'une connexion au serveur Harbor pour accéder à ses API REST
+	$harbor = [HarborAPI]::new($configK8s.getConfigValue($targetEnv, "harbor", "server"), 
+            $configK8s.getConfigValue($targetEnv, "harbor", "user"), 
+            $configK8s.getConfigValue($targetEnv, "harbor", "password"))
+
     # Connexion à NSX pour pouvoir allouer/restituer des adresses IP
     $nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), `
                             $configNSX.getConfigValue($targetEnv, "user"), `
@@ -261,6 +342,11 @@ try
                                 $configK8s.getConfigValue($targetEnv, "dns", "user"), 
                                 $configK8s.getConfigValue($targetEnv, "dns", "password"))
 
+    # Objet pour passer des commandes TKGI et Kubectl
+    $tkgiKubectl = [TKGIKubectl]::new($configK8s.getConfigValue($targetEnv, "tkgi", "server"), 
+                                        $configK8s.getConfigValue($targetEnv, "tkgi", "user"), 
+                                        $configK8s.getConfigValue($targetEnv, "tkgi", "password"),
+                                        $configK8s.getConfigValue($targetEnv, "tkgi", "certificate"))
                                 
     # Objet pour pouvoir envoyer des mails de notification
     $valToReplace = @{
@@ -285,46 +371,63 @@ try
             # Initialisation pour récupérer les noms des éléments
             $nameGeneratorK8s.initDetailsFromBGName($bgName)
 
+            # Recherche du Business Group
+            $bg = $vra.getBG($bgName)
+            # Récupération des utilisateurs qui ont le droit de demander des cluster, ça sera ceux
+            # qui pourront gérer le cluster
+            $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
+
             $logHistory.addLine("Generating cluster name...")
             # Recherche du nom du nouveau cluster
             $clusterName = getNextClusterName -pks $pks -nameGeneratorK8s $nameGeneratorK8s
-            $logHistory.addLine(("Cluster name will be '{0}" -f $clusterName))
+            $logHistory.addLine(("Cluster name will be '{0}'" -f $clusterName))
 
             # Génération des noms pour le DNS
             $logHistory.addLine("Generating DNS hostnames...")
             $dnsHostName = $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryMain)
+            $dnsHostNameFull = ("{0}.{1}" -f $dnsHostName, $global:K8S_DNS_ZONE_NAME)
             $dnsHostNameIngress = $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryIngress)
             $logHistory.addLine(("DNS hosnames will be '{0}' for main cluster and '{1}' for Ingress part" -f $dnsHostName, $dnsHostNameIngress))
 
-            $ipPoolName = $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName")
-            $logHistory.addLine(("Getting NSX IP pool '{0}'..." -f $ipPoolName))
-            # Recherche du pool dans lequel on va demander les adresses IP
-            $pool = $nsx.getIPPoolByName($ipPoolName)
-            $logHistory.addLine(("There are {0} free IP addresses in pool (for total of {1})" -f $pool.pool_usage.free_ids, $pool.pool_usage.total_ids))
-            # Si plus assez d'adresses IP de libre
-            if($pool.pool_usage.free_ids -lt 2)
-            {
-                Throw ("Not enough free IPs in NSX '{0}' IP pool (only {1} left)" -f $ipPoolName, $pool.pool_usage.free_ids)
-            }
+            $logHistory.addLine(("Creating cluster '{0}' with '{1}' plan and '{2}' network profile (this will take time, you can go to grab a coffee)..." -f $clusterName, $plan, $netProfile))
+            $cluster = $pks.addCluster($clusterName, $plan, $netProfile, $dnsHostNameFull)
 
-            $logHistory.addLine("Allocating IP addresses...")
-            $ipMain = $nsx.allocateIPAddressInPool($pool.id)
-            $ipIngress = $nsx.allocateIPAddressInPool($pool.id)
-            $logHistory.addLine(("IP adresses will be: {0} for cluster and {1} for Ingress" -f $ipMain, $ipIngress))
+            $ipMain = $cluster.kubernetes_master_ips[0]
+            $logHistory.addLine(("IP address for cluster is {0}. Looking for Ingress IP..." -f $ipMain))
+            $ipIngress = searchClusterIngressIPAddress -clusterIP $ipMain -nsx $nsx
+
+            if($null -eq $ipIngress)
+            {
+                Throw "Impossible to find IP address for Ingress part"
+            }
+            $logHistory.addLine(("Ingress IP address is {0}" -f $ipIngress))
             
             $logHistory.addLine(("Adding DNS entries in {0} zone..." -f $global:K8S_DNS_ZONE_NAME))
             $EPFLDNS.registerDNSIP($dnsHostName, $ipMain, $global:K8S_DNS_ZONE_NAME)
             $EPFLDNS.registerDNSIP($dnsHostNameIngress, $ipIngress, $global:K8S_DNS_ZONE_NAME)
 
-            $logHistory.addLine(("Creating cluster '{0}' with '{1}' plan and '{2}' network profil..." -f $clusterName, $plan, $netProfile))
-            $cluster = $pks.addCluster($clusterName, $plan, $netProfile, $dnsHostName)
+            # Ajout des droits d'accès mais uniquement pour le premier groupe de la liste, et on admet que c'est un nom de groupe et pas
+            # d'utilisateur. On explose l'infos <group>@intranet.epfl.ch pour n'extraire que le nom du groupe
+            $groupName, $null = $userAndGroupList[0] -split '@'
 
-            # $cluster
+            $logHistory.addLine(("Adding rights on cluster for '{0}' group..." -f $groupName))
+            # Préparation des lignes de commande à exécuter
+            $tkgiKubectl.addTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName))
+            $tkgiKubectl.addKubectlCmd(("config use-context {0}" -f $clusterName))
+            $tkgiKubectl.addKubectlCmdWithYaml("psp-cluster-role.yaml")
+            $tkgiKubectl.addKubectlCmdWithYaml("psp-restrict.yaml")
+            $tkgiKubectl.addKubectlCmdWithYaml("cluster-role-bindings.yaml", @{ groupName = $groupName} )
+            # Exécution
+            $tkgiKubectl.exec() | Out-Null
+
+            $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
+            $logHistory.addLine(("Harbor project will be '{0}'" -f $harborProjectName))
+            
 
             $output.results += @{
                 name = $clusterName
                 uuid = $cluster.uuid
-                dnsHostName = $dnsHostName
+                dnsHostName = $dnsHostNameFull
             }
         }
 

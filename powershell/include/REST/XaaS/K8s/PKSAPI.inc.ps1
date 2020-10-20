@@ -119,6 +119,31 @@ class PKSAPI: RESTAPICurl
 	#>
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Attend qu'une action sur un cluster soit terminée. Cela peut être une action de
+				création ou de suppression. C'est pour cette dernière qu'on check aussi si 
+				$cluster est différent de $null
+
+		IN  : $clusterName	-> nom du cluster
+	#>
+	hidden [void] waitForClusterAction([string]$clusterName)
+	{	
+		$cluster = $null
+		do
+		{
+			Start-Sleep -Seconds 10
+			$cluster = $this.getCluster($clusterName)
+		} while (($null -ne $cluster) -and ($cluster.last_action_state -eq "in progress"))
+
+		# Si ça ne s'est pas terminé correctement
+		if(($null -ne $cluster) -and ($cluster.last_action_state -ne "succeeded"))
+		{
+			Throw(("Error on cluster '{0}' with action '{1}'. Description is '{2}'" -f $clusterName, $cluster.last_action, $cluster.last_action_description))
+		}
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des clusters avec possibilité de filtrer
 
 		IN  : $queryParams	-> Paramètres pour la query
@@ -192,6 +217,8 @@ class PKSAPI: RESTAPICurl
 		$uri = "https://{0}:9021/v1/clusters/{1}" -f $this.server, [System.Net.WebUtility]::UrlEncode($clusterName)
 
 		$this.callAPI($uri, "DELETE", $null) | Out-Null
+
+		$this.waitForClusterAction($clusterName)
 	}
 
 
@@ -221,6 +248,8 @@ class PKSAPI: RESTAPICurl
 		$body = $this.createObjectFromJSON("xaas-k8s-new-pks-cluster.json", $replace)
 			
 		$this.callAPI($uri, "POST", $body) | Out-Null
+
+		$this.waitForClusterAction($clusterName)
 
 		return $this.getCluster($clusterName)
 	}

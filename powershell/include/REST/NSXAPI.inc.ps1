@@ -524,14 +524,13 @@ class NSXAPI: RESTAPICurl
 
         $body = $this.createObjectFromJSON("nsx-allocate-release-ip-address.json", $replace)
 
-        # Création des règles
         $this.callAPI($uri, "Post", $body) | Out-Null
     }
     
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Libère une adresse IP disponible dans un pool.
+        BUT : Renvoie la liste des adresses IP allouées dans un Pool
         
         IN  : $poolId -> ID du pool dans lequel on veut lister les adresses IP
 
@@ -543,7 +542,6 @@ class NSXAPI: RESTAPICurl
     {
         $uri = "https://{0}/api/v1/pools/ip-pools/{1}/allocations" -f $this.server, $poolId
 
-        # Création des règles
         return $this.callAPI($uri, "GET", $null).results | Select-Object -ExpandProperty allocation_id
     }
 
@@ -559,7 +557,160 @@ class NSXAPI: RESTAPICurl
     #>
     [bool] isIPAllocated([string]$poolId, [string]$ipAddress)
     {
-        return $this.getPoolIPAllocatedAddressList($poolId) -contains $ipAddress
+        return ($this.getPoolIPAllocatedAddressList($poolId) -contains $ipAddress)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	    							LOAD BALANCER - SERVICES
+		-------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------
+    #>
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des services de load balancing
+        
+        RET : Tableau avec les services
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/ListLoadBalancerServices
+    #>
+    [Array] getLBServiceList()
+    {
+        $uri = "https://{0}/api/v1/loadbalancer/services" -f $this.server
+
+        return $this.callAPI($uri, "GET", $null).results
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime un service du load balancer
+        
+        IN  : $serviceId    -> ID du service à supprimer
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/DeleteLoadBalancerService
+    #>
+    [void] deleteLBService([string]$serviceId)
+    {
+        $uri = "https://{0}/api/v1/loadbalancer/services/{1}" -f $this.server, $serviceId
+
+        $this.callAPI($uri, "DELETE", $null) | Out-Null
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie le service de load balancer associé à un cluster
+
+        IN  : $clusterId    -> ID du cluster
+        
+        RET : Objet avec le service
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/ListLoadBalancerServices
+    #>
+    [PSObject] getClusterLBService([string]$clusterId)
+    {
+        return $this.getLBServiceList() | Where-Object { $_.display_name -eq ("lb-pks-{0}" -f $clusterId) }
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	    						LOAD BALANCER - VIRTUAL SERVERS
+		-------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------
+    #>
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie les infos d'un serveur virtuel
+        
+        IN  : $virtualServerId -> ID du serveur virtuel
+
+        RET : Objet avec les infos
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/ListLoadBalancerVirtualServers
+    #>
+    [PSObject] getLBVirtualServer([string]$virtualServerId)
+    {
+        $uri = "https://{0}/api/v1/loadbalancer/virtual-servers/{1}" -f $this.server, $virtualServerId
+
+        return $this.callAPI($uri, "GET", $null)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime un virtual server d'un load balancer
+        
+        IN  : $virtualServerId    -> ID du virtual server à supprimer
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/DeleteLoadBalancerVirtualServer
+    #>
+    [void] deleteLBVirtualServer([string]$virtualServerId)
+    {
+        $uri = "https://{0}/api/v1/loadbalancer/virtual-servers/{1}/?delete_associated_rules=true" -f $this.server, $virtualServerId
+
+        $this.callAPI($uri, "DELETE", $null) | Out-Null
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	    						LOAD BALANCER - PROFILES
+		-------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------
+    #>
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des services de load balancing
+        
+        RET : Tableau avec les services
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/ListLoadBalancerApplicationProfiles
+    #>
+    [Array] getLBAppProfileList()
+    {
+        $uri = "https://{0}/api/v1/loadbalancer/application-profiles" -f $this.server
+
+        return $this.callAPI($uri, "GET", $null).results
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des applications profiles associés à un cluster
+
+        IN  : $clusterId    -> ID du cluster
+        
+        RET : Tableau des Application profiles
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/ListLoadBalancerApplicationProfiles
+    #>
+    [Array] getClusterLBAppProfileList([string]$clusterId)
+    {
+        return $this.getLBAppProfileList() | Where-Object { $_.display_name.startswith("ncp-pks-{0}" -f $clusterId) }
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime un application profile d'un load balancer
+        
+        IN  : $appProfileId    -> ID de l'application profile à supprimer
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/DeleteLoadBalancerApplicationProfile
+    #>
+    [void] deleteLBAppProfile([string]$appProfileId)
+    {
+        $uri = "https://{0}/api/v1/loadbalancer/application-profiles/{1}" -f $this.server, $appProfileId
+
+        $this.callAPI($uri, "DELETE", $null) | Out-Null
     }
 
 }
