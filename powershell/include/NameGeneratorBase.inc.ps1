@@ -36,6 +36,7 @@ class NameGeneratorBase
                            $VRA_TENANT_DEFAULT
                            $VRA_TENANT_EPFL
                            $VRA_TENANT_ITSERVICES
+                           $VRA_TENANT_RESEARCH
 
 		RET : Instance de l'objet
 	#>
@@ -91,9 +92,9 @@ class NameGeneratorBase
                 }
 
                 $result = @{
-                    faculty = $faculty
+                    faculty = $faculty.toLower()
                     # On remet les "-" dans le nom d'unité si besoin
-                    unit = $unit -replace "_", "-"
+                    unit = ($unit -replace "_", "-").toLower()
                 }
             }
             
@@ -109,7 +110,7 @@ class NameGeneratorBase
                 }
 
                 $result = @{
-                    serviceShortName = $serviceShortName
+                    serviceShortName = $serviceShortName.toLower()
                 }
             }
 
