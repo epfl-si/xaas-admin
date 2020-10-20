@@ -30,6 +30,7 @@ class TKGIKubectl
     hidden [Hashtable]$pathTo
     hidden [string]$password
     hidden [Array]$cmdList
+    hidden [Array]$filesToClean
 	
     <#
 	-------------------------------------------------------------------------------------
@@ -86,7 +87,62 @@ class TKGIKubectl
         # - addCmd
         # - addCmdWithPassword
         $this.cmdList = @()
+        # Liste des fichiers temporaire à supprimer après l'exécution de la méthode "exec"
+        $this.filesToClean = @()
     }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Récupère le contenu d'un fichier YAML en remplaçant des valeurs si besoin.
+                Le contenu du fichier YAML est mis dans un fichier temporaire et on ajoute
+                celui-ci à la liste de ceux devant être "nettoyés" à la fin de l'exécution
+                de la commande "exec".
+        
+        IN  : $file         -> Nom du fichier YAML
+        IN  : $valToReplace -> Tableau associatif avec les avec les valeurs à remplacer
+                                dans le fichier YAML que l'on charge.
+
+        RET : Chaine de caractères représentant le YAML avec les infos remplacées si besoin
+	#>
+    hidden [string] loadYamlFile([string] $file, [System.Collections.IDictionary] $valToReplace)
+	{
+		# Chemin complet jusqu'au fichier à charger
+		$filepath = (Join-Path $global:YAML_TEMPLATE_FOLDER $file)
+
+		# Si le fichier n'existe pas
+		if(-not( Test-Path $filepath))
+		{
+			Throw ("YAML file not found ({0})" -f $filepath)
+		}
+
+		# Chargement du code JSON
+		$yaml = Get-Content -Path $filepath -raw
+
+		# S'il y a des valeurs à remplacer
+		if($null -ne $valToReplace)
+		{
+			# Parcours des remplacements à faire
+			foreach($search in $valToReplace.Keys)
+			{
+                $replaceWith = $valToReplace.Item($search)
+                
+				$search = "{{$($search)}}"
+				
+				# Recherche et remplacement de l'élément
+				$yaml = $yaml -replace $search, $replaceWith
+			}
+        }
+        
+        # Création d'un fichier temporaire
+        $tmpYamlFile = (New-TemporaryFile).FullName
+        $yaml | Out-File $tmpYamlFile -Encoding:utf8
+        
+        # On ajoute le fichier à ceux à effacer
+        $this.filesToClean += $tmpYamlFile
+
+        return $tmpYamlFile
+	}
 
 
     <#
@@ -96,7 +152,7 @@ class TKGIKubectl
         RET : Tableau associatif avec en clef la commande passée et en valeur, le résultat (string) de
                 la commande
 	#>
-    [Array] exec()
+    [System.Collections.IDictionary] exec()
     {
         $cmdFile = (New-TemporaryFile).FullName
         # On met une extension qui permettra de l'exécuter correctement par la suite via cmd.exe
@@ -152,7 +208,9 @@ class TKGIKubectl
                 # Si la commande faisait partie de ce qu'on devait exécuter
                 if($this.cmdList -contains $cmdName)
                 {
-                    $cmdNameShort = [Regex]::Matches($cmdName, '(.*?)(tkgi|kubectl)\.exe(.*)').Groups[3].Value.Trim()
+                    # Extraction de la commande et on double les \ dans le cas où il y aurait un chemin qui aurait été passé. Si
+                    # on ne fait pas ça, on aura une erreur lors de l'exécution du "-split juste après
+                    $cmdNameShort = [Regex]::Matches($cmdName, '(.*?)(tkgi|kubectl)\.exe(.*)').Groups[3].Value.Trim() -replace "\\", "\\"
                     # Ajout de la commande et de son résultat dans ce qu'on renvoie
                     $cmdResults.Add($cmdNameShort, ($_ -split $cmdNameShort)[1].Trim())
                 }
@@ -160,6 +218,12 @@ class TKGIKubectl
 
             # Reset de la liste 
             $this.cmdList = @()
+
+            # Suppression des éventuels fichiers temporaires
+            $this.filesToClean | ForEach-Object {
+                Remove-Item $_
+            }
+            $this.filesToClean = @()
         }
         else
         {
@@ -185,7 +249,8 @@ class TKGIKubectl
 
     <#
 	-------------------------------------------------------------------------------------
-		BUT : Ajoute une commande TKGI qui a besoin d'avoir à nouveau le mot de passe
+        BUT : Ajoute une commande TKGI qui a besoin d'avoir à nouveau le mot de passe.
+                Typiquement, la commande 'get-credentials' aura besoin du mot de passe.
 
         IN  : $command			-> La commande à exécuter
                                     Pas besoin de mettre "tkgi.exe" au début de la commande
@@ -202,12 +267,29 @@ class TKGIKubectl
 		BUT : Ajoute une commande Kubectl
 
         IN  : $command			-> La commande à exécuter
-                                    Pas besoin de mettre "tkgi.exe" au début de la commande
+                                    Pas besoin de mettre "kubectl.exe" au début de la commande
 	#>
     [void] addKubectlCmd([string]$command)
     {
         $this.cmdList += ("{0} {1}" -f $this.pathTo.kubectl, $command)
     }
-  
+
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute une commande Kubectl qui envoie un fichier
+
+        IN  : $file         -> nom du fichier Yaml à charger
+        IN  : $valToReplace -> Tableau associatif avec les avec les valeurs à remplacer
+                                dans le fichier YAML que l'on charge.
+    #>
+    [void] addKubectlCmdWithYaml([string]$file)
+    {
+        $this.addKubectlCmdWithYaml($file, @{})
+    }
+    [void] addKubectlCmdWithYaml([string]$file, [System.Collections.IDictionary] $valToReplace)
+    {
+        $this.cmdList += ("{0} apply -f {1}" -f $this.pathTo.kubectl, ($this.loadYamlFile($file, $valToReplace)))
+    }
 
 }
