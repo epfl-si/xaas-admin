@@ -907,7 +907,7 @@ catch
     }
 
     # Envoi d'un message d'erreur aux admins 
-    #$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
+    $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
 }
 
 $vra.disconnect()
