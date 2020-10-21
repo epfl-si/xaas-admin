@@ -251,14 +251,14 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
         $logHistory.addLine( ("Getting SVM '{0}'..." -f $vol.svm.name) )
         $svmObj = $netapp.getSVMByID($vol.svm.uuid)
 
-        $logHistory.addLine("Getting CIFS Shares for Volume...")
+        $logHistory.addLine(("Getting CIFS Shares for Volume '{0}'..." -f $volumeName))
         $shareList = $netapp.getVolCIFSShareList($volumeName)
-        $logHistory.addLine(("{0} CIFS shares found..." -f $shareList.count))
+        $logHistory.addLine(("{0} CIFS share(s) found..." -f $shareList.count))
 
         # Suppression des shares CIFS
         ForEach($share in $shareList)
         {
-            $logHistory.addLine( ("Deleting CIFS Share '{0}'..." -f $share.name) )
+            $logHistory.addLine( ("> Deleting CIFS Share '{0}'..." -f $share.name) )
             $netapp.deleteCIFSShare($share)
         }
 
@@ -268,7 +268,7 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
         # Export Policy (on la supprime tout à la fin sinon on se prend une erreur "gnagna elles utilisée par le volume"
         # donc on vire le volume ET ENSUITE l'export policy)
         $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volumeName)
-        $logHistory.addLine(("Getting NFS export policy '{0}'"))
+        $logHistory.addLine(("Getting NFS export policy '{0}'", $exportPolicyName))
         $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
         if($null -ne $exportPolicy)
         {
@@ -340,7 +340,7 @@ try
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
     # Ajout d'informations dans le log
-    $logHistory.addLine("Script executed with following parameters: `n{0}" -f ($PsBoundParameters | ConvertTo-Json))
+    $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
     
     # On met en minuscules afin de pouvoir rechercher correctement dans le fichier de configuration (vu que c'est sensible à la casse)
     $targetEnv = $targetEnv.ToLower()
@@ -485,6 +485,7 @@ try
             # Pour le retour du script
             $result = @{
                 volName = $volName
+                volUUID = $newVol.uuid
                 sizeGB = $sizeGB
                 svm = $svmObj.name
             }
@@ -505,6 +506,12 @@ try
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
                     $result.mountPath = ("\\{0}\{1}" -f $svm, $volName)
+
+                    # Test de l'existence du share CIFS
+                    if(! (Test-Path $result.mountPath -PathType:Container))
+                    {
+                        Throw ("CIFS Share '{0}' has been created but path '{1}' doesn't exists!" -f $volName, $result.mountPath)
+                    }
 
                     # En fonction du type de volume
                     switch($volType)
@@ -538,7 +545,10 @@ try
                             $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
 
                             # Récupération des ACLs actuelles
-                            $acl = Get-ACL $result.mountPath
+                            if($null -eq ($acl = Get-ACL $result.mountPath))
+                            {
+                                Throw ("Error getting ACLs for CIFS share '{0}'" -f $result.mountPath)
+                            }
                             
                             # Parcours des utilisateurs/groupes à ajouter
                             ForEach($userOrGroupFQDN in $userAndGroupList)
@@ -663,6 +673,7 @@ try
                 $output.results += @{
                     # Infos "globales"
                     volName = $vol.name
+                    volUUID = $vol.uuid
                     totSizeB = (truncateToNbDecimal -number ($volSizeB) -nbDecimals 2)
                     # Taille niveau "utilisateur"
                     user = @{
@@ -710,7 +721,7 @@ try
             }
             
             # Liste des SVM pour la faculté (avec la bonne nommenclature)
-            $svmList = $netapp.getSVMList() | Where-Object { $_.name -match ('^{0}[0-9].*' -f $targetFaculty)}
+            $svmList = $netapp.getSVMList() | Where-Object { $_.name -match ('^{0}[0-9].*' -f $targetFaculty)} | Select-Object -ExpandProperty name
             
             if($svmList.GetType() -ne "Array")
             {
@@ -843,17 +854,17 @@ try
 catch
 {
 
+    # Récupération des infos
+	$errorMessage = $_.Exception.Message
+    $errorTrace = $_.ScriptStackTrace
+    
     # Si on était en train de créer un volume
     if($action -eq $ACTION_CREATE)
     {
         # On efface celui-ci pour ne rien garder qui "traine"
-        $logHistory.addLine(("Error while creating Volume '{0}', deleting it so everything is clean" -f $volName))
+        $logHistory.addLine(("Error while creating Volume '{0}', deleting it so everything is clean. Error was: {1}" -f $volName, $errorMessage))
         deleteVolume -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -output $null
     }
-
-	# Récupération des infos
-	$errorMessage = $_.Exception.Message
-	$errorTrace = $_.ScriptStackTrace
 
     # Ajout de l'erreur et affichage
     $output.error = "{0}`n`n{1}" -f $errorMessage, $errorTrace
