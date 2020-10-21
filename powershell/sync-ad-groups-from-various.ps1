@@ -484,7 +484,7 @@ try
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
-	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
+	$logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
 
 	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups" ainsi que d'autre choses...
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
