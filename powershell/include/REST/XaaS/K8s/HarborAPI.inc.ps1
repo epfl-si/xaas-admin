@@ -50,13 +50,8 @@ class HarborAPI: RESTAPICurl
 		$this.headers.Add('Accept', 'application/json;charset=utf-8')
 		$this.headers.Add('Content-Type', 'application/json')
 
-		$uri = "https://{0}/service/token?service=harbor-registry&scope=repository:library/mysql:pull,push" -f $this.server
-
-		# Récupération du token. C'est particulier parce qu'on doit faire un GET et pas un POST comme on aurait tendance.
-		$this.token = ($this.callAPI($uri, "GET", $null, ("-u {0}:{1}" -f $user, $password))).token
-
 		# Mise à jour des headers
-		$this.headers.Add('Authorization', ("Bearer {0}" -f $this.token))
+		$this.headers.Add('Authorization', ("Basic {0}" -f [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $user,$password)))))
 
     }
 
@@ -83,10 +78,10 @@ class HarborAPI: RESTAPICurl
 		$res = ([RESTAPICurl]$this).callAPI($uri, $method, $body, $extraArgs)
 
 		# Si on a un message d'erreur
-		if([bool]($res.PSobject.Properties.name -match "error") -and ($res.error -ne ""))
+		if([bool]($res.PSobject.Properties.name -match "errors") -and ($res.errors.count -gt 0))
 		{
 			# Création de l'erreur de base 
-			Throw ("{0}::{1}(): {2} -> {3}" -f $this.gettype().Name, (Get-PSCallStack)[0].FunctionName, $res.error, $res.error_description)
+			Throw ("{0}::{1}(): {2} -> {3}" -f $this.gettype().Name, (Get-PSCallStack)[0].FunctionName, $res.errors[0].code, $res.errors[0].message)
 		}
 
 		# Check si pas trouvé
