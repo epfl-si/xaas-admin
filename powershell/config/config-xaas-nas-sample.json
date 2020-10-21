@@ -13,6 +13,10 @@
         "serverList": [""],
         "user":"",
         "password":""
+    },
+    "psGateway": { // ces credentials seront utilisées pour initialiser les droits sur les shares CIFS créés
+        "user": "",
+        "password":""
     }
 } 
 
