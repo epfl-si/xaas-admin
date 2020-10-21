@@ -315,9 +315,13 @@ function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$net
     $logHistory.addLine("Add rules to export policy...")
     $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","), $protocol)
 
-    # On ajoute le nom du share CIFS au résultat renvoyé par le script
-    $result.mountPath = ("{0}:/{1}" -f $svmObj.name, $volumeName)
-
+    # Si on doit mettre l'objet à jour
+    if($null -ne $result)
+    {
+        # On ajoute le nom du share CIFS au résultat renvoyé par le script
+        $result.mountPath = ("{0}:/{1}" -f $svmObj.name, $volumeName)
+    }
+    
     return @($exportPolicy, $result)
 }
 
@@ -505,7 +509,7 @@ try
                     $netapp.addCIFSShare($volName, $svmObj, $mountPath)
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
-                    $result.mountPath = ("\\{0}\{1}" -f $svm, $volName)
+                    $result.mountPath = ("\\{0}.epfl.ch\{1}" -f $svmObj.name, $volName)
 
                     # Test de l'existence du share CIFS
                     if(! (Test-Path $result.mountPath -PathType:Container))
@@ -520,8 +524,8 @@ try
                         $global:VOL_TYPE_APP
                         {
                             # Ajout de l'export policy
-                            $exportPol, $result = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
-                                                        -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol $access.ToLower() -result $result
+                            $exportPol, $null = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
+                                                        -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol $access.ToLower() -result $null
                         }
 
                         # ---- Volume Collaboratif
