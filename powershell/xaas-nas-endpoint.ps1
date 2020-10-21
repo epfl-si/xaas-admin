@@ -73,6 +73,7 @@ param([string]$targetEnv,
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "NameGeneratorNAS.inc.ps1"))
 
 # Chargement des fichiers pour API REST
@@ -510,13 +511,7 @@ try
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
                     $result.mountPath = ("\\{0}.epfl.ch\{1}" -f $svmObj.name, $volName)
-
-                    # Test de l'existence du share CIFS
-                    if(! (Test-Path $result.mountPath -PathType:Container))
-                    {
-                        Throw ("CIFS Share '{0}' has been created but path '{1}' doesn't exists!" -f $volName, $result.mountPath)
-                    }
-
+                    
                     # En fonction du type de volume
                     switch($volType)
                     {
@@ -548,10 +543,24 @@ try
                             # Récupération des utilisateurs qui ont le droit de demander des volumes
                             $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
 
+                            <# Pour modifier les ACLs, on pourrait accéder directement via le chemin UNC \\<svm>.epfl.ch\<share> et ça fonctionne... MAIS ... 
+                                ça ne fonctionne par contre plus dès que le script est exécuté depuis vRO... pourquoi? aucune foutue idée... semblerait que même
+                                s'il est "soi-disant" exécuté avec un utilisateur du domaine, bah celui-ci n'a en fait aucun credential lui permettant par exemple
+                                d'accéder au share réseau. Donc, pour palier à ceci, on fait les choses d'une manière différente. On récupère les credentials de
+                                l'utilisateur et on monte un lecteur réseau temporaire pour pouvoir utiliser celui-ci pour mettre à jour les ACLs.
+                             #>
+                            $secPassword = ConvertTo-SecureString $configNAS.getConfigValue("psGateway", "password") -AsPlainText -Force
+                            $credentials = New-Object System.Management.Automation.PSCredential($configNAS.getConfigValue("psGateway", "user"), $secPassword)
+                            
+                            $logHistory.addLine(("Mounting '{0}' on '{1}'..." -f $result.mountPath, $global:XAAS_NAS_TEMPORARY_DRIVE))
+                            $temporaryDrive = New-PSDrive -Persist -name $global:XAAS_NAS_TEMPORARY_DRIVE -PSProvider "Filesystem" -Root $result.mountPath -Credential $credentials
+                            
+                            $logHistory.addLine(("Getting ACLs on '{0}'..." -f $global:XAAS_NAS_TEMPORARY_DRIVE))
                             # Récupération des ACLs actuelles
-                            if($null -eq ($acl = Get-ACL $result.mountPath))
+                            $acl = Get-ACL $temporaryDrive.Root
+                            if($null -eq $acl)
                             {
-                                Throw ("Error getting ACLs for CIFS share '{0}'" -f $result.mountPath)
+                                Throw ("Error getting ACLs for Drive '{0}'" -f $temporaryDrive.Root)
                             }
                             
                             # Parcours des utilisateurs/groupes à ajouter
@@ -561,15 +570,21 @@ try
                                 # Il faut donc reformater ceci pour avoir INTRANET\<userOrGroup>
                                 $userOrGroup, $null = $userOrGroupFQDN -split '@'
                                 $userOrGroup = "INTRANET\{0}" -f $userOrGroup
+                                $logHistory.addLine(("> Preparing ACL for '{0}'..." -f $userOrGroup))
                                 $ar = New-Object  system.security.accesscontrol.filesystemaccessrule($userOrGroup,  "FullControl", "ContainerInherit,ObjectInherit",  "None", "Allow")
                                 $acl.AddAccessRule($ar)
                             }
 
-                            Set-Acl $result.mountPath $acl
+                            $logHistory.addLine(("Updating ACLs on '{0}'..." -f $global:XAAS_NAS_TEMPORARY_DRIVE))
+                            Set-Acl $temporaryDrive.Root $acl
                             # On vire les accès Everyone (on ne peut pas le faire avant sinon on se coupe l'herbe sous le pied pour ce qui est de l'établissement des droits)
                             $acl.access | Where-Object { $_.IdentityReference -eq "Everyone"} | ForEach-Object { $acl.RemoveAccessRule($_)} | Out-Null
                             # Et on fini par mettre à jour sans les Everyone
-                            Set-Acl $result.mountPath $acl
+                            Set-Acl $temporaryDrive.Root $acl
+
+                            $logHistory.addLine(("Unmounting temporary drive '{0}'..." -f $global:XAAS_NAS_TEMPORARY_DRIVE))
+                            # On démonte le dossier monté
+                            Get-PSDrive $global:XAAS_NAS_TEMPORARY_DRIVE | Remove-PSDrive -Force
                         }
                     }# FIN EN FONCTION du type de volume
                     
@@ -867,6 +882,9 @@ catch
     {
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating Volume '{0}', deleting it so everything is clean. Error was: {1}" -f $volName, $errorMessage))
+
+        # Suppression du dossier monté s'il existe
+        Get-PSDrive $global:XAAS_NAS_TEMPORARY_DRIVE | Remove-PSDrive -Force
         deleteVolume -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -output $null
     }
 
@@ -889,7 +907,7 @@ catch
     }
 
     # Envoi d'un message d'erreur aux admins 
-    $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
+    #$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
 }
 
 $vra.disconnect()
