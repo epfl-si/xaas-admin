@@ -129,7 +129,7 @@ class HarborAPI: RESTAPICurl
 		$nbPerPage = 100
 		do
 		{
-			$uri = "https://{0}/api/projects?page_size={1}&page={2}" -f $this.server, $nbPerPage, $pageNo
+			$uri = "https://{0}/api/v2.0/projects?page_size={1}&page={2}" -f $this.server, $nbPerPage, $pageNo
 
 			# Si un filtre a été passé, on l'ajoute
 			if($queryParams -ne "")
@@ -201,7 +201,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[PSObject] addProject([string]$name)
 	{
-		$uri = "https://{0}/api/projects" -f $this.server
+		$uri = "https://{0}/api/v2.0/projects" -f $this.server
 
 		$replace = @{
 			projectName = $name
@@ -224,7 +224,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[void] deleteProject([PSObject]$project)
 	{
-		$uri = "https://{0}/api/projects/{1}" -f $this.server, $project.project_id
+		$uri = "https://{0}/api/v2.0/projects/{1}" -f $this.server, $project.project_id
 			
 		$this.callAPI($uri, "DELETE", $null) | Out-Null
 	}
@@ -265,7 +265,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[Array] getProjectMemberList([PSObject]$project)
 	{
-		$uri = "https://{0}/api/projects/{1}/members" -f $this.server, $project.project_id
+		$uri = "https://{0}/api/v2.0/projects/{1}/members" -f $this.server, $project.project_id
 			
 		return $this.callAPI($uri, "GET", $null)
 	}
@@ -293,7 +293,7 @@ class HarborAPI: RESTAPICurl
 			
 		}
 		
-		$uri = "https://{0}/api/projects/{1}/members" -f $this.server, $project.project_id
+		$uri = "https://{0}/api/v2.0/projects/{1}/members" -f $this.server, $project.project_id
 
 		# Si c'est un groupe qu'on ajoute, 
 		if($null -ne $groupDN)
@@ -336,7 +336,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[Array] getProjectRobotList([PSObject]$project)
 	{
-		$uri = "https://{0}/api/projects/{1}/robots" -f $this.server, $project.project_id
+		$uri = "https://{0}/api/v2.0/projects/{1}/robots" -f $this.server, $project.project_id
 			
 		return $this.callAPI($uri, "GET", $null)
 	}
@@ -355,7 +355,7 @@ class HarborAPI: RESTAPICurl
 	[PSObject] addProjectRobot([PSObject]$project, [string]$name, [string]$description)
 	{
 		
-		$uri = "https://{0}/api/projects/{1}/robots" -f $this.server, $project.project_id
+		$uri = "https://{0}/api/v2.0/projects/{1}/robots" -f $this.server, $project.project_id
 
 		$replace = @{
 			name = $name
