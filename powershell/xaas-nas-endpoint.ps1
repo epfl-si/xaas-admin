@@ -288,6 +288,25 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
 
 <#
     -------------------------------------------------------------------------------------
+    BUT : Démonte une lettre de lecteur
+
+    IN  : $driveLetter ->  La lettre de lecteur à démonter
+#>
+function unMountPSDrive([string]$driveLetter)
+{
+    $drive = Get-PSDrive $driveLetter -errorVariable errorVar -errorAction:SilentlyContinue
+
+    # Si on a pu trouver le drive
+    if($null -eq $errorVar)
+    {
+        Remove-PSDrive $drive -Force
+    }
+    
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
     BUT : Ajoute une export policy pour un volume avec les règles adéquates
 
     IN  : $nameGeneratorNAS ->  Objet pour générer les noms pour le NAS
@@ -584,7 +603,7 @@ try
 
                             $logHistory.addLine(("Unmounting temporary drive '{0}'..." -f $global:XAAS_NAS_TEMPORARY_DRIVE))
                             # On démonte le dossier monté
-                            Get-PSDrive $global:XAAS_NAS_TEMPORARY_DRIVE | Remove-PSDrive -Force
+                            unMountPSDrive -driveLetter $global:XAAS_NAS_TEMPORARY_DRIVE
                         }
                     }# FIN EN FONCTION du type de volume
                     
@@ -884,7 +903,7 @@ catch
         $logHistory.addLine(("Error while creating Volume '{0}', deleting it so everything is clean. Error was: {1}" -f $volName, $errorMessage))
 
         # Suppression du dossier monté s'il existe
-        Get-PSDrive $global:XAAS_NAS_TEMPORARY_DRIVE | Remove-PSDrive -Force
+        unMountPSDrive -driveLetter $global:XAAS_NAS_TEMPORARY_DRIVE
         deleteVolume -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -output $null
     }
 
