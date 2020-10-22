@@ -153,10 +153,12 @@ function getNextClusterName([PKSAPI]$pks, [NameGeneratorK8s]$nameGeneratorK8s)
     IN  : $nsx              -> Objet permettant d'accéder à l'API de NSX
     IN  : $EPFLDNS          -> Objet permettant de jouer avec le DNS
     IN  : $nameGeneratorK8s -> Objet pour la génération des noms
+    IN  : $harbor           -> Objet permettant d'accéder à l'API de Harbor
     IN  : $clusterName      -> Nom du cluster à supprimer
     IN  : $ipPoolName       -> Nom du pool IP dans NSX
+    IN  : $targetTenant     -> Tenant cible
 #>
-function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGeneratorK8s]$nameGeneratorK8s, [string]$clusterName, [string]$ipPoolName)
+function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGeneratorK8s]$nameGeneratorK8s, [HarborAPI]$harbor, [string]$clusterName, [string]$ipPoolName, [string]$targetTenant)
 {
     # Le nom du cluster peut être encore vide dans le cas où une erreur surviendrait avait que le nom soit initialisé. 
     # Dans ce cas, on ne fait rien
@@ -166,7 +168,8 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
         return
     }
 
-    # --- Cluster
+    # ------------
+    # ---- Cluster
     $cluster = $pks.getCluster($clusterName)
     if($null -ne $cluster)
     {
@@ -181,7 +184,8 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     }
     
 
-    # --- Adresses IP
+    # -----------
+    # ---- Réseau
     # Recherche du pool dans lequel on va demander les adresses IP
     $pool = $nsx.getIPPoolByName($ipPoolName)
     $hostnameList = @(
@@ -224,6 +228,8 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
         
     }# FIN BOUCLE de parcours des IP à supprimer
 
+    # --------
+    # ---- NSX
     # Si on avait pu trouver le cluster
     if($null -ne $cluster)
     {
@@ -245,6 +251,35 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     {
         $logHistory.addLine("Cluster not found before so we can't delete associated Load Balancer application profiles :-/")
     }
+
+    # ------------------
+    # ---- Projet Harbor
+    $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
+    $logHistory.addLine(("Cleaning Harbor project ({0}) if needed..." -f $harborProjectName))
+    
+    if($targetTenant -eq $global:VRA_TENANT__EPFL)
+    {
+        <# Rien besoin de faire pour ce tenant car il y a un projet Harbor par faculté donc on n'a pas besoin 
+            de supprimer quoi que ce soit. On pourrait supprimer le groupe AD correspondant au BG mais il n'est 
+            pertinent de supprimer ce groupe d'accès uniquement si on vient de supprimer le tout dernier cluster
+            pour le Business Group #>
+        $logHistory.addLine("> We're on EPFL tenant, one project per Faculty so no cleaning")
+    }
+    else # Tenant ITServices ou Research
+    {
+        $harborProject = $harbor.getProject($harborProjectName)
+        if($null -ne $harborProject)
+        {
+            # On a un Projet Harbor par service donc on peut faire du ménage d'office
+            $logHistory.addLine(("> Removing Project '{0}'..." -f $harborProjectName))
+            $harbor.deleteProject($harborProjectName)
+        }
+        else # Le projet n'existe pas
+        {
+            $logHistory.addLine(("> Project '{0}' doesn't exists" -f $harborProjectName))
+        }
+    }
+    
     
 }
 
@@ -283,10 +318,6 @@ function searchClusterIngressIPAddress([string]$clusterIP, [NSXAPI]$nsx)
     return $null
 }
 
-function waitUntilDNSUpdate([array]$hostnameList)
-{
-
-}
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -392,6 +423,8 @@ try
             $logHistory.addLine(("Creating cluster '{0}' with '{1}' plan and '{2}' network profile (this will take time, you can go to grab a coffee)..." -f $clusterName, $plan, $netProfile))
             $cluster = $pks.addCluster($clusterName, $plan, $netProfile, $dnsHostNameFull)
 
+            # -----------
+            # ---- Réseau
             $ipMain = $cluster.kubernetes_master_ips[0]
             $logHistory.addLine(("IP address for cluster is {0}. Looking for Ingress IP..." -f $ipMain))
             $ipIngress = searchClusterIngressIPAddress -clusterIP $ipMain -nsx $nsx
@@ -406,6 +439,8 @@ try
             $EPFLDNS.registerDNSIP($dnsHostName, $ipMain, $global:K8S_DNS_ZONE_NAME)
             $EPFLDNS.registerDNSIP($dnsHostNameIngress, $ipIngress, $global:K8S_DNS_ZONE_NAME)
 
+            # -------------------
+            # ---- Droits d'accès 
             # Ajout des droits d'accès mais uniquement pour le premier groupe de la liste, et on admet que c'est un nom de groupe et pas
             # d'utilisateur. On explose l'infos <group>@intranet.epfl.ch pour n'extraire que le nom du groupe
             $groupName, $null = $userAndGroupList[0] -split '@'
@@ -420,10 +455,35 @@ try
             # Exécution
             $tkgiKubectl.exec() | Out-Null
 
+            # -----------
+            # ---- Harbor
             $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
             $logHistory.addLine(("Harbor project will be '{0}'" -f $harborProjectName))
             
+            $harborProject = $harbor.getProject($harborProjectName)
+            # Si le projet n'existe pas
+            if($null -eq $harborProject)
+            {
+                $logHistory.addLine(("Project '{0}' doesn't exists in Harbor, creating it..." -f $harborProjectName))
+                $harborProject = $harbor.addProject($harborProjectName)                
+            }
+            else
+            {
+                $logHistory.addLine(("Project '{0}' already exists in Harbor" -f $harborProjectName))
+            }
 
+            # Si le groupe n'est pas encore dans le projet
+            if(! ($harbor.isMemberInProject($harborProject, $groupName)))
+            {
+                $logHistory.addLine(("Add group '{0}' in Harbor Project" -f $groupName))
+                $harbor.addProjectMember($harborProject, $groupName, [HarborProjectRole]::Master)
+            }
+            else # Le groupe est déjà dans le projet
+            {
+                $logHistory.addLine(("Group '{0}' is already in Harbor project" -f $groupName))
+            }
+
+            # Résultat
             $output.results += @{
                 name = $clusterName
                 uuid = $cluster.uuid
@@ -436,7 +496,7 @@ try
         $ACTION_DELETE
         {
             deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName `
-                        -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName")
+                        -harbor $harbor -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName") -targetTenant $targetTenant
         }
 
 
@@ -539,7 +599,8 @@ catch
     {
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating cluster '{0}', deleting it so everything is clean" -f $clusterName))
-        deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName -ipPoolName $ipPoolName
+        deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -harbor $harbor `
+                -clusterName $clusterName -ipPoolName $ipPoolName -targetTenant $targetTenant
     }
 
 	# Récupération des infos

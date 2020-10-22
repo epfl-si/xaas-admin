@@ -240,15 +240,42 @@ class HarborAPI: RESTAPICurl
 	#>
 	hidden [int] getRoleID([HarborProjectRole]$role)
 	{
-		return switch($role)
+		$id = switch($role)
 		{
 			Admin { 1 }
 			Developer { 2 }
 			Guest { 3 }
 			Master { 4 }
 		}
+		return $id
 	}
-	 
+	
+	
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie l'ID d'un groupe LDAP défini dans Harbor. C'est l'ID que Harbor a donné 
+				au groupe en interne...
+
+		IN  : $groupLDAPDN			-> DN LDAP jusqu'au groupe
+
+		RET : ID du groupe dans Harbor
+				$null si pas trouvé
+	
+		https://vsissp-harbor-t.epfl.ch/#/Products/get_usergroups
+	#>
+	hidden [int] getLDAPGroupId([string]$groupLDAPDN)
+	{
+		$uri = "https://{0}/api/v2.0/usergroups" -f $this.server
+			
+		$group = ($this.callAPI($uri, "GET", $null) | Where-Object { $_.group_name.toLower() -eq $groupLDAPDN.toLower()})
+
+		if($null -eq $group)
+		{
+			return $null
+		}
+		return $group.id
+	}
+
 
 	<#
 		-------------------------------------------------------------------------------------
@@ -257,6 +284,8 @@ class HarborAPI: RESTAPICurl
 		IN  : $project			-> Objet représentant le projet
 
 		RET : Liste des membres
+
+		https://vsissp-harbor-t.epfl.ch/#/Products/get_projects__project_id__members
 	#>
 	[Array] getProjectMemberList([PSObject]$project)
 	{
@@ -275,17 +304,18 @@ class HarborAPI: RESTAPICurl
 		IN  : $role				-> Rôle à attribuer
 
 		RET : Le projet créé
+
+		https://vsissp-harbor-t.epfl.ch/#/Products/post_projects__project_id__members
 	#>
 	[PSObject] addProjectMember([PSObject]$project, [string]$userOrGroupName, [HarborProjectRole]$role)
 	{
-		$groupDN = $null
 		try
 		{
 			$groupDN = (Get-ADGroup $userOrGroupName).DistinguishedName
 		}
 		catch
 		{
-			
+			$groupDN = $null	
 		}
 		
 		$uri = "https://{0}/api/v2.0/projects/{1}/members" -f $this.server, $project.project_id
@@ -293,10 +323,20 @@ class HarborAPI: RESTAPICurl
 		# Si c'est un groupe qu'on ajoute, 
 		if($null -ne $groupDN)
 		{
+			# Recherche de l'ID du groupe dans Harbor car même si on lui file le DN de LDAP, faut aussi lui filer
+			# l'ID du groupe en interne... stupide mais bref... ça a été codé avec les pieds Harbor on dirait..
+			$groupId = $this.getLDAPGroupId($groupDN)
+
+			if($null -eq $groupId)
+			{
+				Throw ("No information found in Harbor for group '{0}' ({1})" -f $userOrGroupName, $groupDN)
+			}
+			
 			$replace = @{
 				roleId = @($this.getRoleID($role), $true)
 				groupName = $userOrGroupName
-				LDAPDN = (getADUserOrGroupDN -userOrGroup $userOrGroupName)
+				LDAPDN = $groupDN.toLower()
+				groupId = @($groupId, $true)
 			}
 
 			$body = $this.createObjectFromJSON("xaas-k8s-add-harbor-project-member-group.json", $replace)
@@ -311,7 +351,48 @@ class HarborAPI: RESTAPICurl
 		}
 			
 		return $this.callAPI($uri, "POST", $body) 
-		
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Supprime un membre d'un projet
+
+		IN  : $project			-> Objet représentant le projet
+		IN  : $memberId			-> ID du membre à supprimer
+
+		https://vsissp-harbor-t.epfl.ch/#/Products/delete_projects__project_id__members__mid_
+	#>
+	[void] deleteProjectMember([PSObject]$project, [int]$memberId)
+	{
+		$uri = "https://{0}/api/v2.0/projects/{1}/members/{2}" -f $this.server, $project.project_id, $memberId
+			
+		$this.callAPI($uri, "DELETE", $null) | Out-Null
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Permet de savoir si un groupe ou un utilisateur est déjà membre d'un projet
+
+		IN  : $project			-> Objet représentant le projet
+		IN  : $userOrGroupName 	-> Nom du groupe ou de l'utilisateur
+
+		RET : $true|$false
+	#>
+	[bool] isMemberInProject([PSObject]$project, [string]$userOrGroupName)
+	{
+		try
+		{
+			# Si ce code passe, c'est que c'est un nom de groupe qu'on doit chercher
+			$entityName = (Get-ADGroup $userOrGroupName).DistinguishedName
+		}
+		catch
+		{
+			$entityName = $userOrGroupName
+		}
+
+		return $null -ne ($this.getProjectMemberList($project) | Where-Object { $_.entity_name.toLower() -eq $entityName.toLower() })
 	}
 
 
@@ -328,6 +409,8 @@ class HarborAPI: RESTAPICurl
 		IN  : $project			-> Objet représentant le projet
 
 		RET : Liste des robots
+
+		https://vsissp-harbor-t.epfl.ch/#/Robot%20Account/get_projects__project_id__robots
 	#>
 	[Array] getProjectRobotList([PSObject]$project)
 	{
@@ -345,7 +428,9 @@ class HarborAPI: RESTAPICurl
 		IN  : $name				-> Nom du robot
 		IN  : $description		-> Description du robot
 
-		RET : Le projet créé
+		RET : Le robot créé
+
+		https://vsissp-harbor-t.epfl.ch/#/Robot%20Account/post_projects__project_id__robots
 	#>
 	[PSObject] addProjectRobot([PSObject]$project, [string]$name, [string]$description)
 	{
