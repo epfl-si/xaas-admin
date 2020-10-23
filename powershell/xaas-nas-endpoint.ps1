@@ -118,12 +118,10 @@ $global:ACCESS_TYPE_CIFS    = "cifs"
 $global:ACCESS_TYPE_NFS3    = "nfs3"
 
 # Limites
-$global:MAX_VOL_PER_UNIT    = 10
+$global:MAX_VOL_PER_UNIT    = 9
 
 # Autre
 $global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"
-$global:SNAPSHOT_POLICY = "epfl-default"
-$global:SNAPSHOT_SPACE_PERCENT = 30
 
 <#
     -------------------------------------------------------------------------------------
