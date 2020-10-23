@@ -1,16 +1,17 @@
 <#
 USAGES:
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm> [-withSnap]
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> [-withSnap]
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> [-withSnap]
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action appVolExists -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action canHaveNewVol -bgName <bgName> -access cifs|nfs3
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action appVolExists -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action canHaveNewVol -bgName <bgName> -access cifs|nfs3
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action resize -sizeGB <sizeGB>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolSize [-volName <volName>]
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getSVMList -bgName <bgName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action getSVMList -bgName <bgName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getIPList -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action updateIPList -volName <volName> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolInfos -volName <volName>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -53,7 +54,9 @@ param([string]$targetEnv,
       # Volume
       [string]$volName,
       [int]$sizeGB,
-      [switch]$withSnap,
+      # Snapshots
+      [int]$snapPercent,
+      [string]$snapPolicy,
       # Accès
       [string]$access,
       [string]$IPsRoot,
@@ -103,6 +106,7 @@ $ACTION_APP_VOL_EXISTS      = "appVolExists"
 $ACTION_CAN_HAVE_NEW_VOL    = "canHaveNewVol"
 $ACTION_GET_IP_LIST         = "getIPList"
 $ACTION_UPDATE_IP_LIST      = "updateIPList"
+$ACTION_GET_VOL_INFOS       = "getVolInfos"
 
 $global:APP_VOL_DEFAULT_FAC = "si"
 
@@ -400,7 +404,7 @@ try
                     $logHistory.addLine( ("SVM will be '{0}'" -f $svmObj.name) )
 
                     # Pas d'espace réservé pour les snapshots
-                    $snapSpacePercent = 0
+                    $snapPercent = 0
 
                     # Génération du "nouveau" nom du volume
                     $volName = $nameGeneratorNAS.getVolName()
@@ -410,6 +414,12 @@ try
                 # ---- Volume Collaboratif
                 $global:VOL_TYPE_COLL
                 {
+                    # Check des valeurs passées pour les snapshots
+                    if( (($snapPercent -eq 0) -and ($snapPolicy -ne "")) -or ( ($snapPercent -ne 0) -and ($snapPolicy -eq "") ))
+                    {
+                        Throw ("Incorrect value combination for snapPercent ({0}) and snapPolicy ({1})" -f $snapPercent, $snapPolicy)
+                    }
+
                     # Initialisation des détails
                     $nameGeneratorNAS.setCollaborativeDetails($bgName)
 
@@ -429,27 +439,6 @@ try
                     {
                         Throw ("SVM '{0}' doesn't exists" -f $svm)
                     }
-
-                    # Il faut qu'on mette les snapshot en place
-                    if($withSnap)
-                    {
-                        $logHistory.addLine("Getting Snapshot Policy...")
-                        $snapPolicy = $netapp.getSnapshotPolicyByName($global:SNAPSHOT_POLICY)
-                        # Si on ne trouve pas la policy de snapshot,
-                        if($null -eq $snapPolicy)
-                        {
-                            Throw ("Snapshot policy '{0}' doesn't exists" -f $global:SNAPSHOT_POLICY)
-                        }
-
-                        $snapSpacePercent = $global:SNAPSHOT_SPACE_PERCENT
-
-                    }
-                    else # Pas besoin de snapshots 
-                    {
-                        $logHistory.addLine("Snapshots not required")
-                        $snapSpacePercent = 0
-                    }
-                    
 
                 }
 
@@ -482,10 +471,10 @@ try
             $mountPath = "/{0}" -f $volName
 
             # Redéfinition de la taille du volume en fonction du pourcentage à conserver pour les snapshots
-            $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $snapSpacePercent
+            $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $snapPercent
 
             # Création du nouveau volume
-            $newVol = $netapp.addVolume($volName, $sizeWithSnapGB, $svmObj, $svmObj.aggregates[0], $securityStyle, $mountPath, $snapSpacePercent)
+            $newVol = $netapp.addVolume($volName, $sizeWithSnapGB, $svmObj, $svmObj.aggregates[0], $securityStyle, $mountPath, $snapPercent)
 
             # Pour le retour du script
             $result = @{
@@ -587,7 +576,6 @@ try
                             Get-PSDrive $global:XAAS_NAS_TEMPORARY_DRIVE | Remove-PSDrive -Force
                         }
                     }# FIN EN FONCTION du type de volume
-                    
                 }
 
 
@@ -607,11 +595,16 @@ try
             # 3. Politique de snapshot
 
             # Si volume collaboratif ET qu'il faut avoir les snapshots
-            if(( $volType -eq $global:VOL_TYPE_COLL) -and $withSnap)
+            if(( $volType -eq $global:VOL_TYPE_COLL) -and $snapPolicy -ne "")
             {
+                $snapPolicyObj = $netapp.getSnapshotPolicyByName($snapPolicy)
+                if($null -eq $snapPolicyObj)
+                {
+                    Throw ("Give snapshot policy ({0}) not found" -f $snapPolicy)
+                }
                 # On applique la policy de snapshot
-                $logHistory.addLine(("Applying Snapshot Policy '{0}' on Volume '{1}'" -f $global:SNAPSHOT_POLICY, $volName))
-                $netapp.applySnapshotPolicyOnVolume($snapPolicy, $newVol)
+                $logHistory.addLine(("Applying Snapshot Policy '{0}' on Volume '{1}'" -f $snapPolicy, $volName))
+                $netapp.applySnapshotPolicyOnVolume($snapPolicyObj, $newVol)
             }
 
             $output.results += $result
@@ -651,7 +644,6 @@ try
                 $logHistory.addLine( ("Resizing Volume {0} to {1} GB" -f $volName, $sizeGB) )
                 $netapp.resizeVolume($vol.uuid, $sizeWithSnapGB)
             }
-
         }# FIN Action resize
 
 
@@ -709,7 +701,6 @@ try
                     }
                 }
             }
-
         }# FIN Action Delete
 
 
@@ -855,8 +846,13 @@ try
                 $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","), $protocol)
 
             }
-            
-            
+        }
+
+
+        # -- Plein d'informations sur le volume
+        $ACTION_GET_VOL_INFOS
+        {
+
         }
 
     }
@@ -907,7 +903,7 @@ catch
     }
 
     # Envoi d'un message d'erreur aux admins 
-    #$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
+    $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
 }
 
 $vra.disconnect()
