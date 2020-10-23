@@ -526,12 +526,12 @@ try
             # En fonction du type d'accès qui a été demandé
             switch($access.toLower())
             {
-                "cifs"
+                ([NetAppProtocol]::cifs).ToString()
                 {
                     $securityStyle = "ntfs"
                 }
 
-                "nfs3"
+                ([NetAppProtocol]::nfs3).ToString()
                 {
                     $securityStyle = "unix"
                 }
@@ -568,7 +568,7 @@ try
             switch($access.toLower())
             {
                 # ------------ CIFS
-                "cifs"
+                ([NetAppProtocol]::cifs).ToString()
                 {
                     $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $volName, $mountPoint))
                     $netapp.addCIFSShare($volName, $svmObj, $mountPoint)
@@ -655,7 +655,7 @@ try
 
 
                 # ------------ NFS
-                "nfs3"
+                ([NetAppProtocol]::nfs3).ToString()
                 {
                     # Ajout de l'export policy
                     $exportPol, $result = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
