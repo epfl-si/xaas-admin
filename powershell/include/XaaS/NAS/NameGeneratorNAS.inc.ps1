@@ -163,6 +163,7 @@ class NameGeneratorNAS: NameGeneratorBase
       return $forVolumeName
    }
 
+
    <#
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la regex à utiliser pour chercher un nom de volume Collaboratif
@@ -171,7 +172,7 @@ class NameGeneratorNAS: NameGeneratorBase
 
       RET : La regex
 	#>
-   [string] getCollaborativeVolRegex([bool]$isNFS)
+   [string] getCollaborativeVolDetailedRegex([bool]$isNFS)
    {
       $regex = ("{0}_{1}_[0-9]_files" -f $this.details.faculty, $this.details.unit)
 
@@ -180,7 +181,33 @@ class NameGeneratorNAS: NameGeneratorBase
          $regex = "{0}_nfs" -f $regex
       }
 
-      return $regex
+      return ("^{0}$" -f $regex)
+   }
+
+
+   <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le type d'un volume en fonction de son nom
+
+      IN  : $volName -> Nom du volume
+
+      RET : Type du volume
+	#>
+   [XaaSNASVolType] getVolumeType([string]$volName)
+   {
+      # Collaboratif
+      if([Regex]::Match($volName, '^(.*?)_files(_nfs)?$').Success)
+      {
+         return [XaaSNASVolType]::col
+      }
+
+      # Applicatif¨
+      if([Regex]::Match($volName, '^(.*?)_app$'))
+      {
+         return [XaaSNASVolType]::app
+      }
+      
+      Throw ("Impossible to determine volume type for volume name '{0}'" -f $volName)
    }
         
 }

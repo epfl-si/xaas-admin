@@ -791,13 +791,13 @@ class NetAppAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
         BUT : Retourne la liste des shares sur une SVM
 
-        IN  : $svmName  -> Nom de la SVM
+        IN  : $svm  -> Objet représentant la SVM
 
         RET : Liste des shares
 	#>
-    [Array] getSVMCIFSShareList([string]$svmName)
+    [Array] getSVMCIFSShareList([PSObject]$svm)
     {
-        return $this.getCIFSShareListQuery(("svm.name={0}" -f $svmName))
+        return $this.getCIFSShareListQuery(("svm.name={0}" -f $svm.name))
     }
 
 
@@ -805,13 +805,13 @@ class NetAppAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
         BUT : Retourne la liste des shares pour un volume
 
-        IN  : $volName  -> nom du volume
+        IN  : $vol  -> Objet représentant le volume
 
         RET : Liste des shares
 	#>
-    [Array] getVolCIFSShareList([string]$volName)
+    [Array] getVolCIFSShareList([PSObject]$vol)
     {
-        return $this.getCIFSShareListQuery(("volume.name={0}" -f $volName))
+        return $this.getCIFSShareListQuery(("volume.name={0}" -f $vol.name))
     }
 
 
@@ -1385,6 +1385,24 @@ class NetAppAPI: RESTAPICurl
         $body = $this.createObjectFromJSON("xaas-nas-patch-volume-snapshot-policy.json", $replace)
 
         $this.callAPI($uri, "PATCH", $body)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la policy de snapshot d'un volume
+        
+        IN  : $vol   -> Objet représentant le volume
+
+        NOTE : L'appel à cette fonction ne retourne que les champs spécifiquement passés en paramètre.
+                Ce n'est donc pas comme si on pouvait juste "ajouter" des champs à ceux renvoyés par
+                défaut par l'appel retournant les détails d'un volume.
+	#>
+    [PSObject] getVolumeSnapshotPolicy([PSObject]$vol)
+    {
+        $uri = "/api/storage/volumes/{0}?fields=snapshot_policy.uuid" -f $vol.uuid
+
+        return $this.callAPI($uri, "GET", $null, "", $true)
     }
 
 

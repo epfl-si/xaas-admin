@@ -123,23 +123,21 @@ $global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"
     IN  : $nameGeneratorNAS -> Objet de la classe NameGeneratorNAS
     IN  : $faculty          -> La faculté pour laquelle le volume sera
     IN  : $unit             -> L'unité pour laquelle le volume sera
-    IN  : $access           -> le type d'accès
-                                $global:ACCESS_TYPE_CIFS
-                                $global:ACCESS_TYPE_NFS3
+    IN  : $access           -> le type d'accès -> [NetAppProtocol]
 
     RET : Nouveau nom du volume
             $null si on a atteint le nombre max de volumes pour l'unité
 #>
-function getNextColVolName([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS, [string]$faculty, [string]$unit, [string]$access)
+function getNextColVolName([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS, [string]$faculty, [string]$unit, [NetAppProtocol]$access)
 {
     $unit = $unit.toLower() -replace "-", ""
     $faculty = $faculty.toLower()
 
-    $isNFS = ($access -eq $global:ACCESS_TYPE_NFS3)
+    $isNFS = ($access -eq [NetAppProtocol]::nfs3)
 
     # Définition de la regex pour trouver les noms de volumes
-    $volNameRegex = $nameGeneratorNAS.getCollaborativeVolRegex($isNFS)
-    $unitVolList = $netapp.getVolumeList() | Where-Object { $_ -match $volNameRegex } | Sort-Object | Select-Object -ExpandProperty name
+    $volNameRegex = $nameGeneratorNAS.getCollaborativeVolDetailedRegex($isNFS)
+    $unitVolList = $netapp.getVolumeList() | Where-Object { [Regex]::Match($_.name, $volNameRegex).Success } | Sort-Object | Select-Object -ExpandProperty name
 
     # Recherche du prochain numéro libre
     for($i=1; $i -lt $global:MAX_VOL_PER_UNIT; $i++)
@@ -247,7 +245,7 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
         $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
 
         $logHistory.addLine(("Getting CIFS Shares for Volume '{0}'..." -f $volumeName))
-        $shareList = $netapp.getVolCIFSShareList($volumeName)
+        $shareList = $netapp.getVolCIFSShareList($volObj)
         $logHistory.addLine(("{0} CIFS share(s) found..." -f $shareList.count))
 
         # Suppression des shares CIFS
@@ -333,7 +331,7 @@ function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$net
     if($null -ne $result)
     {
         # On ajoute le nom du share CIFS au résultat renvoyé par le script
-        $result.mountPath = $nameGeneratorNAS.getVolMountPath($volumeName, $svmObj.name,$global:ACCESS_TYPE_NFS3)
+        $result.mountPath = $nameGeneratorNAS.getVolMountPath($volumeName, $svmObj.name, [NetAppProtocol]::nfs3)
     }
     
     return @($exportPolicy, $result)
@@ -353,13 +351,21 @@ function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$net
 function getExportPolicyInfos([PSObject]$volObj, [PSObject]$svmObj)
 {
     $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volObj.name)
-    $logHistory.addLine(("Getting Export Policy '{0}' for volume '{1}'..." -f $exportPolicyName, $volObj.name))
     $exportPolicyObj = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
 
-    $logHistory.addLine(("Getting Rules from Export Policy '{0}'..." -f $exportPolicyName))
+    # Si pas d'export Policy
+    if($null -eq $exportPolicyObj)
+    {
+        $rules = @()
+    }
+    else
+    {
+        $rules = $netapp.getExportPolicyRuleList($exportPolicyObj)
+    }
+
     return @{
         protocol = $netapp.getVolumeAccessProtocol($volObj).ToString()
-        rules = $netapp.getExportPolicyRuleList($exportPolicyObj)
+        rules = $rules
     }
 }
 
@@ -570,7 +576,7 @@ try
                     $netapp.addCIFSShare($volName, $svmObj, $mountPoint)
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
-                    $result.mountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name,$global:ACCESS_TYPE_CIFS) 
+                    $result.mountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name, [NetAppProtocol]::cifs) 
                     
                     # En fonction du type de volume
                     switch($volType)
@@ -905,6 +911,7 @@ try
                 volume = @{
                     name = $volName
                     uuid = $volObj.uuid
+                    type = $nameGeneratorNAS.getVolumeType($volName).ToString()
                 }
             }
 
@@ -914,11 +921,33 @@ try
             # -- Accès
             $result.access = getExportPolicyInfos -volObj $volObj -svmObj $svmObj
             $result.access.svm = $svmObj.name
-            $result.access.mountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name, $result.access.protocol) 
+            $result.access.rootMountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name, $result.access.protocol) 
 
             # -- Taille
             $result.size = getVolumeSizeInfos -netapp $netapp -volObj $volObj
 
+            # -- Snapshots
+            $snapshotPolicyObj = $netapp.getVolumeSnapshotPolicy($volObj)
+            if($null -ne $snapshotPolicyObj)
+            {
+                $result.snapshots = @{
+                    policy = $snapshotPolicyObj.name
+                    reservePercent = $result.size.snap.reservePercent
+                }
+            }
+            else
+            {
+                $result.snapshots = $null
+            }
+
+            # -- Share CIFS
+            $shareList = $netapp.getVolCIFSShareList($volObj)
+            if($null -eq $shareList)
+            {
+                $shareList = @()
+            }
+            # Sélection du nom du share et transformation en tableau pour éviter de se retrouver avec un objet uniquement s'il n'y a qu'un share
+            $result.access.cifsShares = [Array]($shareList | Select-Object -ExpandProperty name)
 
             $output.results += $result
         }
