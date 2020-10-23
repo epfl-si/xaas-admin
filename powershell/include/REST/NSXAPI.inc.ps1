@@ -131,7 +131,7 @@ class NSXAPI: RESTAPICurl
         $body = $this.createObjectFromJSON("nsx-nsgroup.json", $replace)
         
 		# Création du NS Group
-        $dummy = $this.callAPI($uri, "Post", $body)
+        $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
         return $this.getNSGroupByName($name)
@@ -148,7 +148,7 @@ class NSXAPI: RESTAPICurl
     {
         $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $nsGroup.id
 
-        $dummy = $this.callAPI($uri, "Delete", $null)
+        $this.callAPI($uri, "Delete", $null) | Out-Null
     }
 
 
@@ -292,7 +292,7 @@ class NSXAPI: RESTAPICurl
         $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $section.id
         
 		# Création de la section de firewall
-        $dummy = $this.callAPI($uri, "PUT", $section)       
+        $this.callAPI($uri, "PUT", $section) | Out-Null
         
     }
 
@@ -309,7 +309,7 @@ class NSXAPI: RESTAPICurl
         $uri = "https://{0}/api/v1/firewall/sections/{1}?cascade=true" -f $this.server, $id
         
 		# Création de la section de firewall
-        $dummy = $this.callAPI($uri, "Delete", $null)       
+        $this.callAPI($uri, "Delete", $null) | Out-Null
         
     }
 
@@ -410,7 +410,7 @@ class NSXAPI: RESTAPICurl
         $body = $this.createObjectFromJSON("nsx-firewall-section-rules.json", $replace)
 
         # Création des règles
-        $dummy = $this.callAPI($uri, "Post", $body)
+        $this.callAPI($uri, "Post", $body) | Out-Null
     }
 
 }

@@ -249,7 +249,7 @@ function removeInexistingADAccounts([Array] $accounts)
 	{
 		try 
 		{
-			$m = Get-ADUser $acc
+			Get-ADUser $acc | Out-Null
 
 			# Si on arrive ici, c'est que pas d'erreur donc compte trouvé.
 			$validAccounts += $acc
@@ -346,7 +346,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 
 	# On commence par supprimer tous les utilisateurs du role donné pour le BG
 	$request = "DELETE FROM vraUsers WHERE role='{0}' AND {1}" -f $role, ($criteriaConditions -join " AND ")
-	$nbDeleted = $sqldb.execute($request)
+	$sqldb.execute($request) | Out-Null
 
 	$baseRequest = "INSERT INTO vraUsers VALUES"
 	$rows = @()
@@ -367,7 +367,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 		{
 			# On créé la requête et on l'exécute
 			$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
-			$nbInserted = $sqldb.execute($request)
+			$sqldb.execute($request) | Out-Null
 			$rows = @()
 		}
 		
@@ -377,7 +377,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 	if($rows.Count -gt 0)
 	{
 		$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
-		$nbInserted = $sqldb.execute($request)
+		$sqldb.execute($request) | Out-Null
 	}
 
 	
@@ -767,7 +767,7 @@ try
 					try
 					{
 						# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
-						$adGroup = Get-ADGroup -Identity $adGroupName
+						Get-ADGroup -Identity $adGroupName | Out-Null
 
 						$adGroupExists = $true
 						$logHistory.addLineAndDisplay(("--> Group exists ({0}) " -f $adGroupName))

@@ -107,7 +107,7 @@ class Billing
         # L'entité n'existe pas, donc on l'ajoute 
         $request = "INSERT INTO BillingEntity VALUES (NULL, '{0}', '{1}', '{2}')" -f $type.toString(), $element, $financeCenter
 
-        $res =  $this.db.execute($request)
+        $this.db.execute($request) | Out-Null
 
         return [int] ($this.getEntity($type, $element)).entityId
     }
@@ -175,7 +175,7 @@ class Billing
         $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', NULL)" -f `
                             $parentEntityId, $type, $name, $desc, $month, $year, $quantity, $unit, $priceLevel
 
-        $res = $this.db.execute($request)
+        $this.db.execute($request) | Out-Null
 
         return [int]($this.getItem($name, $month, $year)).itemId
     }
@@ -311,7 +311,7 @@ class Billing
         {
             $request = "UPDATE BillingItem SET itemBillReference='{0}' WHERE parentEntityId='{1}' AND itemType='{2}' AND itemBillReference IS NULL " -f $billReference, $entityId, $itemType
 
-            $nbUpdated = $this.db.execute($request)
+            $this.db.execute($request) | Out-Null
         }   
     }
 
@@ -325,7 +325,7 @@ class Billing
     [void] cancelBill([string]$billReference)
     {
         $request = "UPDATE BillingItem SET itemBillReference=NULL WHERE itemBillReference='{0}'" -f $billReference
-        $nbUpdated = $this.db.execute($request)
+        $this.db.execute($request) | Out-Null
     }
 
 
