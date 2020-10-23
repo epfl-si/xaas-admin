@@ -74,11 +74,6 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 
-# Fichiers propres au script courant 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "define.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "NameGeneratorNAS.inc.ps1"))
-
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
@@ -88,6 +83,10 @@ param([string]$targetEnv,
 # Chargement des fichiers propres au NAS NetApp
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "NAS", "NetAppAPI.inc.ps1"))
 
+# Fichiers propres au script courant 
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "define.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "NameGeneratorNAS.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
@@ -323,7 +322,7 @@ function unMountPSDrive([string]$driveLetter)
             - l'export policy ajoutée
             - l'objet renvoyé par le script (JSON) avec les infos du point de montage
 #>
-function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$netapp, [string]$volumeName, [PSObject]$svmObj, [string]$IPsRO, [string]$IPsRW, [string]$IPsRoot, [string]$protocol, [Hashtable]$result)
+function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$netapp, [string]$volumeName, [PSObject]$svmObj, [string]$IPsRO, [string]$IPsRW, [string]$IPsRoot, [NetAppProtocol]$protocol, [Hashtable]$result)
 {
     $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volumeName)
 
@@ -363,7 +362,7 @@ function getExportPolicyInfos([PSObject]$volObj, [PSObject]$svmObj)
 
     $logHistory.addLine(("Getting Rules from Export Policy '{0}'..." -f $exportPolicyName))
     return @{
-        protocol = $netapp.getVolumeAccessProtocol($volObj)
+        protocol = $netapp.getVolumeAccessProtocol($volObj).ToString()
         rules = $netapp.getExportPolicyRuleList($exportPolicyObj)
     }
 }
@@ -585,7 +584,7 @@ try
                         {
                             # Ajout de l'export policy
                             $exportPol, $null = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
-                                                        -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol $access.ToLower() -result $null
+                                                        -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol [NetAppProtocol]$access -result $null
                         }
 
                         # ---- Volume Collaboratif
@@ -660,7 +659,7 @@ try
                 {
                     # Ajout de l'export policy
                     $exportPol, $result = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
-                                                -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol $access.ToLower() -result $result
+                                                -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol [NetAppProtocol]$access -result $result
                 }
             }# FIN En fonction du type d'accès demandé 
 

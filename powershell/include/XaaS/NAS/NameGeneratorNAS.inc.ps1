@@ -121,29 +121,28 @@ class NameGeneratorNAS: NameGeneratorBase
 
       IN  : $volName       -> Le nom du volume
       IN  : $svm           -> Nom de la SVM
-      IN  : $protocol      -> Protocol d'accès
-                              voir dans include/XaaS/NAS/define.inc.ps1
-                              $global:ACCESS_TYPE_*
+      IN  : $protocol      -> Protocol d'accès. Tel que défini dans le fichier de la classe
+                              [NetAppAPI] 
 
       RET : Le chemin de montage
 	#>
-   [string] getVolMountPath([string]$volName, [string]$svm, [string]$protocol)
+   [string] getVolMountPath([string]$volName, [string]$svm, [NetAppProtocol]$protocol)
    {
       $mountPath = switch($protocol)
       {
-         $global:ACCESS_TYPE_CIFS
+         cifs
          {
             "\\{0}\{1}" -f $svm, $volName
          }
 
-         $global:ACCESS_TYPE_NFS3
+         nfs3
          {
             "{0}:/{1}" -f $svm, $volName
          }
 
          default
          {
-            Throw ("Protcol '{0}' not handled" -f $protocol)
+            Throw ("Protcol '{0}' not handled" -f $protocol.toString())
          }
       }
 

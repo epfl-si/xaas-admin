@@ -21,6 +21,12 @@ enum NetAppObjectType
     ExportPolicy
 }
 
+# Protocoles possibles
+enum NetAppProtocol
+{
+    cifs
+    nfs3
+}
 
 class NetAppAPI: RESTAPICurl
 {
@@ -529,11 +535,9 @@ class NetAppAPI: RESTAPICurl
         
         IN  : $vol   -> Objet représentant le volume
 
-        RET : voir fichier include/XaaS/NAS/define.inc.ps1
-                $global:ACCESS_TYPE_* Pour que ça puisse être réutilisé directement dans la fonction updateExportPolicyRules
-                $null si pas trouvé
+        RET : Protocole d'accès
 	#>
-    [string] getVolumeAccessProtocol([PSObject]$vol)
+    [NetAppProtocol] getVolumeAccessProtocol([PSObject]$vol)
     {
         $uri = "/api/storage/volumes/{0}?fields=nas.security_style" -f $vol.uuid
 
@@ -546,9 +550,9 @@ class NetAppAPI: RESTAPICurl
 
         if($vol.nas.security_style -eq "unix")
         {
-            return $global:ACCESS_TYPE_NFS3
+            return [NetAppProtocol]::nfs3
         }
-        return $global:ACCESS_TYPE_CIFS
+        return [NetAppProtocol]::cifs
     }
 
 
@@ -1146,7 +1150,7 @@ class NetAppAPI: RESTAPICurl
 
         $body = $this.createObjectFromJSON("xaas-nas-new-export-policy-rule.json", $replaceInBody)
 
-        $result = $this.callAPI($uri, "POST", $body)
+        $this.callAPI($uri, "POST", $body) | Out-Null
     }
 
 
@@ -1158,13 +1162,12 @@ class NetAppAPI: RESTAPICurl
         IN  : $ROIPList         -> tableau avec la liste des IP Read-Only
         IN  : $RWIPList         -> Tableau avec la liste des IP Read-Write
         IN  : $RootIPList       -> Tableau avec la liste des IP Root
-        IN  : $protocol         -> Voir fichier include/XaaS/NAS/define.inc.ps1
-                                    $global:ACCESS_TYPE_*
+        IN  : $protocol         -> Protocol d'accès
 
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_rule_create
 	#>
-    [void] updateExportPolicyRules([PSObject]$exportPolicy, [Array]$ROIPList, [Array]$RWIPList, [Array]$RootIPList, [string]$protocol)
+    [void] updateExportPolicyRules([PSObject]$exportPolicy, [Array]$ROIPList, [Array]$RWIPList, [Array]$RootIPList, [NetAppProtocol]$protocol)
     {
         # On commence par supprimer les règles existantes
         $this.deleteExportPolicyRuleList($exportPolicy)
@@ -1187,7 +1190,7 @@ class NetAppAPI: RESTAPICurl
             $replace = @{
                 clientMatch = $ip.Trim()
                 roRule = "any"
-                protocol = $protocol
+                protocol = $protocol.toString()
             }
 
             # Si l'IP a ausi les accès Root
