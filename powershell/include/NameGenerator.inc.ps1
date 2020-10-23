@@ -648,8 +648,8 @@ class NameGenerator: NameGeneratorBase
             Throw ("Only supported for {0} tenant" -f $global:VRA_TENANT__RESEARCH)
         }
 
-        # Lorsque l'on utilise -match ou -notmatch, PowerShell initialise automatiquement une variable $matches avec les résultats du match
-        $dummy = $ADUserGroupName.ToLower() -match "([a-z_]+)_([0-9]+)"
+        # INFORMATION: Lorsque l'on utilise -match ou -notmatch, PowerShell initialise automatiquement une variable $matches avec les résultats du match
+        $ADUserGroupName.ToLower() -match "([a-z_]+)_([0-9]+)" | Out-Null
         return ("{0}_approval_{1}" -f $matches[1], $matches[2])
     }
 

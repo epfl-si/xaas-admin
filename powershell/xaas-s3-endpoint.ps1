@@ -175,7 +175,7 @@ try
                 $logHistory.addLine("Creating bucket {0}..." -f $bucketInfos.bucketName)
 
                 # Création du bucket
-                $s3Bucket = $scality.addBucket($bucketInfos.bucketName)
+                $scality.addBucket($bucketInfos.bucketName) | Out-Null
 
                 $bucketInfos.access = @{}
 
