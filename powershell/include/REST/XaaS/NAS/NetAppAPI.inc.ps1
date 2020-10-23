@@ -207,10 +207,6 @@ class NetAppAPI: RESTAPICurl
         }
         else
         {
-            if($allRes.Count -eq 0)
-            {
-                return $null
-            }
             return $allRes
         }
         
@@ -570,13 +566,13 @@ class NetAppAPI: RESTAPICurl
         # Recherche du volume dans la liste
         $result = $this.getVolumeListQuery(("name={0}" -f $name))
 
-        if($null -eq $result)
+        if($result.count -eq 0)
         {
             return $null
         }
 
         # Recheche des détails du volume
-        return $this.getVolumeById($result.uuid)
+        return $this.getVolumeById($result[0].uuid)
     }
 
 
@@ -918,13 +914,13 @@ class NetAppAPI: RESTAPICurl
     {
         $result = $this.getExportPolicyListQuery( ("name={0}" -f $name) )
 
-        if($null -eq $result)
+        if($result.count -eq 0)
         {
             return $null
         }
 
         # Recheche des détails de l'export policy
-        return $this.getExportPolicyById($result.id)
+        return $this.getExportPolicyById($result[0].id)
     }
 
     <#
@@ -941,13 +937,13 @@ class NetAppAPI: RESTAPICurl
     {
         $result = $this.getExportPolicyListQuery( ("svm.name={0}&name={1}" -f $svm.name, $name) )
 
-        if($null -eq $result)
+        if($result.count -eq 0)
         {
             return $null
         }
 
         # Recheche des détails de l'export policy
-        return $this.getExportPolicyById($result.id)
+        return $this.getExportPolicyById($result[0].id)
     }
 
 
@@ -1078,11 +1074,6 @@ class NetAppAPI: RESTAPICurl
         # C'te bande de branquigoles chez NetApp... ils fournissent le nécessaire pour retourner les infos sur les export policies MAIS
         # ils ne remplissent pas les champs avec les valeurs dont on a besoin !!! bananes !!
         $this.getExportPolicyRuleListQuery($exportPolicy.id, "fields=clients,protocols,ro_rule,rw_rule,superuser") | ForEach-Object {
-
-            if($null -eq $_)
-            {
-                return
-            }
 
             # Si RO
             if($_.ro_rule[0] -eq "any")
@@ -1362,13 +1353,13 @@ class NetAppAPI: RESTAPICurl
     {
         $result = $this.getSnapshotPolicyListQuery( ("name={0}" -f $name) )
 
-        if($null -eq $result)
+        if($result.count -eq 0)
         {
             return $null
         }
 
         # Recheche des détails de l'export policy
-        return $this.getSnapshotPolicyById($result.uuid)
+        return $this.getSnapshotPolicyById($result[0].uuid)
     }
 
 
