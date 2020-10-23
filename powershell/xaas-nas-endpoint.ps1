@@ -319,14 +319,14 @@ function unMountPSDrive([string]$driveLetter)
     IN  : $IPsRW        -> Chaine de caractères avec les IP RW
     IN  : $IPsRoot      -> Chaine de caractères avec les IP Root
     IN  : $protocol     -> Le protocole d'accès ([NetAppProtocol])
-    IN  : $result       -> Objet représentant l'output du script. Peut être $null
+    IN  : $result       -> Tableau associatif représentant le résultat du script. Peut être $null
                             si on n'a pas envie de le modifier
 
     RET : Tableau avec :
             - l'export policy ajoutée
             - l'objet renvoyé par le script (JSON) avec les infos du point de montage
 #>
-function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$netapp, [string]$volumeName, [PSObject]$svmObj, [string]$IPsRO, [string]$IPsRW, [string]$IPsRoot, [string]$protocol, [PSObject]$result)
+function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$netapp, [string]$volumeName, [PSObject]$svmObj, [string]$IPsRO, [string]$IPsRW, [string]$IPsRoot, [string]$protocol, [Hashtable]$result)
 {
     $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volumeName)
 
@@ -345,6 +345,27 @@ function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$net
     }
     
     return @($exportPolicy, $result)
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Renvoie les infos d'une export Policy
+
+    IN  : $volume       -> Objet représentant le volume pour lequel on veut les infos de 
+                            l'export Policy
+    IN  : $svmObj       -> Objet représentant la SVM sur laquelle le volume se trouve
+
+    RET : Objet avec les infos de l'export policy
+#>
+function getExportPolicyInfos([PSObject]$volume, [PSObject]$svmObj)
+{
+    $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volume.name)
+    $logHistory.addLine(("Getting Export Policy '{0}' for volume '{1}'..." -f $exportPolicyName, $volume.name))
+    $exportPolicyObj = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
+
+    $logHistory.addLine(("Getting Rules from Export Policy '{0}'..." -f $exportPolicyName))
+    return $netapp.getExportPolicyRuleList($exportPolicyObj)
 }
 
 
@@ -809,27 +830,21 @@ try
         # -- Retour de la liste des IP d'accès
         $ACTION_GET_IP_LIST
         {
-            $logHistory.addLine(("Getting Volume '{0}'..." -f $volName))
-            $vol = $netapp.getVolumeByName($volName)
+            
+            $logHistory.addLine(("Getting Volume '{0}' IP List..." -f $volName))
+            $volObj = $netapp.getVolumeByName($volName)
 
             # Si volume pas trouvé, c'est qu'on a probablement donné un nom unique en paramètre
-            if($null -eq $vol)
+            if($null -eq $volObj)
             {
                 $output.error = ("Volume {0} doesn't exists" -f $volName)
                 $logHistory.addLine($output.error)
             }
             else
             {
-                # Pour la suite, on va avoir besoin de la SVM
-                $svmObj = $netapp.getSVMByID($vol.svm.uuid)
-
-                $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volName)
-                $logHistory.addLine(("Getting Export Policy '{0}' for volume '{1}'..." -f $exportPolicyName, $volName))
-                $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
-
-                $logHistory.addLine(("Getting Rules from Export Policy '{0}'..." -f $exportPolicyName))
-                $output.results += $netapp.getExportPolicyRuleList($exportPolicy)
-
+                $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
+                # Ajout des infos d'accès
+                $output.results += getExportPolicyInfos -volume $volObj -svmObj $svmObj
             }
         }
 
