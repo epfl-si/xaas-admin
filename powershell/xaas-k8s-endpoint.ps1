@@ -1,7 +1,7 @@
 <#
 USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgName <bgName> -plan <plan> -netProfile <netProfile>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -clusterName <clusterName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgName <bgName> -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action changePlan -clusterName <clusterName> -plan <plan>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getPlan -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newNamespace -clusterName <clusterName> -namespace <namespace>
@@ -495,6 +495,9 @@ try
         # --- Effacer
         $ACTION_DELETE
         {
+            # Initialisation pour récupérer les noms des éléments
+            $nameGeneratorK8s.initDetailsFromBGName($bgName)
+
             deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName `
                         -harbor $harbor -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName") -targetTenant $targetTenant
         }
