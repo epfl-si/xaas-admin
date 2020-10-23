@@ -109,10 +109,6 @@ $ACTION_GET_VOL_INFOS       = "getVolInfos"
 
 $global:APP_VOL_DEFAULT_FAC = "si"
 
-# Type de volume
-$global:VOL_TYPE_COLL       = "col"
-$global:VOL_TYPE_APP        = "app"
-
 # Limites
 $global:MAX_VOL_PER_UNIT    = 9
 
@@ -465,7 +461,7 @@ try
             switch($volType)
             {
                 # ---- Volume Applicatif
-                $global:VOL_TYPE_APP
+                ([XaaSNASVolType]::app).ToString()
                 {
                     $nameGeneratorNAS.setApplicativeDetails($global:APP_VOL_DEFAULT_FAC, $volName)
 
@@ -487,7 +483,7 @@ try
                 }
 
                 # ---- Volume Collaboratif
-                $global:VOL_TYPE_COLL
+                ([XaaSNASVolType]::col).ToString()
                 {
                     # Check des valeurs passées pour les snapshots
                     if( (($snapPercent -eq 0) -and ($snapPolicy -ne "")) -or ( ($snapPercent -ne 0) -and ($snapPolicy -eq "") ))
@@ -580,7 +576,7 @@ try
                     switch($volType)
                     {
                         # ---- Volume Applicatif
-                        $global:VOL_TYPE_APP
+                        ([XaaSNASVolType]::app).ToString()
                         {
                             # Ajout de l'export policy
                             $exportPol, $null = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
@@ -588,7 +584,7 @@ try
                         }
 
                         # ---- Volume Collaboratif
-                        $global:VOL_TYPE_COLL
+                        ([XaaSNASVolType]::col).ToString()
                         {
                             $logHistory.addLine(("Checking if Export Policy '{0}' exists on SVM '{1}'..." -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name))
                             $exportPol = $netapp.getExportPolicyByName($svmObj, $global:EXPORT_POLICY_DENY_NFS_ON_CIFS)
@@ -670,7 +666,7 @@ try
             # 3. Politique de snapshot
 
             # Si volume collaboratif ET qu'il faut avoir les snapshots
-            if(( $volType -eq $global:VOL_TYPE_COLL) -and $snapPolicy -ne "")
+            if(( $volType -eq ([XaaSNASVolType]::col).ToString()) -and $snapPolicy -ne "")
             {
                 $snapPolicyObj = $netapp.getSnapshotPolicyByName($snapPolicy)
                 if($null -eq $snapPolicyObj)
