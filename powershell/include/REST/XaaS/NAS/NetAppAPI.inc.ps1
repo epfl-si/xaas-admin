@@ -783,7 +783,13 @@ class NetAppAPI: RESTAPICurl
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
         
-        return $this.callAPI($uri, "GET", $null, "records")
+        $list = $this.callAPI($uri, "GET", $null, "records")
+        # Si rien trouvé, on fait en sorte de retourner une liste vide plutôt que $null
+        if($null -eq $list)
+        {
+            return @()
+        }
+        return $list
     }
 
     
@@ -968,7 +974,7 @@ class NetAppAPI: RESTAPICurl
 
         $body = $this.createObjectFromJSON("xaas-nas-new-export-policy.json", $replace)
 
-        $result = $this.callAPI($uri, "POST", $body)
+        $this.callAPI($uri, "POST", $body) | Out-Null
 
         # Retour de l'élément créé
         return $this.getExportPolicyByName($name)
@@ -1072,6 +1078,11 @@ class NetAppAPI: RESTAPICurl
         # C'te bande de branquigoles chez NetApp... ils fournissent le nécessaire pour retourner les infos sur les export policies MAIS
         # ils ne remplissent pas les champs avec les valeurs dont on a besoin !!! bananes !!
         $this.getExportPolicyRuleListQuery($exportPolicy.id, "fields=clients,protocols,ro_rule,rw_rule,superuser") | ForEach-Object {
+
+            if($null -eq $_)
+            {
+                return
+            }
 
             # Si RO
             if($_.ro_rule[0] -eq "any")

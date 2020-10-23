@@ -350,8 +350,8 @@ function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$net
 #>
 function getExportPolicyInfos([PSObject]$volObj, [PSObject]$svmObj)
 {
-    $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volObj.name)
-    $exportPolicyObj = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
+    # Recherche de l'export policy qui "devrait" être définie sur le volume s'il fallait limiter les accès
+    $exportPolicyObj = $netapp.getExportPolicyByName($svmObj, $volObj.nas.export_policy.name)
 
     # Si pas d'export Policy
     if($null -eq $exportPolicyObj)
@@ -567,7 +567,7 @@ try
             # 2. Mise en place des accès
 
             # En fonction du type d'accès qui a été demandé
-            switch($access.toLower())
+            switch($access)
             {
                 # ------------ CIFS
                 ([NetAppProtocol]::cifs).ToString()
@@ -661,7 +661,7 @@ try
                 {
                     # Ajout de l'export policy
                     $exportPol, $result = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
-                                                -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol [NetAppProtocol]$access -result $result
+                                                -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol ([NetAppProtocol]$access) -result $result
                 }
             }# FIN En fonction du type d'accès demandé 
 
@@ -896,7 +896,6 @@ try
 
                 $logHistory.addLine("Updating rules in export policy...")
                 $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","), $protocol)
-
             }
         }
 
@@ -941,18 +940,20 @@ try
             }
 
             # -- Share CIFS
-            $shareList = $netapp.getVolCIFSShareList($volObj)
+            $shareList = $netapp.getVolCIFSShareList($volObj) | Select-Object -ExpandProperty name
+            # Si la liste est vide, le fait de sélectionner 'name' va renvoyer $null en fait, et pas un tableau vide
             if($null -eq $shareList)
             {
                 $shareList = @()
             }
+
             # Sélection du nom du share et transformation en tableau pour éviter de se retrouver avec un objet uniquement s'il n'y a qu'un share
-            $result.access.cifsShares = [Array]($shareList | Select-Object -ExpandProperty name)
+            $result.access.cifsShares = $shareList 
 
             $output.results += $result
         }
 
-    }
+    }# FIN EN fonction du type d'action demandé
 
     $logHistory.addLine("Script execution done!")
 
