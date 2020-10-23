@@ -286,12 +286,14 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
 #>
 function unMountPSDrive([string]$driveLetter)
 {
-    $drive = Get-PSDrive $driveLetter -errorVariable errorVar -errorAction:SilentlyContinue
+    Get-PSDrive $driveLetter -errorVariable errorVar -errorAction:SilentlyContinue | Out-Null
 
     # Si on a pu trouver le drive
-    if($null -eq $errorVar)
+    if($errorVar.count -eq 0)
     {
-        Remove-PSDrive $drive -Force
+        # On fait "sale" pour démonter le lecteur. On devrait normalement utiliser "Remove-PSDrive"
+        # mais ça ne fonctionne pas à tous les coups donc... 
+        net.exe use $driveLetter /del
     }
     
 }
@@ -619,6 +621,8 @@ try
                             $credentials = New-Object System.Management.Automation.PSCredential($configNAS.getConfigValue("psGateway", "user"), $secPassword)
                             
                             $logHistory.addLine(("Mounting '{0}' on '{1}'..." -f $result.mountPath, $global:XAAS_NAS_TEMPORARY_DRIVE))
+                            # On démonte le dossier monté dans le cas hypothétique où il serait déjà utilisé 
+                            unMountPSDrive -driveLetter $global:XAAS_NAS_TEMPORARY_DRIVE
                             $temporaryDrive = New-PSDrive -Persist -name $global:XAAS_NAS_TEMPORARY_DRIVE -PSProvider "Filesystem" -Root $result.mountPath -Credential $credentials
                             
                             $logHistory.addLine(("Getting ACLs on '{0}'..." -f $global:XAAS_NAS_TEMPORARY_DRIVE))
@@ -905,52 +909,62 @@ try
         {
             $volObj = $netapp.getVolumeByName($volName)
 
-            # Première partie des infos
-            $result = @{
-                volume = @{
-                    name = $volName
-                    uuid = $volObj.uuid
-                    type = $nameGeneratorNAS.getVolumeType($volName).ToString()
-                }
-            }
-
-            # Pour la suite, on va avoir besoin de la SVM
-            $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
-
-            # -- Accès
-            $result.access = getExportPolicyInfos -volObj $volObj -svmObj $svmObj
-            $result.access.svm = $svmObj.name
-            $result.access.rootMountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name, $result.access.protocol) 
-
-            # -- Taille
-            $result.size = getVolumeSizeInfos -netapp $netapp -volObj $volObj
-
-            # -- Snapshots
-            $snapshotPolicyObj = $netapp.getVolumeSnapshotPolicy($volObj)
-            if($null -ne $snapshotPolicyObj)
+            if($null -eq $volObj)
             {
-                $result.snapshots = @{
-                    policy = $snapshotPolicyObj.name
-                    reservePercent = $result.size.snap.reservePercent
-                }
+                $output.error = ("Volume {0} doesn't exists" -f $volName)
+                $logHistory.addLine($output.error)
             }
             else
             {
-                $result.snapshots = $null
-            }
+                
+                # Première partie des infos
+                $result = @{
+                    volume = @{
+                        name = $volName
+                        uuid = $volObj.uuid
+                        type = $nameGeneratorNAS.getVolumeType($volName).ToString()
+                    }
+                }
 
-            # -- Share CIFS
-            $shareList = $netapp.getVolCIFSShareList($volObj) | Select-Object -ExpandProperty name
-            # Si la liste est vide, le fait de sélectionner 'name' va renvoyer $null en fait, et pas un tableau vide
-            if($null -eq $shareList)
-            {
-                $shareList = @()
-            }
+                # Pour la suite, on va avoir besoin de la SVM
+                $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
 
-            # Sélection du nom du share et transformation en tableau pour éviter de se retrouver avec un objet uniquement s'il n'y a qu'un share
-            $result.access.cifsShares = $shareList 
+                # -- Accès
+                $result.access = getExportPolicyInfos -volObj $volObj -svmObj $svmObj
+                $result.access.svm = $svmObj.name
+                $result.access.rootMountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name, $result.access.protocol) 
 
-            $output.results += $result
+                # -- Taille
+                $result.size = getVolumeSizeInfos -netapp $netapp -volObj $volObj
+
+                # -- Snapshots
+                $snapshotPolicyObj = $netapp.getVolumeSnapshotPolicy($volObj)
+                if($null -ne $snapshotPolicyObj)
+                {
+                    $result.snapshots = @{
+                        policy = $snapshotPolicyObj.name
+                        reservePercent = $result.size.snap.reservePercent
+                    }
+                }
+                else
+                {
+                    $result.snapshots = $null
+                }
+
+                # -- Share CIFS
+                $shareList = $netapp.getVolCIFSShareList($volObj) | Select-Object -ExpandProperty name
+                # Si la liste est vide, le fait de sélectionner 'name' va renvoyer $null en fait, et pas un tableau vide
+                if($null -eq $shareList)
+                {
+                    $shareList = @()
+                }
+
+                # Sélection du nom du share et transformation en tableau pour éviter de se retrouver avec un objet uniquement s'il n'y a qu'un share
+                $result.access.cifsShares = $shareList 
+
+                $output.results += $result
+
+            } # FIN SI le volume existe
         }
 
     }# FIN EN fonction du type d'action demandé
