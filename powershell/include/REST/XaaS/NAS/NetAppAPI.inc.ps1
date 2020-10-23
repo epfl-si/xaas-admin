@@ -680,14 +680,14 @@ class NetAppAPI: RESTAPICurl
         BUT : Supprime un volume et attend que la tâche qui tourne en fond pour la création se
                 termine.
         
-        IN  : $id   -> ID du volume que l'on désire supprimer
+        IN  : $vol   -> objet représentant le volume à effacer
 	#>
-    [void] deleteVolume([string]$id)
+    [void] deleteVolume([PSObject]$vol)
     {
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $id)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $vol.uuid)
 
-        $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $id
+        $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $vol.uuid
 
         $result = $this.callAPI($uri, "DELETE", $null)
 

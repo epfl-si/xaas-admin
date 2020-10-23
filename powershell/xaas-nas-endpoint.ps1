@@ -236,10 +236,10 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
 {
     $logHistory.addLine( ("Getting Volume {0}..." -f $volumeName) )
     # Recherche du volume à effacer et effacement
-    $vol = $netapp.getVolumeByName($volumeName)
+    $volObj = $netapp.getVolumeByName($volumeName)
 
     # Si le volume n'existe pas
-    if($null -eq $vol)
+    if($null -eq $volObj)
     {
         # Si on a passé un objet, 
         if($null -ne $output)
@@ -251,8 +251,8 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
     }
     else
     {
-        $logHistory.addLine( ("Getting SVM '{0}'..." -f $vol.svm.name) )
-        $svmObj = $netapp.getSVMByID($vol.svm.uuid)
+        $logHistory.addLine( ("Getting SVM '{0}'..." -f $volObj.svm.name) )
+        $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
 
         $logHistory.addLine(("Getting CIFS Shares for Volume '{0}'..." -f $volumeName))
         $shareList = $netapp.getVolCIFSShareList($volumeName)
@@ -266,7 +266,7 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
         }
 
         $logHistory.addLine( ("Deleting Volume {0}" -f $volumeName) )
-        $netapp.deleteVolume($vol.uuid)
+        $netapp.deleteVolume($volObj)
 
         # Export Policy (on la supprime tout à la fin sinon on se prend une erreur "gnagna elles utilisée par le volume"
         # donc on vire le volume ET ENSUITE l'export policy)
@@ -352,16 +352,16 @@ function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$net
     -------------------------------------------------------------------------------------
     BUT : Renvoie les infos d'une export Policy
 
-    IN  : $volume       -> Objet représentant le volume pour lequel on veut les infos de 
+    IN  : $volObj       -> Objet représentant le volume pour lequel on veut les infos de 
                             l'export Policy
     IN  : $svmObj       -> Objet représentant la SVM sur laquelle le volume se trouve
 
     RET : Objet avec les infos de l'export policy
 #>
-function getExportPolicyInfos([PSObject]$volume, [PSObject]$svmObj)
+function getExportPolicyInfos([PSObject]$volObj, [PSObject]$svmObj)
 {
-    $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volume.name)
-    $logHistory.addLine(("Getting Export Policy '{0}' for volume '{1}'..." -f $exportPolicyName, $volume.name))
+    $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volObj.name)
+    $logHistory.addLine(("Getting Export Policy '{0}' for volume '{1}'..." -f $exportPolicyName, $volObj.name))
     $exportPolicyObj = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
 
     $logHistory.addLine(("Getting Rules from Export Policy '{0}'..." -f $exportPolicyName))
@@ -663,10 +663,10 @@ try
         {
 
             $logHistory.addLine( ("Getting Volume {0}" -f $volName) )
-            $vol = $netapp.getVolumeByName($volName)
+            $volObj = $netapp.getVolumeByName($volName)
             
             # Si volume pas trouvé
-            if($null -eq $vol)
+            if($null -eq $volObj)
             {
                 $output.error = ("Volume {0} doesn't exists" -f $volName)
                 $logHistory.addLine($output.error)
@@ -674,13 +674,13 @@ try
             else # Volume trouvéc
             {
                 # Recherche des infos sur les snapshots
-                $volSizeInfos = $netapp.getVolumeSnapshotInfos($vol)
+                $volSizeInfos = $netapp.getVolumeSnapshotInfos($volObj)
 
                 # Redéfinition de la taille du volume en fonction du pourcentage à conserver pour les snapshots
                 $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $volSizeInfos.space.snapshot.reserve_percent
 
                 $logHistory.addLine( ("Resizing Volume {0} to {1} GB" -f $volName, $sizeGB) )
-                $netapp.resizeVolume($vol.uuid, $sizeWithSnapGB)
+                $netapp.resizeVolume($volObj.uuid, $sizeWithSnapGB)
             }
         }# FIN Action resize
 
@@ -702,32 +702,32 @@ try
             $volNameList | ForEach-Object { 
 
                 $logHistory.addLine( ("Getting size for Volume {0}" -f $_) )
-                $vol = $netapp.getVolumeByName($_)
+                $volObj = $netapp.getVolumeByName($_)
 
                 # Si volume pas trouvé, c'est qu'on a probablement donné un nom unique en paramètre
-                if($null -eq $vol)
+                if($null -eq $volObj)
                 {
                     $output.error = ("Volume {0} doesn't exists" -f $_)
                     $logHistory.addLine($output.error)
                     return
                 }
 
-                $volSizeInfos = $netapp.getVolumeSizeInfos($vol)
+                $volSizeInfos = $netapp.getVolumeSizeInfos($volObj)
 
-                $volSizeB = $vol.space.size
+                $volSizeB = $volObj.space.size
                 # Suppression de l'espace réservé pour les snapshots
                 $userSizeB = $volSizeB * (1 - ($volSizeInfos.space.snapshot.reserve_percent/100))
                 $snapSizeB = $volSizeB * ($volSizeInfos.space.snapshot.reserve_percent/100)
 
                 $output.results += @{
                     # Infos "globales"
-                    volName = $vol.name
-                    volUUID = $vol.uuid
+                    volName = $volObj.name
+                    volUUID = $volObj.uuid
                     totSizeB = (truncateToNbDecimal -number ($volSizeB) -nbDecimals 2)
                     # Taille niveau "utilisateur"
                     user = @{
                         sizeB = (truncateToNbDecimal -number $userSizeB -nbDecimals 2)
-                        usedB = (truncateToNbDecimal -number $vol.space.used -nbDecimals 2)
+                        usedB = (truncateToNbDecimal -number $volObj.space.used -nbDecimals 2)
                         usedFiles = $volSizeInfos.files.used
                         maxFiles = $volSizeInfos.files.maximum
                     }
@@ -844,7 +844,7 @@ try
             {
                 $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
                 # Ajout des infos d'accès
-                $output.results += getExportPolicyInfos -volume $volObj -svmObj $svmObj
+                $output.results += getExportPolicyInfos -volObj $volObj -svmObj $svmObj
             }
         }
 
@@ -854,10 +854,10 @@ try
         {
 
             $logHistory.addLine(("Getting Volume '{0}'..." -f $volName))
-            $vol = $netapp.getVolumeByName($volName)
+            $volObj = $netapp.getVolumeByName($volName)
 
             # Si volume pas trouvé, c'est qu'on a probablement donné un nom unique en paramètre
-            if($null -eq $vol)
+            if($null -eq $volObj)
             {
                 $output.error = ("Volume {0} doesn't exists" -f $volName)
                 $logHistory.addLine($output.error)
@@ -872,7 +872,7 @@ try
                 $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
 
                 $logHistory.addLine(("Getting access protocole for volume '{0}'..." -f $volName))
-                $protocol = $netapp.getVolumeAccessProtocol($vol)
+                $protocol = $netapp.getVolumeAccessProtocol($volObj)
 
                 $logHistory.addLine("Updating rules in export policy...")
                 $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","), $protocol)
