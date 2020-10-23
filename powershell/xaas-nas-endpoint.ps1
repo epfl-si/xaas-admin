@@ -114,9 +114,6 @@ $global:APP_VOL_DEFAULT_FAC = "si"
 $global:VOL_TYPE_COLL       = "col"
 $global:VOL_TYPE_APP        = "app"
 
-$global:ACCESS_TYPE_CIFS    = "cifs"
-$global:ACCESS_TYPE_NFS3    = "nfs3"
-
 # Limites
 $global:MAX_VOL_PER_UNIT    = 9
 
@@ -341,7 +338,7 @@ function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$net
     if($null -ne $result)
     {
         # On ajoute le nom du share CIFS au résultat renvoyé par le script
-        $result.mountPath = ("{0}:/{1}" -f $svmObj.name, $volumeName)
+        $result.mountPath = $nameGeneratorNAS.getVolMountPath($volumeName, $svmObj.name,$global:ACCESS_TYPE_NFS3)
     }
     
     return @($exportPolicy, $result)
@@ -365,7 +362,48 @@ function getExportPolicyInfos([PSObject]$volObj, [PSObject]$svmObj)
     $exportPolicyObj = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
 
     $logHistory.addLine(("Getting Rules from Export Policy '{0}'..." -f $exportPolicyName))
-    return $netapp.getExportPolicyRuleList($exportPolicyObj)
+    return @{
+        protocol = $netapp.getVolumeAccessProtocol($volObj)
+        rules = $netapp.getExportPolicyRuleList($exportPolicyObj)
+    }
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Renvoie les infos de taille d'un volume
+
+    IN  : $netapp       -> Objet permettant d'accéder à l'API de NetApp
+    IN  : $volObj       -> Objet représentant le volume
+
+    RET : Objet avec les infos de taille
+#>
+function getVolumeSizeInfos([NetAppAPI]$netapp, [PSObject]$volObj)
+{
+    $volSizeInfos = $netapp.getVolumeSizeInfos($volObj)
+
+    $volSizeB = $volObj.space.size
+    # Suppression de l'espace réservé pour les snapshots
+    $userSizeB = $volSizeB * (1 - ($volSizeInfos.space.snapshot.reserve_percent/100))
+    $snapSizeB = $volSizeB * ($volSizeInfos.space.snapshot.reserve_percent/100)
+
+    return @{
+        # Infos "globales"
+        totSizeB = (truncateToNbDecimal -number ($volSizeB) -nbDecimals 2)
+        # Taille niveau "utilisateur"
+        user = @{
+            sizeB = (truncateToNbDecimal -number $userSizeB -nbDecimals 2)
+            usedB = (truncateToNbDecimal -number $volObj.space.used -nbDecimals 2)
+            usedFiles = $volSizeInfos.files.used
+            maxFiles = $volSizeInfos.files.maximum
+        }
+        # Taille niveau "snapshot"
+        snap = @{
+            reservePercent = $volSizeInfos.space.snapshot.reserve_percent
+            reserveSizeKB = (truncateToNbDecimal -number $snapSizeB -nbDecimals 2)
+            usedB = (truncateToNbDecimal -number $volSizeInfos.space.snapshot.used -nbDecimals 2)
+        }
+    }
 }
 
 
@@ -506,13 +544,13 @@ try
             $logHistory.addLine( ("Creating Volume {0} on SVM {1} and aggregate {2}..." -f $volName, $svmObj.name, $svmObj.aggregates[0].name) )
 
             # Définition du chemin de montage du volume
-            $mountPath = "/{0}" -f $volName
+            $mountPoint = "/{0}" -f $volName
 
             # Redéfinition de la taille du volume en fonction du pourcentage à conserver pour les snapshots
             $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $snapPercent
 
             # Création du nouveau volume
-            $newVol = $netapp.addVolume($volName, $sizeWithSnapGB, $svmObj, $svmObj.aggregates[0], $securityStyle, $mountPath, $snapPercent)
+            $newVol = $netapp.addVolume($volName, $sizeWithSnapGB, $svmObj, $svmObj.aggregates[0], $securityStyle, $mountPoint, $snapPercent)
 
             # Pour le retour du script
             $result = @{
@@ -533,11 +571,11 @@ try
                 # ------------ CIFS
                 "cifs"
                 {
-                    $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $volName, $mountPath) )
-                    $netapp.addCIFSShare($volName, $svmObj, $mountPath)
+                    $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $volName, $mountPoint))
+                    $netapp.addCIFSShare($volName, $svmObj, $mountPoint)
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
-                    $result.mountPath = ("\\{0}.epfl.ch\{1}" -f $svmObj.name, $volName)
+                    $result.mountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name,$global:ACCESS_TYPE_CIFS) 
                     
                     # En fonction du type de volume
                     switch($volType)
@@ -712,32 +750,13 @@ try
                     return
                 }
 
-                $volSizeInfos = $netapp.getVolumeSizeInfos($volObj)
-
-                $volSizeB = $volObj.space.size
-                # Suppression de l'espace réservé pour les snapshots
-                $userSizeB = $volSizeB * (1 - ($volSizeInfos.space.snapshot.reserve_percent/100))
-                $snapSizeB = $volSizeB * ($volSizeInfos.space.snapshot.reserve_percent/100)
-
-                $output.results += @{
-                    # Infos "globales"
+                # Recherche et ajout des infos
+                $sizeInfos = getVolumeSizeInfos -netapp $netapp -volObj $volObj
+                $sizeInfos += @{
                     volName = $volObj.name
                     volUUID = $volObj.uuid
-                    totSizeB = (truncateToNbDecimal -number ($volSizeB) -nbDecimals 2)
-                    # Taille niveau "utilisateur"
-                    user = @{
-                        sizeB = (truncateToNbDecimal -number $userSizeB -nbDecimals 2)
-                        usedB = (truncateToNbDecimal -number $volObj.space.used -nbDecimals 2)
-                        usedFiles = $volSizeInfos.files.used
-                        maxFiles = $volSizeInfos.files.maximum
-                    }
-                    # Taille niveau "snapshot"
-                    snap = @{
-                        reservePercent = $volSizeInfos.space.snapshot.reserve_percent
-                        reserveSizeKB = (truncateToNbDecimal -number $snapSizeB -nbDecimals 2)
-                        usedB = (truncateToNbDecimal -number $volSizeInfos.space.snapshot.used -nbDecimals 2)
-                    }
                 }
+                $output.results += $sizeInfos
             }
         }# FIN Action Delete
 
@@ -865,7 +884,7 @@ try
             else
             {
                 # Pour la suite, on va avoir besoin de la SVM
-                $svmObj = $netapp.getSVMByID($vol.svm.uuid)
+                $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
 
                 $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volName)
                 $logHistory.addLine(("Getting Export Policy '{0}' for volume '{1}'..." -f $exportPolicyName, $volName))
@@ -884,7 +903,29 @@ try
         # -- Plein d'informations sur le volume
         $ACTION_GET_VOL_INFOS
         {
+            $volObj = $netapp.getVolumeByName($volName)
 
+            # Première partie des infos
+            $result = @{
+                volume = @{
+                    name = $volName
+                    uuid = $volObj.uuid
+                }
+            }
+
+            # Pour la suite, on va avoir besoin de la SVM
+            $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
+
+            # -- Accès
+            $result.access = getExportPolicyInfos -volObj $volObj -svmObj $svmObj
+            $result.access.svm = $svmObj.name
+            $result.access.mountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name, $result.access.protocol) 
+
+            # -- Taille
+            $result.size = getVolumeSizeInfos -netapp $netapp -volObj $volObj
+
+
+            $output.results += $result
         }
 
     }

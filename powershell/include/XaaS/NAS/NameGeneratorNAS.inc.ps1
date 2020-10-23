@@ -117,6 +117,42 @@ class NameGeneratorNAS: NameGeneratorBase
 
    <#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie le chemin de montage d'un volume en fonction de son protocol
+
+      IN  : $volName       -> Le nom du volume
+      IN  : $svm           -> Nom de la SVM
+      IN  : $protocol      -> Protocol d'accès
+                              voir dans include/XaaS/NAS/define.inc.ps1
+                              $global:ACCESS_TYPE_*
+
+      RET : Le chemin de montage
+	#>
+   [string] getVolMountPath([string]$volName, [string]$svm, [string]$protocol)
+   {
+      $mountPath = switch($protocol)
+      {
+         $global:ACCESS_TYPE_CIFS
+         {
+            "\\{0}\{1}" -f $svm, $volName
+         }
+
+         $global:ACCESS_TYPE_NFS3
+         {
+            "{0}:/{1}" -f $svm, $volName
+         }
+
+         default
+         {
+            Throw ("Protcol '{0}' not handled" -f $protocol)
+         }
+      }
+
+      return $mountPath
+   }
+
+
+   <#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie le nom de l'export policy à utiliser pour le volume
 
       IN  : $forVolumeName -> Nom du volume pour lequel on veut le nom de l'export policy

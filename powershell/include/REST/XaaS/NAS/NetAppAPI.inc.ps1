@@ -529,7 +529,8 @@ class NetAppAPI: RESTAPICurl
         
         IN  : $vol   -> Objet représentant le volume
 
-        RET : "nfs3"|"cifs" Pour que ça puisse être réutilisé directement dans la fonction updateExportPolicyRules
+        RET : voir fichier include/XaaS/NAS/define.inc.ps1
+                $global:ACCESS_TYPE_* Pour que ça puisse être réutilisé directement dans la fonction updateExportPolicyRules
                 $null si pas trouvé
 	#>
     [string] getVolumeAccessProtocol([PSObject]$vol)
@@ -545,9 +546,9 @@ class NetAppAPI: RESTAPICurl
 
         if($vol.nas.security_style -eq "unix")
         {
-            return "nfs3"
+            return $global:ACCESS_TYPE_NFS3
         }
-        return "cifs"
+        return $global:ACCESS_TYPE_CIFS
     }
 
 
@@ -1157,7 +1158,8 @@ class NetAppAPI: RESTAPICurl
         IN  : $ROIPList         -> tableau avec la liste des IP Read-Only
         IN  : $RWIPList         -> Tableau avec la liste des IP Read-Write
         IN  : $RootIPList       -> Tableau avec la liste des IP Root
-        IN  : $protocol         -> "cifs"|"nfs3"
+        IN  : $protocol         -> Voir fichier include/XaaS/NAS/define.inc.ps1
+                                    $global:ACCESS_TYPE_*
 
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_rule_create
@@ -1185,7 +1187,7 @@ class NetAppAPI: RESTAPICurl
             $replace = @{
                 clientMatch = $ip.Trim()
                 roRule = "any"
-                protocol = $protocol.toString()
+                protocol = $protocol
             }
 
             # Si l'IP a ausi les accès Root
