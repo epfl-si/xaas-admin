@@ -779,13 +779,8 @@ class NetAppAPI: RESTAPICurl
 			$uri = "{0}&{1}" -f $uri, $queryParams
 		}
         
-        $list = $this.callAPI($uri, "GET", $null, "records")
-        # Si rien trouvé, on fait en sorte de retourner une liste vide plutôt que $null
-        if($null -eq $list)
-        {
-            return @()
-        }
-        return $list
+        return $this.callAPI($uri, "GET", $null, "records")
+        
     }
 
     
