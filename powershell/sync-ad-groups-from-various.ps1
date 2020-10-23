@@ -1078,20 +1078,20 @@ try
 					$doneADGroupList += $userSharedGroupNameAD
 				}
 
-				###### Roles pour Tableau --> Utilisateurs dans les Business Groups
-				if(($groupsUsernameList = Get-ADGroupMember $userSharedGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
-				{
-					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $groupsUsernameList.Count, [TableauRoles]::User.ToString() ))
-					updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
-				}
+				# ###### Roles pour Tableau --> Utilisateurs dans les Business Groups
+				# if(($groupsUsernameList = Get-ADGroupMember $userSharedGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
+				# {
+				# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $groupsUsernameList.Count, [TableauRoles]::User.ToString() ))
+				# 	updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+				# }
 				
-				# ###### Roles pour Tableau --> Admin du service
-				# Recherche de la liste des membres
-				if(($adminMembers = Get-ADGroupMember $admSupGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).Count -gt 0)
-				{
-					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
-					updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
-				}
+				# # ###### Roles pour Tableau --> Admin du service
+				# # Recherche de la liste des membres
+				# if(($adminMembers = Get-ADGroupMember $admSupGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).Count -gt 0)
+				# {
+				# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
+				# 	updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
+				# }
 				
 	
 			}# FIN BOUCLE de parcours des services renvoyés
