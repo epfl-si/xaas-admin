@@ -286,14 +286,14 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
 #>
 function unMountPSDrive([string]$driveLetter)
 {
-    Get-PSDrive $driveLetter -errorVariable errorVar -errorAction:SilentlyContinue | Out-Null
+    $drive = Get-PSDrive $driveLetter -errorVariable errorVar -errorAction:SilentlyContinue
 
     # Si on a pu trouver le drive
     if($errorVar.count -eq 0)
     {
         # On fait "sale" pour démonter le lecteur. On devrait normalement utiliser "Remove-PSDrive"
         # mais ça ne fonctionne pas à tous les coups donc... 
-        net.exe use $driveLetter /del
+        net.exe use ("{0}:" -f $drive.Name) /del
     }
     
 }
@@ -465,6 +465,9 @@ try
         $ACTION_CREATE 
         {
 
+            # Pour dire si on peut effectuer du cleaning dans le cas d'une erreur
+            $cleaningCanBeDoneIfError = $true
+
             # En fonction du type de volume
             switch($volType)
             {
@@ -488,6 +491,14 @@ try
                     # Génération du "nouveau" nom du volume
                     $volName = $nameGeneratorNAS.getVolName()
                     $logHistory.addLine(("Final Volume name will be '{0}'" -f $volName))
+
+                    # On regarde si le volume existe
+                    if($null -ne $netapp.getVolumeByName($volName))
+                    {
+                        # Pour s'assurer de ne pas tout effacer en cas d'erreur !
+                        $cleaningCanBeDoneIfError = $false
+                        Throw ("Volume with name '{0}' already exists" -f $volName)
+                    }
                 }
 
                 # ---- Volume Collaboratif
@@ -509,6 +520,14 @@ try
                     if($null -eq $volName)
                     {
                         Throw ("Maximum number of volumes for unit ({0}) reached" -f $global:MAX_VOL_PER_UNIT)
+                    }
+
+                    # On regarde si le volume existe (normalement pas mais on fait un check quand même au cas où, mieux vaut ceintures et bretelles !)
+                    if($null -ne $netapp.getVolumeByName($volName))
+                    {
+                        # Pour s'assurer de ne pas tout effacer en cas d'erreur !
+                        $cleaningCanBeDoneIfError = $false
+                        Throw ("Volume with name '{0}' already exists" -f $volName)
                     }
 
                     # Recherche de la SVM
@@ -588,7 +607,7 @@ try
                         {
                             # Ajout de l'export policy
                             $exportPol, $null = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
-                                                        -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol [NetAppProtocol]$access -result $null
+                                                        -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol ([NetAppProtocol]$access) -result $null
                         }
 
                         # ---- Volume Collaboratif
@@ -986,7 +1005,7 @@ catch
     $errorTrace = $_.ScriptStackTrace
     
     # Si on était en train de créer un volume
-    if($action -eq $ACTION_CREATE)
+    if(($action -eq $ACTION_CREATE) -and $cleaningCanBeDoneIfError)
     {
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating Volume '{0}', deleting it so everything is clean. Error was: {1}" -f $volName, $errorMessage))
