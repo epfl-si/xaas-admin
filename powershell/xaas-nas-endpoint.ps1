@@ -1,16 +1,17 @@
 <#
 USAGES:
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm> [-withSnap]
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> [-withSnap]
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> [-withSnap]
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action appVolExists -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action canHaveNewVol -bgName <bgName> -access cifs|nfs3
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action resize -sizeGB <sizeGB>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action appVolExists -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action canHaveNewVol -bgName <bgName> -access cifs|nfs3
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action resize -sizeGB <sizeGB> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolSize [-volName <volName>]
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getSVMList -bgName <bgName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action getSVMList -bgName <bgName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getIPList -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action updateIPList -volName <volName> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolInfos -volName <volName>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -53,7 +54,9 @@ param([string]$targetEnv,
       # Volume
       [string]$volName,
       [int]$sizeGB,
-      [switch]$withSnap,
+      # Snapshots
+      [int]$snapPercent,
+      [string]$snapPolicy,
       # Accès
       [string]$access,
       [string]$IPsRoot,
@@ -71,11 +74,6 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 
-# Fichiers propres au script courant 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "define.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "NameGeneratorNAS.inc.ps1"))
-
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
@@ -85,6 +83,10 @@ param([string]$targetEnv,
 # Chargement des fichiers propres au NAS NetApp
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "NAS", "NetAppAPI.inc.ps1"))
 
+# Fichiers propres au script courant 
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "define.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "NameGeneratorNAS.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
@@ -103,23 +105,15 @@ $ACTION_APP_VOL_EXISTS      = "appVolExists"
 $ACTION_CAN_HAVE_NEW_VOL    = "canHaveNewVol"
 $ACTION_GET_IP_LIST         = "getIPList"
 $ACTION_UPDATE_IP_LIST      = "updateIPList"
+$ACTION_GET_VOL_INFOS       = "getVolInfos"
 
 $global:APP_VOL_DEFAULT_FAC = "si"
 
-# Type de volume
-$global:VOL_TYPE_COLL       = "col"
-$global:VOL_TYPE_APP        = "app"
-
-$global:ACCESS_TYPE_CIFS    = "cifs"
-$global:ACCESS_TYPE_NFS3    = "nfs3"
-
 # Limites
-$global:MAX_VOL_PER_UNIT    = 10
+$global:MAX_VOL_PER_UNIT    = 9
 
 # Autre
 $global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"
-$global:SNAPSHOT_POLICY = "epfl-default"
-$global:SNAPSHOT_SPACE_PERCENT = 30
 
 <#
     -------------------------------------------------------------------------------------
@@ -129,23 +123,21 @@ $global:SNAPSHOT_SPACE_PERCENT = 30
     IN  : $nameGeneratorNAS -> Objet de la classe NameGeneratorNAS
     IN  : $faculty          -> La faculté pour laquelle le volume sera
     IN  : $unit             -> L'unité pour laquelle le volume sera
-    IN  : $access           -> le type d'accès
-                                $global:ACCESS_TYPE_CIFS
-                                $global:ACCESS_TYPE_NFS3
+    IN  : $access           -> le type d'accès -> [NetAppProtocol]
 
     RET : Nouveau nom du volume
             $null si on a atteint le nombre max de volumes pour l'unité
 #>
-function getNextColVolName([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS, [string]$faculty, [string]$unit, [string]$access)
+function getNextColVolName([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS, [string]$faculty, [string]$unit, [NetAppProtocol]$access)
 {
     $unit = $unit.toLower() -replace "-", ""
     $faculty = $faculty.toLower()
 
-    $isNFS = ($access -eq $global:ACCESS_TYPE_NFS3)
+    $isNFS = ($access -eq [NetAppProtocol]::nfs3)
 
     # Définition de la regex pour trouver les noms de volumes
-    $volNameRegex = $nameGeneratorNAS.getCollaborativeVolRegex($isNFS)
-    $unitVolList = $netapp.getVolumeList() | Where-Object { $_ -match $volNameRegex } | Sort-Object | Select-Object -ExpandProperty name
+    $volNameRegex = $nameGeneratorNAS.getCollaborativeVolDetailedRegex($isNFS)
+    $unitVolList = $netapp.getVolumeList() | Where-Object { [Regex]::Match($_.name, $volNameRegex).Success } | Sort-Object | Select-Object -ExpandProperty name
 
     # Recherche du prochain numéro libre
     for($i=1; $i -lt $global:MAX_VOL_PER_UNIT; $i++)
@@ -234,10 +226,10 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
 {
     $logHistory.addLine( ("Getting Volume {0}..." -f $volumeName) )
     # Recherche du volume à effacer et effacement
-    $vol = $netapp.getVolumeByName($volumeName)
+    $volObj = $netapp.getVolumeByName($volumeName)
 
     # Si le volume n'existe pas
-    if($null -eq $vol)
+    if($null -eq $volObj)
     {
         # Si on a passé un objet, 
         if($null -ne $output)
@@ -249,11 +241,11 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
     }
     else
     {
-        $logHistory.addLine( ("Getting SVM '{0}'..." -f $vol.svm.name) )
-        $svmObj = $netapp.getSVMByID($vol.svm.uuid)
+        $logHistory.addLine( ("Getting SVM '{0}'..." -f $volObj.svm.name) )
+        $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
 
         $logHistory.addLine(("Getting CIFS Shares for Volume '{0}'..." -f $volumeName))
-        $shareList = $netapp.getVolCIFSShareList($volumeName)
+        $shareList = $netapp.getVolCIFSShareList($volObj)
         $logHistory.addLine(("{0} CIFS share(s) found..." -f $shareList.count))
 
         # Suppression des shares CIFS
@@ -264,7 +256,7 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
         }
 
         $logHistory.addLine( ("Deleting Volume {0}" -f $volumeName) )
-        $netapp.deleteVolume($vol.uuid)
+        $netapp.deleteVolume($volObj)
 
         # Export Policy (on la supprime tout à la fin sinon on se prend une erreur "gnagna elles utilisée par le volume"
         # donc on vire le volume ET ENSUITE l'export policy)
@@ -288,6 +280,27 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
 
 <#
     -------------------------------------------------------------------------------------
+    BUT : Démonte une lettre de lecteur
+
+    IN  : $driveLetter ->  La lettre de lecteur à démonter
+#>
+function unMountPSDrive([string]$driveLetter)
+{
+    $drive = Get-PSDrive $driveLetter -errorVariable errorVar -errorAction:SilentlyContinue
+
+    # Si on a pu trouver le drive
+    if($errorVar.count -eq 0)
+    {
+        # On fait "sale" pour démonter le lecteur. On devrait normalement utiliser "Remove-PSDrive"
+        # mais ça ne fonctionne pas à tous les coups donc... 
+        net.exe use ("{0}:" -f $drive.Name) /del
+    }
+    
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
     BUT : Ajoute une export policy pour un volume avec les règles adéquates
 
     IN  : $nameGeneratorNAS ->  Objet pour générer les noms pour le NAS
@@ -298,14 +311,14 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
     IN  : $IPsRW        -> Chaine de caractères avec les IP RW
     IN  : $IPsRoot      -> Chaine de caractères avec les IP Root
     IN  : $protocol     -> Le protocole d'accès ([NetAppProtocol])
-    IN  : $result       -> Objet représentant l'output du script. Peut être $null
+    IN  : $result       -> Tableau associatif représentant le résultat du script. Peut être $null
                             si on n'a pas envie de le modifier
 
     RET : Tableau avec :
             - l'export policy ajoutée
             - l'objet renvoyé par le script (JSON) avec les infos du point de montage
 #>
-function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$netapp, [string]$volumeName, [PSObject]$svmObj, [string]$IPsRO, [string]$IPsRW, [string]$IPsRoot, [string]$protocol, [PSObject]$result)
+function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$netapp, [string]$volumeName, [PSObject]$svmObj, [string]$IPsRO, [string]$IPsRW, [string]$IPsRoot, [NetAppProtocol]$protocol, [Hashtable]$result)
 {
     $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volumeName)
 
@@ -320,10 +333,80 @@ function addNFSExportPolicy([NameGeneratorNAS]$nameGeneratorNAS, [NetAppAPI]$net
     if($null -ne $result)
     {
         # On ajoute le nom du share CIFS au résultat renvoyé par le script
-        $result.mountPath = ("{0}:/{1}" -f $svmObj.name, $volumeName)
+        $result.mountPath = $nameGeneratorNAS.getVolMountPath($volumeName, $svmObj.name, [NetAppProtocol]::nfs3)
     }
     
     return @($exportPolicy, $result)
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Renvoie les infos d'une export Policy
+
+    IN  : $volObj       -> Objet représentant le volume pour lequel on veut les infos de 
+                            l'export Policy
+    IN  : $svmObj       -> Objet représentant la SVM sur laquelle le volume se trouve
+
+    RET : Objet avec les infos de l'export policy
+#>
+function getExportPolicyInfos([PSObject]$volObj, [PSObject]$svmObj)
+{
+    # Recherche de l'export policy qui "devrait" être définie sur le volume s'il fallait limiter les accès
+    $exportPolicyObj = $netapp.getExportPolicyByName($svmObj, $volObj.nas.export_policy.name)
+
+    # Si pas d'export Policy
+    if($null -eq $exportPolicyObj)
+    {
+        $rules = @()
+    }
+    else
+    {
+        $rules = $netapp.getExportPolicyRuleList($exportPolicyObj)
+    }
+
+    return @{
+        protocol = $netapp.getVolumeAccessProtocol($volObj).ToString()
+        rules = $rules
+    }
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Renvoie les infos de taille d'un volume
+
+    IN  : $netapp       -> Objet permettant d'accéder à l'API de NetApp
+    IN  : $volObj       -> Objet représentant le volume
+
+    RET : Objet avec les infos de taille
+#>
+function getVolumeSizeInfos([NetAppAPI]$netapp, [PSObject]$volObj)
+{
+    $volSizeInfos = $netapp.getVolumeSizeInfos($volObj)
+
+    $volSizeB = $volObj.space.size
+    # Suppression de l'espace réservé pour les snapshots
+    $userSizeB = $volSizeB * (1 - ($volSizeInfos.space.snapshot.reserve_percent/100))
+    $snapSizeB = $volSizeB * ($volSizeInfos.space.snapshot.reserve_percent/100)
+
+    return @{
+        # Infos "globales"
+        totSizeB = (truncateToNbDecimal -number ($volSizeB) -nbDecimals 2)
+        # Taille niveau "utilisateur"
+        user = @{
+            sizeB = (truncateToNbDecimal -number $userSizeB -nbDecimals 2)
+            usedB = (truncateToNbDecimal -number $volObj.space.used -nbDecimals 2)
+            usedFiles = $volSizeInfos.files.used
+            maxFiles = $volSizeInfos.files.maximum
+        }
+        # Taille niveau "snapshot"
+        snap = @{
+            reservePercent = $volSizeInfos.space.snapshot.reserve_percent
+            reserveSizeKB = (truncateToNbDecimal -number $snapSizeB -nbDecimals 2)
+            usedB = (truncateToNbDecimal -number $volSizeInfos.space.snapshot.used -nbDecimals 2)
+        }
+    }
 }
 
 
@@ -382,11 +465,14 @@ try
         $ACTION_CREATE 
         {
 
+            # Pour dire si on peut effectuer du cleaning dans le cas d'une erreur
+            $cleaningCanBeDoneIfError = $true
+
             # En fonction du type de volume
             switch($volType)
             {
                 # ---- Volume Applicatif
-                $global:VOL_TYPE_APP
+                ([XaaSNASVolType]::app).ToString()
                 {
                     $nameGeneratorNAS.setApplicativeDetails($global:APP_VOL_DEFAULT_FAC, $volName)
 
@@ -400,16 +486,23 @@ try
                     $logHistory.addLine( ("SVM will be '{0}'" -f $svmObj.name) )
 
                     # Pas d'espace réservé pour les snapshots
-                    $snapSpacePercent = 0
+                    $snapPercent = 0
 
                     # Génération du "nouveau" nom du volume
                     $volName = $nameGeneratorNAS.getVolName()
                     $logHistory.addLine(("Final Volume name will be '{0}'" -f $volName))
+
                 }
 
                 # ---- Volume Collaboratif
-                $global:VOL_TYPE_COLL
+                ([XaaSNASVolType]::col).ToString()
                 {
+                    # Check des valeurs passées pour les snapshots
+                    if( (($snapPercent -eq 0) -and ($snapPolicy -ne "")) -or ( ($snapPercent -ne 0) -and ($snapPolicy -eq "") ))
+                    {
+                        Throw ("Incorrect value combination for snapPercent ({0}) and snapPolicy ({1})" -f $snapPercent, $snapPolicy)
+                    }
+
                     # Initialisation des détails
                     $nameGeneratorNAS.setCollaborativeDetails($bgName)
 
@@ -430,27 +523,6 @@ try
                         Throw ("SVM '{0}' doesn't exists" -f $svm)
                     }
 
-                    # Il faut qu'on mette les snapshot en place
-                    if($withSnap)
-                    {
-                        $logHistory.addLine("Getting Snapshot Policy...")
-                        $snapPolicy = $netapp.getSnapshotPolicyByName($global:SNAPSHOT_POLICY)
-                        # Si on ne trouve pas la policy de snapshot,
-                        if($null -eq $snapPolicy)
-                        {
-                            Throw ("Snapshot policy '{0}' doesn't exists" -f $global:SNAPSHOT_POLICY)
-                        }
-
-                        $snapSpacePercent = $global:SNAPSHOT_SPACE_PERCENT
-
-                    }
-                    else # Pas besoin de snapshots 
-                    {
-                        $logHistory.addLine("Snapshots not required")
-                        $snapSpacePercent = 0
-                    }
-                    
-
                 }
 
                 default
@@ -459,15 +531,23 @@ try
                 }
             } # FIN en fonction du type de volume
 
+            # On regarde si le volume existe (normalement pas mais on fait un check quand même au cas où, mieux vaut ceintures et bretelles !)
+            if($null -ne $netapp.getVolumeByName($volName))
+            {
+                # Pour s'assurer de ne pas tout effacer en cas d'erreur !
+                $cleaningCanBeDoneIfError = $false
+                Throw ("Volume with name '{0}' already exists" -f $volName)
+            }
+
             # En fonction du type d'accès qui a été demandé
             switch($access.toLower())
             {
-                "cifs"
+                ([NetAppProtocol]::cifs).ToString()
                 {
                     $securityStyle = "ntfs"
                 }
 
-                "nfs3"
+                ([NetAppProtocol]::nfs3).ToString()
                 {
                     $securityStyle = "unix"
                 }
@@ -479,13 +559,13 @@ try
             $logHistory.addLine( ("Creating Volume {0} on SVM {1} and aggregate {2}..." -f $volName, $svmObj.name, $svmObj.aggregates[0].name) )
 
             # Définition du chemin de montage du volume
-            $mountPath = "/{0}" -f $volName
+            $mountPoint = "/{0}" -f $volName
 
             # Redéfinition de la taille du volume en fonction du pourcentage à conserver pour les snapshots
-            $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $snapSpacePercent
+            $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $snapPercent
 
             # Création du nouveau volume
-            $newVol = $netapp.addVolume($volName, $sizeWithSnapGB, $svmObj, $svmObj.aggregates[0], $securityStyle, $mountPath, $snapSpacePercent)
+            $newVol = $netapp.addVolume($volName, $sizeWithSnapGB, $svmObj, $svmObj.aggregates[0], $securityStyle, $mountPoint, $snapPercent)
 
             # Pour le retour du script
             $result = @{
@@ -501,30 +581,30 @@ try
             # 2. Mise en place des accès
 
             # En fonction du type d'accès qui a été demandé
-            switch($access.toLower())
+            switch($access)
             {
                 # ------------ CIFS
-                "cifs"
+                ([NetAppProtocol]::cifs).ToString()
                 {
-                    $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $volName, $mountPath) )
-                    $netapp.addCIFSShare($volName, $svmObj, $mountPath)
+                    $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $volName, $mountPoint))
+                    $netapp.addCIFSShare($volName, $svmObj, $mountPoint)
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
-                    $result.mountPath = ("\\{0}.epfl.ch\{1}" -f $svmObj.name, $volName)
+                    $result.mountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name, [NetAppProtocol]::cifs) 
                     
                     # En fonction du type de volume
                     switch($volType)
                     {
                         # ---- Volume Applicatif
-                        $global:VOL_TYPE_APP
+                        ([XaaSNASVolType]::app).ToString()
                         {
                             # Ajout de l'export policy
                             $exportPol, $null = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
-                                                        -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol $access.ToLower() -result $null
+                                                        -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol ([NetAppProtocol]$access) -result $null
                         }
 
                         # ---- Volume Collaboratif
-                        $global:VOL_TYPE_COLL
+                        ([XaaSNASVolType]::col).ToString()
                         {
                             $logHistory.addLine(("Checking if Export Policy '{0}' exists on SVM '{1}'..." -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name))
                             $exportPol = $netapp.getExportPolicyByName($svmObj, $global:EXPORT_POLICY_DENY_NFS_ON_CIFS)
@@ -553,6 +633,8 @@ try
                             $credentials = New-Object System.Management.Automation.PSCredential($configNAS.getConfigValue("psGateway", "user"), $secPassword)
                             
                             $logHistory.addLine(("Mounting '{0}' on '{1}'..." -f $result.mountPath, $global:XAAS_NAS_TEMPORARY_DRIVE))
+                            # On démonte le dossier monté dans le cas hypothétique où il serait déjà utilisé 
+                            unMountPSDrive -driveLetter $global:XAAS_NAS_TEMPORARY_DRIVE
                             $temporaryDrive = New-PSDrive -Persist -name $global:XAAS_NAS_TEMPORARY_DRIVE -PSProvider "Filesystem" -Root $result.mountPath -Credential $credentials
                             
                             $logHistory.addLine(("Getting ACLs on '{0}'..." -f $global:XAAS_NAS_TEMPORARY_DRIVE))
@@ -584,19 +666,18 @@ try
 
                             $logHistory.addLine(("Unmounting temporary drive '{0}'..." -f $global:XAAS_NAS_TEMPORARY_DRIVE))
                             # On démonte le dossier monté
-                            Get-PSDrive $global:XAAS_NAS_TEMPORARY_DRIVE | Remove-PSDrive -Force
+                            unMountPSDrive -driveLetter $global:XAAS_NAS_TEMPORARY_DRIVE
                         }
                     }# FIN EN FONCTION du type de volume
-                    
                 }
 
 
                 # ------------ NFS
-                "nfs3"
+                ([NetAppProtocol]::nfs3).ToString()
                 {
                     # Ajout de l'export policy
                     $exportPol, $result = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
-                                                -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol $access.ToLower() -result $result
+                                                -IPsRO $IPsRO -IPsRW $IPsRW -IPsRoot $IPsRoot -protocol ([NetAppProtocol]$access) -result $result
                 }
             }# FIN En fonction du type d'accès demandé 
 
@@ -607,11 +688,16 @@ try
             # 3. Politique de snapshot
 
             # Si volume collaboratif ET qu'il faut avoir les snapshots
-            if(( $volType -eq $global:VOL_TYPE_COLL) -and $withSnap)
+            if(( $volType -eq ([XaaSNASVolType]::col).ToString()) -and $snapPolicy -ne "")
             {
+                $snapPolicyObj = $netapp.getSnapshotPolicyByName($snapPolicy)
+                if($null -eq $snapPolicyObj)
+                {
+                    Throw ("Give snapshot policy ({0}) not found" -f $snapPolicy)
+                }
                 # On applique la policy de snapshot
-                $logHistory.addLine(("Applying Snapshot Policy '{0}' on Volume '{1}'" -f $global:SNAPSHOT_POLICY, $volName))
-                $netapp.applySnapshotPolicyOnVolume($snapPolicy, $newVol)
+                $logHistory.addLine(("Applying Snapshot Policy '{0}' on Volume '{1}'" -f $snapPolicy, $volName))
+                $netapp.applySnapshotPolicyOnVolume($snapPolicyObj, $newVol)
             }
 
             $output.results += $result
@@ -632,10 +718,10 @@ try
         {
 
             $logHistory.addLine( ("Getting Volume {0}" -f $volName) )
-            $vol = $netapp.getVolumeByName($volName)
+            $volObj = $netapp.getVolumeByName($volName)
             
             # Si volume pas trouvé
-            if($null -eq $vol)
+            if($null -eq $volObj)
             {
                 $output.error = ("Volume {0} doesn't exists" -f $volName)
                 $logHistory.addLine($output.error)
@@ -643,15 +729,14 @@ try
             else # Volume trouvéc
             {
                 # Recherche des infos sur les snapshots
-                $volSizeInfos = $netapp.getVolumeSnapshotInfos($vol)
+                $volSizeInfos = $netapp.getVolumeSizeInfos($volObj)
 
                 # Redéfinition de la taille du volume en fonction du pourcentage à conserver pour les snapshots
                 $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $volSizeInfos.space.snapshot.reserve_percent
 
                 $logHistory.addLine( ("Resizing Volume {0} to {1} GB" -f $volName, $sizeGB) )
-                $netapp.resizeVolume($vol.uuid, $sizeWithSnapGB)
+                $netapp.resizeVolume($volObj.uuid, $sizeWithSnapGB)
             }
-
         }# FIN Action resize
 
 
@@ -672,44 +757,24 @@ try
             $volNameList | ForEach-Object { 
 
                 $logHistory.addLine( ("Getting size for Volume {0}" -f $_) )
-                $vol = $netapp.getVolumeByName($_)
+                $volObj = $netapp.getVolumeByName($_)
 
                 # Si volume pas trouvé, c'est qu'on a probablement donné un nom unique en paramètre
-                if($null -eq $vol)
+                if($null -eq $volObj)
                 {
                     $output.error = ("Volume {0} doesn't exists" -f $_)
                     $logHistory.addLine($output.error)
                     return
                 }
 
-                $volSizeInfos = $netapp.getVolumeSizeInfos($vol)
-
-                $volSizeB = $vol.space.size
-                # Suppression de l'espace réservé pour les snapshots
-                $userSizeB = $volSizeB * (1 - ($volSizeInfos.space.snapshot.reserve_percent/100))
-                $snapSizeB = $volSizeB * ($volSizeInfos.space.snapshot.reserve_percent/100)
-
-                $output.results += @{
-                    # Infos "globales"
-                    volName = $vol.name
-                    volUUID = $vol.uuid
-                    totSizeB = (truncateToNbDecimal -number ($volSizeB) -nbDecimals 2)
-                    # Taille niveau "utilisateur"
-                    user = @{
-                        sizeB = (truncateToNbDecimal -number $userSizeB -nbDecimals 2)
-                        usedB = (truncateToNbDecimal -number $vol.space.used -nbDecimals 2)
-                        usedFiles = $volSizeInfos.files.used
-                        maxFiles = $volSizeInfos.files.maximum
-                    }
-                    # Taille niveau "snapshot"
-                    snap = @{
-                        reservePercent = $volSizeInfos.space.snapshot.reserve_percent
-                        reserveSizeKB = (truncateToNbDecimal -number $snapSizeB -nbDecimals 2)
-                        usedB = (truncateToNbDecimal -number $volSizeInfos.space.snapshot.used -nbDecimals 2)
-                    }
+                # Recherche et ajout des infos
+                $sizeInfos = getVolumeSizeInfos -netapp $netapp -volObj $volObj
+                $sizeInfos += @{
+                    volName = $volObj.name
+                    volUUID = $volObj.uuid
                 }
+                $output.results += $sizeInfos
             }
-
         }# FIN Action Delete
 
 
@@ -801,27 +866,21 @@ try
         # -- Retour de la liste des IP d'accès
         $ACTION_GET_IP_LIST
         {
-            $logHistory.addLine(("Getting Volume '{0}'..." -f $volName))
-            $vol = $netapp.getVolumeByName($volName)
+            
+            $logHistory.addLine(("Getting Volume '{0}' IP List..." -f $volName))
+            $volObj = $netapp.getVolumeByName($volName)
 
             # Si volume pas trouvé, c'est qu'on a probablement donné un nom unique en paramètre
-            if($null -eq $vol)
+            if($null -eq $volObj)
             {
                 $output.error = ("Volume {0} doesn't exists" -f $volName)
                 $logHistory.addLine($output.error)
             }
             else
             {
-                # Pour la suite, on va avoir besoin de la SVM
-                $svmObj = $netapp.getSVMByID($vol.svm.uuid)
-
-                $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volName)
-                $logHistory.addLine(("Getting Export Policy '{0}' for volume '{1}'..." -f $exportPolicyName, $volName))
-                $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
-
-                $logHistory.addLine(("Getting Rules from Export Policy '{0}'..." -f $exportPolicyName))
-                $output.results += $netapp.getExportPolicyRuleList($exportPolicy)
-
+                $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
+                # Ajout des infos d'accès
+                $output.results += getExportPolicyInfos -volObj $volObj -svmObj $svmObj
             }
         }
 
@@ -831,10 +890,10 @@ try
         {
 
             $logHistory.addLine(("Getting Volume '{0}'..." -f $volName))
-            $vol = $netapp.getVolumeByName($volName)
+            $volObj = $netapp.getVolumeByName($volName)
 
             # Si volume pas trouvé, c'est qu'on a probablement donné un nom unique en paramètre
-            if($null -eq $vol)
+            if($null -eq $volObj)
             {
                 $output.error = ("Volume {0} doesn't exists" -f $volName)
                 $logHistory.addLine($output.error)
@@ -842,24 +901,85 @@ try
             else
             {
                 # Pour la suite, on va avoir besoin de la SVM
-                $svmObj = $netapp.getSVMByID($vol.svm.uuid)
+                $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
 
                 $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volName)
                 $logHistory.addLine(("Getting Export Policy '{0}' for volume '{1}'..." -f $exportPolicyName, $volName))
                 $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
 
                 $logHistory.addLine(("Getting access protocole for volume '{0}'..." -f $volName))
-                $protocol = $netapp.getVolumeAccessProtocol($vol)
+                $protocol = $netapp.getVolumeAccessProtocol($volObj)
 
                 $logHistory.addLine("Updating rules in export policy...")
                 $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","), $protocol)
-
             }
-            
-            
         }
 
-    }
+
+        # -- Plein d'informations sur le volume
+        $ACTION_GET_VOL_INFOS
+        {
+            $volObj = $netapp.getVolumeByName($volName)
+
+            if($null -eq $volObj)
+            {
+                $output.error = ("Volume {0} doesn't exists" -f $volName)
+                $logHistory.addLine($output.error)
+            }
+            else
+            {
+                
+                # Première partie des infos
+                $result = @{
+                    volume = @{
+                        name = $volName
+                        uuid = $volObj.uuid
+                        type = $nameGeneratorNAS.getVolumeType($volName).ToString()
+                    }
+                }
+
+                # Pour la suite, on va avoir besoin de la SVM
+                $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
+
+                # -- Accès
+                $result.access = getExportPolicyInfos -volObj $volObj -svmObj $svmObj
+                $result.access.svm = $svmObj.name
+                $result.access.rootMountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name, $result.access.protocol) 
+
+                # -- Taille
+                $result.size = getVolumeSizeInfos -netapp $netapp -volObj $volObj
+
+                # -- Snapshots
+                $snapshotPolicyObj = $netapp.getVolumeSnapshotPolicy($volObj)
+                if($null -ne $snapshotPolicyObj)
+                {
+                    $result.snapshots = @{
+                        policy = $snapshotPolicyObj.name
+                        reservePercent = $result.size.snap.reservePercent
+                    }
+                }
+                else
+                {
+                    $result.snapshots = $null
+                }
+
+                # -- Share CIFS
+                $shareList = $netapp.getVolCIFSShareList($volObj) | Select-Object -ExpandProperty name
+                # Si la liste est vide, le fait de sélectionner 'name' va renvoyer $null en fait, et pas un tableau vide
+                if($null -eq $shareList)
+                {
+                    $shareList = @()
+                }
+
+                # Sélection du nom du share et transformation en tableau pour éviter de se retrouver avec un objet uniquement s'il n'y a qu'un share
+                $result.access.cifsShares = $shareList 
+
+                $output.results += $result
+
+            } # FIN SI le volume existe
+        }
+
+    }# FIN EN fonction du type d'action demandé
 
     $logHistory.addLine("Script execution done!")
 
@@ -878,13 +998,13 @@ catch
     $errorTrace = $_.ScriptStackTrace
     
     # Si on était en train de créer un volume
-    if($action -eq $ACTION_CREATE)
+    if(($action -eq $ACTION_CREATE) -and $cleaningCanBeDoneIfError)
     {
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating Volume '{0}', deleting it so everything is clean. Error was: {1}" -f $volName, $errorMessage))
 
         # Suppression du dossier monté s'il existe
-        Get-PSDrive $global:XAAS_NAS_TEMPORARY_DRIVE | Remove-PSDrive -Force
+        unMountPSDrive -driveLetter $global:XAAS_NAS_TEMPORARY_DRIVE
         deleteVolume -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -output $null
     }
 
@@ -907,7 +1027,7 @@ catch
     }
 
     # Envoi d'un message d'erreur aux admins 
-    #$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
+    $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
 }
 
 $vra.disconnect()

@@ -241,7 +241,7 @@ class vRAAPI: RESTAPICurl
 		}
 
 		# Création du BG
-		$res = $this.callAPI($uri, "Post", $body)
+		$this.callAPI($uri, "Post", $body) | Out-Null
 		
 		# Recherche et retour du BG
 		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
@@ -353,7 +353,7 @@ class vRAAPI: RESTAPICurl
 		}
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Put", $bg)
+		$this.callAPI($uri, "Put", $bg) | Out-Null
 		
 		# On recherche l'objet mis à jour
 		return $this.getBG($bg.name)
@@ -382,7 +382,7 @@ class vRAAPI: RESTAPICurl
 		
 		$bg.extensionData.entries = $entries
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Put", $bg)
+		$this.callAPI($uri, "Put", $bg) | Out-Null
 
 		# On recherche l'objet mis à jour
 		return $this.getBG($bg.name)
@@ -401,7 +401,7 @@ class vRAAPI: RESTAPICurl
 		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.server, $this.tenant, $bgId
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Delete", $null)
+		$this.callAPI($uri, "Delete", $null) | Out-Null
 	}
 
 
@@ -459,7 +459,7 @@ class vRAAPI: RESTAPICurl
 			$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/" -f $this.server, $this.tenant, $BGID, $role
 
 			# Suppression du contenu du rôle
-			$res = $this.callAPI($uri, "Delete", $null)
+			$this.callAPI($uri, "Delete", $null) | Out-Null
 		}
 
 	}
@@ -513,7 +513,7 @@ class vRAAPI: RESTAPICurl
 		)
 
 		# Ajout du rôle
-		$res = $this.callAPI($uri, "Post", $body)
+		$this.callAPI($uri, "Post", $body) | Out-Null
 		
 	}
 
@@ -645,7 +645,7 @@ class vRAAPI: RESTAPICurl
 
 		$body = $this.createObjectFromJSON("vra-entitlement.json", $replace)
 
-		$res = $this.callAPI($uri, "Post", $body)
+		$this.callAPI($uri, "Post", $body) | Out-Null
 		
 		# Retour de l'entitlement
 		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
@@ -704,7 +704,7 @@ class vRAAPI: RESTAPICurl
 		}
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Put", $ent)
+		$this.callAPI($uri, "Put", $ent) | Out-Null
 		
 		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
 		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
@@ -747,7 +747,7 @@ class vRAAPI: RESTAPICurl
 	{
 		$uri = "https://{0}/catalog-service/api/entitlements/{1}" -f $this.server, $entId
 
-		$res = $this.callAPI($uri, "Delete", $null)
+		$this.callAPI($uri, "Delete", $null) | Out-Null
 	}
 
 	<#
@@ -1011,7 +1011,7 @@ class vRAAPI: RESTAPICurl
 		# On l'active (dans le cas où le Template était désactivé)
 		$resTemplate.enabled = $true
 
-		$res = $this.callAPI($uri, "Post", $resTemplate)
+		$this.callAPI($uri, "Post", $resTemplate) | Out-Null
 		
 		return $this.getRes($name)
 
@@ -1072,7 +1072,7 @@ class vRAAPI: RESTAPICurl
 	{
 		$uri = "https://{0}/reservation-service/api/reservations/{1}" -f $this.server, $resID
 
-		$res = $this.callAPI($uri, "Delete", $null)
+		$this.callAPI($uri, "Delete", $null) | Out-Null
 		
 	}
 
@@ -1339,7 +1339,7 @@ class vRAAPI: RESTAPICurl
 		#>
 		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/guid'{1}'" -f $this.server, $machinePrefix.id
 
-		$dummy = $this.callAPI($uri, "DELETE", $null)
+		$this.callAPI($uri, "DELETE", $null) | Out-Null
 	}
 
 
@@ -1380,7 +1380,7 @@ class vRAAPI: RESTAPICurl
 		{
 			# On filtre pour ne retourner que les éléments qui n'ont pas de parents car on ne veut pas les trucs
 			# genre "yum_update" ou autre.
-			$result = $result |  Where-Object { $_.parentResourceRef -eq $null}
+			$result = $result |  Where-Object { $null -eq $_.parentResourceRef}
 		}
 
 		return $result
@@ -1475,7 +1475,7 @@ class vRAAPI: RESTAPICurl
 	{
 		$uri = "https://{0}/identity/api/tenants/{1}/directories/{2}/sync" -f $this.server, $this.tenant, $name
 
-		$res = $this.callAPI($uri, "Post", $null)
+		$this.callAPI($uri, "Post", $null) | Out-Null
 	}
 
 
@@ -1604,7 +1604,7 @@ class vRAAPI: RESTAPICurl
 		$body = $this.createObjectFromJSON($approvalPolicyJSON, $replace)
 
 		# Création de la Policy
-		$res = $this.callAPI($uri, "Post", $body)
+		$this.callAPI($uri, "Post", $body) | Out-Null
 
 		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
 		# le fichier JSON template
@@ -1654,7 +1654,7 @@ class vRAAPI: RESTAPICurl
 		}
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Put", $approvalPolicy)
+		$this.callAPI($uri, "Put", $approvalPolicy) | Out-Null
 
 		# on retourne spécifiquement l'objet qui est dans vRA et pas seulement celui qu'on a utilisé pour faire la mise à jour. Ceci
 		# pour la simple raison que dans certains cas particuliers, on se retrouve avec des erreurs "409 Conflicts" si on essaie de
@@ -1679,7 +1679,7 @@ class vRAAPI: RESTAPICurl
 		$uri = "https://{0}/approval-service/api/policies/{1}" -f $this.server, $approvalPolicy.id
 
 		# Mise à jour des informations
-		$res = $this.callAPI($uri, "Delete", $null)
+		$this.callAPI($uri, "Delete", $null) | Out-Null
 		
 	}
 
@@ -1812,7 +1812,7 @@ class vRAAPI: RESTAPICurl
 		# Mise à jour de la description, bien qu'elle n'apparaîtra nulle part...
 		$actionTemplate.description = "Automatic Backup Tag Update"
 
-		$dummy = $this.callAPI($uri, "Post", $actionTemplate)
+		$this.callAPI($uri, "Post", $actionTemplate) | Out-Null
 
 	}
 

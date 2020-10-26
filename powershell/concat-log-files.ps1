@@ -44,7 +44,7 @@ Get-ChildItem -Path $rootLogFolder -Recurse:$false -Directory | ForEach-Object {
         # Si le fichier dans lequel on veut regrouper n'existe pas,
         if(!(Test-Path -Path $mergeLogFile))
         {
-            $dummy = New-Item -ItemType File -Path $mergeLogFile
+            New-Item -ItemType File -Path $mergeLogFile | Out-Null
         }
 
         # Parcours des fichiers qui sont dans le dossier (ils sont parcourus par ordre alphabétique )
@@ -52,7 +52,7 @@ Get-ChildItem -Path $rootLogFolder -Recurse:$false -Directory | ForEach-Object {
             Write-Host ("--> Processing log file {0}..." -f $_.Name)
 
             # Ajout du contenu du fichier LOG courant dans le "global"
-            $dummy = Get-Content -Path $_.FullName | Add-Content -Path $mergeLogFile
+            Get-Content -Path $_.FullName | Add-Content -Path $mergeLogFile
             
             Write-Host ("--> Removing log file {0}..." -f $_.Name)
             # Suppression du fichier log courant

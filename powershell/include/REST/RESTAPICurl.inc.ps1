@@ -204,7 +204,7 @@ class RESTAPICurl: RESTAPI
 		$nbCurlAttempts = 2
 		for($currentAttemptNo=1; $currentAttemptNo -le $nbCurlAttempts; $currentAttemptNo++)
 		{
-			$out = $this.curl.Start()
+			$this.curl.Start() | Out-Null
 
 			$output = $this.curl.StandardOutput.ReadToEnd()
 			$errorStr = $this.curl.StandardError.ReadToEnd()

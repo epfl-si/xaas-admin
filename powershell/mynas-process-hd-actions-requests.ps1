@@ -84,7 +84,7 @@ function setActionStatus
    
    #Write-Host "setUserDeleted: $url"
    # Appel de l'URL pour initialiser l'utilisateur comme renommé 
-   $res = getWebPageLines -url $url
+   getWebPageLines -url $url | Out-Null
 }
 
 
