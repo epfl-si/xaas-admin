@@ -87,7 +87,7 @@ function Set-CDDriveAndAnswer
   {
     
       $cd = Get-CDDrive -VM $vm
-      $job = Start-Job -Name Check-CDQuestion -ScriptBlock $cdQuestion -ArgumentList $vm
+      Start-Job -Name Check-CDQuestion -ScriptBlock $cdQuestion -ArgumentList $vm | Out-Null
       Set-CDDrive -CD $cd -NoMedia -Confirm:$false -ErrorAction Stop
     
   }
@@ -171,7 +171,7 @@ try
 
 			# Pour éviter que le script parte en erreur si le certificat vCenter ne correspond pas au nom DNS primaire. On met le résultat dans une variable
 			# bidon sinon c'est affiché à l'écran.
-			$dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
+			Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
 
 			$credSecurePwd = $configVSphere.getConfigValue($targetEnv, "password") | ConvertTo-SecureString -AsPlainText -Force
 			$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $configVSphere.getConfigValue($targetEnv, "user"), $credSecurePwd	

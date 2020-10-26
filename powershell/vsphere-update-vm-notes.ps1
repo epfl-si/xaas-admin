@@ -113,6 +113,8 @@ try
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
+    $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
+    
     # Objet pour pouvoir envoyer des mails de notification
 	$valToReplace = @{
 		targetEnv = $targetEnv
@@ -130,12 +132,11 @@ try
     # Chargement des modules PowerCLI pour pouvoir accéder à vSphere.
     loadPowerCliModules
 
-    # Pour éviter que le script parte en erreur si le certificat vCenter ne correspond pas au nom DNS primaire. On met le résultat dans une variable
-    # bidon sinon c'est affiché à l'écran.
-    $dummy = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
+    # Pour éviter que le script parte en erreur si le certificat vCenter ne correspond pas au nom DNS primaire.
+    Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
 
     # Pour éviter la demande de rejoindre le programme de "Customer Experience"
-    $dummy = Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $false -Confirm:$false
+    Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $false -Confirm:$false | Out-Null
 
     # Connexion au serveur vSphere
 
@@ -160,7 +161,7 @@ try
         {
             $logHistory.addLineAndDisplay("{0} Updating" -f $logLine)
 
-            $dummy = Set-Vm $vm -Notes $newNote -Confirm:$false
+            Set-Vm $vm -Notes $newNote -Confirm:$false | Out-Null
             $counters.inc('VMNotesUpdated')
         }
         else # Pas besoin de mettre à jour. 

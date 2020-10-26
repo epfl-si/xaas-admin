@@ -175,7 +175,7 @@ class vSphereAPI: RESTAPICurl
 
 		$body = $this.createObjectFromJSON("vsphere-tag-operation.json", $replace)
 
-		$res = $this.callAPI($uri, "Post", $body)
+		$this.callAPI($uri, "Post", $body) | Out-Null
 	}
 
 
