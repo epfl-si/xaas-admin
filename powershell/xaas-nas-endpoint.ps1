@@ -736,7 +736,7 @@ try
             else # Volume trouvéc
             {
                 # Recherche des infos sur les snapshots
-                $volSizeInfos = $netapp.getVolumeSnapshotInfos($volObj)
+                $volSizeInfos = $netapp.getVolumeSizeInfos($volObj)
 
                 # Redéfinition de la taille du volume en fonction du pourcentage à conserver pour les snapshots
                 $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $volSizeInfos.space.snapshot.reserve_percent
