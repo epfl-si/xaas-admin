@@ -492,13 +492,6 @@ try
                     $volName = $nameGeneratorNAS.getVolName()
                     $logHistory.addLine(("Final Volume name will be '{0}'" -f $volName))
 
-                    # On regarde si le volume existe
-                    if($null -ne $netapp.getVolumeByName($volName))
-                    {
-                        # Pour s'assurer de ne pas tout effacer en cas d'erreur !
-                        $cleaningCanBeDoneIfError = $false
-                        Throw ("Volume with name '{0}' already exists" -f $volName)
-                    }
                 }
 
                 # ---- Volume Collaboratif
@@ -522,14 +515,6 @@ try
                         Throw ("Maximum number of volumes for unit ({0}) reached" -f $global:MAX_VOL_PER_UNIT)
                     }
 
-                    # On regarde si le volume existe (normalement pas mais on fait un check quand même au cas où, mieux vaut ceintures et bretelles !)
-                    if($null -ne $netapp.getVolumeByName($volName))
-                    {
-                        # Pour s'assurer de ne pas tout effacer en cas d'erreur !
-                        $cleaningCanBeDoneIfError = $false
-                        Throw ("Volume with name '{0}' already exists" -f $volName)
-                    }
-
                     # Recherche de la SVM
                     $svmObj = $netapp.getSVMByName($svm)
 
@@ -545,6 +530,14 @@ try
                     Throw ("Incorrect parameter given for 'volType' ({0})" -f $volType)
                 }
             } # FIN en fonction du type de volume
+
+            # On regarde si le volume existe (normalement pas mais on fait un check quand même au cas où, mieux vaut ceintures et bretelles !)
+            if($null -ne $netapp.getVolumeByName($volName))
+            {
+                # Pour s'assurer de ne pas tout effacer en cas d'erreur !
+                $cleaningCanBeDoneIfError = $false
+                Throw ("Volume with name '{0}' already exists" -f $volName)
+            }
 
             # En fonction du type d'accès qui a été demandé
             switch($access.toLower())
