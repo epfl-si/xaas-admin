@@ -399,6 +399,8 @@ try
         # --- Nouveau
         $ACTION_CREATE
         {
+            # Pour dire si on peut effectuer du cleaning dans le cas d'une erreur
+            $cleaningCanBeDoneIfError = $true
             # Initialisation pour récupérer les noms des éléments
             $nameGeneratorK8s.initDetailsFromBGName($bgName)
 
@@ -412,6 +414,15 @@ try
             # Recherche du nom du nouveau cluster
             $clusterName = getNextClusterName -pks $pks -nameGeneratorK8s $nameGeneratorK8s
             $logHistory.addLine(("Cluster name will be '{0}'" -f $clusterName))
+
+            # Histoire d'avoir ceinture et bretelles, on check quand même que le cluster n'existe pas. 
+            # On ne devrait JAMAIS arriver dans ce cas de figure mais on le code tout de même afin d'éviter de
+            # passer dans le code de "nettoyage" en bas du script
+            if($null -ne $pks.getCluster($clusterName))
+            {
+                $cleaningCanBeDoneIfError = $false
+                Throw ("Error while generating cluster name. Choosen one ({0}) already exists!" -f $clusterName)
+            }
 
             # Génération des noms pour le DNS
             $logHistory.addLine("Generating DNS hostnames...")
@@ -597,8 +608,8 @@ try
 catch
 {
     
-    # Si on était en train de créer un cluster
-    if($action -eq $ACTION_CREATE)
+    # Si on était en train de créer un cluster et qu'on peut effectivement faire du ménage
+    if(($action -eq $ACTION_CREATE) -and $cleaningCanBeDoneIfError)
     {
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating cluster '{0}', deleting it so everything is clean" -f $clusterName))
