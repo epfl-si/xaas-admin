@@ -1,7 +1,7 @@
 <#
 USAGES:
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> [-withSnap]
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action appVolExists -volName <volName>
