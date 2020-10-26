@@ -403,7 +403,7 @@ function getVolumeSizeInfos([NetAppAPI]$netapp, [PSObject]$volObj)
         # Taille niveau "snapshot"
         snap = @{
             reservePercent = $volSizeInfos.space.snapshot.reserve_percent
-            reserveSizeKB = (truncateToNbDecimal -number $snapSizeB -nbDecimals 2)
+            reserveSizeB = (truncateToNbDecimal -number $snapSizeB -nbDecimals 2)
             usedB = (truncateToNbDecimal -number $volSizeInfos.space.snapshot.used -nbDecimals 2)
         }
     }
