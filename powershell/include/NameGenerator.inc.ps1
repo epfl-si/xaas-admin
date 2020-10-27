@@ -1751,4 +1751,17 @@ class NameGenerator: NameGeneratorBase
         Throw ("Error extracting BG name from given path '{0}'" -f $path)
     }
 
+
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du groupe de https://groups.epfl.ch permettant d'avoir un 
+                accès ADMIN Full pour Tableau.
+
+        RET : Le nom du groupe
+    #>
+    [string] getTableauAdminEPFLADGroup()
+    {
+        return ("vra_{0}_tableau_epfl_AppGrpU" -f $this.getEnvShortName())
+    }
+
 }

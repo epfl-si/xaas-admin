@@ -712,6 +712,8 @@ try
 						# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
 						$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
 
+						# Suppression des valeurs vides (oui, il peut y en avoir on dirait... )
+						$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" }
 						$financeCenter = $null
 
 						# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
@@ -928,6 +930,12 @@ try
 			# Recherche de la liste des membres
 			$adminMembers = Get-ADGroupMember $adminGroup -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
 
+			# Ajout des membres du groupe https://groups.epfl.ch contenant les admins de Tableau
+			$adminMembers += Get-ADGroupMember $nameGenerator.getTableauAdminEPFLADGroup() -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
+
+			# Suppression des doublons
+			$adminMembers = $adminMembers | Sort-Object | Get-Unique
+			
 			if($adminMembers.Count -gt 0)
 			{
 				$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
