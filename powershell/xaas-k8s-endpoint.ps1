@@ -3,7 +3,7 @@ USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgName <bgName> -plan <plan> -netProfile <netProfile>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgName <bgName> -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action setNbWorkers -clusterName <clusterName> -nbWorkers <nbWorkers>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getWorkersInfos -clusterName <clusterName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNbWorkers -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newNamespace -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNamespaceList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNamespace -clusterName <clusterName> -namespace <namespace>
@@ -95,7 +95,7 @@ $configNSX = [ConfigReader]::New("config-nsx.json")
 # Liste des actions possibles
 $ACTION_CREATE                  = "create"
 $ACTION_DELETE                  = "delete"
-$ACTION_GET_WORKERS_INFOS       = "getWorkersInfos"
+$ACTION_GET_NB_WORKERS          = "getNbWorkers"
 $ACTION_SET_NB_WORKERS          = "setNbWorkers"
 $ACTION_NEW_NAMESPACE           = "newNamespace"
 $ACTION_GET_NAMESPACE_LIST      = "getNamespaceList"
@@ -525,15 +525,38 @@ try
         --------------- WORKERS -------------
         #>
 
-        # -- Infos sur les workeres
-        $ACTION_GET_WORKERS_INFOS
+        # -- Renvoyer le nombre de workers
+        $ACTION_GET_NB_WORKERS
         {
+            $logHistory.addLine(("Getting Cluster '{0}'..." -f $clusterName))
+            $cluster = $pks.getCluster($clusterName)
 
+            if($null -eq $cluster)
+            {
+                Throw ("Cluster '{0}' doesn't exists" -f $clusterName)
+            }
+
+            $output.results += @{
+                clusterName = $clusterName
+                nbWorkers = $cluster.parameters.kubernetes_worker_instances
+            }
         }
 
         # -- Initialiser le nombre de Workers
         $ACTION_SET_NB_WORKERS
         {
+            $logHistory.addLine(("Getting Cluster '{0}'..." -f $clusterName))
+            $cluster = $pks.getCluster($clusterName)
+
+            if($null -eq $cluster)
+            {
+                Throw ("Cluster '{0}' doesn't exists" -f $clusterName)
+            }
+
+            $logHistory.addLine(("Cluster '{0}' currently have {1} worker(s). New value will be: {2} workers. Updating..." -f $clusterName, $cluster.parameters.kubernetes_worker_instances, $nbWorkers))
+
+            # Mise à jour du cluster
+            $pks.updateCluster($clusterName, $nbWorkers)
 
         }
 

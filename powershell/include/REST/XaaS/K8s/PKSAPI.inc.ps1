@@ -260,18 +260,23 @@ class PKSAPI: RESTAPICurl
 		BUT : Met un cluster à jour
 
 		IN  : $clusterName		-> Le nom du cluster
+		IN  : $nbWorkers		-> Nombre de workers à mettre
 	#>
-	[void] updateCluster([string]$clusterName)
+	[void] updateCluster([string]$clusterName, [int]$nbWorkers)
 	{
 		$uri = "https://{0}:9021/v1/clusters/{1}" -f $this.server, [System.Net.WebUtility]::UrlEncode($clusterName)
 
-		Throw "To implement"
 		# Valeur à mettre pour la configuration du BG
-		$replace = @{}
+		$replace = @{
+			nbWorkers = @($nbWorkers, $true)
+		}
 
 		$body = $this.createObjectFromJSON("xaas-k8s-patch-pks-cluster.json", $replace)
 			
-		$this.callAPI($uri, "POST", $body) | Out-Null
+		$this.callAPI($uri, "PATCH", $body) | Out-Null
+		
+		# Attente de la fin de la configuration
+		$this.waitForClusterAction($clusterName)
 	}
 
 
