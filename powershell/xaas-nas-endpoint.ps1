@@ -293,7 +293,7 @@ function unMountPSDrive([string]$driveLetter)
     {
         # On fait "sale" pour démonter le lecteur. On devrait normalement utiliser "Remove-PSDrive"
         # mais ça ne fonctionne pas à tous les coups donc... 
-        net.exe use ("{0}:" -f $drive.Name) /del
+        net.exe use ("{0}:" -f $drive.Name) /del | Out-Null
     }
     
 }
