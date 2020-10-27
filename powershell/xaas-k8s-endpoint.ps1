@@ -521,8 +521,8 @@ try
 
 
         <#
-        -------------------------------------
-        --------------- WORKERS -------------
+        --------------------------------------
+        --------------- WORKERS --------------
         #>
 
         # -- Renvoyer le nombre de workers
@@ -541,6 +541,7 @@ try
                 nbWorkers = $cluster.parameters.kubernetes_worker_instances
             }
         }
+
 
         # -- Initialiser le nombre de Workers
         $ACTION_SET_NB_WORKERS
