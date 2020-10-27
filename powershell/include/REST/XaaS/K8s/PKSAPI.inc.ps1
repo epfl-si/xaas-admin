@@ -293,6 +293,20 @@ class PKSAPI: RESTAPICurl
 
 
 	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie les infos d'un plan donné
+
+		IN  : $planName		-> nom du plan
+
+		RET : Objet représentant le plan
+	#>
+	[PSObject] getPlan([string]$planName)
+	{
+		return $this.getPlanList() | Where-Object { $_.name -eq $planName }
+	}
+
+
+	<#
         =====================================================================================
 										NETWORK PROFILES
         =====================================================================================

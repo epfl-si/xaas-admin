@@ -2,8 +2,8 @@
 USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgName <bgName> -plan <plan> -netProfile <netProfile>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgName <bgName> -clusterName <clusterName>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action changePlan -clusterName <clusterName> -plan <plan>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getPlan -clusterName <clusterName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action setNbWorkers -clusterName <clusterName> -nbWorkers <nbWorkers>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getWorkersInfos -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newNamespace -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNamespaceList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNamespace -clusterName <clusterName> -namespace <namespace>
@@ -48,6 +48,7 @@ param([string]$targetEnv,
       [string]$action,
       [string]$bgName,
       [string]$plan,
+      [int]$nbWorkers,
       [string]$netProfile,
       [string]$clusterName,
       [string]$namespace,
@@ -94,8 +95,8 @@ $configNSX = [ConfigReader]::New("config-nsx.json")
 # Liste des actions possibles
 $ACTION_CREATE                  = "create"
 $ACTION_DELETE                  = "delete"
-$ACTION_CHANGE_PLAN             = "changePlan"
-$ACTION_GET_PLAN                = "getPlan"
+$ACTION_GET_WORKERS_INFOS       = "getWorkersInfos"
+$ACTION_SET_NB_WORKERS          = "setNbWorkers"
 $ACTION_NEW_NAMESPACE           = "newNamespace"
 $ACTION_GET_NAMESPACE_LIST      = "getNamespaceList"
 $ACTION_DELETE_NAMESPACE        = "delNamespace"
@@ -434,6 +435,11 @@ try
             $logHistory.addLine(("Creating cluster '{0}' with '{1}' plan and '{2}' network profile (this will take time, you can go to grab a coffee)..." -f $clusterName, $plan, $netProfile))
             $cluster = $pks.addCluster($clusterName, $plan, $netProfile, $dnsHostNameFull)
 
+            if($null -eq $cluster)
+            {
+                Throw ("Unknown error while creating cluster '{0}'" -f $clusterName)
+            }
+
             # -----------
             # ---- Réseau
             $ipMain = $cluster.kubernetes_master_ips[0]
@@ -483,16 +489,16 @@ try
                 $logHistory.addLine(("Project '{0}' already exists in Harbor" -f $harborProjectName))
             }
 
-            # Si le groupe n'est pas encore dans le projet
-            if(! ($harbor.isMemberInProject($harborProject, $groupName)))
-            {
-                $logHistory.addLine(("Add group '{0}' in Harbor Project" -f $groupName))
-                $harbor.addProjectMember($harborProject, $groupName, [HarborProjectRole]::Master)
-            }
-            else # Le groupe est déjà dans le projet
-            {
-                $logHistory.addLine(("Group '{0}' is already in Harbor project" -f $groupName))
-            }
+            # # Si le groupe n'est pas encore dans le projet
+            # if(! ($harbor.isMemberInProject($harborProject, $groupName)))
+            # {
+            #     $logHistory.addLine(("Add group '{0}' in Harbor Project" -f $groupName))
+            #     $harbor.addProjectMember($harborProject, $groupName, [HarborProjectRole]::Master)
+            # }
+            # else # Le groupe est déjà dans le projet
+            # {
+            #     $logHistory.addLine(("Group '{0}' is already in Harbor project" -f $groupName))
+            # }
 
             # Résultat
             $output.results += @{
@@ -515,18 +521,18 @@ try
 
 
         <#
-        ----------------------------------
-        --------------- PLAN -------------
+        -------------------------------------
+        --------------- WORKERS -------------
         #>
 
-        # -- Changer le plan
-        $ACTION_CHANGE_PLAN
+        # -- Infos sur les workeres
+        $ACTION_GET_WORKERS_INFOS
         {
 
         }
 
-        # -- Renvoyer le plan
-        $ACTION_GET_PLAN
+        # -- Initialiser le nombre de Workers
+        $ACTION_SET_NB_WORKERS
         {
 
         }
