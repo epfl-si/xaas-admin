@@ -53,10 +53,16 @@ class EPFLDNS
             Add-DnsServerResourceRecordA -Computername $dnsServer -Name $dnsName -ZoneName $dnsZone -CreatePtr -IPv4Address $dnsIP
 
         }
-
+        $errorVar = $null
         # On exécute la commande en local mais avec des credentials spécifiques
         Invoke-Command -ComputerName $this.psEndpointServer -ScriptBlock $scriptBlockContent -Authentication CredSSP -credential $this.credentials `
-                        -ArgumentList $this.dnsServer, $name, $ip, $zone 
+                        -ArgumentList $this.dnsServer, $name, $ip, $zone  -ErrorVariable errorVar -ErrorAction:SilentlyContinue
+
+        # Gestion des erreurs
+        if($errorVar.count -gt 0)
+        {
+            Throw ("Error adding DNS information: {0}" -f ($errorVar -join "`n"))
+        }
     }
 
 
