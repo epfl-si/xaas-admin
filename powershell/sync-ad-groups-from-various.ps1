@@ -707,7 +707,7 @@ try
 					$financeCenter = $null
 					ForEach($billToMail in $billToMailList)
 					{
-						# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturatino
+						# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturation
 						if($unit.path -match ("{0}$" -f $billToMail.ldapOU))
 						{
 							$logHistory.addLineAndDisplay(("--> Using email ({0}) for finance center..." -f $billToMail.billingMail))
