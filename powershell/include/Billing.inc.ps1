@@ -91,6 +91,8 @@ class Billing
         IN  : $type             -> Type de l'entité (du type énuméré défini plus haut).
         IN  : $element          -> Id d'unité, no de service ou no de fond de projet...
         IN  : $financeCenter    -> No du centre financier auquel imputer la facture
+                                    OU
+                                    adresse mail à laquelle envoyer la facture
 
         RET : ID de l'entité
     #>
@@ -124,6 +126,8 @@ class Billing
         IN  : $type             -> Type de l'entité (du type énuméré défini plus haut).
         IN  : $element          -> Id d'unité, no de service ou no de fond de projet...
         IN  : $financeCenter    -> No du centre financier auquel imputer la facture
+                                    OU
+                                    adresse mail à laquelle envoyer la facture
     #>
     hidden [void] updateEntity([int]$id, [EntityType]$type, [string]$element, [string]$financeCenter)
     {
@@ -249,7 +253,7 @@ class Billing
         IN  : $entityType    -> Type de l'entité
         IN  : $entityElement -> élément. Soit no d'unité ou no de service IT, etc...
 
-        RET : Centre financier
+        RET : Centre financier. Numéro ou adresse mail
     #>
     hidden [string] getEntityElementFinanceCenter([EntityType]$entityType, [string]$entityElement)
     {
