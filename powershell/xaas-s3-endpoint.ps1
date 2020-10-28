@@ -10,7 +10,7 @@ USAGES:
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action bucketExists -bucketName <bucketName>
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action bucketIsEmpty -bucketName <bucketName>
     xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action getBuckets 
-    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action getBucketsUsage 
+    xaas-s3-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research|backupadmins -action getBucketsUsage 
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -126,7 +126,7 @@ try
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
     # Ajout d'informations dans le log
-    $logHistory.addLine("Script executed with following parameters: `n{0}" -f ($PsBoundParameters | ConvertTo-Json))
+    $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
     
     # On met en minuscules afin de pouvoir rechercher correctement dans le fichier de configuration (vu que c'est sensible à la casse)
     $targetEnv = $targetEnv.ToLower()
@@ -175,7 +175,7 @@ try
                 $logHistory.addLine("Creating bucket {0}..." -f $bucketInfos.bucketName)
 
                 # Création du bucket
-                $s3Bucket = $scality.addBucket($bucketInfos.bucketName)
+                $scality.addBucket($bucketInfos.bucketName) | Out-Null
 
                 $bucketInfos.access = @{}
 

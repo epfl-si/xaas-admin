@@ -266,7 +266,7 @@ class GroupsAPI: RESTAPICurl
                                                                     $url, `
                                                                     (($defaultOptions.getEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join "&")
 
-        $dummy = $this.callAPI($uri, "POST", $null)
+        $this.callAPI($uri, "POST", $null) | Out-Null
 
         return $this.getGroupByName($name)
     }
@@ -306,7 +306,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}&newowner={2}" -f $this.getBaseURI('changeOwner'), $groupId, $ownerSciper
 
-        $group = $this.callAPI($uri, "POST", $null)
+        $this.callAPI($uri, "POST", $null) | Out-Null
     }
 
 
@@ -325,7 +325,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}&admin={2}" -f $this.getBaseURI('addAdmin'), $groupId, $adminSciper
 
-        $group = $this.callAPI($uri, "POST", $null)
+        $this.callAPI($uri, "POST", $null) | Out-Null
     }
 
 
@@ -356,7 +356,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}&admin={2}" -f $this.getBaseURI('removeAdmin'), $groupId, $adminSciper
 
-        $group = $this.callAPI($uri, "POST", $null)
+        $this.callAPI($uri, "POST", $null) | Out-Null
     }
 
 
@@ -410,7 +410,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}&member={2}" -f $this.getBaseURI('addMember'), $groupId, $memberSciper
 
-        $group = $this.callAPI($uri, "POST", $null)
+        $this.callAPI($uri, "POST", $null) | Out-Null
     }
     
     <#
@@ -439,7 +439,7 @@ class GroupsAPI: RESTAPICurl
     {
         $uri = "{0}&id={1}&member={2}" -f $this.getBaseURI('removeMember'), $groupId, $memberSciper
 
-        $group = $this.callAPI($uri, "POST", $null)
+        $this.callAPI($uri, "POST", $null) | Out-Null
     }
 
 

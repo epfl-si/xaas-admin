@@ -122,7 +122,7 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 			# Suppression de l'entitlement (on le désactive au préalable)
 			$logHistory.addLineAndDisplay(("--> Deleting Entitlement '{0}'..." -f $bgEnt.name))
 			# Désactivation
-			$dummy = $vra.updateEnt($bgEnt, $false)
+			$vra.updateEnt($bgEnt, $false) | Out-Null
 			$vra.deleteEnt($bgEnt.id)
 		}
 

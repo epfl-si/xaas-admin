@@ -21,6 +21,12 @@ enum NetAppObjectType
     ExportPolicy
 }
 
+# Protocoles possibles
+enum NetAppProtocol
+{
+    cifs
+    nfs3
+}
 
 class NetAppAPI: RESTAPICurl
 {
@@ -201,10 +207,6 @@ class NetAppAPI: RESTAPICurl
         }
         else
         {
-            if($allRes.Count -eq 0)
-            {
-                return $null
-            }
             return $allRes
         }
         
@@ -529,10 +531,9 @@ class NetAppAPI: RESTAPICurl
         
         IN  : $vol   -> Objet représentant le volume
 
-        RET : "nfs3"|"cifs" Pour que ça puisse être réutilisé directement dans la fonction updateExportPolicyRules
-                $null si pas trouvé
+        RET : Protocole d'accès
 	#>
-    [string] getVolumeAccessProtocol([PSObject]$vol)
+    [NetAppProtocol] getVolumeAccessProtocol([PSObject]$vol)
     {
         $uri = "/api/storage/volumes/{0}?fields=nas.security_style" -f $vol.uuid
 
@@ -545,9 +546,9 @@ class NetAppAPI: RESTAPICurl
 
         if($vol.nas.security_style -eq "unix")
         {
-            return "nfs3"
+            return [NetAppProtocol]::nfs3
         }
-        return "cifs"
+        return [NetAppProtocol]::cifs
     }
 
 
@@ -565,13 +566,13 @@ class NetAppAPI: RESTAPICurl
         # Recherche du volume dans la liste
         $result = $this.getVolumeListQuery(("name={0}" -f $name))
 
-        if($null -eq $result)
+        if($result.count -eq 0)
         {
             return $null
         }
 
         # Recheche des détails du volume
-        return $this.getVolumeById($result.uuid)
+        return $this.getVolumeById($result[0].uuid)
     }
 
 
@@ -680,14 +681,14 @@ class NetAppAPI: RESTAPICurl
         BUT : Supprime un volume et attend que la tâche qui tourne en fond pour la création se
                 termine.
         
-        IN  : $id   -> ID du volume que l'on désire supprimer
+        IN  : $vol   -> objet représentant le volume à effacer
 	#>
-    [void] deleteVolume([string]$id)
+    [void] deleteVolume([PSObject]$vol)
     {
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $id)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $vol.uuid)
 
-        $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $id
+        $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $vol.uuid
 
         $result = $this.callAPI($uri, "DELETE", $null)
 
@@ -779,6 +780,7 @@ class NetAppAPI: RESTAPICurl
 		}
         
         return $this.callAPI($uri, "GET", $null, "records")
+        
     }
 
     
@@ -786,13 +788,13 @@ class NetAppAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
         BUT : Retourne la liste des shares sur une SVM
 
-        IN  : $svmName  -> Nom de la SVM
+        IN  : $svm  -> Objet représentant la SVM
 
         RET : Liste des shares
 	#>
-    [Array] getSVMCIFSShareList([string]$svmName)
+    [Array] getSVMCIFSShareList([PSObject]$svm)
     {
-        return $this.getCIFSShareListQuery(("svm.name={0}" -f $svmName))
+        return $this.getCIFSShareListQuery(("svm.name={0}" -f $svm.name))
     }
 
 
@@ -800,13 +802,13 @@ class NetAppAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
         BUT : Retourne la liste des shares pour un volume
 
-        IN  : $volName  -> nom du volume
+        IN  : $vol  -> Objet représentant le volume
 
         RET : Liste des shares
 	#>
-    [Array] getVolCIFSShareList([string]$volName)
+    [Array] getVolCIFSShareList([PSObject]$vol)
     {
-        return $this.getCIFSShareListQuery(("volume.name={0}" -f $volName))
+        return $this.getCIFSShareListQuery(("volume.name={0}" -f $vol.name))
     }
 
 
@@ -907,13 +909,13 @@ class NetAppAPI: RESTAPICurl
     {
         $result = $this.getExportPolicyListQuery( ("name={0}" -f $name) )
 
-        if($null -eq $result)
+        if($result.count -eq 0)
         {
             return $null
         }
 
         # Recheche des détails de l'export policy
-        return $this.getExportPolicyById($result.id)
+        return $this.getExportPolicyById($result[0].id)
     }
 
     <#
@@ -930,13 +932,13 @@ class NetAppAPI: RESTAPICurl
     {
         $result = $this.getExportPolicyListQuery( ("svm.name={0}&name={1}" -f $svm.name, $name) )
 
-        if($null -eq $result)
+        if($result.count -eq 0)
         {
             return $null
         }
 
         # Recheche des détails de l'export policy
-        return $this.getExportPolicyById($result.id)
+        return $this.getExportPolicyById($result[0].id)
     }
 
 
@@ -963,7 +965,7 @@ class NetAppAPI: RESTAPICurl
 
         $body = $this.createObjectFromJSON("xaas-nas-new-export-policy.json", $replace)
 
-        $result = $this.callAPI($uri, "POST", $body)
+        $this.callAPI($uri, "POST", $body) | Out-Null
 
         # Retour de l'élément créé
         return $this.getExportPolicyByName($name)
@@ -1145,7 +1147,7 @@ class NetAppAPI: RESTAPICurl
 
         $body = $this.createObjectFromJSON("xaas-nas-new-export-policy-rule.json", $replaceInBody)
 
-        $result = $this.callAPI($uri, "POST", $body)
+        $this.callAPI($uri, "POST", $body) | Out-Null
     }
 
 
@@ -1157,12 +1159,12 @@ class NetAppAPI: RESTAPICurl
         IN  : $ROIPList         -> tableau avec la liste des IP Read-Only
         IN  : $RWIPList         -> Tableau avec la liste des IP Read-Write
         IN  : $RootIPList       -> Tableau avec la liste des IP Root
-        IN  : $protocol         -> "cifs"|"nfs3"
+        IN  : $protocol         -> Protocol d'accès
 
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_rule_create
 	#>
-    [void] updateExportPolicyRules([PSObject]$exportPolicy, [Array]$ROIPList, [Array]$RWIPList, [Array]$RootIPList, [string]$protocol)
+    [void] updateExportPolicyRules([PSObject]$exportPolicy, [Array]$ROIPList, [Array]$RWIPList, [Array]$RootIPList, [NetAppProtocol]$protocol)
     {
         # On commence par supprimer les règles existantes
         $this.deleteExportPolicyRuleList($exportPolicy)
@@ -1346,13 +1348,13 @@ class NetAppAPI: RESTAPICurl
     {
         $result = $this.getSnapshotPolicyListQuery( ("name={0}" -f $name) )
 
-        if($null -eq $result)
+        if($result.count -eq 0)
         {
             return $null
         }
 
         # Recheche des détails de l'export policy
-        return $this.getSnapshotPolicyById($result.uuid)
+        return $this.getSnapshotPolicyById($result[0].uuid)
     }
 
 
@@ -1380,6 +1382,24 @@ class NetAppAPI: RESTAPICurl
         $body = $this.createObjectFromJSON("xaas-nas-patch-volume-snapshot-policy.json", $replace)
 
         $this.callAPI($uri, "PATCH", $body)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne la policy de snapshot d'un volume
+        
+        IN  : $vol   -> Objet représentant le volume
+
+        NOTE : L'appel à cette fonction ne retourne que les champs spécifiquement passés en paramètre.
+                Ce n'est donc pas comme si on pouvait juste "ajouter" des champs à ceux renvoyés par
+                défaut par l'appel retournant les détails d'un volume.
+	#>
+    [PSObject] getVolumeSnapshotPolicy([PSObject]$vol)
+    {
+        $uri = "/api/storage/volumes/{0}?fields=snapshot_policy.uuid" -f $vol.uuid
+
+        return $this.callAPI($uri, "GET", $null, "", $true)
     }
 
 

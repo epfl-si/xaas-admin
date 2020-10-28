@@ -614,6 +614,12 @@
             "shortName":  "save",
             "snowId":  "SVC1307",
             "serviceManagerSciper": "124695"
+        },
+        {
+            "longName":  "SAM – Software Asset Management",
+            "shortName":  "prjsam",
+            "snowId":  "PRJ0011982",
+            "serviceManagerSciper": "318457"
         }
     ]
 }

@@ -330,7 +330,7 @@ class Billing
         {
             $request = "UPDATE BillingItem SET itemBillReference='{0}' WHERE parentEntityId='{1}' AND itemType='{2}' AND itemBillReference IS NULL " -f $billReference, $entityId, $itemType
 
-            $nbUpdated = $this.db.execute($request)
+            $this.db.execute($request) | Out-Null
         }   
     }
 

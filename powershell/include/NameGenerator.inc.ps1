@@ -648,8 +648,8 @@ class NameGenerator: NameGeneratorBase
             Throw ("Only supported for {0} tenant" -f $global:VRA_TENANT__RESEARCH)
         }
 
-        # Lorsque l'on utilise -match ou -notmatch, PowerShell initialise automatiquement une variable $matches avec les résultats du match
-        $dummy = $ADUserGroupName.ToLower() -match "([a-z_]+)_([0-9]+)"
+        # INFORMATION: Lorsque l'on utilise -match ou -notmatch, PowerShell initialise automatiquement une variable $matches avec les résultats du match
+        $ADUserGroupName.ToLower() -match "([a-z_]+)_([0-9]+)" | Out-Null
         return ("{0}_approval_{1}" -f $matches[1], $matches[2])
     }
 
@@ -1749,6 +1749,19 @@ class NameGenerator: NameGeneratorBase
 
         # Si on arrive ici, c'est qu'on n'a pas trouvé donc erreur 
         Throw ("Error extracting BG name from given path '{0}'" -f $path)
+    }
+
+
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom du groupe de https://groups.epfl.ch permettant d'avoir un 
+                accès ADMIN Full pour Tableau.
+
+        RET : Le nom du groupe
+    #>
+    [string] getTableauAdminEPFLADGroup()
+    {
+        return ("vra_{0}_tableau_epfl_AppGrpU" -f $this.getEnvShortName())
     }
 
 }
