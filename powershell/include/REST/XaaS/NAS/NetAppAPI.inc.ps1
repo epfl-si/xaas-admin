@@ -1399,7 +1399,13 @@ class NetAppAPI: RESTAPICurl
     {
         $uri = "/api/storage/volumes/{0}?fields=snapshot_policy.uuid" -f $vol.uuid
 
-        return $this.callAPI($uri, "GET", $null, "", $true)
+        $result = $this.callAPI($uri, "GET", $null, "", $true)
+
+        if($null -ne $result)
+        {
+            return $this.getSnapshotPolicyById($result.snapshot_policy.uuid)
+        }
+        return $null
     }
 
 
