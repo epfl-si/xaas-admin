@@ -755,11 +755,15 @@ try
                 $snapPolicyObj = $netapp.getSnapshotPolicyByName($snapPolicy)
                 if($null -eq $snapPolicyObj)
                 {
-                    Throw ("Give snapshot policy ({0}) not found" -f $snapPolicy)
+                    Throw ("Given snapshot policy ({0}) not found" -f $snapPolicy)
                 }
                 # On applique la policy de snapshot
                 $logHistory.addLine(("Applying Snapshot Policy '{0}' on Volume '{1}'" -f $snapPolicy, $volName))
                 $netapp.applySnapshotPolicyOnVolume($snapPolicyObj, $newVol)
+            }
+            else
+            {
+                $logHistory.addLine("No snapshot policy to apply")
             }
 
             $output.results += $result
