@@ -189,6 +189,12 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     # ---- Réseau
     # Recherche du pool dans lequel on va demander les adresses IP
     $pool = $nsx.getIPPoolByName($ipPoolName)
+
+    if($null -eq $pool)
+    {
+        Throw ("NSX IP Pool '{0}' not found" -f $ipPoolName)
+    }
+
     $hostnameList = @(
         # On efface d'abord l'entrée 'ingress' car elle a été créé en dernier
         $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryIngress)    
