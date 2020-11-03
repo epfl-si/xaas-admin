@@ -84,7 +84,15 @@ class APIUtils
 	#>
 	hidden [void] incFuncCall([bool]$cacheHit)
 	{
-		$funcName = (Get-PSCallStack)[2].FunctionName
+		$funcName = ""
+		ForEach($call in (Get-PSCallStack))
+		{
+			if(@("callAPI", "incFuncCall") -notcontains $call.FunctionName)
+			{
+				$funcName = $call.FunctionName
+				break
+			}
+		}
 
 		$cacheHitStr = ""
 		# Si on a pu récupérer l'information dans le cache
@@ -106,14 +114,24 @@ class APIUtils
 
 	
 	<#
-	-------------------------------------------------------------------------------------
-		BUT : Incrémente le nombre d'appels à la fonction qui se trouve 2 étages au-dessus.
-			Cette fonction-ci sera appelée par la fonction "callAPI()" qui sera implémentée
-			dans les classes enfantes.
+		-------------------------------------------------------------------------------------
+		BUT : Affiche les stats d'appels aux fonctions
 	#>
 	[void] displayFuncCalls()
 	{
 		$this.funcCalls.display("# Calls per function")
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la chaine de caractères pour afficher les stats d'appels aux fonctions
+
+		IN  : $title	-> Titre à mettre en haut
+	#>
+	[string] getFuncCallsDisplay([string]$title)
+	{
+		return $this.funcCalls.getDisplay($title)
 	}
 
 
