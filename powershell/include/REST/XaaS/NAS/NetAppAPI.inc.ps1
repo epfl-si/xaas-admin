@@ -651,20 +651,22 @@ class NetAppAPI: RESTAPICurl
         BUT : Modifie la taille d'un volume et attend que la tâche qui tourne en fond pour la création se
                 termine.
         
-        IN  : $id           -> ID du volume
-        IN  : $sizeGB       -> Taille du volume en GB
+        IN  : $vol   -> objet représentant le volume
+        IN  : $sizeGB           -> Taille du volume en GB
+        IN  : $snapSpacePercent -> Pourcentage de la taille à réserver pour les snapshots
 	#>
-    [void] resizeVolume([string]$id, [float]$sizeGB)
+    [void] resizeVolume([PSObject]$vol, [float]$sizeGB, [int]$snapSpacePercent)
     {
         # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $id)
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $vol.uuid)
 
-        $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $id
+        $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $vol.uuid
 
         $sizeInBytes = $sizeGB * 1024 * 1024 * 1024
 
         $replace = @{
-            sizeInBytes = $sizeInBytes
+            sizeInBytes = @($sizeInBytes, $true)
+            reservePercent = @($snapSpacePercent, $true)
         }
 
         $body = $this.createObjectFromJSON("xaas-nas-resize-volume.json", $replace)
@@ -1399,7 +1401,13 @@ class NetAppAPI: RESTAPICurl
     {
         $uri = "/api/storage/volumes/{0}?fields=snapshot_policy.uuid" -f $vol.uuid
 
-        return $this.callAPI($uri, "GET", $null, "", $true)
+        $result = $this.callAPI($uri, "GET", $null, "", $true)
+
+        if($null -ne $result)
+        {
+            return $this.getSnapshotPolicyById($result.snapshot_policy.uuid)
+        }
+        return $null
     }
 
 

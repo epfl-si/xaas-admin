@@ -1,3 +1,8 @@
 {
-    "size": {{sizeInBytes}}
+    "size": "{{sizeInBytes}}",
+    "space": {
+        "snapshot": {
+            "reserve_percent": "{{reservePercent}}"
+        }
+    }
 }
