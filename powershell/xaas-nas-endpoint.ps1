@@ -107,6 +107,7 @@ $ACTION_CAN_HAVE_NEW_VOL    = "canHaveNewVol"
 $ACTION_GET_IP_LIST         = "getIPList"
 $ACTION_UPDATE_IP_LIST      = "updateIPList"
 $ACTION_GET_VOL_INFOS       = "getVolInfos"
+$ACTION_SET_SNAPSHOTS       = "setSnapshots"
 
 $global:APP_VOL_DEFAULT_FAC = "si"
 
@@ -410,6 +411,66 @@ function getVolumeSizeInfos([NetAppAPI]$netapp, [PSObject]$volObj)
     }
 }
 
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Renvoie toutes les infos d'un volume
+
+    IN  : $netapp           -> Objet permettant d'accéder à l'API de NetApp
+    IN  : $nameGeneratorNAS -> Objet permettant de générer les noms pour le NAS
+    IN  : $volObj           -> Objet représentant le volume
+
+    RET : Objet avec les infos de taille
+#>
+function getVolumeInfos([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS, [PSObject]$volObj)
+{
+    # Première partie des infos
+    $result = @{
+        volume = @{
+            name = $volObj.name
+            uuid = $volObj.uuid
+            type = $nameGeneratorNAS.getVolumeType($volObj.name).ToString()
+        }
+    }
+
+    # Pour la suite, on va avoir besoin de la SVM
+    $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
+
+    # -- Accès
+    $result.access = getExportPolicyInfos -volObj $volObj -svmObj $svmObj
+    $result.access.svm = $svmObj.name
+    $result.access.rootMountPath = $nameGeneratorNAS.getVolMountPath($volObj.name, $svmObj.name, $result.access.protocol) 
+
+    # -- Taille
+    $result.size = getVolumeSizeInfos -netapp $netapp -volObj $volObj
+
+    # -- Snapshots
+    $snapshotPolicyObj = $netapp.getVolumeSnapshotPolicy($volObj)
+    if($null -ne $snapshotPolicyObj)
+    {
+        $result.snapshots = @{
+            policy = $snapshotPolicyObj.name
+            reservePercent = $result.size.snap.reservePercent
+        }
+    }
+    else
+    {
+        $result.snapshots = $null
+    }
+
+    # -- Share CIFS
+    $shareList = $netapp.getVolCIFSShareList($volObj) | Select-Object -ExpandProperty name
+    # Si la liste est vide, le fait de sélectionner 'name' va renvoyer $null en fait, et pas un tableau vide
+    if($null -eq $shareList)
+    {
+        $shareList = @()
+    }
+
+    # Sélection du nom du share et transformation en tableau pour éviter de se retrouver avec un objet uniquement s'il n'y a qu'un share
+    $result.access.cifsShares = $shareList 
+
+    return $result
+}
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -736,7 +797,7 @@ try
                 $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $volSizeInfos.space.snapshot.reserve_percent
 
                 $logHistory.addLine( ("Resizing Volume {0} to {1} GB" -f $volName, $sizeGB) )
-                $netapp.resizeVolume($volObj.uuid, $sizeWithSnapGB)
+                $netapp.resizeVolume($volObj, $sizeWithSnapGB, $volSizeInfos.space.snapshot.reserve_percent)
             }
         }# FIN Action resize
 
@@ -929,55 +990,71 @@ try
             }
             else
             {
-                
-                # Première partie des infos
-                $result = @{
-                    volume = @{
-                        name = $volName
-                        uuid = $volObj.uuid
-                        type = $nameGeneratorNAS.getVolumeType($volName).ToString()
-                    }
-                }
+                # Ajout des détails sur le volume
+                $output.results += getVolumeInfos -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -volObj $volObj
 
-                # Pour la suite, on va avoir besoin de la SVM
-                $svmObj = $netapp.getSVMByID($volObj.svm.uuid)
+            } # FIN SI le volume existe
+        }
 
-                # -- Accès
-                $result.access = getExportPolicyInfos -volObj $volObj -svmObj $svmObj
-                $result.access.svm = $svmObj.name
-                $result.access.rootMountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name, $result.access.protocol) 
 
-                # -- Taille
-                $result.size = getVolumeSizeInfos -netapp $netapp -volObj $volObj
+        # -- Initialise la règle de snapshot pour un volume
+        $ACTION_SET_SNAPSHOTS
+        {
+            $volObj = $netapp.getVolumeByName($volName)
 
-                # -- Snapshots
-                $snapshotPolicyObj = $netapp.getVolumeSnapshotPolicy($volObj)
-                if($null -ne $snapshotPolicyObj)
+            if($null -eq $volObj)
+            {
+                $output.error = ("Volume {0} doesn't exists" -f $volName)
+                $logHistory.addLine($output.error)
+            }
+            else
+            {
+                # Récupération des détails sur le volume
+                $volInfos = getVolumeInfos -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -volObj $volObj
+
+                # On contrôle que le pourcentage de réserve pour les snaps soit correct
+                if($snapPercent -lt $volInfos.snapshots.reservePercent)
                 {
-                    $result.snapshots = @{
-                        policy = $snapshotPolicyObj.name
-                        reservePercent = $result.size.snap.reservePercent
-                    }
+                    $output.error = ("New snapshot reserve ({0}%) is less than current ({1}%)" -f $snapPercent, $volInfos.snapshots.reservePercent)
                 }
                 else
                 {
-                    $result.snapshots = $null
-                }
+                    # Si la réserve de snapshot change
+                    if($snapPercent -ne $volInfos.snapshots.reservePercent)
+                    {
+                        # Redéfinition de la taille du volume en fonction du pourcentage à conserver pour les snapshots
+                        $newSizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB ($volInfos.size.user.sizeB /1024 /1024 /1024) -snapSpacePercent $snapPercent
 
-                # -- Share CIFS
-                $shareList = $netapp.getVolCIFSShareList($volObj) | Select-Object -ExpandProperty name
-                # Si la liste est vide, le fait de sélectionner 'name' va renvoyer $null en fait, et pas un tableau vide
-                if($null -eq $shareList)
-                {
-                    $shareList = @()
-                }
+                        $logHistory.addLine( ("Change Volume snapshot reserve from {0}% to {1}%" -f $volInfos.snapshots.reservePercent, $snapPercent) )
+                        $netapp.resizeVolume($volObj, $newSizeWithSnapGB, $snapPercent)
+                    }
+                    else
+                    {
+                        $logHistory.addLine( ("Snapshot reserve ({0}%) doesn't change" -f $snapPercent) )
+                    }
 
-                # Sélection du nom du share et transformation en tableau pour éviter de se retrouver avec un objet uniquement s'il n'y a qu'un share
-                $result.access.cifsShares = $shareList 
+                    # Si la policy de snapshot change
+                    if($snapPolicy -ne $volInfos.snapshots.policy)
+                    {
+                        $snapPolicyObj = $netapp.getSnapshotPolicyByName($snapPolicy)
 
-                $output.results += $result
+                        if($null -eq $snapPolicyObj)
+                        {
+                            $output.error = ("Snapshot policy '{0}' doesn't exists" -f $snapPolicy)
+                        }
+                        else
+                        {
+                            # Changement de la policy
+                            $logHistory.addLine(("Changing snapshot policy from '{0}' to '{1}'" -f $volInfos.snapshots.policy, $snapPolicy))
+                            $netapp.applySnapshotPolicyOnVolume($snapPolicyObj, $volObj)
+                        }
 
-            } # FIN SI le volume existe
+                    }
+                    
+
+                } # FIN Si la réserve de snapshot est correcte
+
+            }# FIN si le volume existe
         }
 
     }# FIN EN fonction du type d'action demandé
