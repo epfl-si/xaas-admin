@@ -187,7 +187,8 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
 
     # -----------
     # ---- Réseau
-    # Recherche du pool dans lequel on va demander les adresses IP
+    # Recherche du pool dans lequel on va demander les adresses IP.
+    # On va faire du nettoyage dans ce pool dans le cas où PKS n'aurait pas fait le job correctement.
     $pool = $nsx.getIPPoolByName($ipPoolName)
 
     if($null -eq $pool)
