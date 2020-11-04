@@ -207,19 +207,22 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     Clear-DnsClientCache 
     ForEach($hostname in $hostnameList)
     {
+        $hostnameFull = ("{0}.{1}" -f $hostname, $global:K8S_DNS_ZONE_NAME)
         try
         {
             # Si l'entrée n'existe pas dans le DNS, ça va générer une exception
-            $ip = ([System.Net.Dns]::GetHostAddresses( ("{0}.{1}" -f $hostname, $global:K8S_DNS_ZONE_NAME))).IPAddressToString   
+            $ip = ([System.Net.Dns]::GetHostAddresses($hostnameFull)).IPAddressToString   
         }
         catch
         {
             # Pas trouvé, on passe au hostname suivant
-            $logHistory.addLine(("> IP doesn't exists in DNS"))
+            $logHistory.addLine(("> IP doesn't exists in DNS for '{0}'" -f $hostnameFull))
             Continue
         }
         
-        $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostname))
+        $ip = $ip[0]
+
+        $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostnameFull))
         $logHistory.addLine("> Unregistering IP for host in DNS...")
         $EPFLDNS.unregisterDNSIP($hostname, $ip, $global:K8S_DNS_ZONE_NAME)
 
@@ -651,7 +654,7 @@ catch
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating cluster '{0}', deleting it so everything is clean" -f $clusterName))
         deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -harbor $harbor `
-                -clusterName $clusterName -ipPoolName $ipPoolName -targetTenant $targetTenant
+                -clusterName $clusterName -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName") -targetTenant $targetTenant
     }
 
 	# Récupération des infos

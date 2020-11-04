@@ -84,15 +84,21 @@ class EPFLDNS
             
             $nodeARecord = Get-DnsServerResourceRecord -ZoneName $zoneName -ComputerName $server -Node $dnsName -RRType A -ErrorAction SilentlyContinue
             
-            if($null -ne $nodeARecord)
+            if(($null -ne $nodeARecord) -and ($nodeARecord.Count -gt 0))
             {
-                Remove-DnsServerResourceRecord -ZoneName $zoneName -ComputerName $server -InputObject $nodeARecord -Force
+                Remove-DnsServerResourceRecord -ZoneName $zoneName -ComputerName $server -InputObject $nodeARecord[0] -Force
             }
 
         }
-
+        $errorVar = $null
         # On exécute la commande en local mais avec des credentials spécifiques
         Invoke-Command -ComputerName $this.psEndpointServer -ScriptBlock $scriptBlockContent -Authentication CredSSP -credential $this.credentials `
-                        -ArgumentList $this.dnsServer, $name, $zone
+                        -ArgumentList $this.dnsServer, $name, $zone -ErrorVariable errorVar -ErrorAction:SilentlyContinue
+
+        # Gestion des erreurs
+        if($errorVar.count -gt 0)
+        {
+            Throw ("Error removing DNS information: {0}" -f ($errorVar -join "`n"))
+        }    
     }
 }
