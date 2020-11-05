@@ -1,0 +1,60 @@
+{
+    "billingClassName": "BillingNASVolume",
+    "docTitle": "Rapport mensuel de consommation de Volumes « NAS Volume »",
+    "serviceName": "NAS",
+    "landscapePDF": true,
+    "billedItems":
+    [
+        {
+            "itemTypeInDB": "NAS Volume",
+            "itemDescPrefix":"NAS Volume",
+            "copernicPrestationCode":
+            {
+                "test": "??",
+                "prod": "??"
+            },
+            "entityTypesPriceLevels":
+            {
+                "Unit":
+                {
+                    "U.1": 7.5
+                },
+                "Project":
+                {
+                    "U.1": 0,
+                    "U.2": 0,
+                    "U.3": 0
+                }
+            }
+        }
+    ],
+    "pdfAuthor": "EPFL SI SI-EXOP",
+    "billingFrom": "VPSI",
+    "billingReference": "christophe.simond@epfl.ch",
+    "billingGrid": 
+    {
+        "Project": "billing-grid.pdf"
+    },
+    "itemColumns":
+    {
+        "colCode": "Code prestation",
+        "colDesc": "Description",
+        "colMonthYear": "Consommé le [mois]",
+        "colConsumed": "Quantité",
+        "colUnit": "Unité",
+        "colUnitPrice": "Prix unitaire HT [CHF]",
+        "colTotPrice": "Prix total HT [CHF]"
+    },
+    "copernic":
+    {
+        "shipperName": "Christophe Simond",
+        "shipperSciper": "287589",
+        "shipperFund": "1914-1",
+        "shipperMail": "christophe.simond@epfl.ch",
+        "shipperPhone": "0216931068",
+
+        "shipperImputationNoBilledSVC": "SVC0075"
+        
+    }
+    
+}

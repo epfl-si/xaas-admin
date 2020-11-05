@@ -329,3 +329,22 @@ function objectPropertyExists([PSCustomObject]$obj, [string]$propertyName)
 {
 	return ((($obj).PSobject.Properties | Select-Object -ExpandProperty "Name") -contains $propertyName)
 }
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Renvoie le type d'entité de facturation en fonction du tenant
+    
+    IN  : $tenant   -> Nom du tenant
+
+    RET : Type d'entité, type [BillingEntityType]. Défini dans le fichier include/define.inc.ps1
+#>
+function getBillingEntityTypeFromTenant([string]$tenant)
+{
+    switch($tenant)
+    {
+        $global:VRA_TENANT__EPFL { return [BillingEntityType]::Unit }
+        $global:VRA_TENANT__ITSERVICES { return [BillingEntityType]::Service }
+        $global:VRA_TENANT__RESEARCH { return [BillingEntityType]::Project }
+    }
+}

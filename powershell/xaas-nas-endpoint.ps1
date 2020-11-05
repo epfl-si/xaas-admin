@@ -13,6 +13,7 @@ USAGES:
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action updateIPList -volName <volName> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolInfos -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action setSnapshots -volName <volName> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl -action getPrice -sizeGB <sizeGB> -snapPercent <snapPercent> [-userFeeLevel 1|2|3]
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -62,7 +63,9 @@ param([string]$targetEnv,
       [string]$access,
       [string]$IPsRoot,
       [string]$IPsRW,
-      [string]$IPsRO)
+      [string]$IPsRO,
+      # Prix
+      [int]$userFeeLevel) # Est égal à 0 si pas donné
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -108,6 +111,7 @@ $ACTION_GET_IP_LIST         = "getIPList"
 $ACTION_UPDATE_IP_LIST      = "updateIPList"
 $ACTION_GET_VOL_INFOS       = "getVolInfos"
 $ACTION_SET_SNAPSHOTS       = "setSnapshots"
+$ACTION_GET_PRICE           = "getPrice"
 
 $global:APP_VOL_DEFAULT_FAC = "si"
 
@@ -1053,12 +1057,100 @@ try
                             $netapp.applySnapshotPolicyOnVolume($snapPolicyObj, $volObj)
                         }
 
-                    }
-                    
+                    }# FIN SI la policy de snapshot change
 
                 } # FIN Si la réserve de snapshot est correcte
 
             }# FIN si le volume existe
+
+        }# FIN CASE changement de politique de snapshot
+
+
+        # -- Renvoi du prix
+        $ACTION_GET_PRICE
+        {
+            # Si paramètre pas passé, on prend le niveau 1 par défaut
+            if($userFeeLevel -eq 0)
+            {
+                $userFeeLevel = 1
+            }
+            # Fichier JSON contenant les détails du service que l'on veut facturer    
+            $serviceBillingInfosFile = ([IO.Path]::Combine("$PSScriptRoot", "data", "billing", "nas", "service.json"))
+
+            if(!(Test-Path -path $serviceBillingInfosFile))
+            {
+                Throw ("Service file ({0}) for '{1}' not found. Please create it from 'config-sample.json' file." -f $serviceBillingInfosFile, $service)
+            }
+
+            # Chargement des informations (On spécifie UTF8 sinon les caractères spéciaux ne sont pas bien interprétés)
+            $serviceBillingInfos = Get-Content -Path $serviceBillingInfosFile -Encoding:UTF8 | ConvertFrom-Json
+
+            # On recherche l'entité de facturation en fonction du tenant
+            $entityType = getBillingEntityTypeFromTenant -tenant $targetTenant
+
+            $itemType = "NAS Volume"
+            # Recherche des infos sur le type d'élément qu'on facture (vu qu'il peut y en avoir plusieurs pour un service)
+            $billedItemInfos = $serviceBillingInfos.billedItems | Where-Object { $_.itemTypeInDB -eq $itemType}
+            
+            if($null -eq $billedItemInfos)
+            {
+                Throw("No billing information found for Item Type '{0}'. Have a look at billing JSON configuration file for NAS service ({1})" -f $itemType, $serviceBillingInfosFile)
+            }
+
+            # Si on n'a pas d'infos de facturation pour le type d'entité, on ne va pas plus loin, on traite ça comme une erreur
+            if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels -propertyName $entityType))
+            {
+                Throw ("Error for item type '{0}' because no billing info found for entity '{1}'. Have a look at billing JSON configuration file for NAS service ({2})" -f `
+                        $itemType, $entityType, $serviceBillingInfosFile)
+            }
+
+            $priceLevel = "U.{0}" -f $userFeeLevel
+            # Si on n'a pas d'infos de facturation pour le niveau demandé, on ne va pas plus loin, on traite ça comme une erreur
+            if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels.$entityType -propertyName $priceLevel))
+            {
+                Throw ("Error for item type '{0}' and entity '{1}' because no billing info found for level '{2}'. Have a look at billing JSON configuration file for NAS service ({3})" -f `
+                        $itemType, $entityType, $priceLevel, $serviceBillingInfosFile)
+            }
+            
+            # On récupère la valeur via "Select-Object" car le nom du niveau peut contenir des caractères non alphanumériques qui sont
+            # donc incompatibles avec un nom de propriété accessible de manière "standard" ($obj.<propertyName>)
+            $TBPricePerMonth = $billedItemInfos.entityTypesPriceLevels.$entityType | Select-Object -ExpandProperty $priceLevel
+            
+            # Calcul de la taille que le volume devrait faire avec les snaps
+            $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $snapPercent
+
+            # Ajout des chiffres
+            $result = @{
+                # Taille et coût des snaps
+                snap = @{
+                    reserveSizeGB = truncateToNbDecimal -number ($sizeWithSnapGB - $sizeGB) -nbDecimals 2
+                    pricePerMonthCHF = ( truncateToNbDecimal -number (($sizeWithSnapGB - $sizeGB) /1024 * $TBPricePerMonth) -nbDecimals 2)
+                }
+                # Taille et coût de la partie utilisateur
+                user = @{
+                    sizeGB = $sizeGB
+                    pricePerMonthCHF = ( truncateToNbDecimal -number ($sizeGB /1024 * $TBPricePerMonth) -nbDecimals 2)
+                }
+                # Total
+                totSizeGB =  ( truncateToNbDecimal -number $sizeWithSnapGB -nbDecimals 2)
+                totPricePerMonthCHF = ( truncateToNbDecimal -number ($sizeWithSnapGB /1024 * $TBPricePerMonth) -nbDecimals 2)
+            }
+
+            
+            # Ajout d'une chaine de caractère pour le prix
+            $result.totPriceString = "Monthly price for {0}GB (= {1}CHF)" -f $sizeGB, $result.user.pricePerMonthCHF
+            if($snapPercent -gt 0)
+            {
+                $result.totPriceString = "{0} +{1}GB ({2}%) of snapshots, equal {3}GB (= {4}CHF)" -f `
+                    $result.totPriceString, `
+                    ( truncateToNbDecimal -number ($sizeWithSnapGB - $sizeGB) -nbDecimals 2), `
+                    $snapPercent, `
+                    ( truncateToNbDecimal -number $sizeWithSnapGB -nbDecimals 2), `
+                    $result.snap.pricePerMonthCHF
+            }
+            $result.totPriceString = "{0}. Total= {1}CHF" -f $result.totPriceString, $result.totPricePerMonthCHF
+
+            $output.results += $result
         }
 
     }# FIN EN fonction du type d'action demandé
