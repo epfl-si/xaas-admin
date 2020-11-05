@@ -61,11 +61,11 @@ class BillingS3Bucket: Billing
         # On va utiliser le champ "unitOrSvcID"
         if($bucketInfos.unitOrSvcID -match $this.entityMatchUnit)
         {
-            return [EntityType]::Unit
+            return [BillingEntityType]::Unit
         }
         if($bucketInfos.unitOrSvcID -match $this.entityMatchSvc)
         {
-            return [EntityType]::Service
+            return [BillingEntityType]::Service
         }
         # Si on arrive ici, c'est que ce n'est pas géré donc on renvoie $null
         return $null
@@ -136,16 +136,16 @@ class BillingS3Bucket: Billing
             {
                 Continue
             }
-            elseif($entityType -eq [EntityType]::Service)
+            elseif($entityType -eq [BillingEntityType]::Service)
             {
                 Write-Warning ("Skipping Service entity ({0}) because not billed" -f $bucket.bucketName)
                 Continue
             }
-            elseif($entityType -eq [EntityType]::Unit)
+            elseif($entityType -eq [BillingEntityType]::Unit)
             {
                 $targetTenant = $global:VRA_TENANT__EPFL
             }
-            elseif($entityType -eq [EntityType]::Project)
+            elseif($entityType -eq [BillingEntityType]::Project)
             {
                 $targetTenant = $global:VRA_TENANT__RESEARCH
             }
@@ -175,7 +175,7 @@ class BillingS3Bucket: Billing
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
             $itemDesc = "{0}`n({1})`nOwner: {2}" -f $bucket.bucketName, $bucket.friendlyName, $vraBucket.owners[0].value
 
-            $itemId = $this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB" ,"U.1")
+            $this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB" ,"U.1") | Out-Null
 
 
         }# FIN parcours des buckets

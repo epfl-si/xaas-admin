@@ -648,7 +648,7 @@
 
         $this.writeToLogAndHost("Adding rights to admin for server $server and username $username... ")
 
-        $output = $this.runFileACL("$userDir /G administrators:FSFF /sub /protect /force /files")
+        $this.runFileACL("$userDir /G administrators:FSFF /sub /protect /force /files") | Out-Null
 
     }
 
@@ -674,7 +674,7 @@
         $this.writeToLogAndHost("")
         $this.writeToLogAndHost("Removing rights to admin for server $server and username $username... ")
 
-        $output = $this.runFileACL("$userDir /R administrators /sub /protect /force /files")
+        $this.runFileACL("$userDir /R administrators /sub /protect /force /files") | Out-Null
 
         $this.writeToLogAndHost("Done")
     }

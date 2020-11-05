@@ -1,28 +1,28 @@
 {
-    "billingClassName": "BillingS3Bucket",
-    "docTitle": "Rapport mensuel de consommation de Buckets « Object Storage S3 »",
-    "serviceName": "S3",
+    "billingClassName": "BillingNASVolume",
+    "docTitle": "Rapport mensuel de consommation de Volumes NAS",
+    "serviceName": "NAS",
     "landscapePDF": true,
     "billedItems":
     [
         {
-            "itemTypeInDB": "S3 Bucket",
+            "itemTypeInDB": "NAS Volume",
             "copernicPrestationCode":
             {
-                "test": "9010390",
-                "prod": "9010390"
+                "test": "9010260",
+                "prod": "9010260"
             },
             "entityTypesMonthlyPriceLevels":
             {
                 "Unit":
                 {
-                    "U.1": 2.42
+                    "U.1": 7.5
                 },
                 "Project":
                 {
-                    "U.1": 7,
-                    "U.2": 9.3,
-                    "U.3": 10.3
+                    "U.1": 0,
+                    "U.2": 0,
+                    "U.3": 0
                 }
             }
         }
@@ -32,7 +32,7 @@
     "billingReference": "christophe.simond@epfl.ch",
     "billingGrid": 
     {
-        "Project": "billing-grid.pdf"
+        "Project": ""
     },
     "itemColumns":
     {
@@ -52,7 +52,7 @@
         "shipperMail": "christophe.simond@epfl.ch",
         "shipperPhone": "0216931068",
 
-        "shipperImputationNoBilledSVC": "SVC1057"
+        "shipperImputationNoBilledSVC": "SVC0075"
         
     }
     

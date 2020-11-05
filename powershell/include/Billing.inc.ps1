@@ -18,12 +18,6 @@
    0.1 - Version de base
 
 #>
-enum EntityType 
-{
-    Unit
-    Service
-    Project
-}
 
 class Billing
 {
@@ -73,7 +67,7 @@ class Billing
         RET : Objet avec les infos de l'entité 
             $null si pas trouvé
     #>
-    hidden [PSObject] getEntity([EntityType]$type, [string]$element)
+    hidden [PSObject] getEntity([BillingEntityType]$type, [string]$element)
     {
         $request = "SELECT * FROM BillingEntity WHERE entityType='{0}' AND entityElement='{1}'" -f $type, $element
 
@@ -86,34 +80,57 @@ class Billing
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Ajoute une entité
+        BUT : Ajoute une entité et la met à jour si elle existe déjà
         
         IN  : $type             -> Type de l'entité (du type énuméré défini plus haut).
         IN  : $element          -> Id d'unité, no de service ou no de fond de projet...
         IN  : $financeCenter    -> No du centre financier auquel imputer la facture
+                                    OU
+                                    adresse mail à laquelle envoyer la facture
 
         RET : ID de l'entité
     #>
-    hidden [int] addEntity([EntityType]$type, [string]$element, [string]$financeCenter)
+    hidden [int] addEntity([BillingEntityType]$type, [string]$element, [string]$financeCenter)
     {
         $entity = $this.getEntity($type, $element)
 
-        # Si l'entité existe déjà dans la DB, on retourne son ID
+        # Si l'entité existe déjà dans la DB
         if($null -ne $entity)
         {
+            # On commence par la mettre à jour (dans le doute)
+            $this.updateEntity([int]$entity.entityId, $type, $element, $financeCenter)
+            # Et on retourne son ID
             return [int]$entity.entityId
         }
 
         # L'entité n'existe pas, donc on l'ajoute 
         $request = "INSERT INTO BillingEntity VALUES (NULL, '{0}', '{1}', '{2}')" -f $type.toString(), $element, $financeCenter
 
-        $res =  $this.db.execute($request)
+        $this.db.execute($request) | Out-Null
 
         return [int] ($this.getEntity($type, $element)).entityId
     }
 
 
-    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Mets à jour une entité
+        
+        IN  : $id               -> ID de l'entity
+        IN  : $type             -> Type de l'entité (du type énuméré défini plus haut).
+        IN  : $element          -> Id d'unité, no de service ou no de fond de projet...
+        IN  : $financeCenter    -> No du centre financier auquel imputer la facture
+                                    OU
+                                    adresse mail à laquelle envoyer la facture
+    #>
+    hidden [void] updateEntity([int]$id, [BillingEntityType]$type, [string]$element, [string]$financeCenter)
+    {
+        # L'entité n'existe pas, donc on l'ajoute 
+        $request = "UPDATE BillingEntity SET entityType='{0}', entityElement='{1}', entityFinanceCenter='{2}' WHERE entityId={3}" -f `
+                    $type.toString(), $element, $financeCenter, $id
+
+        $this.db.execute($request) | Out-Null
+    }
 
 
     <#
@@ -175,7 +192,7 @@ class Billing
         $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', NULL)" -f `
                             $parentEntityId, $type, $name, $desc, $month, $year, $quantity, $unit, $priceLevel
 
-        $res = $this.db.execute($request)
+        $this.db.execute($request) | Out-Null
 
         return [int]($this.getItem($name, $month, $year)).itemId
     }
@@ -190,7 +207,7 @@ class Billing
 
         RET : Description
     #>
-    hidden [string] getEntityElementDesc([EntityType]$entityType, [string]$entityElement)
+    hidden [string] getEntityElementDesc([BillingEntityType]$entityType, [string]$entityElement)
     {
         switch($entityType)
         {
@@ -230,9 +247,9 @@ class Billing
         IN  : $entityType    -> Type de l'entité
         IN  : $entityElement -> élément. Soit no d'unité ou no de service IT, etc...
 
-        RET : Centre financier
+        RET : Centre financier. Numéro ou adresse mail
     #>
-    hidden [string] getEntityElementFinanceCenter([EntityType]$entityType, [string]$entityElement)
+    hidden [string] getEntityElementFinanceCenter([BillingEntityType]$entityType, [string]$entityElement)
     {
         switch($entityType)
         {
@@ -311,7 +328,7 @@ class Billing
         {
             $request = "UPDATE BillingItem SET itemBillReference='{0}' WHERE parentEntityId='{1}' AND itemType='{2}' AND itemBillReference IS NULL " -f $billReference, $entityId, $itemType
 
-            $nbUpdated = $this.db.execute($request)
+            $this.db.execute($request) | Out-Null
         }   
     }
 
@@ -325,7 +342,44 @@ class Billing
     [void] cancelBill([string]$billReference)
     {
         $request = "UPDATE BillingItem SET itemBillReference=NULL WHERE itemBillReference='{0}'" -f $billReference
-        $nbUpdated = $this.db.execute($request)
+        $this.db.execute($request) | Out-Null
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Envoie une facture par email à une adresse donnée
+
+        IN  : $toMail           -> Adresse à laquelle envoyer la facture
+        IN  : $PDFBillFile      -> Chemin jusqu'au fichier PDF 
+        IN  : $mailSubject      -> Sujet du mail
+        IN  : $periodStartDate  -> Date de début de la facture
+        IN  : $periodEndDate    -> Date de fin de la facture
+    #>
+    [void] sendBillByMail([string]$toMail, [string]$PDFBillFile, [string]$mailSubject, [string]$periodStartDate, [string]$periodEndDate)
+    {
+        $mailMessage = (Get-Content -Path $global:XAAS_BILLING_MAIL_TEMPLATE -Encoding UTF8 ) -join "`n"
+
+        # Elements à remplacer dans le template du mail
+        $valToReplace = @{
+            serviceName = $this.serviceBillingInfos.serviceName
+            periodStartDate = $periodStartDate
+            periodEndDate = $periodEndDate
+        }
+
+        # Parcours des remplacements à faire
+        foreach($search in $valToReplace.Keys)
+        {
+            $replaceWith = $valToReplace.Item($search)
+
+            $search = "{{$($search)}}"
+
+            # Mise à jour dans le sujet et le mail
+            $mailMessage =  $mailMessage -replace $search, $replaceWith
+        }
+        
+        Send-MailMessage -From "noreply+vra.billing.bot@epfl.ch" -To $toMail -Subject $mailSubject `
+                        -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding Unicode -Attachments $PDFBillFile    
     }
 
 

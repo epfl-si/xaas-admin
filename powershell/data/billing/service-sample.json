@@ -7,13 +7,12 @@
     [
         {
             "itemTypeInDB": "", // Type de l'item à facturer, pour le classifier dans la DB
-            "itemDescPrefix":"", // Préfix à ajouter à la description de chaque item quand on l'ajoute dans la table BillingItem via la classe enfante dédiée à ça
             "copernicPrestationCode": // nom de code de l'article dans Copernic, peut varier entre prod et test.
             {
                 "test": "",
                 "prod": ""
             },
-            "entityTypesPriceLevels": // prix unitaire, par mois, pour chaque type d'entité défini dans ../../include/Billing.inc.ps1. Si un type d'entité n'est pas présent ici, il ne sera pas facturé
+            "entityTypesMonthlyPriceLevels": // prix unitaire, par mois, pour chaque type d'entité défini dans ../../include/Billing.inc.ps1. Si un type d'entité n'est pas présent ici, il ne sera pas facturé
             {
                 "Unit":
                 {
