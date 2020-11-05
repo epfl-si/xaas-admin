@@ -61,11 +61,11 @@ class BillingS3Bucket: Billing
         # On va utiliser le champ "unitOrSvcID"
         if($bucketInfos.unitOrSvcID -match $this.entityMatchUnit)
         {
-            return [EntityType]::Unit
+            return [BillingEntityType]::Unit
         }
         if($bucketInfos.unitOrSvcID -match $this.entityMatchSvc)
         {
-            return [EntityType]::Service
+            return [BillingEntityType]::Service
         }
         # Si on arrive ici, c'est que ce n'est pas géré donc on renvoie $null
         return $null
@@ -136,16 +136,16 @@ class BillingS3Bucket: Billing
             {
                 Continue
             }
-            elseif($entityType -eq [EntityType]::Service)
+            elseif($entityType -eq [BillingEntityType]::Service)
             {
                 Write-Warning ("Skipping Service entity ({0}) because not billed" -f $bucket.bucketName)
                 Continue
             }
-            elseif($entityType -eq [EntityType]::Unit)
+            elseif($entityType -eq [BillingEntityType]::Unit)
             {
                 $targetTenant = $global:VRA_TENANT__EPFL
             }
-            elseif($entityType -eq [EntityType]::Project)
+            elseif($entityType -eq [BillingEntityType]::Project)
             {
                 $targetTenant = $global:VRA_TENANT__RESEARCH
             }

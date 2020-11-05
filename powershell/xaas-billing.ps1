@@ -403,7 +403,7 @@ try
                 {
 
                     # Si on n'a pas d'infos de facturation pour le type d'entité courante, on ne va pas plus loin, on traite ça comme une erreur
-                    if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels -propertyName $entity.entityType))
+                    if(!(objectPropertyExists -obj $billedItemInfos.entityTypesMonthlyPriceLevels -propertyName $entity.entityType))
                     {
                         Throw ("Error for item type '{0}' because no billing info found for entity '{1}'. Have a look at billing JSON configuration file for service '{2}'" -f $billedItemInfos.itemTypeInDB, $entity.entityType, $service)
                     }
@@ -420,7 +420,7 @@ try
                     {
 
                         # Si on n'a pas d'infos de niveau de facturation (niveau de prix) pour l'item courant, on passe au suivant
-                        if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels.($entity.entityType) -propertyName $item.itemPriceLevel))
+                        if(!(objectPropertyExists -obj $billedItemInfos.entityTypesMonthlyPriceLevels.($entity.entityType) -propertyName $item.itemPriceLevel))
                         {
                             Throw ("Error for item type '{0}' because price level '{1}' not found in JSON configuration file for service '{2}'" -f $item.itemType, $item.itemPriceLevel, $service)
                         }
@@ -437,7 +437,7 @@ try
                         # être réutilisé plus loin dans le code qui ajoute la facture dans Copernic.
                         # On récupère la valeur via "Select-Object" car le nom du niveau peut contenir des caractères non alphanumériques qui sont
                         # donc incompatibles avec un nom de propriété accessible de manière "standard" ($obj.<propertyName>)
-                        $unitPricePerMonthCHF = $billedItemInfos.entityTypesPriceLevels.($entity.entityType) | Select-Object -ExpandProperty $item.itemPriceLevel
+                        $unitPricePerMonthCHF = $billedItemInfos.entityTypesMonthlyPriceLevels.($entity.entityType) | Select-Object -ExpandProperty $item.itemPriceLevel
                         $item | Add-member -NotePropertyName "unitPricePerMonthCHF" -NotePropertyValue $unitPricePerMonthCHF
 
                         $monthYear = (getItemDateMonthYear -month $item.itemMonth -year $item.itemYear)
