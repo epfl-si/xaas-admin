@@ -18,12 +18,6 @@
    0.1 - Version de base
 
 #>
-enum EntityType 
-{
-    Unit
-    Service
-    Project
-}
 
 class Billing
 {
@@ -73,7 +67,7 @@ class Billing
         RET : Objet avec les infos de l'entité 
             $null si pas trouvé
     #>
-    hidden [PSObject] getEntity([EntityType]$type, [string]$element)
+    hidden [PSObject] getEntity([BillingEntityType]$type, [string]$element)
     {
         $request = "SELECT * FROM BillingEntity WHERE entityType='{0}' AND entityElement='{1}'" -f $type, $element
 
@@ -96,7 +90,7 @@ class Billing
 
         RET : ID de l'entité
     #>
-    hidden [int] addEntity([EntityType]$type, [string]$element, [string]$financeCenter)
+    hidden [int] addEntity([BillingEntityType]$type, [string]$element, [string]$financeCenter)
     {
         $entity = $this.getEntity($type, $element)
 
@@ -129,7 +123,7 @@ class Billing
                                     OU
                                     adresse mail à laquelle envoyer la facture
     #>
-    hidden [void] updateEntity([int]$id, [EntityType]$type, [string]$element, [string]$financeCenter)
+    hidden [void] updateEntity([int]$id, [BillingEntityType]$type, [string]$element, [string]$financeCenter)
     {
         # L'entité n'existe pas, donc on l'ajoute 
         $request = "UPDATE BillingEntity SET entityType='{0}', entityElement='{1}', entityFinanceCenter='{2}' WHERE entityId={3}" -f `
@@ -213,7 +207,7 @@ class Billing
 
         RET : Description
     #>
-    hidden [string] getEntityElementDesc([EntityType]$entityType, [string]$entityElement)
+    hidden [string] getEntityElementDesc([BillingEntityType]$entityType, [string]$entityElement)
     {
         switch($entityType)
         {
@@ -255,7 +249,7 @@ class Billing
 
         RET : Centre financier. Numéro ou adresse mail
     #>
-    hidden [string] getEntityElementFinanceCenter([EntityType]$entityType, [string]$entityElement)
+    hidden [string] getEntityElementFinanceCenter([BillingEntityType]$entityType, [string]$entityElement)
     {
         switch($entityType)
         {

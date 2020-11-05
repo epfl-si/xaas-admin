@@ -117,3 +117,10 @@ $global:XAAS_BILLING_ITEM_DOCUMENT_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot
 $global:XAAS_BILLING_MAIL_TEMPLATE = ([IO.Path]::Combine("$PSScriptRoot", "..", "resources", "billing", "xaas-billing-mail.html"))
 $global:XAAS_BILLING_PDF_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "billing"))
 
+# Type d'entité à facturer
+enum BillingEntityType 
+{
+    Unit
+    Service
+    Project
+}
