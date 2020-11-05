@@ -12,7 +12,7 @@
                 "test": "",
                 "prod": ""
             },
-            "entityTypesPriceLevels": // prix unitaire, par mois, pour chaque type d'entité défini dans ../../include/Billing.inc.ps1. Si un type d'entité n'est pas présent ici, il ne sera pas facturé
+            "entityTypesMonthlyPriceLevels": // prix unitaire, par mois, pour chaque type d'entité défini dans ../../include/Billing.inc.ps1. Si un type d'entité n'est pas présent ici, il ne sera pas facturé
             {
                 "Unit":
                 {

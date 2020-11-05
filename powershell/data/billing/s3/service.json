@@ -12,7 +12,7 @@
                 "test": "9010390",
                 "prod": "9010390"
             },
-            "entityTypesPriceLevels":
+            "entityTypesMonthlyPriceLevels":
             {
                 "Unit":
                 {

@@ -1098,7 +1098,7 @@ try
             }
 
             # Si on n'a pas d'infos de facturation pour le type d'entité, on ne va pas plus loin, on traite ça comme une erreur
-            if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels -propertyName $entityType))
+            if(!(objectPropertyExists -obj $billedItemInfos.entityTypesMonthlyPriceLevels -propertyName $entityType))
             {
                 Throw ("Error for item type '{0}' because no billing info found for entity '{1}'. Have a look at billing JSON configuration file for NAS service ({2})" -f `
                         $itemType, $entityType, $serviceBillingInfosFile)
@@ -1106,7 +1106,7 @@ try
 
             $priceLevel = "U.{0}" -f $userFeeLevel
             # Si on n'a pas d'infos de facturation pour le niveau demandé, on ne va pas plus loin, on traite ça comme une erreur
-            if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels.$entityType -propertyName $priceLevel))
+            if(!(objectPropertyExists -obj $billedItemInfos.entityTypesMonthlyPriceLevels.$entityType -propertyName $priceLevel))
             {
                 Throw ("Error for item type '{0}' and entity '{1}' because no billing info found for level '{2}'. Have a look at billing JSON configuration file for NAS service ({3})" -f `
                         $itemType, $entityType, $priceLevel, $serviceBillingInfosFile)
@@ -1114,7 +1114,7 @@ try
             
             # On récupère la valeur via "Select-Object" car le nom du niveau peut contenir des caractères non alphanumériques qui sont
             # donc incompatibles avec un nom de propriété accessible de manière "standard" ($obj.<propertyName>)
-            $TBPricePerMonth = $billedItemInfos.entityTypesPriceLevels.$entityType | Select-Object -ExpandProperty $priceLevel
+            $TBPricePerMonth = $billedItemInfos.entityTypesMonthlyPriceLevels.$entityType | Select-Object -ExpandProperty $priceLevel
             
             # Calcul de la taille que le volume devrait faire avec les snaps
             $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $snapPercent
