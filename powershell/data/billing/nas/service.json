@@ -7,7 +7,6 @@
     [
         {
             "itemTypeInDB": "NAS Volume",
-            "itemDescPrefix":"NAS Volume",
             "copernicPrestationCode":
             {
                 "test": "??",

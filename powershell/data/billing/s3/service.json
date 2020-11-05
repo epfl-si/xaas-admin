@@ -7,7 +7,6 @@
     [
         {
             "itemTypeInDB": "S3 Bucket",
-            "itemDescPrefix":"Object Storage S3",
             "copernicPrestationCode":
             {
                 "test": "9010390",
