@@ -1,6 +1,6 @@
 {
     "billingClassName": "BillingNASVolume",
-    "docTitle": "Rapport mensuel de consommation de Volumes « NAS Volume »",
+    "docTitle": "Rapport mensuel de consommation de Volumes NAS",
     "serviceName": "NAS",
     "landscapePDF": true,
     "billedItems":
@@ -9,8 +9,8 @@
             "itemTypeInDB": "NAS Volume",
             "copernicPrestationCode":
             {
-                "test": "??",
-                "prod": "??"
+                "test": "9010260",
+                "prod": "9010260"
             },
             "entityTypesPriceLevels":
             {
@@ -32,7 +32,7 @@
     "billingReference": "christophe.simond@epfl.ch",
     "billingGrid": 
     {
-        "Project": "billing-grid.pdf"
+        "Project": ""
     },
     "itemColumns":
     {
