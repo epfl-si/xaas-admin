@@ -104,7 +104,7 @@ class Billing
         }
 
         # L'entité n'existe pas, donc on l'ajoute 
-        $request = "INSERT INTO BillingEntity VALUES (NULL, '{0}', '{1}', '{2}')" -f $type.toString(), $element, $financeCenter
+        $request = "INSERT INTO BillingEntity (entityType, entityElement, entityFinanceCenter) VALUES ('{0}', '{1}', '{2}')" -f $type.toString(), $element, $financeCenter
 
         $this.db.execute($request) | Out-Null
 
@@ -189,7 +189,8 @@ class Billing
         }
 
         # L'entité n'existe pas, donc on l'ajoute 
-        $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', NULL)" -f `
+        $request = "INSERT INTO BillingItem (parentEntityId, itemType, itemName, itemDesc, itemMonth, itemYear, itemQuantity, itemUnit, itemPriceLevel, itemBillReference) `
+                                     VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', NULL)" -f `
                             $parentEntityId, $type, $name, $desc, $month, $year, $quantity, $unit, $priceLevel
 
         $this.db.execute($request) | Out-Null
@@ -234,37 +235,6 @@ class Billing
                 }
                 return $serviceInfos.longName
             }
-
-        }
-        Throw ("Entity type '{0}' not handled" -f $entityType.toString())
-    }
-
-
-    <#
-		-------------------------------------------------------------------------------------
-        BUT : Renvoie la centre financier d'une EntityElement donnée
-        
-        IN  : $entityType    -> Type de l'entité
-        IN  : $entityElement -> élément. Soit no d'unité ou no de service IT, etc...
-
-        RET : Centre financier. Numéro ou adresse mail
-    #>
-    hidden [string] getEntityElementFinanceCenter([BillingEntityType]$entityType, [string]$entityElement)
-    {
-        switch($entityType)
-        {
-            Unit
-            { 
-                # Dans ce cas, $entityElement contient le no d'unité
-                $unitInfos = $this.ldap.getUnitInfos($entityElement)
-
-                if($null -eq $unitInfos)
-                {
-                    Throw ("No information found for Unit ID '{0}' in LDAP" -f $entityElement)
-                }
-                return $unitInfos.accountingnumber 
-            }
-
 
         }
         Throw ("Entity type '{0}' not handled" -f $entityType.toString())
@@ -380,6 +350,33 @@ class Billing
         
         Send-MailMessage -From "noreply+vra.billing.bot@epfl.ch" -To $toMail -Subject $mailSubject `
                         -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding Unicode -Attachments $PDFBillFile    
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie l'ID d'un Business Group de vRA
+
+        IN  : $targetTenant -> Tenant sur lequel se trouve le BG
+        IN  : $bgName       -> Nom du BG
+
+        RET : Objet avec:
+                .entityElement  -> ID du BG, soit ID d'unité ou alors id de service SVCxxxx
+                .entityFinanceCenter -> centre financier de l'unité (numéro ou adresse mail)
+    #>
+    hidden [PSObject] getEntityDetails([string]$targetTenant, [string]$bgName)
+    {
+        $bg = $this.vraTenantList.$targetTenant.getBG($bgName)
+
+        if($null -eq $bg)
+        {
+            return $null
+        }
+        
+        return @{
+            entityElement = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+            entityFinanceCenter = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER
+        }
     }
 
 

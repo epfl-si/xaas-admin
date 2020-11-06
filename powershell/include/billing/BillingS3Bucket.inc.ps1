@@ -132,13 +132,14 @@ class BillingS3Bucket: Billing
 
             # Si pas supporté, on passe à l'élément suivant
             # NOTE: on n'utilise pas de "switch" car l'utilisation de "Continue" n'est pas possible au sein de celui-ci...
+            # On n'utilise pas non plus la valeur "targetTenant" présente dans la table BucketArchive car elle ne correspond pas au tenant vRA réel
             if($null -eq $entityType)
             {
                 Continue
             }
             elseif($entityType -eq [BillingEntityType]::Service)
             {
-                Write-Warning ("Skipping Service entity ({0}) because not billed" -f $bucket.bucketName)
+                Write-Warning ("Skipping 'Service' entity (for bucket {0}) because not billed" -f $bucket.bucketName)
                 Continue
             }
             elseif($entityType -eq [BillingEntityType]::Unit)
@@ -149,13 +150,21 @@ class BillingS3Bucket: Billing
             {
                 $targetTenant = $global:VRA_TENANT__RESEARCH
             }
-            
+
+            # Recherche des détails de l'entité
+            $entityDetails = $this.getEntityDetails($targetTenant, $bucket.bgName)
+
+            if($null -eq $entityDetails)
+            {
+                Write-Warning ("Business group '{0}' doesn't exists anymore on tenant '{1}'" -f $bucket.bgName, $targetTenant)
+                Continue
+            }
 
             # Recherche des infos sur l'élément concerné et le "détail" de celui-ci
-            $entityElement = $bucket.unitOrSvcID
+            $entityElement = $entityDetails.entityElement
             $entityElementDesc = $this.getEntityElementDesc($entityType, $entityElement)
 
-            $entityFinanceCenter = $this.getEntityElementFinanceCenter($entityType, $entityElement)
+            $entityFinanceCenter = $entityDetails.entityFinanceCenter
 
             # Ajout de l'entité à la base de données (si pas déjà présente)
             $entityId = $this.addEntity($entityType, ("{0} {1}" -f $entityElement, $entityElementDesc), $entityFinanceCenter)
@@ -169,11 +178,22 @@ class BillingS3Bucket: Billing
             # On coupe à la 2e décimale 
             $bucketUsage = truncateToNbDecimal -number $bucketUsage -nbDecimals 2
 
-            # Recherche du bucket en lui-même
+            # Recherche du bucket en lui-même dans vRA
             $vraBucket = $this.vraTenantList.$targetTenant.getItem("S3_Bucket", $bucket.friendlyName)
 
+            # Si le bucket a été effacé entre temps,
+            if($null -eq $vraBucket)
+            {
+                # Le owner est du coup "inconnu"
+                $owner = "Unknown"
+            }
+            else
+            {
+                $owner = $vraBucket.owners[0].value
+            }
+
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
-            $itemDesc = "{0}`n({1})`nOwner: {2}" -f $bucket.bucketName, $bucket.friendlyName, $vraBucket.owners[0].value
+            $itemDesc = "{0}`n({1})`nOwner: {2}" -f $bucket.bucketName, $bucket.friendlyName, $owner
 
             $this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB" ,"U.1") | Out-Null
 
