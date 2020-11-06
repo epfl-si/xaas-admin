@@ -56,8 +56,8 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "CopernicAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "Billing.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "BillingS3Bucket.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "billing", "Billing.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "billing", "BillingS3Bucket.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
