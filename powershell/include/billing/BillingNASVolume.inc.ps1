@@ -20,10 +20,6 @@
 class BillingNASVolume: Billing
 {
 
-    
-    hidden [string] $entityMatchUnit = "^[0-9]{1,5}$"
-    hidden [string] $entityMatchSvc = "^SVC[0-9]{3,4}$"
-
     <#
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
