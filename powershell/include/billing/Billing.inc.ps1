@@ -27,6 +27,7 @@ class Billing
     hidden [EPFLLDAP] $ldap
     hidden [PSObject] $serviceBillingInfos
     hidden [Hashtable] $vraTenantList
+    hidden [string] $vraDynamicTypeName 
 
 
     <#
@@ -43,10 +44,11 @@ class Billing
                                         Ces informations se trouvent dans le fichier JSON "service.json" qui sont 
                                         dans le dossier data/billing/<service>/service.json
         IN  : $targetEnv            -> Nom de l'environnement sur lequel on est.
+        IN  : $vraDynamicTypeName   -> Nom du type dynamique dans vRA
 
 		RET : Instance de l'objet
 	#>
-    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv)
+    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv, [string]$vraDynamicTypeName)
     {
         $this.vraTenantList = $vraTenantList
         $this.db = $db
@@ -54,6 +56,27 @@ class Billing
         $this.serviceList = $serviceList
         $this.serviceBillingInfos = $serviceBillingInfos
         $this.targetEnv = $targetEnv
+        $this.vraDynamicTypeName = $vraDynamicTypeName
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie une entité ou $null si pas trouvé
+        
+        IN  : $entityId -> Id de l'entité
+
+        RET : Objet avec les infos de l'entité 
+            $null si pas trouvé
+    #>
+    hidden [PSObject] getEntity([int]$entityId)
+    {
+        $request = "SELECT * FROM BillingEntity WHERE entityId='{0}'" -f $entityId
+
+        $entity = $this.db.execute($request)
+
+        # On retourne le premier élément du tableau car c'est là que se trouve le résultat
+        return $entity[0]
     }
 
 
@@ -73,6 +96,10 @@ class Billing
 
         $entity = $this.db.execute($request)
 
+        if($entity.count -eq 0)
+        {
+            return $null
+        }
         # On retourne le premier élément du tableau car c'est là que se trouve le résultat
         return $entity[0]
     }
@@ -358,30 +385,76 @@ class Billing
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Renvoie l'ID d'un Business Group de vRA
+        BUT : Ajout ou met à jour les infos d'une entité dans la DB en fonction des informations
+                que l'on a sur elle, soit dans vRA, soit dans la tables des éléments déjà facturés
 
+        IN  : $entityType   -> Type de l'entité
         IN  : $targetTenant -> Tenant sur lequel se trouve le BG
         IN  : $bgName       -> Nom du BG
+        IN  : $itemName     -> Nom de l'item à facturer
 
-        RET : Objet avec:
-                .entityElement  -> ID du BG, soit ID d'unité ou alors id de service SVCxxxx
-                .entityFinanceCenter -> centre financier de l'unité (numéro ou adresse mail)
+        RET : ID de l'entité
+                0 si pas trouvé (vu que les id démarrent à 1 dans la DB, on n'a pas de risque de faire faux)
     #>
-    hidden [PSObject] getEntityDetails([string]$targetTenant, [string]$bgName)
+    hidden [int] initAndGetEntityId([BillingEntityType]$entityType, [string]$targetTenant, [string]$bgName, [string]$itemName)
     {
         $bg = $this.vraTenantList.$targetTenant.getBG($bgName)
 
         if($null -eq $bg)
         {
-            return $null
+            # On regarde donc si on a déjà référencé l'item dans la DB par le passé et on tente de
+            # récupérer les infos de son entité
+            $entity = $this.getItemEntity($itemName)
+
+            # Si on n'a pas trouvé l'entité, c'est que l'item n'a encore jamais été rencontré dans un des mois
+            # écoulés et que le BG a été supprimé entre temps. Donc impossible de récupérer quelque information
+            # que ce soit... 
+            if($null -eq $entity)
+            {
+                # On retourne 0 (pas $null parce qu'on doit retourner un INT). 
+                return 0
+            }
+
+            $entityId = $entity.entityId
+        }
+        else # On a trouvé les infos du BG dans vRA donc on ajoute/met à jour l'entité
+        {
+            $entityElement = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+
+            # Ajout de l'entité à la base de données (si pas déjà présente)
+            $entityId = $this.addEntity($entityType, `
+                                        ("{0} {1}" -f $entityElement, $this.getEntityElementDesc($entityType, $entityElement)), `
+                                        (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
         }
         
-        return @{
-            entityElement = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
-            entityFinanceCenter = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER
-        }
+        return $entityId
     }
 
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie l'entité qui correspond à un Item. Si on a déjà un item dans la DB, on 
+                va pouvoir retourner l'entité. Sinon, on retournera $null
+
+        IN  : $itemName     -> Nom de l'Item pour lequel on veut l'entité.
+
+        RET : Objet représentant l'entité 
+                $null si pas trouvé
+    #>
+    hidden [PSObject] getItemEntity([string]$itemName)
+    {
+        $request = "SELECT * FROM BillingItem WHERE itemName='{0}'" -f $itemName
+
+        $items = $this.db.execute($request)
+
+        if($items.count -eq 0)
+        {
+            return $null
+        }
+
+        # Retour de l'entité parente 
+        return $this.getEntity($items[0].parentEntityId)
+    }
 
     <#
 		-------------------------------------------------------------------------------------

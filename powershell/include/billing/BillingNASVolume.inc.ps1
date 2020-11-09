@@ -41,7 +41,8 @@ class BillingNASVolume: Billing
 
 		RET : Instance de l'objet
 	#>
-    BillingNASVolume([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv) : base($vraTenantList, $db, $ldap, $serviceList, $serviceBillingInfos, $targetEnv)
+    BillingNASVolume([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv) : `
+                    base($vraTenantList, $db, $ldap, $serviceList, $serviceBillingInfos, $targetEnv, "NAS_Volume")
     {
     }
 
@@ -55,7 +56,7 @@ class BillingNASVolume: Billing
         RET : le type d'entité
                 $null si pas supporté
     #>
-    hidden [PSObject] getEntityType([PSObject]$volumeInfos)
+    hidden [BillingEntityType] getEntityType([PSObject]$volumeInfos)
     {
         # Le switch est "case insensitive"
         switch($volumeInfos.targetTenant)
@@ -142,24 +143,16 @@ class BillingNASVolume: Billing
                 Continue
             }
             
-            # Recherche des détails de l'entité
-            $entityDetails = $this.getEntityDetails($targetTenant, $volume.bgName)
+            # On ajoute ou met à jour l'entité dans la DB et on retourne son ID
+            $entityId = $this.initAndGetEntityId($entityType, $targetTenant, $volume.bgName, $volume.volId)
 
-            if($null -eq $entityDetails)
+            # Si on n'a pas trouvé l'entité, c'est que n'a pas les infos nécessaires pour l'ajouter à la DB
+            if($entityId -eq 0)
             {
-                Write-Warning ("Business group '{0}' doesn't exists anymore on tenant '{1}'" -f $volume.bgName, $targetTenant)
+                Write-Warning ("Business Group '{0}' ('{1}') has been deleted and item '{2}' wasn't existing last month. Not enough information to bill it" -f $volume.bgName, $targetTenant, $volume.volName)
                 Continue
             }
-
-            # Recherche des infos sur l'élément concerné et le "détail" de celui-ci
-            $entityElement = $entityDetails.entityElement
-            $entityElementDesc = $this.getEntityElementDesc($entityType, $entityElement)
-
-            $entityFinanceCenter = $entityDetails.entityFinanceCenter
-
-            # Ajout de l'entité à la base de données (si pas déjà présente)
-            $entityId = $this.addEntity($entityType, ("{0} {1}" -f $entityElement, $entityElementDesc), $entityFinanceCenter)
-
+            
 
             # -- Informations sur l'élément à facturer --
 
@@ -194,7 +187,7 @@ class BillingNASVolume: Billing
                 # On utilise donc l'identifiant qui a été enregistré lors de la demande du volume
                 $owner = $volume.requestor
             }
-            else
+            else # On prend le nom défini dans AD
             {
                 $owner = $requestor.Name
             }
