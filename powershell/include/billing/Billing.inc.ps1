@@ -175,6 +175,9 @@ class Billing
     #>
     hidden [int] addItem([int]$parentEntityId, [string]$type, [string]$name, [string]$desc, [int]$month, [int]$year, [double]$quantity, [string]$unit, [string]$priceLevel)
     {
+        # On n'ajoute pas les items qui n'ont aucune consommation car cela entraînera une erreur lorsqu'ils seront repris pour être ajoutés dans Copernic.
+        # Cependant, cette condition IF peut être commentée pour le développement, pour ajouter quelques enregistrements dans la DB, pour lesquels on changera
+        # ensuite manuellement la valeur "quantity".
         if($quantity -eq 0)
         {
            return $null
