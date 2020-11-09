@@ -908,15 +908,6 @@ function handleNotifications
 				}
 
 				# ---------------------------------------
-				# Groupes AD soudainement devenus vides...
-				'emptyADGroups'
-				{
-					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
-					$mailSubject = "Info - AD groups empty for Business Group"
-					$templateName = "empty-ad-groups"
-				}
-
-				# ---------------------------------------
 				# Groupes AD pour les rôles...
 				'adGroupsNotFound'
 				{
@@ -1566,15 +1557,6 @@ try
 			return
 		}
 
-
-		# Si le groupe est vide,
-		if((Get-ADGroupMember -server ad2.epfl.ch $_.Name).Count -eq 0)
-		{
-			# On enregistre l'info pour notification
-			$notifications['emptyADGroups'] += ("{0} ({1})" -f $_.Name, $bgName)
-		}
-
-		
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group 
