@@ -733,8 +733,8 @@ try
 							# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
 							$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
 
-							# Suppression des valeurs vides (oui, il peut y en avoir on dirait... )
-							$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" }
+							# Suppression des valeurs vides ou $null (oui, il peut y en avoir on dirait... )
+							$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" -and $null -ne $_ }
 							$financeCenter = $null
 
 							# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
