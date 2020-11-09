@@ -18,7 +18,11 @@
 					  il faut aussi aller chercher dans 'o=ehe,c=ch' ...
 	31.01.2020 - 1.3 - Correction lors de l'utilisation de la fonction qui interroge scoldap.epfl.ch. Un no 
 						d'unité doit obligatoirement être codé sur 5 chiffres, il faut donc ajouter des 0
-						avant les nombres plus petits...			  
+						avant les nombres plus petits...
+	09.11.2020 - 1.4 - Bon ben semblerait, pour une raison inconnue, que maintenant il ne soit plus valable 
+						récupérer la liste des personnes d'une unité en allant dans SCOLDAP.epfl.ch... je ne
+						sais pas depuis quand mais maintenant on trouve bien toutes les personnes de l'unité
+						dans LDAP.epfl.ch...
 	
 #>
 class EPFLLDAP
@@ -51,7 +55,8 @@ class EPFLLDAP
 
 	<#
 	-------------------------------------------------------------------------------------
-		BUT : Effectue une recherche dans LDAP avec les paramètres donnés.
+		BUT : Effectue une recherche dans LDAP avec les paramètres donnés. 
+				Cette fonction est utilisée pour faire une recherche à un seul niveau.
 
 		IN  : $ldapServer	-> Nom d'hôte du serveur LDAP à utiliser
 		IN  : $baseDN		-> DN pour la recherche
@@ -103,7 +108,9 @@ class EPFLLDAP
 
 	<#
 	-------------------------------------------------------------------------------------
-		BUT : Effectue une recherche dans LDAP avec les paramètres donnés.
+		BUT : Effectue une recherche dans LDAP avec les paramètres donnés. Cette fonction
+				doit être utilisée quand on veut faire une recherche récursive dans une 
+				arborescence.
 
 		IN  : $ldapServer	-> Nom d'hôte du serveur LDAP à utiliser
 		IN  : $baseDN		-> DN pour la recherche
@@ -241,22 +248,25 @@ class EPFLLDAP
 	#>
 	[Array] getUnitMembers([string]$unitUniqueIdentifier)
 	{
-		# On ajoute des 0 si besoin au début du no de l'unité pour que ça renvoie bien un résultat après
-		$unitUniqueIdentifier = $unitUniqueIdentifier.PadLeft(5, '0')
+		# Pour mettre le résultat
+		$memberList = @()
 
-		# On fait la recherche dans SCOLDAP cette fois-ci... et vous noterez le "U" juste après le "="... ouais parce que dans SCOLDAP, y'a une faille spatio-temporelle
-		# ou un truc over bizarre qui fait qu'il faut mettre un U avant le no d'unité... là de nouveau, WTF?
-		# Voir dans l'entête du présent fichier pour comprendre pourquoi on cherche dans SCOLDAP
-		$allMembers = $this.LDAPSearch($this.LDAPconfig.members.server, $this.LDAPconfig.members.rootDN, "subtree", "((uniqueidentifier=U$($unitUniqueIdentifier)))", @("memberuid"))
-
-		# Si rien trouvé, 
-		if($allMembers.count -eq 0)
+		# Parcours des informations que l'on a
+		ForEach($ldapInfos in $this.LDAPconfig.facultyUnits.locations)
 		{
-			# on retourne simplement la liste vide
-			return $allMembers
-		}
 
-		return $allMembers.Properties['memberuid']
+			# Recherche des members
+			$allMembers = $this.LDAPSearch($this.LDAPconfig.facultyUnits.server, $ldapInfos.rootDN, "subtree", "((uniqueidentifier=$($unitUniqueIdentifier)))", @("memberuid"))
+
+			# Si on a un résultat
+			if(($allMembers.count -gt 0) -and ($allMembers.properties.keys -contains "memberuid"))
+			{
+				return $allMembers.properties.memberuid
+			}
+
+		}
+		return $memberList
+
 	}
 
 	<#
