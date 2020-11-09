@@ -877,11 +877,8 @@ try
 							$counters.inc('ADGroupsContentModified')
 						}
 
-						# Listing des usernames des utilisateurs présents maintenant dans le groupe
-						$adMemberList = Get-ADGroupMember $adGroupName | ForEach-Object {$_.SamAccountName}
-
-						# Si le groupe est vide, il ne sert à rien et on peut le supprimer
-						if($null -eq $adMemberList)
+						# Si selon LDAP le groupe est vide, il ne sert à rien et on peut le supprimer
+						if($ldapMemberList.count -eq 0)
 						{
 							$logHistory.addLineAndDisplay(("--> Group {0} is empty, removing it..." -f $adGroupName))
 							if(-not $SIMULATION_MODE)
