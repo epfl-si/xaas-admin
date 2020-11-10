@@ -400,6 +400,7 @@ class Billing
     {
         $bg = $this.vraTenantList.$targetTenant.getBG($bgName)
 
+        # Si le BG n'existe plus dans vRA
         if($null -eq $bg)
         {
             # On regarde donc si on a déjà référencé l'item dans la DB par le passé et on tente de
