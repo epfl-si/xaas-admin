@@ -192,6 +192,9 @@ class EPFLLDAP
 				associatifs contiennent les informations d'une unité:
 				- name
 				- uniqueidentifier
+				- accountingnumber
+				- level
+				- path
 	#>
 	[Array]getFacultyUnitList([string]$facName, [int]$nbLevels)
 	{
@@ -213,13 +216,15 @@ class EPFLLDAP
 			{
 				# Extraction de la fin du path et compte du nombre de niveau
 				# Ex: LDAP://ldap.epfl.ch:636/ou=si-vp,ou=si,o=epfl,c=ch  vers OU=SI-VP,OU=SI,O=EPFL,C=CH
-				$level = ([Regex]::match($curunit.path, '.*\/(.*)').Groups[1].value.toUpper() -Split ",").Count -1
+				$path = [Regex]::match($curunit.path, '.*\/(.*)').Groups[1].value.toUpper()
+				$level = ($path -Split ",").Count -1
 				
 				# Création de l'objet
 				$unitList += @{name = $curUnit.Properties['ou'][0]
 								uniqueidentifier = $curUnit.Properties['uniqueidentifier'][0]
 								accountingnumber = $curUnit.Properties['accountingnumber'][0]
-								level = $level}
+								level = $level
+								path = $path}
 			} # FIN BOUCLE de parcours des résultats
 		}
 		return $unitList

@@ -71,7 +71,7 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$r
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ResumeOnFail.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
+
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -723,7 +723,7 @@ function createOrUpdateBGReservations
 		if($null -eq $matchingRes)
 		{
 			$logHistory.addLineAndDisplay(("--> Adding Reservation '{0}' from template '{1}'..." -f $resName, $resTemplate.name))
-			$dummy = $vra.addResFromTemplate($resTemplate, $resName, $bg.tenant, $bg.id)
+			$vra.addResFromTemplate($resTemplate, $resName, $bg.tenant, $bg.id) | Out-Null
 
 			$counters.inc('ResCreated')
 		}
@@ -1233,6 +1233,8 @@ try
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
+	$logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
+
 	# Petite info dans les logs.
 	if($fullSync)
 	{
@@ -1360,9 +1362,6 @@ try
 	# Création de l'objet pour récupérer les informations sur les approval policies à créer pour les demandes de nouveaux éléments
 	$newItems = [NewItems]::new("vra-new-items.json")
 
-	# Pour rechercher dans LDAP
-	$ldap = [EPFLLDAP]::new()
-
 	# Création de l'objet pour gérer les 2nd day actions
 	$secondDayActions = [SecondDayActions]::new()
 
@@ -1403,7 +1402,6 @@ try
 
 			# Custom properties du Buisness Group
 			$bgEPFLID = $unitID
-
 		}
 
 
@@ -1654,7 +1652,7 @@ try
 		{
 			$logHistory.addLineAndDisplay(("--> Creating ISO folder '{0}'..." -f $bgISOFolder))
 			# On le créé
-			$dummy = New-Item -Path $bgISOFolder -ItemType:Directory
+			New-Item -Path $bgISOFolder -ItemType:Directory | Out-Null
 
 			# Pour faire en sorte que les ACLs soient mises à jour.
 			$ISOFolderCreated = $true
@@ -1730,7 +1728,7 @@ try
 		elseif($isBGOfType -and ($doneBGList -notcontains $_.name))
 		{
 			$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
-			$setAsGhost = setBGAsGhostIfNot -vra $vra -bg $_
+			setBGAsGhostIfNot -vra $vra -bg $_ | Out-Null
 
 		}
 
@@ -1774,8 +1772,9 @@ try
 	}
 
 	# Affichage des nombres d'appels aux fonctions des objets REST
-	$vra.displayFuncCalls()
-	$nsx.displayFuncCalls()
+	$logHistory.addLineAndDisplay($vra.getFuncCallsDisplay("vRA # func calls"))
+	$logHistory.addLineAndDisplay($nsx.getFuncCallsDisplay("NSX # func calls"))
+	
 
 	# Si un fichier de progression existait, on le supprime
 	$resumeOnFail.clean()

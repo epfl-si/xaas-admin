@@ -1,0 +1,1 @@
+Contient les fichiers de configuration permettant d'accéder à des systèmes tierces

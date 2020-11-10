@@ -145,7 +145,7 @@ try
          # On regarde si l'utilisateur se trouve dans AD. Si ce n'est pas le cas, on passe au suivant, tout en ayant loggué la chose.
          try
          {
-            $ADuser = Get-ADUser -Identity $user.username -Properties *
+            Get-ADUser -Identity $user.username -Properties * | Out-Null
          }
          catch
          {

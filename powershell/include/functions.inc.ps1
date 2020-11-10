@@ -102,7 +102,7 @@ function ADGroupExists([string]$groupName)
 	try
 	{
 		# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
-		$adGroup = Get-ADGroup -Identity $groupName
+		Get-ADGroup -Identity $groupName | Out-Null
 		# Si on a pu le récupérer, c'est qu'il existe.
 		return $true
 
@@ -264,7 +264,7 @@ function convertHTMLtoPDF([string] $source, [string]$destinationFile, [string] $
 	$pdfDocument.Open()
 
 	# Ajout de l'auteur. Ceci ne peut être fait qu'à partir du moment où le document PDF a été ouvert (via 'Open() )
-	$dummy = $pdfDocument.AddAuthor($author)
+	$pdfDocument.AddAuthor($author) | Out-Null
 	
 	
 	# On tente de charger le HTML dans le document PDF 
@@ -305,7 +305,7 @@ function saveRESTError([string]$category, [string]$errorId, [string]$errorMsg, [
 {
     $errorFolder =  ([IO.Path]::Combine($global:ERROR_FOLDER, $category, $errorId))
 
-    $dummy = New-Item -ItemType "directory" -Path $errorFolder
+    New-Item -ItemType "directory" -Path $errorFolder | Out-Null
 
     $jsonContent | Out-File ([IO.Path]::Combine($errorFolder, "REST.json"))
 
@@ -328,4 +328,23 @@ function saveRESTError([string]$category, [string]$errorId, [string]$errorMsg, [
 function objectPropertyExists([PSCustomObject]$obj, [string]$propertyName)
 {
 	return ((($obj).PSobject.Properties | Select-Object -ExpandProperty "Name") -contains $propertyName)
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Renvoie le type d'entité de facturation en fonction du tenant
+    
+    IN  : $tenant   -> Nom du tenant
+
+    RET : Type d'entité, type [BillingEntityType]. Défini dans le fichier include/define.inc.ps1
+#>
+function getBillingEntityTypeFromTenant([string]$tenant)
+{
+    switch($tenant)
+    {
+        $global:VRA_TENANT__EPFL { return [BillingEntityType]::Unit }
+        $global:VRA_TENANT__ITSERVICES { return [BillingEntityType]::Service }
+        $global:VRA_TENANT__RESEARCH { return [BillingEntityType]::Project }
+    }
 }

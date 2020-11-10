@@ -174,6 +174,12 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 					$templateName = "copernic-bill-send-error"
 				}
 
+                'incorrectFinanceCenter'
+                {
+                    $valToReplace.entityList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Incorrect finance center"
+					$templateName = "billing-incorrect-finance-center"
+                }
 
 				default
 				{
@@ -216,7 +222,7 @@ try
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
     # Ajout d'informations dans le log
-    $logHistory.addLine("Script executed with following parameters: `n{0}" -f ($PsBoundParameters | ConvertTo-Json))
+    $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
     
     # Si on doit ajouter dans Copernic
     if($sendToCopernic)
@@ -251,6 +257,8 @@ try
     $counters.add('billCopernicError', '# Bill not sent to Copernic because of an error')
     $counters.add('PDFGenerated', '# PDF generated')
     $counters.add('PDFOldCleaned', '# Old PDF cleaned')
+    $counters.add('billSentByEmail', '# Bill send by email')
+    $counters.add('billIncorrectFinanceCenter', '# incorrect finance center')
     
     <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -262,7 +270,7 @@ try
 	#>
     $notifications=@{
         copernicBillError = @()
-
+        incorrectFinanceCenter = @()
     }
 
     # Pour accéder à la base de données
@@ -395,7 +403,7 @@ try
                 {
 
                     # Si on n'a pas d'infos de facturation pour le type d'entité courante, on ne va pas plus loin, on traite ça comme une erreur
-                    if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels -propertyName $entity.entityType))
+                    if(!(objectPropertyExists -obj $billedItemInfos.entityTypesMonthlyPriceLevels -propertyName $entity.entityType))
                     {
                         Throw ("Error for item type '{0}' because no billing info found for entity '{1}'. Have a look at billing JSON configuration file for service '{2}'" -f $billedItemInfos.itemTypeInDB, $entity.entityType, $service)
                     }
@@ -412,7 +420,7 @@ try
                     {
 
                         # Si on n'a pas d'infos de niveau de facturation (niveau de prix) pour l'item courant, on passe au suivant
-                        if(!(objectPropertyExists -obj $billedItemInfos.entityTypesPriceLevels.($entity.entityType) -propertyName $item.itemPriceLevel))
+                        if(!(objectPropertyExists -obj $billedItemInfos.entityTypesMonthlyPriceLevels.($entity.entityType) -propertyName $item.itemPriceLevel))
                         {
                             Throw ("Error for item type '{0}' because price level '{1}' not found in JSON configuration file for service '{2}'" -f $item.itemType, $item.itemPriceLevel, $service)
                         }
@@ -429,7 +437,7 @@ try
                         # être réutilisé plus loin dans le code qui ajoute la facture dans Copernic.
                         # On récupère la valeur via "Select-Object" car le nom du niveau peut contenir des caractères non alphanumériques qui sont
                         # donc incompatibles avec un nom de propriété accessible de manière "standard" ($obj.<propertyName>)
-                        $unitPricePerMonthCHF = $billedItemInfos.entityTypesPriceLevels.($entity.entityType) | Select-Object -ExpandProperty $item.itemPriceLevel
+                        $unitPricePerMonthCHF = $billedItemInfos.entityTypesMonthlyPriceLevels.($entity.entityType) | Select-Object -ExpandProperty $item.itemPriceLevel
                         $item | Add-member -NotePropertyName "unitPricePerMonthCHF" -NotePropertyValue $unitPricePerMonthCHF
 
                         $monthYear = (getItemDateMonthYear -month $item.itemMonth -year $item.itemYear)
@@ -580,66 +588,102 @@ try
                         {
                             $billDescription = "{0} - du {1} au {2}" -f $serviceBillingInfos.serviceName, $periodStartDate, $periodEndDate
 
-                             # Facture de base
-                             $PDFFiles = @( @{
-                                file = $targetPDFPath
-                                desc = $billDescription
-                            } )
-
-                            # Si on a une grille tarifaire pour le type d'entité que l'on est en train de traiter,
-                            if(objectPropertyExists -obj $serviceBillingInfos.billingGrid -propertyName $entity.entityType)
+                            # Si le centre financier est un "vrai" centre financier (et donc que des chiffres)
+                            if($entity.entityFinanceCenter -match '[0-9]+')
                             {
-                                # Chemin jusqu'à la grille tarifaire et on regarde qu'elle existe bien.
-                                $billingGridPDFFile = ([IO.Path]::Combine($global:XAAS_BILLING_DATA_FOLDER, $service, $serviceBillingInfos.billingGrid.($entity.entityType)))
-                                if(!(Test-Path $billingGridPDFFile))
+
+
+                                # Facture de base
+                                $PDFFiles = @( @{
+                                    file = $targetPDFPath
+                                    desc = $billDescription
+                                } )
+
+                                # Si on a une grille tarifaire pour le type d'entité que l'on est en train de traiter,
+                                if(objectPropertyExists -obj $serviceBillingInfos.billingGrid -propertyName $entity.entityType)
                                 {
-                                    Throw ("Billing grid file not found for service ({0})" -f $billingGridPDFFile)
-                                }
+                                    # Chemin jusqu'à la grille tarifaire et on regarde qu'elle existe bien.
+                                    $billingGridPDFFile = ([IO.Path]::Combine($global:XAAS_BILLING_DATA_FOLDER, $service, $serviceBillingInfos.billingGrid.($entity.entityType)))
+                                    if(!(Test-Path $billingGridPDFFile))
+                                    {
+                                        Throw ("Billing grid file not found for service ({0})" -f $billingGridPDFFile)
+                                    }
 
-                                # On ajoute la grille tarifaire
-                                $PDFFiles += @{
-                                    file = $billingGridPDFFile
-                                    desc = "Grille tarifaire"
-                                }
-                            }# FIN SI on a une grille tarifaire pour le type d'entité
-           
-                           
-                            # Ajout de la facture dans Copernic avec le mode d'exécution spécifié
-                            $result = $copernic.addBill($serviceBillingInfos, $targetEnv, $billReference, $billDescription, $PDFFiles, $entity, $itemList, $execMode)
+                                    # On ajoute la grille tarifaire
+                                    $PDFFiles += @{
+                                        file = $billingGridPDFFile
+                                        desc = "Grille tarifaire"
+                                    }
+                                }# FIN SI on a une grille tarifaire pour le type d'entité
+            
                             
-                            # Si une erreur a eu lieu
-                            if($null -ne $result.error)
-                            {
-                                # Enregistrement de l'erreur
-                                $errorId = "{0}_{1}" -f (Get-Date -Format "yyyyMMdd_hhmmss"), $entity.entityId
-                                $errorMsg = "Error adding Copernic Bill for entity '{0}'`nError message was: {1}" -f $entity.entityElement, $result.error
-                                $errorFolder = saveRESTError -category "billing" -errorId $errorId -errorMsg $errorMsg -jsonContent $copernic.getLastBodyJSON()
-                                $logHistory.addLineAndDisplay(("> Error sending bill to Copernic for entity ID (error: {0}). Details can be found in folder '{1}'" -f $result.error, $errorFolder))
+                                # Ajout de la facture dans Copernic avec le mode d'exécution spécifié
+                                $result = $copernic.addBill($serviceBillingInfos, $targetEnv, $billReference, $billDescription, $PDFFiles, $entity, $itemList, $execMode)
+                                
+                                # Si une erreur a eu lieu
+                                if($null -ne $result.error)
+                                {
+                                    # Enregistrement de l'erreur
+                                    $errorId = "{0}_{1}" -f (Get-Date -Format "yyyyMMdd_hhmmss"), $entity.entityId
+                                    $errorMsg = "Error adding Copernic Bill for entity '{0}'`nError message was: {1}" -f $entity.entityElement, $result.error
+                                    $errorFolder = saveRESTError -category "billing" -errorId $errorId -errorMsg $errorMsg -jsonContent $copernic.getLastBodyJSON()
+                                    $logHistory.addLineAndDisplay(("> Error sending bill to Copernic for entity ID (error: {0}). Details can be found in folder '{1}'" -f $result.error, $errorFolder))
 
-                                $counters.inc('billCopernicError')
+                                    $counters.inc('billCopernicError')
 
-                                # Ajout du nécessaire pour les notifications
-                                $notifications.copernicBillNotSent += "{0} ({1}) - Error logs are on {2} in folder {3} " -f $entity.entityElement, $entity.entityType, $env:computername, $errorFolder
+                                    # Ajout du nécessaire pour les notifications
+                                    $notifications.copernicBillNotSent += "{0} ({1}) - Error logs are on {2} in folder {3} " -f $entity.entityElement, $entity.entityType, $env:computername, $errorFolder
+                                }
+                                else # Pas d'erreur
+                                {
+                                    # Si on est en mode d'exéution réel et que la facture a bel et bien été envoyée dans Copernic 
+                                    if($copernicRealMode)
+                                    {
+                                        $logHistory.addLineAndDisplay(("> Bill sent to Copernic (Doc number: {0}, bill ref: {1})" -f $result.docNumber, $billReference))
+
+                                        # On dit que tous les items de la facture ont été facturés
+                                        $billingObject.setEntityItemTypesAsBilled($entity.entityId, $billedItemTypes, $billReference)
+                                    }
+                                    else # On est en mode "simulation" donc pas d'envoi réel de facture
+                                    {
+                                        $logHistory.addLineAndDisplay("> Bill sent to Copernic in SIMULATION MODE without any error")
+                                    }
+
+                                    $logHistory.addLineAndDisplay(("> {0} items '{1}' set as billed for entity '{2}'" -f $itemList.count, ($billedItemTypes -join "', '"), $entity.entityElement))
+                                    $counters.inc('billSentToCopernic')    
+
+                                } # Fin si pas d'erreur
+                            
                             }
-                            else # Pas d'erreur
+                             # Le centre financier est une adresse mail EPFL
+                            elseif($entity.entityFinanceCenter -match '.*?@epfl\.ch')
                             {
-                                # Si on est en mode d'exéution réel et que la facture a bel et bien été envoyée dans Copernic 
+                                $logHistory.addLineAndDisplay(("> This bill has to ben sent at {0} mail address" -f $entity.entityFinanceCenter))
+
+                                # Si on n'est pas en mode simulation,
                                 if($copernicRealMode)
                                 {
-                                    $logHistory.addLineAndDisplay(("> Bill sent to Copernic (Doc number: {0}, bill ref: {1})" -f $result.docNumber, $billReference))
+                                    $logHistory.addLineAndDisplay("> Sending mail...")
+                                    $mailSubject = "vRA Billing - {0}" -f $billDescription
+                                    $billingObject.sendBillByMail($entity.entityFinanceCenter, $targetPDFPath, $mailSubject, $periodStartDate, $periodEndDate)
 
-                                    # On dit que tous les items de la facture ont été facturés
-                                    $billingObject.setEntityItemTypesAsBilled($entity.entityId, $billedItemTypes, $billReference)
+                                    $counters.inc('billSentByEmail')  
                                 }
-                                else # On est en mode "simulation" donc pas d'envoi réel de facture
+                                else # On est en mode simulation
                                 {
-                                    $logHistory.addLineAndDisplay("> Bill sent to Copernic in SIMULATION MODE without any error")
+                                    $logHistory.addLineAndDisplay("> SIMULATION MODE.. nothing is sent!")
                                 }
 
-                                $logHistory.addLineAndDisplay(("> {0} items '{1}' set as billed for entity '{2}'" -f $itemList.count, ($billedItemTypes -join "', '"), $entity.entityElement))
-                                $counters.inc('billSentToCopernic')    
-
-                            } # Fin si pas d'erreur
+                            }
+                            else # Le centre financier n'est pas géré
+                            {
+                                # On ajoute l'erreur pour que ça soit envoyé par email
+                                # Le développeur est tout à fait conscient que si on arrive ici et qu'on ne peut pas faire de facturation, le fichier PDF
+                                # aura malgré tout déjà été créé... ce n'est pas grave, y'a des choses pires dans la vie.
+                                $logHistory.addLineAndDisplay(("> Incorrect finance center ({0}) for entity '{1}'" -f $entity.entityFinanceCenter, $entity.entityElement))
+                                $notifications.incorrectFinanceCenter += ("Entity: {0} - Finance Center: {1}" -f $entity.entityElement, $entity.entityFinanceCenter)
+                                $counters.inc('billIncorrectFinanceCenter')
+                            }
                             
                         }# Fin s'il faut envoyer à Copernic
                         

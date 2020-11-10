@@ -63,18 +63,21 @@ enum TableauRoles
 	BUT : Regarde si un groupe Active Directory existe et si ce n'est pas le cas, il 
 		  est créé.
 
-	IN  : $groupName		-> Nom du groupe à créer
-	IN  : $groupDesc		-> Description du groupe à créer.
-	IN  : $groupMemberGroup	-> Nom du groupe à ajouter dans le groupe $groupName
-	IN  : $OU				-> OU Active Directory dans laquelle créer le groupe
-	IN  : $simulation		-> $true|$false pour dire si on est en mode simulation ou pas.
+	IN  : $groupName				-> Nom du groupe à créer
+	IN  : $groupDesc				-> Description du groupe à créer.
+	IN  : $groupMemberGroup			-> Nom du groupe à ajouter dans le groupe $groupName
+	IN  : $OU						-> OU Active Directory dans laquelle créer le groupe
+	IN  : $simulation				-> $true|$false pour dire si on est en mode simulation ou pas.
+	IN  : $updateExistingContent    -> $true|$false pour dire si on doit mettre à jour le contenu
+										d'un groupe existant
 
 	RET : $true	-> OK
 		  $false -> le groupe ($groupMemberGroup) à ajouter dans le groupe $groupName 
 		  			n'existe pas.
 #>
-function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation)
+function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation, [bool]$updateExistingContent)
 {
+	 
 	# Cette petite ligne permet de transformer les tirets style "MS Office" en tirets "normaux". Si on ne fait pas ça, on aura 
 	# des problèmes par la suite dans vRA car ça pourrira le JSON...
 	$groupDesc = $groupDesc -replace '–', '-'
@@ -86,14 +89,18 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 		return $false
 	}
 
+	$alreadyExists = ADGroupExists -groupName $groupName
+
 	# Si le groupe n'existe pas encore 
-	if((ADGroupExists -groupName $groupName) -eq $false)
+	if($alreadyExists -eq $false)
 	{
 		if(-not $simulation)
 		{
 			$logHistory.addLineAndDisplay(("--> Creating AD group '{0}'..." -f $groupName))
 			# Création du groupe
 			New-ADGroup -Name $groupName -Description $groupDesc -GroupScope DomainLocal -Path $OU
+
+			$counters.inc('ADGroupsCreated')
 		}
 	}
 	else
@@ -105,14 +112,19 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 
 	if(-not $simulation)
 	{
+			# Si le groupe vient d'être CREE
+			# OU
+			# qu'il existe déjà et qu'on a le droit de mettre à jour son contenu,
+			if( ($alreadyExists -eq $false) -or ($alreadyExists -and $updateExistingContent))
+			{
+				$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
+				# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
+				Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
+				# Et on remet les bons membres
+				Add-ADGroupMember $groupName -Members $groupMemberGroup
+			}
 
-			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
-			# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
-			Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
-			# Et on remet les bons membres
-			Add-ADGroupMember $groupName -Members $groupMemberGroup
-
-			$counters.inc('ADGroupsCreated')
+			
 	}
 	
 	return $true
@@ -237,7 +249,7 @@ function removeInexistingADAccounts([Array] $accounts)
 	{
 		try 
 		{
-			$m = Get-ADUser $acc
+			Get-ADUser $acc | Out-Null
 
 			# Si on arrive ici, c'est que pas d'erreur donc compte trouvé.
 			$validAccounts += $acc
@@ -262,30 +274,54 @@ function removeInexistingADAccounts([Array] $accounts)
 			Pour le moment, on ne fait ceci que pour le tenant EPFL car c'est le seul
 			qui est facturé
 
-	IN  : $sqldb	-> Objet permettant d'accéder à la DB
-	IN  : $ADGroup	-> Groupe AD avec les utilisateurs à ajouter
-	IN  : $role		-> Role à donner aux utilisateurs du groupe
-	IN  : $bgName	-> Nom du Business Group qui est accessible
-					   Peut être de la forme basique epfl_<faculty>_<unit>
-					   Ou alors simplement un seul élément si c'est un nom de faculté
+	IN  : $sqldb		-> Objet permettant d'accéder à la DB
+	IN  : $ADGroup		-> Groupe AD avec les utilisateurs à ajouter
+	IN  : $role			-> Role à donner aux utilisateurs du groupe
+	IN  : $bgName		-> Nom du Business Group qui est accessible
+					   		Peut être de la forme basique epfl_<faculty>_<unit>
+					   		Ou alors simplement un seul élément si c'est un nom de faculté
+	IN  : $targetTenant	-> Nom du tenant sur lequel on est.
+							On gère uniquement les tenants ITServices et EPFL
 #>
-function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$role, [string]$bgName)
+function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$role, [string]$bgName, [string]$targetTenant)
 {
 
 	switch($role)
 	{
 		User
 		{
-			# Extraction des infos ($dummy va contenir le nom complte du BG, dont on n'a pas besoin)
-			# Gère les noms  de BG au format epfl_<fac>_<unit>
-			$dummy, $criteriaList = [regex]::Match($bgName, '^([a-z]+)_([a-z]+)_(\w+)').Groups | Select-Object -ExpandProperty value
+			if($targetTenant -eq $global:VRA_TENANT__EPFL)
+			{
+				# Gère les noms  de BG au format epfl_<fac>_<unit>
+				$regex = '^([a-z]+)_([a-z]+)_(\w+)'
+			}
+			elseif($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
+			{
+				# Gère les noms  de BG au format its_<serviceShortName>
+				$regex = '^([a-z]+)_([a-z0-9]+)'
+			}
+			else
+			{
+				Throw ("Tenant '{0}' not handled" -f $targetTenant)
+			}
+			
+			# Extraction des infos ($dummy va contenir le nom comple du BG, dont on n'a pas besoin)
+			$dummy, $criteriaList = [regex]::Match($bgName, $regex).Groups | Select-Object -ExpandProperty value
 		}
 
 		AdminFac
 		{
+			if($targetTenant -eq $global:VRA_TENANT__EPFL)
+			{
+				# Gère les noms  de BG au format epfl_<fac>
+				$regex = '^([a-z]+)_([a-z]+)'
+			}
+			else
+			{
+				Throw ("Tenant '{0}' not handled" -f $targetTenant)
+			}
 			# Extraction des infos ($dummy va contenir le nom complte du BG, dont on n'a pas besoin)
-			# Gère les noms  de BG au format epfl_<fac>
-			$dummy, $criteriaList = [regex]::Match($bgName, '^([a-z]+)_([a-z]+)').Groups | Select-Object -ExpandProperty value
+			$dummy, $criteriaList = [regex]::Match($bgName, $regex).Groups | Select-Object -ExpandProperty value
 		}
 
 		AdminEPFL
@@ -310,7 +346,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 
 	# On commence par supprimer tous les utilisateurs du role donné pour le BG
 	$request = "DELETE FROM vraUsers WHERE role='{0}' AND {1}" -f $role, ($criteriaConditions -join " AND ")
-	$nbDeleted = $sqldb.execute($request)
+	$sqldb.execute($request) | Out-Null
 
 	$baseRequest = "INSERT INTO vraUsers VALUES"
 	$rows = @()
@@ -331,7 +367,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 		{
 			# On créé la requête et on l'exécute
 			$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
-			$nbInserted = $sqldb.execute($request)
+			$sqldb.execute($request) | Out-Null
 			$rows = @()
 		}
 		
@@ -341,7 +377,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 	if($rows.Count -gt 0)
 	{
 		$request = "{0}{1}" -f $baseRequest, ($rows -join ",")
-		$nbInserted = $sqldb.execute($request)
+		$sqldb.execute($request) | Out-Null
 	}
 
 	
@@ -448,7 +484,7 @@ try
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
-	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
+	$logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
 
 	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups" ainsi que d'autre choses...
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
@@ -553,6 +589,10 @@ try
 			$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "ge-unit-mapping.json"))
 			$geUnitMappingList = (Get-Content -Path $geUnitMappingFile -raw) | ConvertFrom-Json
 
+			# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
+			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "bill-to-mail.json"))
+			$billToMailList = (Get-Content -Path $billToMailFile -raw) | ConvertFrom-Json
+
 			# Parcours des facultés trouvées
 			ForEach($faculty in $facultyList)
 			{
@@ -594,7 +634,7 @@ try
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						if($notifications['missingEPFLADGroups'] -notcontains $approveGroupNameGroups)
 						{
@@ -629,7 +669,7 @@ try
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $adminGroupNameAD -groupDesc $adminGroupDescAD -groupMemberGroup $adminGroupNameGroups `
-					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 					$notifications['missingEPFLADGroups'] += $adminGroupNameGroups
@@ -640,7 +680,7 @@ try
 
 
 				if((createADGroupWithContent -groupName $supportGroupNameAD -groupDesc $supportGroupDescAD -groupMemberGroup $supportGroupNameGroups `
-					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 					$notifications['missingEPFLADGroups'] += $supportGroupNameGroups
@@ -663,49 +703,69 @@ try
 				{
 					$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty.name, $unit.name))
 
-
-					# Si c'est une unité de niveau 3 (centre), on doit chercher l'unité de niveau 4 qui fait office de "gestion"
-					if($unit.level -eq 3)
+					# Si on doit utiliser une adresse mail pour la facturation au lieu du centre financier
+					$financeCenter = $null
+					ForEach($billToMail in $billToMailList)
 					{
-						$logHistory.addLineAndDisplay("--> Level 3 unit (Center), looking for level 4 'GE' unit for finance center..." )
-
-						# Noms d'unité à rechercher. On cherche de plusieurs manières parce qu'ils ont été incapables de nommer ça d'une façon cohérente...
-						$geUnitNameList = @( ("{0}-GE" -f $unit.name)
-											("{0}-GE" -f [Regex]::match($unit.name, '[A-Za-z]+-(.*)').groups[1].value) )
-
-						# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
-						$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
-
-						$financeCenter = $null
-
-						# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
-						ForEach($geUnitName in $geUnitNameList)
+						# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturation
+						if($unit.path -match ("{0}$" -f $billToMail.ldapOU))
 						{
-							$logHistory.addLineAndDisplay(("---> Looking for '{0}' unit..." -f $geUnitName))
-							$geUnit = $unitList | Where-Object { $_.name -eq $geUnitName }
+							$logHistory.addLineAndDisplay(("--> Using email ({0}) for finance center..." -f $billToMail.billingMail))
+							$financeCenter = $billToMail.billingMail
+							break
+						}
+					}
 
-							if($null -ne $geUnit)
+
+					# Si on n'a pas encore de centre financier de défini (donc pas d'adresse mail )
+					if($null -eq $financeCenter)
+					{
+						# Si c'est une unité de niveau 3 (centre), on doit chercher l'unité de niveau 4 qui fait office de "gestion"
+						if($unit.level -eq 3)
+						{
+							$logHistory.addLineAndDisplay("--> Level 3 unit (Center), looking for level 4 'GE' unit for finance center..." )
+
+							# Noms d'unité à rechercher. On cherche de plusieurs manières parce qu'ils ont été incapables de nommer ça d'une façon cohérente...
+							$geUnitNameList = @( ("{0}-GE" -f $unit.name)
+												("{0}-GE" -f [Regex]::match($unit.name, '[A-Za-z]+-(.*)').groups[1].value) )
+
+							# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
+							$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
+
+							# Suppression des valeurs vides (oui, il peut y en avoir on dirait... )
+							$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" }
+							$financeCenter = $null
+
+							# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
+							ForEach($geUnitName in $geUnitNameList)
 							{
-								$logHistory.addLineAndDisplay("---> Unit found, getting finance center")
-								$financeCenter = $geUnit.accountingnumber
-								break
+								$logHistory.addLineAndDisplay(("---> Looking for '{0}' unit..." -f $geUnitName))
+								$geUnit = $unitList | Where-Object { $_.name -eq $geUnitName }
+
+								if($null -ne $geUnit)
+								{
+									$logHistory.addLineAndDisplay("---> Unit found, getting finance center")
+									$financeCenter = $geUnit.accountingnumber
+									break
+								}
+							}
+
+							# Si on n'a rien trouvé... 
+							if($null -eq $financeCenter)
+							{
+								$logHistory.addLineAndDisplay("--> 'GE' unit not found... using 'normal' finance center")
+								$financeCenter = $unit.accountingnumber
+								$counters.inc('level3GEUnitNotFound')
+								# Ajout du nom de l'unité niveau 3 pour notifier par mail que pas trouvée
+								$notifications.level3GEUnitNotFound += $unit.name
 							}
 						}
-
-						# Si on n'a rien trouvé... 
-						if($null -eq $financeCenter)
+						else # Ce n'est pas une unité de niveau 3 (centre)
 						{
-							$logHistory.addLineAndDisplay("--> 'GE' unit not found... using 'normal' finance center")
 							$financeCenter = $unit.accountingnumber
-							$counters.inc('level3GEUnitNotFound')
-							# Ajout du nom de l'unité niveau 3 pour notifier par mail que pas trouvée
-							$notifications.level3GEUnitNotFound += $unit.name
 						}
-					}
-					else # Ce n'est pas une unité de niveau 3 (centre)
-					{
-						$financeCenter = $unit.accountingnumber
-					}
+
+					}# FIN SI on n'a pas encore de centre financier
 
 					# Recherche des membres de l'unité
 					$ldapMemberList = $ldap.getUnitMembers($unit['uniqueidentifier'])
@@ -731,7 +791,7 @@ try
 					try
 					{
 						# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
-						$adGroup = Get-ADGroup -Identity $adGroupName
+						Get-ADGroup -Identity $adGroupName | Out-Null
 
 						$adGroupExists = $true
 						$logHistory.addLineAndDisplay(("--> Group exists ({0}) " -f $adGroupName))
@@ -845,7 +905,7 @@ try
 					if($ldapMemberList.Count -gt 0)
 					{
 						$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
-						updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName()
+						updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
 					}
 
 
@@ -873,7 +933,7 @@ try
 				if($facApprovalMembers.Count -gt 0)
 				{
 					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
-					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower())
+					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower()) -targetTenant $targetTenant
 				}
 
 
@@ -892,10 +952,16 @@ try
 			# Recherche de la liste des membres
 			$adminMembers = Get-ADGroupMember $adminGroup -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
 
+			# Ajout des membres du groupe https://groups.epfl.ch contenant les admins de Tableau
+			$adminMembers += Get-ADGroupMember $nameGenerator.getTableauAdminEPFLADGroup() -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
+
+			# Suppression des doublons
+			$adminMembers = $adminMembers | Sort-Object | Get-Unique
+			
 			if($adminMembers.Count -gt 0)
 			{
 				$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
-				updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all"
+				updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
 			}
 			
 		}
@@ -968,7 +1034,7 @@ try
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
 						if($notifications['missingITSADGroups'] -notcontains $approveGroupNameGroups)
@@ -999,7 +1065,7 @@ try
 	
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					$notifications['missingITSADGroups'] += $admSupGroupNameGroups
@@ -1028,7 +1094,7 @@ try
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					if($notifications['missingADGroups'] -notcontains $userSharedGroupNameGroupsAD)
@@ -1041,6 +1107,21 @@ try
 					# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
 					$doneADGroupList += $userSharedGroupNameAD
 				}
+
+				# ###### Roles pour Tableau --> Utilisateurs dans les Business Groups
+				# if(($groupsUsernameList = Get-ADGroupMember $userSharedGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
+				# {
+				# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $groupsUsernameList.Count, [TableauRoles]::User.ToString() ))
+				# 	updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+				# }
+				
+				# # ###### Roles pour Tableau --> Admin du service
+				# # Recherche de la liste des membres
+				# if(($adminMembers = Get-ADGroupMember $admSupGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).Count -gt 0)
+				# {
+				# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
+				# 	updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
+				# }
 				
 	
 			}# FIN BOUCLE de parcours des services renvoyés
@@ -1134,7 +1215,7 @@ try
 					
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroupsAD `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
 						if($notifications['missingADGroups'] -notcontains $approveGroupNameGroupsAD)
@@ -1166,7 +1247,7 @@ try
 				$roleAdmSupGroupOK = $true
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					$notifications['missingRSRCHADGroups'] += $admSupGroupNameGroups
@@ -1197,7 +1278,7 @@ try
 				$roleSharedGroupOk = $true
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					if($notifications['missingADGroups'] -notcontains $userSharedGroupNameGroupsAD)
@@ -1288,7 +1369,7 @@ try
 											financeCenter = ''})
 
 				# Suppression des accès pour le business group correspondant au groupe AD courant.
-				updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName()
+				updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
 			}
 			
 		}
