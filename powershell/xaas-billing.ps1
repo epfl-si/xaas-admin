@@ -56,8 +56,9 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "CopernicAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "Billing.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "BillingS3Bucket.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "billing", "Billing.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "billing", "BillingS3Bucket.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "billing", "BillingNASVolume.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
@@ -249,9 +250,9 @@ try
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
     $counters.add('entityProcessed', '# Entity processed')
-    $counters.add('billDone', '# Bill done')
-    $counters.add('billSkippedToLow', '# Bill skipped (amount to low)')
-    $counters.add('billSkippedNothing', '# Bill skipped (nothing to bill)')
+    $counters.add('billDone', '# Entity Bill done')
+    $counters.add('billSkippedToLow', '# Entity bill skipped (amount to low)')
+    $counters.add('billSkippedNothing', '# Entity bill bill skipped (nothing to bill)')
     $counters.add('billCanceled', '# Bill canceled')
     $counters.add('billSentToCopernic', '# Bill sent to Copernic')
     $counters.add('billCopernicError', '# Bill not sent to Copernic because of an error')
