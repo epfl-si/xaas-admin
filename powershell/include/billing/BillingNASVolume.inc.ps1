@@ -124,8 +124,6 @@ class BillingNASVolume: Billing
         {
             $entityType = $this.getEntityType($volume)
 
-            $targetTenant = $volume.targetTenant
-
             # Si pas supporté, on passe à l'élément suivant
             # NOTE: on n'utilise pas de "switch" car l'utilisation de "Continue" n'est pas possible au sein de celui-ci...
             if($null -eq $entityType)
@@ -133,19 +131,19 @@ class BillingNASVolume: Billing
                 Continue
             }
 
-            if($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
+            if($volume.targetTenant -eq $global:VRA_TENANT__ITSERVICES)
             {
                 Write-Warning ("Skipping Service entity ({0}) because not billed" -f $volume.volName)
                 Continue
             }
             
             # On ajoute ou met à jour l'entité dans la DB et on retourne son ID
-            $entityId = $this.initAndGetEntityId($entityType, $targetTenant, $volume.bgName, $volume.volId)
+            $entityId = $this.initAndGetEntityId($entityType, $volume.targetTenant, $volume.bgName, $volume.volId)
 
             # Si on n'a pas trouvé l'entité, c'est que n'a pas les infos nécessaires pour l'ajouter à la DB
             if($entityId -eq 0)
             {
-                Write-Warning ("Business Group '{0}' ('{1}') has been deleted and item '{2}' wasn't existing last month. Not enough information to bill it" -f $volume.bgName, $targetTenant, $volume.volName)
+                Write-Warning ("Business Group '{0}' ('{1}') has been deleted and item '{2}' wasn't existing last month. Not enough information to bill it" -f $volume.bgName, $volume.targetTenant, $volume.volName)
                 Continue
             }
             
