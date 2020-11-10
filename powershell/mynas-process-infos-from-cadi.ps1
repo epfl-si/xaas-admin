@@ -145,7 +145,7 @@ try
          # On regarde si l'utilisateur se trouve dans AD. Si ce n'est pas le cas, on passe au suivant, tout en ayant loggué la chose.
          try
          {
-            Get-ADUser -Identity $user.username -Properties * | Out-Null
+            $ADuser = Get-ADUser -Identity $user.username -Properties *
          }
          catch
          {
@@ -262,7 +262,9 @@ try
    #$deleteExcludeCond = [System.Web.HttpUtility]::UrlEncode("because_inactive=1");
    # 2019-07-09 - LC - On encode manuellement parce que l'appel à HttpUtility ne fonctionne plus, ça lève une exception et on peut se permettre de
    # hard-coder la condition et de ne pas utiliser un encodage à la volée
-   $deleteExcludeCond = "because_inactive%3D1"
+   #$deleteExcludeCond = "because_inactive%3D1"
+   # 2020-10-11 - LC - Strictement aucune idée pourquoi cette condition de "because inactive" avait été ajoutée ici et dans la DB !?! bref, elle posait
+   # problème dans certains cas et faisait que des dossiers étaient créés et effacés à répétition... donc suppression de ça.s
    $deleteExcludeCond = ""
 
    Invoke-WebRequest -Uri ($baseTriggerImporURL -f $global:WEBSITE_URL_MYNAS, "mynas_user_delete_request", "userDeleteRequest", $deleteExcludeCond) -Method Get -OutFile $userDeleteRequestResult
