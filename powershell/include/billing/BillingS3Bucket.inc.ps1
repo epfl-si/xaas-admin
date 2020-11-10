@@ -172,7 +172,7 @@ class BillingS3Bucket: Billing
             $bucketUsage = truncateToNbDecimal -number $bucketUsage -nbDecimals 2
 
             # Recherche du bucket en lui-même dans vRA
-            $vraBucket = $this.vraTenantList.$targetTenant.getItem($this.vraDynamicTypeName, $bucket.friendlyName)
+            $vraBucket = $this.vraTenantList.$targetTenant.getItem($this.vRODynamicTypeName, $bucket.friendlyName)
 
             # Si le bucket a été effacé entre temps,
             if($null -eq $vraBucket)

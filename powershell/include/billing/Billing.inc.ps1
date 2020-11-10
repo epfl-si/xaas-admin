@@ -48,7 +48,7 @@ class Billing
 
 		RET : Instance de l'objet
 	#>
-    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv, [string]$vraDynamicTypeName)
+    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv, [string]$vRODynamicTypeName)
     {
         $this.vraTenantList = $vraTenantList
         $this.db = $db
@@ -56,7 +56,7 @@ class Billing
         $this.serviceList = $serviceList
         $this.serviceBillingInfos = $serviceBillingInfos
         $this.targetEnv = $targetEnv
-        $this.vRODynamicTypeName = $vraDynamicTypeName
+        $this.vRODynamicTypeName = $vRODynamicTypeName
     }
 
 
