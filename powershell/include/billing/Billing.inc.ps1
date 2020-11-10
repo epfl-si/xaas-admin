@@ -27,7 +27,7 @@ class Billing
     hidden [EPFLLDAP] $ldap
     hidden [PSObject] $serviceBillingInfos
     hidden [Hashtable] $vraTenantList
-    hidden [string] $vraDynamicTypeName 
+    hidden [string] $vRODynamicTypeName 
 
 
     <#
@@ -44,7 +44,7 @@ class Billing
                                         Ces informations se trouvent dans le fichier JSON "service.json" qui sont 
                                         dans le dossier data/billing/<service>/service.json
         IN  : $targetEnv            -> Nom de l'environnement sur lequel on est.
-        IN  : $vraDynamicTypeName   -> Nom du type dynamique dans vRA
+        IN  : $vRODynamicTypeName   -> Nom du type dynamique dans vRA
 
 		RET : Instance de l'objet
 	#>
@@ -56,7 +56,7 @@ class Billing
         $this.serviceList = $serviceList
         $this.serviceBillingInfos = $serviceBillingInfos
         $this.targetEnv = $targetEnv
-        $this.vraDynamicTypeName = $vraDynamicTypeName
+        $this.vRODynamicTypeName = $vraDynamicTypeName
     }
 
 
