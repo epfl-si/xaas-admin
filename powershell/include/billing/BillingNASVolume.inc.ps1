@@ -47,15 +47,15 @@ class BillingNASVolume: Billing
 		-------------------------------------------------------------------------------------
         BUT : Renvoie le type d'entité pour le volume passé en paramètre
 
-        IN  : $volumeInfos  -> Objet représentant le volume     
+        IN  : $itemInfos  -> Objet représentant le volume     
         
         RET : le type d'entité
                 $null si pas supporté
     #>
-    hidden [BillingEntityType] getEntityType([PSObject]$volumeInfos)
+    hidden [PSObject] getEntityType([PSObject]$itemInfos)
     {
         # Le switch est "case insensitive"
-        switch($volumeInfos.targetTenant)
+        switch($itemInfos.targetTenant)
         {
             $global:VRA_TENANT__EPFL { return [BillingEntityType]::Unit}
             $global:VRA_TENANT__ITSERVICES { return [BillingEntityType]::Service }
@@ -158,38 +158,8 @@ class BillingNASVolume: Billing
             # On coupe à la 2e décimale 
             $volumeUsage = truncateToNbDecimal -number $volumeUsage -nbDecimals 2
 
-            $requestorId, $requestorDomain = $volume.requestor -Split "@"
-            # Si l'utilisateur avait son UPN de "l'ancienne manière" (donc <username>@intranet.epfl.ch) lorsqu'il a fait 
-            # la demande du nouveau volume
-            if($requestorDomain -eq "intranet.epfl.ch")
-            {
-                <# On doit chercher l'utilisateur dans AD sachant qu'il peut encore avoir son "vieil" UPN ou qu'il peut 
-                    déjà être passé au "nouveau". On cherche donc sur l'UID car lui ne va pas changer lorsque l'on mettra 
-                    l'UPN à jour #>
-                $filter = 'uid -eq "{0}"' -f $requestorId
-            }
-            else # Nouveau style d'UPN, donc <prenom>.<nom>@epfl.ch
-            {
-                # L'utilisateur a donc déjà le nouveau type d'UPN, on peut chercher avec
-                $filter = 'userPrincipalName -eq "{0}"' -f $volume.requestor
-            }
-
-            # Recherche de l'utilisateur
-            $requestor = Get-ADUser -Filter $filter
-
-            # Si par hasard on ne trouve pas, ça veut dire que l'utilisateur a probablement quitté l'EPFL entre temps.
-            if($null -eq $requestor)
-            {
-                # On utilise donc l'identifiant qui a été enregistré lors de la demande du volume
-                $owner = $volume.requestor
-            }
-            else # On prend le nom défini dans AD
-            {
-                $owner = $requestor.Name
-            }
-
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
-            $itemDesc = "{0}`nOwner: {1}" -f $volume.volName, $owner
+            $itemDesc = "{0}`nOwner: {1}" -f $volume.volName, $this.getItemOwner($volume.requestor)
 
             $this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $volume.volId, $itemDesc, $month, $year, $volumeUsage, "TB" ,"U.1") | Out-Null
 

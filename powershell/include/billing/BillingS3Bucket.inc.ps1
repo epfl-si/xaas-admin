@@ -51,20 +51,20 @@ class BillingS3Bucket: Billing
 		-------------------------------------------------------------------------------------
         BUT : Renvoie le type d'entité pour le bucket passé en paramètre
 
-        IN  : $bucketInfos  -> Objet représentant le bucket     
+        IN  : $itemInfos  -> Objet représentant le bucket     
         
         RET : le type d'entité
                 $null si pas supporté
     #>
-    hidden [BillingEntityType] getEntityType([PSObject]$bucketInfos)
+    hidden [PSObject] getEntityType([PSObject]$itemInfos)
     {
 
         # On va utiliser le champ "unitOrSvcID"
-        if($bucketInfos.unitOrSvcID -match $this.entityMatchUnit)
+        if($itemInfos.unitOrSvcID -match $this.entityMatchUnit)
         {
             return [BillingEntityType]::Unit
         }
-        if($bucketInfos.unitOrSvcID -match $this.entityMatchSvc)
+        if($itemInfos.unitOrSvcID -match $this.entityMatchSvc)
         {
             return [BillingEntityType]::Service
         }
@@ -171,22 +171,8 @@ class BillingS3Bucket: Billing
             # On coupe à la 2e décimale 
             $bucketUsage = truncateToNbDecimal -number $bucketUsage -nbDecimals 2
 
-            # Recherche du bucket en lui-même dans vRA
-            $vraBucket = $this.vraTenantList.$targetTenant.getItem($this.vRODynamicTypeName, $bucket.friendlyName)
-
-            # Si le bucket a été effacé entre temps,
-            if($null -eq $vraBucket)
-            {
-                # Le owner est du coup "inconnu"
-                $owner = "Unknown"
-            }
-            else
-            {
-                $owner = $vraBucket.owners[0].value
-            }
-
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
-            $itemDesc = "{0}`n({1})`nOwner: {2}" -f $bucket.bucketName, $bucket.friendlyName, $owner
+            $itemDesc = "{0}`n({1})`nOwner: {2}" -f $bucket.bucketName, $bucket.friendlyName, $this.getItemOwner($bucket.requestor)
 
             $this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB" ,"U.1") | Out-Null
 

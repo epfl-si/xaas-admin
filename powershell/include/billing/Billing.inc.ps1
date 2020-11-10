@@ -433,6 +433,49 @@ class Billing
 
     <#
 		-------------------------------------------------------------------------------------
+        BUT : Recherche et renvoie les informations sur le demandeur d'un item
+
+        IN  : $requestor   -> Chaîne de caractères avec le demandeur de l'item
+
+        RET : Le owner de l'élément
+    #>
+    hidden [string] getItemOwner([string]$requestor)
+    {
+        $requestorId, $requestorDomain = $requestor -Split "@"
+        # Si l'utilisateur avait son UPN de "l'ancienne manière" (donc <username>@intranet.epfl.ch) lorsqu'il a fait 
+        # la demande du nouveau volume
+        if($requestorDomain -eq "intranet.epfl.ch")
+        {
+            <# On doit chercher l'utilisateur dans AD sachant qu'il peut encore avoir son "vieil" UPN ou qu'il peut 
+                déjà être passé au "nouveau". On cherche donc sur l'UID car lui ne va pas changer lorsque l'on mettra 
+                l'UPN à jour #>
+            $filter = 'uid -eq "{0}"' -f $requestorId
+        }
+        else # Nouveau style d'UPN, donc <prenom>.<nom>@epfl.ch
+        {
+            # L'utilisateur a donc déjà le nouveau type d'UPN, on peut chercher avec
+            $filter = 'userPrincipalName -eq "{0}"' -f $requestor
+        }
+
+        # Recherche de l'utilisateur
+        $adUser = Get-ADUser -Filter $filter
+
+        # Si par hasard on ne trouve pas, ça veut dire que l'utilisateur a probablement quitté l'EPFL entre temps.
+        if($null -eq $adUser)
+        {
+            # On utilise donc l'identifiant qui a été enregistré lors de la demande
+            $owner = $requestor
+        }
+        else # On prend le nom défini dans AD
+        {
+            $owner = $adUser.Name
+        }
+
+        return $owner
+    }
+
+    <#
+		-------------------------------------------------------------------------------------
         BUT : Renvoie l'entité qui correspond à un Item. Si on a déjà un item dans la DB, on 
                 va pouvoir retourner l'entité. Sinon, on retournera $null
 
@@ -476,6 +519,25 @@ class Billing
         - addItem
         #>
         Throw "Not implemented!!!"
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie le type d'entité pour un item passé en paramètre
+
+        IN  : $itemInfos  -> Objet représentant l'item     
+        
+        RET : le type d'entité
+                $null si pas supporté
+    #>
+    hidden [PSObject] getEntityType([PSObject]$itemInfos)
+    {
+        <# 
+        Bien que pas appelée directement depuis "l'extérieur", cette fonction devra être implémentée pour être utilisée au sein de la fonction
+        extractData définie ci-dessus
+        #>
+        Throw "Not implemented"
     }
 
 
