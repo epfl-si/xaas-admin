@@ -27,6 +27,7 @@ class Billing
     hidden [EPFLLDAP] $ldap
     hidden [PSObject] $serviceBillingInfos
     hidden [Hashtable] $vraTenantList
+    hidden [string] $vRODynamicTypeName 
 
 
     <#
@@ -43,10 +44,11 @@ class Billing
                                         Ces informations se trouvent dans le fichier JSON "service.json" qui sont 
                                         dans le dossier data/billing/<service>/service.json
         IN  : $targetEnv            -> Nom de l'environnement sur lequel on est.
+        IN  : $vRODynamicTypeName   -> Nom du type dynamique dans vRA
 
 		RET : Instance de l'objet
 	#>
-    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv)
+    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv, [string]$vRODynamicTypeName)
     {
         $this.vraTenantList = $vraTenantList
         $this.db = $db
@@ -54,6 +56,27 @@ class Billing
         $this.serviceList = $serviceList
         $this.serviceBillingInfos = $serviceBillingInfos
         $this.targetEnv = $targetEnv
+        $this.vRODynamicTypeName = $vRODynamicTypeName
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie une entité ou $null si pas trouvé
+        
+        IN  : $entityId -> Id de l'entité
+
+        RET : Objet avec les infos de l'entité 
+            $null si pas trouvé
+    #>
+    hidden [PSObject] getEntity([int]$entityId)
+    {
+        $request = "SELECT * FROM BillingEntity WHERE entityId='{0}'" -f $entityId
+
+        $entity = $this.db.execute($request)
+
+        # On retourne le premier élément du tableau car c'est là que se trouve le résultat
+        return $entity[0]
     }
 
 
@@ -73,6 +96,10 @@ class Billing
 
         $entity = $this.db.execute($request)
 
+        if($entity.count -eq 0)
+        {
+            return $null
+        }
         # On retourne le premier élément du tableau car c'est là que se trouve le résultat
         return $entity[0]
     }
@@ -104,7 +131,7 @@ class Billing
         }
 
         # L'entité n'existe pas, donc on l'ajoute 
-        $request = "INSERT INTO BillingEntity VALUES (NULL, '{0}', '{1}', '{2}')" -f $type.toString(), $element, $financeCenter
+        $request = "INSERT INTO BillingEntity (entityType, entityElement, entityFinanceCenter) VALUES ('{0}', '{1}', '{2}')" -f $type.toString(), $element, $financeCenter
 
         $this.db.execute($request) | Out-Null
 
@@ -175,6 +202,9 @@ class Billing
     #>
     hidden [int] addItem([int]$parentEntityId, [string]$type, [string]$name, [string]$desc, [int]$month, [int]$year, [double]$quantity, [string]$unit, [string]$priceLevel)
     {
+        # On n'ajoute pas les items qui n'ont aucune consommation car cela entraînera une erreur lorsqu'ils seront repris pour être ajoutés dans Copernic.
+        # Cependant, cette condition IF peut être commentée pour le développement, pour ajouter quelques enregistrements dans la DB, pour lesquels on changera
+        # ensuite manuellement la valeur "quantity".
         if($quantity -eq 0)
         {
            return $null
@@ -189,7 +219,8 @@ class Billing
         }
 
         # L'entité n'existe pas, donc on l'ajoute 
-        $request = "INSERT INTO BillingItem VALUES (NULL, '{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', NULL)" -f `
+        $request = "INSERT INTO BillingItem (parentEntityId, itemType, itemName, itemDesc, itemMonth, itemYear, itemQuantity, itemUnit, itemPriceLevel, itemBillReference) `
+                                     VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', NULL)" -f `
                             $parentEntityId, $type, $name, $desc, $month, $year, $quantity, $unit, $priceLevel
 
         $this.db.execute($request) | Out-Null
@@ -234,37 +265,6 @@ class Billing
                 }
                 return $serviceInfos.longName
             }
-
-        }
-        Throw ("Entity type '{0}' not handled" -f $entityType.toString())
-    }
-
-
-    <#
-		-------------------------------------------------------------------------------------
-        BUT : Renvoie la centre financier d'une EntityElement donnée
-        
-        IN  : $entityType    -> Type de l'entité
-        IN  : $entityElement -> élément. Soit no d'unité ou no de service IT, etc...
-
-        RET : Centre financier. Numéro ou adresse mail
-    #>
-    hidden [string] getEntityElementFinanceCenter([BillingEntityType]$entityType, [string]$entityElement)
-    {
-        switch($entityType)
-        {
-            Unit
-            { 
-                # Dans ce cas, $entityElement contient le no d'unité
-                $unitInfos = $this.ldap.getUnitInfos($entityElement)
-
-                if($null -eq $unitInfos)
-                {
-                    Throw ("No information found for Unit ID '{0}' in LDAP" -f $entityElement)
-                }
-                return $unitInfos.accountingnumber 
-            }
-
 
         }
         Throw ("Entity type '{0}' not handled" -f $entityType.toString())
@@ -385,6 +385,123 @@ class Billing
 
     <#
 		-------------------------------------------------------------------------------------
+        BUT : Ajout ou met à jour les infos d'une entité dans la DB en fonction des informations
+                que l'on a sur elle, soit dans vRA, soit dans la tables des éléments déjà facturés
+
+        IN  : $entityType   -> Type de l'entité
+        IN  : $targetTenant -> Tenant sur lequel se trouve le BG
+        IN  : $bgName       -> Nom du BG
+        IN  : $itemName     -> Nom de l'item à facturer
+
+        RET : ID de l'entité
+                0 si pas trouvé (vu que les id démarrent à 1 dans la DB, on n'a pas de risque de faire faux)
+    #>
+    hidden [int] initAndGetEntityId([BillingEntityType]$entityType, [string]$targetTenant, [string]$bgName, [string]$itemName)
+    {
+        $bg = $this.vraTenantList.$targetTenant.getBG($bgName)
+
+        # Si le BG n'existe plus dans vRA
+        if($null -eq $bg)
+        {
+            # On regarde donc si on a déjà référencé l'item dans la DB par le passé et on tente de
+            # récupérer les infos de son entité
+            $entity = $this.getItemEntity($itemName)
+
+            # Si on n'a pas trouvé l'entité, c'est que l'item n'a encore jamais été rencontré dans un des mois
+            # écoulés et que le BG a été supprimé entre temps. Donc impossible de récupérer quelque information
+            # que ce soit... 
+            if($null -eq $entity)
+            {
+                # On retourne 0 (pas $null parce qu'on doit retourner un INT). 
+                return 0
+            }
+
+            $entityId = $entity.entityId
+        }
+        else # On a trouvé les infos du BG dans vRA donc on ajoute/met à jour l'entité
+        {
+            $entityElement = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+
+            # Ajout de l'entité à la base de données (si pas déjà présente)
+            $entityId = $this.addEntity($entityType, `
+                                        ("{0} {1}" -f $entityElement, $this.getEntityElementDesc($entityType, $entityElement)), `
+                                        (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
+        }
+        
+        return $entityId
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Recherche et renvoie les informations sur le demandeur d'un item
+
+        IN  : $requestor   -> Chaîne de caractères avec le demandeur de l'item
+
+        RET : Le owner de l'élément
+    #>
+    hidden [string] getItemOwner([string]$requestor)
+    {
+        $requestorId, $requestorDomain = $requestor -Split "@"
+        # Si l'utilisateur avait son UPN de "l'ancienne manière" (donc <username>@intranet.epfl.ch) lorsqu'il a fait 
+        # la demande du nouveau volume
+        if($requestorDomain -eq "intranet.epfl.ch")
+        {
+            <# On doit chercher l'utilisateur dans AD sachant qu'il peut encore avoir son "vieil" UPN ou qu'il peut 
+                déjà être passé au "nouveau". On cherche donc sur l'UID car lui ne va pas changer lorsque l'on mettra 
+                l'UPN à jour #>
+            $filter = 'uid -eq "{0}"' -f $requestorId
+        }
+        else # Nouveau style d'UPN, donc <prenom>.<nom>@epfl.ch
+        {
+            # L'utilisateur a donc déjà le nouveau type d'UPN, on peut chercher avec
+            $filter = 'userPrincipalName -eq "{0}"' -f $requestor
+        }
+
+        # Recherche de l'utilisateur
+        $adUser = Get-ADUser -Filter $filter
+
+        # Si par hasard on ne trouve pas, ça veut dire que l'utilisateur a probablement quitté l'EPFL entre temps.
+        if($null -eq $adUser)
+        {
+            # On utilise donc l'identifiant qui a été enregistré lors de la demande
+            $owner = $requestor
+        }
+        else # On prend le nom défini dans AD
+        {
+            $owner = $adUser.Name
+        }
+
+        return $owner
+    }
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie l'entité qui correspond à un Item. Si on a déjà un item dans la DB, on 
+                va pouvoir retourner l'entité. Sinon, on retournera $null
+
+        IN  : $itemName     -> Nom de l'Item pour lequel on veut l'entité.
+
+        RET : Objet représentant l'entité 
+                $null si pas trouvé
+    #>
+    hidden [PSObject] getItemEntity([string]$itemName)
+    {
+        $request = "SELECT * FROM BillingItem WHERE itemName='{0}'" -f $itemName
+
+        $items = $this.db.execute($request)
+
+        if($items.count -eq 0)
+        {
+            return $null
+        }
+
+        # Retour de l'entité parente 
+        return $this.getEntity($items[0].parentEntityId)
+    }
+
+    <#
+		-------------------------------------------------------------------------------------
         BUT : Extrait les données pour un type d'élément à facturer
 
         IN  : $month    -> Le no du mois pour lequel extraire les infos
@@ -403,6 +520,25 @@ class Billing
         - addItem
         #>
         Throw "Not implemented!!!"
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie le type d'entité pour un item passé en paramètre
+
+        IN  : $itemInfos  -> Objet représentant l'item     
+        
+        RET : le type d'entité
+                $null si pas supporté
+    #>
+    hidden [PSObject] getEntityType([PSObject]$itemInfos)
+    {
+        <# 
+        Bien que pas appelée directement depuis "l'extérieur", cette fonction devra être implémentée pour être utilisée au sein de la fonction
+        extractData définie ci-dessus
+        #>
+        Throw "Not implemented"
     }
 
 

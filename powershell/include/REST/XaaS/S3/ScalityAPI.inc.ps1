@@ -264,12 +264,26 @@ class ScalityAPI: APIUtils
 	#>
     [PSObject] getBucketPolicyForAccess([string]$bucketName, [string]$accessType)
     {
-        $policy = $this.getBucketPolicyList($bucketName)  | Where-Object { $_.PolicyName -like ("*-{0}" -f $accessType) }
+        $policyList = $this.getBucketPolicyList($bucketName)  
+        $policy = $policyList| Where-Object { $_.PolicyName -like ("*-{0}" -f $accessType) }
 
         # Si on a plus d'un objet, c'est qu'il y a une erreur quelque part
         if($policy.Count -gt 1)
         {
-            Throw "More than one '{0}' policy defined for bucket '{1}':`n{2}" -f $accessType, $bucketName, ($policy | ConvertTo-Json)
+            Throw ("More than one '{0}' policy defined for bucket '{1}':`n{2}" -f $accessType, $bucketName, ($policy | ConvertTo-Json))
+        }
+        # SI pour une raison ou une autre on n'a trouvé aucune policy
+        elseif($policy.count -eq 0)
+        {
+            # S'il y avait des policies (mais pas forcément avec le bon nom)
+            if($policyList.count -gt 0)
+            {
+                Throw ("No '{0}' policy found for bucket '{1}'. But {2} policy was/were found:`n{3}" -f $accessType, $bucketName, $policyList.count, (($policyList|Select-Object -ExpandProperty PolicyName) -join "`n"))
+            }
+            else # Aucune policy n'existe pour les accès
+            {
+                return $null
+            }
         }
          return $policy[0]
     }
