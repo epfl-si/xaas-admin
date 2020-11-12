@@ -769,7 +769,7 @@ try
 					}# FIN SI on n'a pas encore de centre financier
 
 					# Recherche des membres de l'unité
-					$ldapMemberList = $ldap.getUnitMembers($unit['uniqueidentifier'])
+					$ldapMemberList = $ldap.getUnitMembers($unit.uniqueidentifier)
 					
 					# Initialisation des détails pour le générateur de noms
 					$nameGenerator.initDetails(@{facultyName = $faculty.name
