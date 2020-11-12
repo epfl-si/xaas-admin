@@ -11,6 +11,7 @@ USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getLBList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delLB -clusterName <clusterName> -lbName <lbName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newStorage -clusterName <clusterName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newRobot -bgName <bgName> -clusterName <clusterName>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -104,7 +105,9 @@ $ACTION_NEW_LOAD_BALANCER       = "newLB"
 $ACTION_GET_LOAD_BALANCER_LIST  = "getLBList"
 $ACTION_DELETE_LOAD_BALANCER    = "delLB"
 $ACTION_NEW_STORAGE             = "newStorage"
+$ACTION_NEW_ROBOT               = "newRobot"
 
+$ROBOT_NB_DAYS_LIFETIME         = 7
 
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
@@ -230,7 +233,16 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
         if($nsx.isIPAllocated($pool.id, $ip))
         {
             $logHistory.addLine("> Releasing IP in NSX (it will take some time before it is available again in pool)...")
-            $nsx.releaseIPAddressInPool($pool.id, $ip)
+            try
+            {
+                $nsx.releaseIPAddressInPool($pool.id, $ip)
+            }
+            catch
+            {
+                # On peut parfois avoir une erreur car même si l'IP est notée comme allouée, il se peut qu'en fait
+                # elle soit en cours de désallocation par PKS
+                $logHistory.addLine( ("> Error releasing IP: {0} " -f $_.Exception.Message))
+            }
         }
         else
         {
@@ -499,22 +511,25 @@ try
                 $logHistory.addLine(("Project '{0}' already exists in Harbor" -f $harborProjectName))
             }
 
-            # # Si le groupe n'est pas encore dans le projet
-            # if(! ($harbor.isMemberInProject($harborProject, $groupName)))
-            # {
-            #     $logHistory.addLine(("Add group '{0}' in Harbor Project" -f $groupName))
-            #     $harbor.addProjectMember($harborProject, $groupName, [HarborProjectRole]::Master)
-            # }
-            # else # Le groupe est déjà dans le projet
-            # {
-            #     $logHistory.addLine(("Group '{0}' is already in Harbor project" -f $groupName))
-            # }
+            $logHistory.addLine(("Add group '{0}' in Harbor Project (may already be present)" -f $groupName))
+            $harbor.addProjectMember($harborProject, $groupName, [HarborProjectRole]::Master)
+            
+            $logHistory.addLine(("Add temporary robot in Harbor Project '{0}'" -f $harborProjectName))
+            $robot = $harbor.addTempProjectRobot($harborProject, $ROBOT_NB_DAYS_LIFETIME)
 
             # Résultat
             $output.results += @{
                 name = $clusterName
                 uuid = $cluster.uuid
                 dnsHostName = $dnsHostNameFull
+                harbor = @{
+                    project = $harborProjectName
+                    robot = @{
+                        name = $robot.name
+                        token = $robot.token
+                        validityDays = $ROBOT_NB_DAYS_LIFETIME
+                    }
+                }
             }
         }
 
@@ -587,6 +602,15 @@ try
         # -- Liste des namespaces
         $ACTION_GET_NAMESPACE_LIST
         {
+            # Préparation des lignes de commande à exécuter
+            $tkgiKubectl.addTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName))
+            $tkgiKubectl.addKubectlCmd(("config use-context {0}" -f $clusterName))
+            $tkgiKubectl.addKubectlCmd("get namespaces --json")
+
+            # Exécution
+            $result = $tkgiKubectl.exec()
+
+            $output.results += $result
 
         }
 
@@ -633,6 +657,35 @@ try
         $ACTION_NEW_STORAGE
         {
 
+        }
+
+
+        <#
+        ----------------------------------
+        -------------- ROBOT -------------
+        #>
+
+        # -- Nouveau robot
+        $ACTION_NEW_ROBOT
+        {
+            # Initialisation pour récupérer les noms des éléments
+            $nameGeneratorK8s.initDetailsFromBGName($bgName)
+
+            $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
+            $logHistory.addLine(("Harbor project name is '{0}'" -f $harborProjectName))
+            
+            $harborProject = $harbor.getProject($harborProjectName)
+
+            # Ajout du compte temporaire
+            $logHistory.addLine(("Adding temporary robots to project"))
+            $robot = $harbor.addTempProjectRobot($harborProject, $ROBOT_NB_DAYS_LIFETIME)
+
+            # Résultat
+            $output.results += @{
+                name = $robot.name
+                token = $robot.token
+                validityDays = $ROBOT_NB_DAYS_LIFETIME
+            }
         }
     }
 

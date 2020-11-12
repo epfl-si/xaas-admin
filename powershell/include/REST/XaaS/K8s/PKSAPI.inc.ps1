@@ -130,7 +130,7 @@ class PKSAPI: RESTAPICurl
 		$cluster = $null
 		do
 		{
-			Start-Sleep -Seconds 10
+			Start-Sleep -Seconds 30
 			$cluster = $this.getCluster($clusterName)
 		} while (($null -ne $cluster) -and ($cluster.last_action_state -eq "in progress"))
 

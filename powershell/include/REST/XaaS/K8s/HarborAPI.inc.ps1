@@ -259,7 +259,7 @@ class HarborAPI: RESTAPICurl
 		IN  : $groupLDAPDN			-> DN LDAP jusqu'au groupe
 
 		RET : ID du groupe dans Harbor
-				$null si pas trouvé
+				0 si pas trouvé
 	
 		https://vsissp-harbor-t.epfl.ch/#/Products/get_usergroups
 	#>
@@ -271,7 +271,7 @@ class HarborAPI: RESTAPICurl
 
 		if($null -eq $group)
 		{
-			return $null
+			return 0
 		}
 		return $group.id
 	}
@@ -307,7 +307,7 @@ class HarborAPI: RESTAPICurl
 
 		https://vsissp-harbor-t.epfl.ch/#/Products/post_projects__project_id__members
 	#>
-	[PSObject] addProjectMember([PSObject]$project, [string]$userOrGroupName, [HarborProjectRole]$role)
+	[void] addProjectMember([PSObject]$project, [string]$userOrGroupName, [HarborProjectRole]$role)
 	{
 		try
 		{
@@ -320,6 +320,9 @@ class HarborAPI: RESTAPICurl
 		
 		$uri = "https://{0}/api/v2.0/projects/{1}/members" -f $this.server, $project.project_id
 
+		# Recherche de la liste des membres du projet
+		$memberList = $this.getProjectMemberList($project)
+
 		# Si c'est un groupe qu'on ajoute, 
 		if($null -ne $groupDN)
 		{
@@ -327,9 +330,16 @@ class HarborAPI: RESTAPICurl
 			# l'ID du groupe en interne... stupide mais bref... ça a été codé avec les pieds Harbor on dirait..
 			$groupId = $this.getLDAPGroupId($groupDN)
 
-			if($null -eq $groupId)
+			if($groupId -eq 0)
 			{
 				Throw ("No information found in Harbor for group '{0}' ({1})" -f $userOrGroupName, $groupDN)
+			}
+
+			# Si le groupe est déjà présent dans la liste
+			if($null -ne ($memberList | Where-Object { $_.entity_type -eq "g" -and $_.entity_id -eq $groupId }) )
+			{
+				# Pas besoin d'aller plus loin
+				return
 			}
 			
 			$replace = @{
@@ -343,14 +353,16 @@ class HarborAPI: RESTAPICurl
 		}		
 		else # C'est un utilisateur qu'on ajoute
 		{
-			$replace = @{
-				roleId = @($this.getRoleID($role), $true)
-				userName = $userOrGroupName
-			}
-			$body = $this.createObjectFromJSON("xaas-k8s-add-harbor-project-member-user.json", $replace)
+			# FIXME: voir pour résoudre ce problème
+			Throw "Not handled for now, raise 500 intenal server error, even when trying to do it using web interface"
+			# $replace = @{
+			# 	roleId = @($this.getRoleID($role), $true)
+			# 	userName = $userOrGroupName
+			# }
+			# $body = $this.createObjectFromJSON("xaas-k8s-add-harbor-project-member-user.json", $replace)
 		}
 			
-		return $this.callAPI($uri, "POST", $body) 
+		$this.callAPI($uri, "POST", $body) | Out-Null
 	}
 
 
@@ -368,31 +380,6 @@ class HarborAPI: RESTAPICurl
 		$uri = "https://{0}/api/v2.0/projects/{1}/members/{2}" -f $this.server, $project.project_id, $memberId
 			
 		$this.callAPI($uri, "DELETE", $null) | Out-Null
-	}
-
-
-	<#
-		-------------------------------------------------------------------------------------
-		BUT : Permet de savoir si un groupe ou un utilisateur est déjà membre d'un projet
-
-		IN  : $project			-> Objet représentant le projet
-		IN  : $userOrGroupName 	-> Nom du groupe ou de l'utilisateur
-
-		RET : $true|$false
-	#>
-	[bool] isMemberInProject([PSObject]$project, [string]$userOrGroupName)
-	{
-		try
-		{
-			# Si ce code passe, c'est que c'est un nom de groupe qu'on doit chercher
-			$entityName = (Get-ADGroup $userOrGroupName).DistinguishedName
-		}
-		catch
-		{
-			$entityName = $userOrGroupName
-		}
-
-		return $null -ne ($this.getProjectMemberList($project) | Where-Object { $_.entity_name.toLower() -eq $entityName.toLower() })
 	}
 
 
@@ -422,25 +409,33 @@ class HarborAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
-		BUT : Ajoute une membre à un projet (utilisateur ou groupe)
+		BUT : Ajoute un robot éphémère (comme un papillon) à un projet. Le nom et la description
+				du robot sont générés automatiquement.
 
 		IN  : $project			-> Objet représentant le projet
-		IN  : $name				-> Nom du robot
-		IN  : $description		-> Description du robot
+		IN  : $nbDaysValidity	-> Nombre de jours de validité
 
 		RET : Le robot créé
 
 		https://vsissp-harbor-t.epfl.ch/#/Robot%20Account/post_projects__project_id__robots
 	#>
-	[PSObject] addProjectRobot([PSObject]$project, [string]$name, [string]$description)
+	[PSObject] addTempProjectRobot([PSObject]$project, [int]$nbDaysValidity)
 	{
 		
 		$uri = "https://{0}/api/v2.0/projects/{1}/robots" -f $this.server, $project.project_id
 
+		# Et c'est avec cette expression barbare que nous ajoutons les X jours à la date courante
+		$dateInXDays = (Get-Date).AddDays($nbDaysValidity)
+		$expireAt = [int][double]::Parse((Get-Date $dateInXDays -UFormat %s))
+
+		$robotName = "{0}-{1}" -f $project.name, $expireAt
+		$robotDesc = "Valid until {0}" -f $dateInXDays
+
 		$replace = @{
-			name = $name
-			description = $description
+			name = $robotName
+			description = $robotDesc
 			projectId = $project.project_id
+			expireAt = @($expireAt, $true)
 		}
 
 		$body = $this.createObjectFromJSON("xaas-k8s-add-harbor-project-robot.json", $replace)

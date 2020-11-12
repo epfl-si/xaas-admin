@@ -6,5 +6,6 @@
       }
     ],
     "name": "{{name}}",
+    "expire_at": "{{expireAt}}",
     "description": "{{description}}"
   }
