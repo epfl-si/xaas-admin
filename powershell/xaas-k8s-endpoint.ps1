@@ -295,7 +295,7 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
         {
             # On a un Projet Harbor par service donc on peut faire du ménage d'office
             $logHistory.addLine(("> Removing Project '{0}'..." -f $harborProjectName))
-            $harbor.deleteProject($harborProjectName)
+            $harbor.deleteProject($harborProject)
         }
         else # Le projet n'existe pas
         {
@@ -339,6 +339,37 @@ function searchClusterIngressIPAddress([string]$clusterIP, [NSXAPI]$nsx)
     }
 
     return $null
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Récupère la liste des namespaces d'un cluster et la renvoie
+
+    IN  : $clusterName  -> Nom du cluster
+#>
+function getNamespaceList([string]$clusterName)
+{
+    $logHistory.addLine(("Getting namespace list for cluster '{0}'" -f $clusterName))
+    # Préparation des lignes de commande à exécuter
+    $tkgiKubectl.addTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName))
+    $tkgiKubectl.addKubectlCmd(("config use-context {0}" -f $clusterName))
+
+    $getNameSpaceCmd = "get namespaces --output=json"
+    $tkgiKubectl.addKubectlCmd($getNameSpaceCmd)
+
+    # Exécution
+    $result = $tkgiKubectl.exec()
+
+    # Filtre pour ne pas renvoyer certains namespaces "system"
+    $ignoreFilterRegex = "(kube|nsx|pks)-.*"
+
+    $list = @()
+    ($result[$getNameSpaceCmd] | ConvertFrom-Json).items | Where-Object { $_.metadata.name -notmatch $ignoreFilterRegex } | Foreach-Object {
+        $list += $_.metadata.name
+    }
+
+    return $list
 }
 
 
@@ -484,10 +515,12 @@ try
             # d'utilisateur. On explose l'infos <group>@intranet.epfl.ch pour n'extraire que le nom du groupe
             $groupName, $null = $userAndGroupList[0] -split '@'
 
-            $logHistory.addLine(("Adding rights on cluster for '{0}' group..." -f $groupName))
+            $logHistory.addLine("Doing stuff on cluster...")
             # Préparation des lignes de commande à exécuter
             $tkgiKubectl.addTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName))
             $tkgiKubectl.addKubectlCmd(("config use-context {0}" -f $clusterName))
+            $tkgiKubectl.addKubectlCmd(("create namespace app"))
+            $tkgiKubectl.addKubectlCmd(("delete namespace default"))
             $tkgiKubectl.addKubectlCmdWithYaml("psp-cluster-role.yaml")
             $tkgiKubectl.addKubectlCmdWithYaml("psp-restrict.yaml")
             $tkgiKubectl.addKubectlCmdWithYaml("cluster-role-bindings.yaml", @{ groupName = $groupName} )
@@ -511,8 +544,8 @@ try
                 $logHistory.addLine(("Project '{0}' already exists in Harbor" -f $harborProjectName))
             }
 
-            $logHistory.addLine(("Add group '{0}' in Harbor Project (may already be present)" -f $groupName))
-            $harbor.addProjectMember($harborProject, $groupName, [HarborProjectRole]::Master)
+            # $logHistory.addLine(("Add group '{0}' in Harbor Project (may already be present)" -f $groupName))
+            # $harbor.addProjectMember($harborProject, $groupName, [HarborProjectRole]::Master)
             
             $logHistory.addLine(("Add temporary robot in Harbor Project '{0}'" -f $harborProjectName))
             $robot = $harbor.addTempProjectRobot($harborProject, $ROBOT_NB_DAYS_LIFETIME)
@@ -602,15 +635,8 @@ try
         # -- Liste des namespaces
         $ACTION_GET_NAMESPACE_LIST
         {
-            # Préparation des lignes de commande à exécuter
-            $tkgiKubectl.addTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName))
-            $tkgiKubectl.addKubectlCmd(("config use-context {0}" -f $clusterName))
-            $tkgiKubectl.addKubectlCmd("get namespaces --json")
-
-            # Exécution
-            $result = $tkgiKubectl.exec()
-
-            $output.results += $result
+            
+            $output.results = getNamespaceList -clusterName $clusterName
 
         }
 
