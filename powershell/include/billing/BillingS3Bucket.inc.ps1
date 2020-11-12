@@ -41,7 +41,8 @@ class BillingS3Bucket: Billing
 
 		RET : Instance de l'objet
 	#>
-    BillingS3Bucket([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv) : base($vraTenantList, $db, $ldap, $serviceList, $serviceBillingInfos, $targetEnv)
+    BillingS3Bucket([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv) : `
+                    base($vraTenantList, $db, $ldap, $serviceList, $serviceBillingInfos, $targetEnv, "S3_Bucket")
     {
     }
 
@@ -50,20 +51,20 @@ class BillingS3Bucket: Billing
 		-------------------------------------------------------------------------------------
         BUT : Renvoie le type d'entité pour le bucket passé en paramètre
 
-        IN  : $bucketInfos  -> Objet représentant le bucket     
+        IN  : $itemInfos  -> Objet représentant le bucket     
         
         RET : le type d'entité
                 $null si pas supporté
     #>
-    hidden [PSObject] getEntityType([PSObject]$bucketInfos)
+    hidden [PSObject] getEntityType([PSObject]$itemInfos)
     {
 
         # On va utiliser le champ "unitOrSvcID"
-        if($bucketInfos.unitOrSvcID -match $this.entityMatchUnit)
+        if($itemInfos.unitOrSvcID -match $this.entityMatchUnit)
         {
             return [BillingEntityType]::Unit
         }
-        if($bucketInfos.unitOrSvcID -match $this.entityMatchSvc)
+        if($itemInfos.unitOrSvcID -match $this.entityMatchSvc)
         {
             return [BillingEntityType]::Service
         }
@@ -132,13 +133,14 @@ class BillingS3Bucket: Billing
 
             # Si pas supporté, on passe à l'élément suivant
             # NOTE: on n'utilise pas de "switch" car l'utilisation de "Continue" n'est pas possible au sein de celui-ci...
+            # On n'utilise pas non plus la valeur "targetTenant" présente dans la table BucketArchive car elle ne correspond pas au tenant vRA réel
             if($null -eq $entityType)
             {
                 Continue
             }
             elseif($entityType -eq [BillingEntityType]::Service)
             {
-                Write-Warning ("Skipping Service entity ({0}) because not billed" -f $bucket.bucketName)
+                Write-Warning ("Skipping 'Service' entity (for bucket {0}) because not billed" -f $bucket.bucketName)
                 Continue
             }
             elseif($entityType -eq [BillingEntityType]::Unit)
@@ -149,16 +151,16 @@ class BillingS3Bucket: Billing
             {
                 $targetTenant = $global:VRA_TENANT__RESEARCH
             }
-            
 
-            # Recherche des infos sur l'élément concerné et le "détail" de celui-ci
-            $entityElement = $bucket.unitOrSvcID
-            $entityElementDesc = $this.getEntityElementDesc($entityType, $entityElement)
+            # On ajoute ou met à jour l'entité dans la DB et on retourne son ID
+            $entityId = $this.initAndGetEntityId($entityType, $targetTenant, $bucket.bgName, $bucket.bucketName)
 
-            $entityFinanceCenter = $this.getEntityElementFinanceCenter($entityType, $entityElement)
-
-            # Ajout de l'entité à la base de données (si pas déjà présente)
-            $entityId = $this.addEntity($entityType, ("{0} {1}" -f $entityElement, $entityElementDesc), $entityFinanceCenter)
+            # Si on n'a pas trouvé l'entité, c'est que n'a pas les infos nécessaires pour l'ajouter à la DB
+            if($null -eq $entityId)
+            {
+                Write-Warning ("Business Group '{0}' ('{1}') has been deleted and item '{2}' wasn't existing last month. Not enough information to bill it" -f $bucket.bgName, $targetTenant, $bucket.bucketName)
+                Continue
+            }
 
 
             # -- Informations sur l'élément à facturer --
@@ -169,11 +171,8 @@ class BillingS3Bucket: Billing
             # On coupe à la 2e décimale 
             $bucketUsage = truncateToNbDecimal -number $bucketUsage -nbDecimals 2
 
-            # Recherche du bucket en lui-même
-            $vraBucket = $this.vraTenantList.$targetTenant.getItem("S3_Bucket", $bucket.friendlyName)
-
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
-            $itemDesc = "{0}`n({1})`nOwner: {2}" -f $bucket.bucketName, $bucket.friendlyName, $vraBucket.owners[0].value
+            $itemDesc = "{0}`n({1})`nOwner: {2}" -f $bucket.bucketName, $bucket.friendlyName, $this.getItemOwner($bucket.requestor)
 
             $this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB" ,"U.1") | Out-Null
 
