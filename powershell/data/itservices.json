@@ -19,6 +19,18 @@
             "snowId":  "SVC0080",
             "serviceManagerSciper": "287589"
         },
+		{
+            "longName":  "Groups & Guests TEST",
+            "shortName":  "grpguestst",
+            "snowId":  "SVC0007",
+            "serviceManagerSciper": "164486"
+        },
+		{
+            "longName":  "Press review",
+            "shortName":  "presst",
+            "snowId":  "SVC0046",
+            "serviceManagerSciper": "116080"
+        },
         {
             "longName":  "Service for server backup TEST",
             "shortName":  "bkpt",
