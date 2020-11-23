@@ -26,6 +26,12 @@
             "serviceManagerSciper": "164486"
         },
 		{
+            "longName":  "Web hosting at the EPFL TEST",
+            "shortName":  "wbhstt",
+            "snowId":  "SVC0041",
+            "serviceManagerSciper": "116080"
+        },
+		{
             "longName":  "Press review",
             "shortName":  "presst",
             "snowId":  "SVC0046",
