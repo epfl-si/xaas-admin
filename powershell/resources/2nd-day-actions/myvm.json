@@ -8,6 +8,10 @@
                 "approvals": []
             },
             {
+                "name": "[VM] Modify Notification Mail",
+                "approvals": []
+            },
+            {
                 "name": "[VM] DNS alias request",
                 "approvals": [] 
             },
