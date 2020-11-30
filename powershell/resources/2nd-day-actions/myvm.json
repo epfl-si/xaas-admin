@@ -1,10 +1,14 @@
 [
     {
-        "appliesTo": "",
+        "appliesTo": "", 
         "_comment": "Custom EPFL action",
         "actions": [
             {
                 "name": "[VM] Mount/Unmount CD-ROM (ISO)",
+                "approvals": []
+            },
+            {
+                "name": "[VM] Modify Notification Mail",
                 "approvals": []
             },
             {
