@@ -223,37 +223,42 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
             Continue
         }
         
-        $ip = $ip[0]
+        # Si c'est un tableau, on prend par défaut la première IP
+        if($ip -is [System.Array])
+        {
+            $logHistory.addLine("> Warning, {0} IP addresses found for '{1}'! Releasing only first one..." -f $ip.count, $hostnameFull)
+            $ip = $ip[0]
+        }
 
         $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostnameFull))
         $logHistory.addLine("> Unregistering IP for host in DNS...")
         $EPFLDNS.unregisterDNSIP($hostname, $ip, $global:K8S_DNS_ZONE_NAME)
 
-        # Si l'IP est allouée dans NSX,
-        if($nsx.isIPAllocated($pool.id, $ip))
-        {
-            $logHistory.addLine("> Releasing IP in NSX (it will take some time before it is available again in pool)...")
-            try
-            {
-                $nsx.releaseIPAddressInPool($pool.id, $ip)
-            }
-            catch
-            {
-                # On peut parfois avoir une erreur car même si l'IP est notée comme allouée, il se peut qu'en fait
-                # elle soit en cours de désallocation par PKS
-                $logHistory.addLine( ("> Error releasing IP: {0} " -f $_.Exception.Message))
-            }
-        }
-        else
-        {
-            $logHistory.addLine("> IP is not allocated in NSX")
-        }
+        # # Si l'IP est allouée dans NSX,
+        # if($nsx.isIPAllocated($pool.id, $ip))
+        # {
+        #     $logHistory.addLine("> Releasing IP in NSX (it will take some time before it is available again in pool)...")
+        #     try
+        #     {
+        #         $nsx.releaseIPAddressInPool($pool.id, $ip)
+        #     }
+        #     catch
+        #     {
+        #         # On peut parfois avoir une erreur car même si l'IP est notée comme allouée, il se peut qu'en fait
+        #         # elle soit en cours de désallocation par PKS
+        #         $logHistory.addLine( ("> Error releasing IP: {0} " -f $_.Exception.Message))
+        #     }
+        # }
+        # else
+        # {
+        #     $logHistory.addLine("> IP is not allocated in NSX")
+        # }
         
     }# FIN BOUCLE de parcours des IP à supprimer
 
     # --------
     # ---- NSX
-    # Si on avait pu trouver le cluster
+    Si on avait pu trouver le cluster
     if($null -ne $cluster)
     {
         $logHistory.addLine("Deleting Load Balancer application profiles...")
