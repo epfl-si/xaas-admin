@@ -1,6 +1,6 @@
 [
     {
-        "appliesTo": "",
+        "appliesTo": "", 
         "_comment": "Custom EPFL action",
         "actions": [
             {
