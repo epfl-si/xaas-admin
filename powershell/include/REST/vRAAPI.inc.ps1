@@ -214,7 +214,7 @@ class vRAAPI: RESTAPICurl
 		return $list| Where-Object { 
 			($_.extensionData.entries | Where-Object {
 				$null -ne ($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ( $null -ne ($_.value.values.entries | Where-Object { 
-					$_.value.value -eq $customId } ) ) `
+					($null -ne $_.value.value) -and ($_.value.value -is [System.String]) -and ($_.value.value.toLower() -eq $customId.toLower()) } ) ) `
 													} `
 			)}
 	}
