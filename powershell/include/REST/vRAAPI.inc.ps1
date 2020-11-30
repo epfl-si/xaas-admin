@@ -175,6 +175,7 @@ class vRAAPI: RESTAPICurl
 		return $this.getBGListQuery(("`$filter=substringof('{0}', name)" -f $str))
 	}
 
+
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie un BG donné par son nom
@@ -190,6 +191,32 @@ class vRAAPI: RESTAPICurl
 
 		if($list.Count -eq 0){return $null}
 		return $list[0]
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie un BG donné par son ID custom, défini dans la custom property ch.epfl.vra.bg.id
+
+		IN  : $customId	-> ID custom du BG que l'on désire
+
+		RET : Objet contenant le BG
+				$null si n'existe pas
+	#>
+	[PSCustomObject] getBGByCustomId([string] $customId)
+	{
+		$list = $this.getBGList()
+
+		if($list.Count -eq 0){return $null}
+		
+		# Retour en cherchant avec le custom ID, y'a pas mal de Where-Object imbriqués pour faire le job mais ça fonctionne. Par contre, 
+		# ça risque d'être un peu galère à debug par la suite ^^'
+		return $list| Where-Object { 
+			($_.extensionData.entries | Where-Object {
+				$null -ne ($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ( $null -ne ($_.value.values.entries | Where-Object { 
+					$_.value.value -eq $customId } ) ) `
+													} `
+			)}
 	}
 
 
