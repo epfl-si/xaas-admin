@@ -114,7 +114,7 @@ $ACTION_GET_BUCKETS_USAGE   = "getBucketsUsage"
 		  durant l'exécution et effectue un traitement si besoin.
 
 		  La liste des notifications possibles peut être trouvée dans la déclaration
-		  de la variable $notifications plus bas dans le caode.
+		  de la variable $notifications plus bas dans le code.
 
 	IN  : $notifications-> Dictionnaire
 	IN  : $targetEnv	-> Environnement courant
@@ -166,6 +166,62 @@ function handleNotifications
 	}# FIN BOUCLE de parcours des catégories de notifications
 }
 
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Supprime un bucket S3
+
+    IN  : $scality      -> Objet de la classe ScalityAPI et qui permet d'accéder au stockage S3
+    IN  : $bucketName   -> Nom du bucket à supprimer
+#>
+function deleteBucket([ScalityAPI]$scality, [string]$bucketName)
+{
+    <# Parcours des policies dans lesquelles le bucket est défini. En théorie, il ne devrait y avoir que 2 policies :
+    - pour l'accès RO
+    - pour l'accès RW
+    #>
+    ForEach($s3Policy in $scality.getBucketPolicyList($bucketName))
+    {
+        $logHistory.addLine("Processing Policy {0}..." -f $s3Policy.PolicyName)
+
+        # Si c'est le dernier Bucket dans la policy, on peut effacer celle-ci
+        if($scality.onlyOneBucketInPolicy($s3Policy.PolicyName))
+        {
+            
+            $logHistory.addLine("- Bucket {0} is the last in Policy" -f $bucketName)
+
+            <# Parcours des utilisateurs qui sont référencés dans la policy. En théorie, il ne devrait 
+                y avoir que 2 utilisateurs: 
+                - un pour l'accès RO
+                - un pour l'accès RW
+            #>
+            ForEach($s3User in $scality.getPolicyUserList($s3Policy.policyName))
+            {
+                # On supprime l'utilisateur de la policy
+                $logHistory.addLine("- Removing User {0} from Policy..." -f $s3User.UserName)
+                $scality.removeUserFromPolicy($s3Policy.PolicyName, $s3User.UserName)
+
+                # On supprime l'utilisateur tout court !
+                $logHistory.addLine("- Deleting User {0}..." -f $s3User.UserName)
+                $scality.deleteUser($s3User.UserName)
+            }
+
+            # Suppression de la policy
+            $logHistory.addLine("- Deleting Policy...")
+            $scality.deletePolicy($s3Policy.PolicyName)
+        }
+        else # Ce n'est pas le dernier bucket de la policy, c'est qu'il est lié à au moins un autre bucket
+        {
+            $logHistory.addLine("- Removing Bucket {0} from Policy..." -f $bucketName)
+            # on supprime simplement le bucket de la policy
+            $s3Policy = $scality.removeBucketFromPolicy($s3Policy.PolicyName, $bucketName)
+        }
+
+    }# FIN BOUCLE de parcours des Policies du Bucket 
+
+    # Effacement du bucket
+    $scality.deleteBucket($bucketName)
+}
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -227,12 +283,13 @@ try
         # -- Création d'un nouveau bucket 
         $ACTION_CREATE {
 
+            $doCleaningIfError = $true
             # S'il faut lier à un bucket, on contrôle qu'il existe bien
             if(($linkedTo -ne "") -and (!($scality.bucketExists($linkedTo))))
             {
+                $doCleaningIfError = $false
                 Throw ("Bucket to link to ({0}) doesn't exists" -f $linkedTo)
             }
-            
 
             # Pour stocker les infos du nouveau bucket
             $bucketInfos = @{}
@@ -248,7 +305,7 @@ try
             $scality.addBucket($bucketInfos.bucketName) | Out-Null
 
             $bucketInfos.access = @{}
-
+            
             # Si le nouveau bucket doit être "standalone"
             if($linkedTo -eq "")
             {
@@ -319,51 +376,8 @@ try
         # -- Effacement d'un bucket
         $ACTION_DELETE {
 
-            <# Parcours des policies dans lesquelles le bucket est défini. En théorie, il ne devrait y avoir que 2 policies :
-            - pour l'accès RO
-            - pour l'accès RW
-            #>
-            ForEach($s3Policy in $scality.getBucketPolicyList($bucketName))
-            {
-                $logHistory.addLine("Processing Policy {0}..." -f $s3Policy.PolicyName)
-
-                # Si c'est le dernier Bucket dans la policy, on peut effacer celle-ci
-                if($scality.onlyOneBucketInPolicy($s3Policy.PolicyName))
-                {
-                    
-                    $logHistory.addLine("- Bucket {0} is the last in Policy" -f $bucketName)
-
-                    <# Parcours des utilisateurs qui sont référencés dans la policy. En théorie, il ne devrait 
-                        y avoir que 2 utilisateurs: 
-                        - un pour l'accès RO
-                        - un pour l'accès RW
-                    #>
-                    ForEach($s3User in $scality.getPolicyUserList($s3Policy.policyName))
-                    {
-                        # On supprime l'utilisateur de la policy
-                        $logHistory.addLine("- Removing User {0} from Policy..." -f $s3User.UserName)
-                        $scality.removeUserFromPolicy($s3Policy.PolicyName, $s3User.UserName)
-
-                        # On supprime l'utilisateur tout court !
-                        $logHistory.addLine("- Deleting User {0}..." -f $s3User.UserName)
-                        $scality.deleteUser($s3User.UserName)
-                    }
-
-                    # Suppression de la policy
-                    $logHistory.addLine("- Deleting Policy...")
-                    $scality.deletePolicy($s3Policy.PolicyName)
-                }
-                else # Ce n'est pas le dernier bucket de la policy, c'est qu'il est lié à au moins un autre bucket
-                {
-                    $logHistory.addLine("- Removing Bucket {0} from Policy..." -f $bucketName)
-                    # on supprime simplement le bucket de la policy
-                    $s3Policy = $scality.removeBucketFromPolicy($s3Policy.PolicyName, $bucketName)
-                }
-
-            }# FIN BOUCLE de parcours des Policies du Bucket 
-
-            # Effacement du bucket
-            $scality.deleteBucket($bucketName)
+            # Suppression du bucket
+            deleteBucket -scality $scality -bucketName $bucketName
         }
 
 
@@ -555,6 +569,16 @@ catch
     # Ajout de l'erreur et affichage
     $output.error = "{0}`n`n{1}" -f $errorMessage, $errorTrace
     displayJSONOutput -output $output
+
+    # Si on était en train de créer un bucket et qu'on peut faire le cleaning
+    if(($action -eq $ACTION_CREATE) -and $doCleaningIfError)
+    {
+        # On efface celui-ci pour ne rien garder qui "traine"
+        $logHistory.addLine(("Error while creating Bucket '{0}', deleting it so everything is clean. Error was: {1}" -f $bucketInfos.bucketName, $errorMessage))
+
+        # Suppression du bucket
+        deleteBucket -scality $scality -bucketName $bucketInfos.bucketName
+    }
 
 	$logHistory.addError(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
     
