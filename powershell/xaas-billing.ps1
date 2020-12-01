@@ -155,10 +155,10 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 	ForEach($notif in $notifications.Keys)
 	{
 		# S'il y a des notifications de ce type
-		if($notifications[$notif].count -gt 0)
+		if($notifications.$notif.count -gt 0)
 		{
 			# Suppression des doublons 
-			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
+			$uniqueNotifications = $notifications.$notif | Sort-Object| Get-Unique
 
 			$valToReplace = @{
                 serviceName = $serviceName
