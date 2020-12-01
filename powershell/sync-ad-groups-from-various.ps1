@@ -505,11 +505,11 @@ try
 	
 	# Pour accéder à la base de données
 	$sqldb = [SQLDB]::new([DBType]::MSSQL, `
-							$configVra.getConfigValue($targetEnv, "dbmssql", "host"), `
-							$configVra.getConfigValue($targetEnv, "dbmssql", "dbName"), `
-							$configVra.getConfigValue($targetEnv, "dbmssql", "user"), `
-							$configVra.getConfigValue($targetEnv, "dbmssql", "password"), `
-							$configVra.getConfigValue($targetEnv, "dbmssql", "port"))
+							$configVra.getConfigValue($targetEnv, "db", "host"), `
+							$configVra.getConfigValue($targetEnv, "db", "dbName"), `
+							$configVra.getConfigValue($targetEnv, "db", "user"), `
+							$configVra.getConfigValue($targetEnv, "db", "password"), `
+							$configVra.getConfigValue($targetEnv, "db", "port"))
 
 	Import-Module ActiveDirectory
 
