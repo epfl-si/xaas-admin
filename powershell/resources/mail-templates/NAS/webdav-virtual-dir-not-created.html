@@ -1,0 +1,11 @@
+Les accès WebDAV pour le(s) share(s) suivant(s) ne peuvent pas être mis en place:<br>
+<ul>
+    <li>{{dirList}}</li>    
+</ul>
+<br>
+Parmi les causes possibles pour expliquer ceci, il y a:<br>
+<ul>
+    <li>L'utilisateur exécutant le script de création des "virtual directories" ne se trouve pas dans le groupe "Local Administrators" du serveur CIFS sur lequel le "virtual directory" doit pointer.</li>
+    <li>Le chemin distant n'existe pas car le share CIFS ne pointe sur "rien".</li>
+    <li>Le nom du share contient des caractères spéciaux qui ne sont pas gérés par IIS.</li>
+</ul>

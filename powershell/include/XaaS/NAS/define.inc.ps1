@@ -3,7 +3,17 @@
 
    AUTEUR : Lucien Chaboudez
    DATE   : Octobre 2020
+
+   ----------
+   HISTORIQUE DES VERSIONS
+   1.0 - Version de base
 #>
+
+$global:NAS_MAIL_TEMPLATE_FOLDER  = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "mail-templates", "NAS"))
+
+# Mail
+$global:NAS_MAIL_SUBJECT_PREFIX = "NAS Service"
+
 
 # lettre à utiliser pour monter le drive réseau pour initialiser les droits
 $global:XAAS_NAS_TEMPORARY_DRIVE = "Z"
@@ -14,3 +24,7 @@ Enum XaaSNASVolType {
    col # Collaboratif
    app # Applicatif
 }
+
+# Identifiant du type dynamique dans vRA
+$global:VRA_XAAS_NAS_DYNAMIC_TYPE = "NAS_Volume"
+$global:VRA_XAAS_NAS_CUSTOM_PROPERTY_WEBDAV_ACCESS = "webdavAccess"
