@@ -30,13 +30,12 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGeneratorBase.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "define.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "NameGeneratorNAS.inc.ps1"))
 
 # Chargement des fichiers pour API REST
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
@@ -46,6 +45,9 @@ param([string]$targetEnv,
 
 # Chargement des fichiers propres au NAS NetApp
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "NAS", "NetAppAPI.inc.ps1"))
+
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "define.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "NameGeneratorNAS.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
@@ -62,33 +64,6 @@ $configNAS = [ConfigReader]::New("config-xaas-nas.json")
 
 
 
-# Inclusion des fichiers nécessaires (génériques)
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "JSONUtils.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "NewItems.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
-
-# Fichiers propres au script courant 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
-
-# Chargement des fichiers pour API REST
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vSphereAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
-
-
-# Chargement des fichiers de configuration
-$configVra      = [ConfigReader]::New("config-vra.json")
-$configGlobal   = [ConfigReader]::New("config-global.json")
-$configNAS      = [ConfigReader]::New("config-xaas-nas.json")
-
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
@@ -97,9 +72,6 @@ $global:WEBDAV_LOCAL_DIRECTORY = "C:\webdavroot"
 $global:WEBDAV_SITE_NAME = "webdav"
 # Compte qui doit être en "ReadOnly" sur tous les shares accédés en WebDAV
 $global:WEBDAV_AD_USER = "INTRANET\nas-webdav-user"
-
-$global:VRA_XAAS_NAS_IDENTIFIER = "NAS_Volume"
-$global:VRA_CUSTOM_PROPERTY_WEBDAV_ACCESS = "webdavAccess"
 
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
@@ -337,6 +309,7 @@ function updateVServerVirtualDirectory([NetAppAPI]$netapp, [string] $vServerName
 #>
 function getWebDAVShareList([vRAAPI]$vra, [NetAppAPI]$netapp)
 {
+
     $shareList = @()
     # Parcours des Business Groups
     $vra.getBGList() | ForEach-Object {
@@ -345,18 +318,18 @@ function getWebDAVShareList([vRAAPI]$vra, [NetAppAPI]$netapp)
         $counters.inc('BGProcessed')
         
         # Parcours des Volumes NAS se trouvant dans le Business Group
-        $vra.getBGItemList($_, $global:VRA_XAAS_NAS_IDENTIFIER) | ForEach-Object {
+        $vra.getBGItemList($_, $global:VRA_XAAS_NAS_DYNAMIC_TYPE) | ForEach-Object {
 
             $counters.inc('VolProcessed')
 
             # On regarde si le volume doit être accédé en WebDAV
-            if( (getvRAObjectCustomPropValue -object $_ -customPropName $global:VRA_CUSTOM_PROPERTY_WEBDAV_ACCESS) -eq 1)
+            if( (getvRAObjectCustomPropValue -object $_ -customPropName $global:VRA_XAAS_NAS_CUSTOM_PROPERTY_WEBDAV_ACCESS) -eq $true)
             {
                 # Recherche du volume
                 $vol = $netapp.getVolumeByName($_.Name)
 
                 # Recherche des shares pour le volume donné et ajout à la liste
-                $netapp.getVolCIFSShareList($_.name) | ForEach-Object {
+                $netapp.getVolCIFSShareList($_) | ForEach-Object {
                     $shareList += @{
                         vserver = $vol.svm.name
                         share = $_.name
@@ -444,19 +417,23 @@ function handleNotifications
 
 try
 {
-    # Contrôle que l'utilisateur pour exécuter le script soit correct
-    $domain, $username = $global:WEBDAV_AD_USER -split '\\'
-    if($username -ne $env:USERNAME)
-    {
-        Throw ("Script must be executed with 'INTRANET\{0}' user, is currently executed with 'INTRANET\{1}'" -f $username, $env:USERNAME)
-    }
-
+    
     $logName = 'xaas-nas-sync-webdav-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
 
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:NAS_MAIL_TEMPLATE_FOLDER, `
+                                                $global:NAS_MAIL_SUBJECT_PREFIX , $valToReplace)
+
+    # Contrôle que l'utilisateur pour exécuter le script soit correct
+    $domain, $username = $global:WEBDAV_AD_USER -split '\\'
+    if($username -ne $env:USERNAME)
+    {
+        Throw ("Script must be executed with 'INTRANET\{0}' user, is currently executed with 'INTRANET\{1}'" -f $username, $env:USERNAME)
+    }
 
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $counters = [Counters]::new()
@@ -490,8 +467,7 @@ try
 		targetEnv = $targetEnv
 		targetTenant = $targetTenant
 	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:NAS_MAIL_TEMPLATE_FOLDER, `
-                                                $global:NAS_MAIL_SUBJECT_PREFIX , $valToReplace)
+	
                                                 
     <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -515,7 +491,7 @@ try
 
 
     # Récupération des informations sur les FS qui doivent être accédés en WebDav 
-    $webdavShareList = getWebDAVShareList -vra $vra -netapp $netapp
+    $webdavShareList = [Array](getWebDAVShareList -vra $vra -netapp $netapp)
 
     # # Liste pour les vServer+shares traités (renvoyés par le Web Service)
     $vServerDoneList = @{}

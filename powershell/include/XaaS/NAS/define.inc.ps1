@@ -24,3 +24,7 @@ Enum XaaSNASVolType {
    col # Collaboratif
    app # Applicatif
 }
+
+# Identifiant du type dynamique dans vRA
+$global:VRA_XAAS_NAS_DYNAMIC_TYPE = "NAS_Volume"
+$global:VRA_XAAS_NAS_CUSTOM_PROPERTY_WEBDAV_ACCESS = "webdavAccess"
