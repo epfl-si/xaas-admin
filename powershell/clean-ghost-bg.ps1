@@ -92,7 +92,7 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 
 		$counters.inc('BGNotEmpty')
 
-		$notifications['bgNotDeleted'] += $bg.name
+		$notifications.bgNotDeleted += $bg.name
 
 		$deleted = $false
 
@@ -127,7 +127,7 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 		}
 
 		
-		$notifications['bgDeleted'] += $bg.name
+		$notifications.bgDeleted += $bg.name
 
 		# --------------
 		# Business Group
@@ -183,7 +183,7 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 				catch
 				{
 					# Si exception, c'est qu'on n'a probablement pas les droits d'effacer parce que le owner du groupe n'est pas le bon
-					$notifications['groupsGroupsNotDeleted'] += $approveGroupGroupsInfos.name
+					$notifications.groupsGroupsNotDeleted += $approveGroupGroupsInfos.name
 					$logHistory.addWarningAndDisplay("--> Cannot delete groups group maybe because not owner by correct person")
 				}
 
@@ -229,7 +229,7 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 			catch
 			{
 				# Si exception, c'est qu'on n'a probablement pas les droits d'effacer parce que le owner du groupe n'est pas le bon
-				$notifications['groupsGroupsNotDeleted'] += $userSharedGroupNameGroups
+				$notifications.groupsGroupsNotDeleted += $userSharedGroupNameGroups
 				$logHistory.addWarningAndDisplay("--> Cannot delete groups group maybe because not owner by correct person")
 			}
 
@@ -288,10 +288,10 @@ function handleNotifications
 	ForEach($notif in $notifications.Keys)
 	{
 		# S'il y a des notifications de ce type
-		if($notifications[$notif].count -gt 0)
+		if($notifications.$notif.count -gt 0)
 		{
 			# Suppression des doublons 
-			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
+			$uniqueNotifications = $notifications.$notif | Sort-Object| Get-Unique
 
 			$valToReplace = @{}
 

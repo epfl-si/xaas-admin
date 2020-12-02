@@ -138,12 +138,13 @@ class BillingNASVolume: Billing
             }
             
             # On ajoute ou met à jour l'entité dans la DB et on retourne son ID
-            $entityId = $this.initAndGetEntityId($entityType, $volume.targetTenant, $volume.bgName, $volume.volId)
+            $entityId = $this.initAndGetEntityId($entityType, $volume.targetTenant, $volume.bgId, $volume.volId)
 
             # Si on n'a pas trouvé l'entité, c'est que n'a pas les infos nécessaires pour l'ajouter à la DB
             if($entityId -eq 0)
             {
-                Write-Warning ("Business Group '{0}' ('{1}') has been deleted and item '{2}' wasn't existing last month. Not enough information to bill it" -f $volume.bgName, $volume.targetTenant, $volume.volName)
+                Write-Warning ("Business Group '{0}' with ID {1} ('{2}') has been deleted and item '{3}' wasn't existing last month. Not enough information to bill it" -f `
+                                $entityType.toString(), $volume.bgId, $volume.targetTenant, $volume.volName)
                 Continue
             }
             

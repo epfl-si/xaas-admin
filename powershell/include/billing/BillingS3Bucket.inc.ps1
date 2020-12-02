@@ -131,11 +131,13 @@ class BillingS3Bucket: Billing
 
             $targetTenant = $null
 
-            # Si pas supporté, on passe à l'élément suivant
+            # Si pas supporté, on passe à l'élément suivant. 
             # NOTE: on n'utilise pas de "switch" car l'utilisation de "Continue" n'est pas possible au sein de celui-ci...
             # On n'utilise pas non plus la valeur "targetTenant" présente dans la table BucketArchive car elle ne correspond pas au tenant vRA réel
             if($null -eq $entityType)
             {
+                # Si on arrive ici, c'est que ce n'est pas supporté ou que potentiellement le champ svcOrUnitId ne contient pas une valeur correcte,
+                # ce qui peut arriver dans l'environnement de test (et prod) parce qu'on met un peu tout et n'importe quoi dans svcOrUnitId...
                 Continue
             }
             elseif($entityType -eq [BillingEntityType]::Service)
@@ -153,12 +155,13 @@ class BillingS3Bucket: Billing
             }
 
             # On ajoute ou met à jour l'entité dans la DB et on retourne son ID
-            $entityId = $this.initAndGetEntityId($entityType, $targetTenant, $bucket.bgName, $bucket.bucketName)
+            $entityId = $this.initAndGetEntityId($entityType, $targetTenant, $bucket.unitOrSvcID, $bucket.bucketName)
 
             # Si on n'a pas trouvé l'entité, c'est que n'a pas les infos nécessaires pour l'ajouter à la DB
             if($null -eq $entityId)
             {
-                Write-Warning ("Business Group '{0}' ('{1}') has been deleted and item '{2}' wasn't existing last month. Not enough information to bill it" -f $bucket.bgName, $targetTenant, $bucket.bucketName)
+                Write-Warning ("Business Group '{0}' with ID {1} ('{2}') has been deleted and item '{3}' wasn't existing last month. Not enough information to bill it" -f `
+                                $entityType.toString(), $bucket.unitOrSvcID, $targetTenant, $bucket.bucketName)
                 Continue
             }
 

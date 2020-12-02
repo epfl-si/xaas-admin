@@ -149,10 +149,10 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 	ForEach($notif in $notifications.Keys)
 	{
 		# S'il y a des notifications de ce type
-		if($notifications[$notif].count -gt 0)
+		if($notifications.$notif.count -gt 0)
 		{
 			# Suppression des doublons 
-			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
+			$uniqueNotifications = $notifications.$notif | Sort-Object| Get-Unique
 
 			$valToReplace = @{}
 
@@ -505,11 +505,11 @@ try
 	
 	# Pour accéder à la base de données
 	$sqldb = [SQLDB]::new([DBType]::MSSQL, `
-							$configVra.getConfigValue($targetEnv, "dbmssql", "host"), `
-							$configVra.getConfigValue($targetEnv, "dbmssql", "dbName"), `
-							$configVra.getConfigValue($targetEnv, "dbmssql", "user"), `
-							$configVra.getConfigValue($targetEnv, "dbmssql", "password"), `
-							$configVra.getConfigValue($targetEnv, "dbmssql", "port"))
+							$configVra.getConfigValue($targetEnv, "db", "host"), `
+							$configVra.getConfigValue($targetEnv, "db", "dbName"), `
+							$configVra.getConfigValue($targetEnv, "db", "user"), `
+							$configVra.getConfigValue($targetEnv, "db", "password"), `
+							$configVra.getConfigValue($targetEnv, "db", "port"))
 
 	Import-Module ActiveDirectory
 
@@ -637,10 +637,10 @@ try
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
 						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
-						if($notifications['missingEPFLADGroups'] -notcontains $approveGroupNameGroups)
+						if($notifications.missingEPFLADGroups -notcontains $approveGroupNameGroups)
 						{
 							# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
-							$notifications['missingEPFLADGroups'] += $approveGroupNameGroups
+							$notifications.missingEPFLADGroups += $approveGroupNameGroups
 						}
 						$allGroupsOK = $false
 					}
@@ -673,7 +673,7 @@ try
 					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
-					$notifications['missingEPFLADGroups'] += $adminGroupNameGroups
+					$notifications.missingEPFLADGroups += $adminGroupNameGroups
 					break
 				}
 				# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
@@ -684,7 +684,7 @@ try
 					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
-					$notifications['missingEPFLADGroups'] += $supportGroupNameGroups
+					$notifications.missingEPFLADGroups += $supportGroupNameGroups
 					break
 				}
 				# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
@@ -1037,9 +1037,9 @@ try
 						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
-						if($notifications['missingITSADGroups'] -notcontains $approveGroupNameGroups)
+						if($notifications.missingITSADGroups -notcontains $approveGroupNameGroups)
 						{
-							$notifications['missingITSADGroups'] += $approveGroupNameGroups
+							$notifications.missingITSADGroups += $approveGroupNameGroups
 						}
 							
 						$allGroupsOK = $false
@@ -1068,7 +1068,7 @@ try
 					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					$notifications['missingITSADGroups'] += $admSupGroupNameGroups
+					$notifications.missingITSADGroups += $admSupGroupNameGroups
 					continue
 				}
 				# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
@@ -1097,9 +1097,9 @@ try
 					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					if($notifications['missingADGroups'] -notcontains $userSharedGroupNameGroupsAD)
+					if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
 					{
-						$notifications['missingADGroups'] += $userSharedGroupNameGroupsAD
+						$notifications.missingADGroups += $userSharedGroupNameGroupsAD
 					}
 				}
 				else
@@ -1218,9 +1218,9 @@ try
 						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
-						if($notifications['missingADGroups'] -notcontains $approveGroupNameGroupsAD)
+						if($notifications.missingADGroups -notcontains $approveGroupNameGroupsAD)
 						{
-							$notifications['missingADGroups'] += $approveGroupNameGroupsAD
+							$notifications.missingADGroups += $approveGroupNameGroupsAD
 						}
 							
 						$allApproveGroupsOK = $false
@@ -1250,7 +1250,7 @@ try
 					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					$notifications['missingRSRCHADGroups'] += $admSupGroupNameGroups
+					$notifications.missingRSRCHADGroups += $admSupGroupNameGroups
 					$roleAdmSupGroupOK = $false
 				}
 				else
@@ -1281,9 +1281,9 @@ try
 					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					if($notifications['missingADGroups'] -notcontains $userSharedGroupNameGroupsAD)
+					if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
 					{
-						$notifications['missingADGroups'] += $userSharedGroupNameGroupsAD
+						$notifications.missingADGroups += $userSharedGroupNameGroupsAD
 					}
 					$roleSharedGroupOk = $false
 				}
