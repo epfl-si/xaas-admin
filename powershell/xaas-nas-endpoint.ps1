@@ -523,14 +523,17 @@ try
         $logHistory.addLine(("Business group ID given ({0}), looking for object in vRA..." -f $bgId))
         # Récupération de l'objet représentant le BG dans vRA
         $bg = $vra.getBGByCustomId($bgId)
+
+        # On check si pas trouvé (on ne sait jamais...)
+        if($null -eq $bg)
+        {
+            Throw ("Business Group with ID '{0}' not found on {1} tenant" -f $bgId, $targetTenant)
+        }
+        $logHistory.addLine(("Business Group found, name={0}" -f $bg.name))
+
     }
 
-    # On check si pas trouvé (on ne sait jamais...)
-    if($null -eq $bg)
-    {
-        Throw ("Business Group with ID '{0}' not found on {1} tenant" -f $bgId, $targetTenant)
-    }
-    $logHistory.addLine(("Business Group found, name={0}" -f $bg.name))
+    
 
     # -------------------------------------------------------------------------
     # En fonction de l'action demandée
