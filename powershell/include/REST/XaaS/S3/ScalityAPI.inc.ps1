@@ -400,7 +400,11 @@ class ScalityAPI: APIUtils
 	#>
     hidden [bool] userIsInPolicy([string]$username, [string]$policyName)
     {
-        return  ($this.getPolicyUserList($policyName) | Where-Object {$_.UserName -eq $username} ).Count -gt 0
+        $this.debugLog("Get-IAMAttachedUserPolicyList -UserName $($username)")
+        # Recherche si l'utilisateur courant est attaché à la policy recherchée 
+        # https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-IAMAttachedUserPolicyList.html
+        return ($null -ne (Get-IAMAttachedUserPolicyList -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                          -UserName $username | Where-Object { $_.PolicyName -eq $policyName}  ))
     }
 
     <#
