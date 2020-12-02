@@ -1,14 +1,14 @@
 <#
 USAGES:
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access cifs -svm <svm> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgName <bgName> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action create -volType app -sizeGB <sizeGB> -bgName <bgName> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgId <bgId> -access cifs -svm <svm> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgId <bgId> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action create -volType app -sizeGB <sizeGB> -bgId <bgId> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action appVolExists -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action canHaveNewVol -bgName <bgName> -access cifs|nfs3
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action canHaveNewVol -bgId <bgId> -access cifs|nfs3
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action resize -sizeGB <sizeGB> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolSize [-volName <volName>]
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action getSVMList -bgName <bgName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action getSVMList -bgId <bgId>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getIPList -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action updateIPList -volName <volName> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolInfos -volName <volName>
@@ -52,7 +52,7 @@ param([string]$targetEnv,
       [string]$volType,
       # Pour la localisation
       [string]$svm,
-      [string]$bgName,
+      [string]$bgId, # ID d'unité, no de service (SVCxxx) ou numéro de projet
       # Volume
       [string]$volName,
       [int]$sizeGB,
@@ -127,18 +127,13 @@ $global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"
 
     IN  : $netapp           -> Objet de la classe NetAppAPI pour se connecter au NetApp
     IN  : $nameGeneratorNAS -> Objet de la classe NameGeneratorNAS
-    IN  : $faculty          -> La faculté pour laquelle le volume sera
-    IN  : $unit             -> L'unité pour laquelle le volume sera
     IN  : $access           -> le type d'accès -> [NetAppProtocol]
 
     RET : Nouveau nom du volume
             $null si on a atteint le nombre max de volumes pour l'unité
 #>
-function getNextColVolName([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS, [string]$faculty, [string]$unit, [NetAppProtocol]$access)
+function getNextColVolName([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS, [NetAppProtocol]$access)
 {
-    $unit = $unit.toLower() -replace "-", ""
-    $faculty = $faculty.toLower()
-
     $isNFS = ($access -eq [NetAppProtocol]::nfs3)
 
     # Définition de la regex pour trouver les noms de volumes
@@ -522,6 +517,24 @@ try
     $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
                                                     ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
+    # Si on nous a passé un ID de BG,
+    if($bgId -ne "")
+    {
+        $logHistory.addLine(("Business group ID given ({0}), looking for object in vRA..." -f $bgId))
+        # Récupération de l'objet représentant le BG dans vRA
+        $bg = $vra.getBGByCustomId($bgId)
+
+        # On check si pas trouvé (on ne sait jamais...)
+        if($null -eq $bg)
+        {
+            Throw ("Business Group with ID '{0}' not found on {1} tenant" -f $bgId, $targetTenant)
+        }
+        $logHistory.addLine(("Business Group found, name={0}" -f $bg.name))
+
+    }
+
+    
+
     # -------------------------------------------------------------------------
     # En fonction de l'action demandée
     switch ($action)
@@ -570,11 +583,11 @@ try
                     }
 
                     # Initialisation des détails
-                    $nameGeneratorNAS.setCollaborativeDetails($bgName)
+                    $nameGeneratorNAS.setCollaborativeDetails($bg.name, $bgId)
 
                     $logHistory.addLine( "Generating volume name..." )
                     # Recheche du prochain nom de volume
-                    $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -faculty $details.faculty -unit $details.unit -access $access
+                    $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -access $access
                     $logHistory.addLine( ("New volume name will be '{0}'" -f $volName) )
                     if($null -eq $volName)
                     {
@@ -684,8 +697,6 @@ try
 
                             # --- ACLs
 
-                            # Recherche du Business Group
-                            $bg = $vra.getBG($bgName)
                             # Récupération des utilisateurs qui ont le droit de demander des volumes
                             $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
 
@@ -852,7 +863,7 @@ try
         $ACTION_GET_SVM_LIST 
         {
             # Récupération du nom de la faculté et de l'unité
-            $details = $nameGeneratorNAS.getDetailsFromBGName($bgName)
+            $details = $nameGeneratorNAS.getDetailsFromBGName($bg.name)
             $faculty = $details.faculty
 
             # Chargement des informations sur le mapping des facultés
@@ -902,7 +913,7 @@ try
             }
 
             # Si on veut savoir pour un volume applicatif, 
-            $nameGeneratorNAS.setApplicativeDetails($global:APP_VOL_DEFAULT_FAC, $volName)
+            $nameGeneratorNAS.setApplicativeDetails($global:APP_VOL_DEFAULT_FAC, $volName, $bgId)
                 
             # on regarde quel nom devrait avoir le volume applicatif
             $volName = $nameGeneratorNAS.getVolName()
@@ -921,11 +932,11 @@ try
         $ACTION_CAN_HAVE_NEW_VOL
         {
            
-            $nameGeneratorNAS.setCollaborativeDetails($bgName)
+            $nameGeneratorNAS.setCollaborativeDetails($bg.name, $bgId)
 
             $logHistory.addLine( "Looking for next volume name..." )
             # Recheche du prochain nom de volume
-            $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -faculty $details.faculty -unit $details.unit -access $access
+            $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -access $access
             $logHistory.addLine( ("Next volume name is '{0}'" ) -f $volName)
             $output.results += @{
                 canHaveNewVol = ($null -ne $volName)

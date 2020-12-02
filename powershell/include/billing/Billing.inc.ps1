@@ -390,17 +390,18 @@ class Billing
 
         IN  : $entityType   -> Type de l'entité
         IN  : $targetTenant -> Tenant sur lequel se trouve le BG
-        IN  : $bgName       -> Nom du BG
+        IN  : $bgId         -> ID du BG tel que défini par l'EPFL. Soit ID d'unité, soit SVCxxxx, etc...
         IN  : $itemName     -> Nom de l'item à facturer
 
         RET : ID de l'entité
                 0 si pas trouvé (vu que les id démarrent à 1 dans la DB, on n'a pas de risque de faire faux)
     #>
-    hidden [int] initAndGetEntityId([BillingEntityType]$entityType, [string]$targetTenant, [string]$bgName, [string]$itemName)
+    hidden [int] initAndGetEntityId([BillingEntityType]$entityType, [string]$targetTenant, [string]$bgId, [string]$itemName)
     {
-        $bg = $this.vraTenantList.$targetTenant.getBG($bgName)
+        # Recherche du BG avec son ID unique
+        $bg = $this.vraTenantList.$targetTenant.getBGByCustomId($bgId)
 
-        # Si le BG n'existe plus dans vRA
+        # Si le BG n'est pas trouvé dans vRA, c'est qu'il a été supprimé
         if($null -eq $bg)
         {
             # On regarde donc si on a déjà référencé l'item dans la DB par le passé et on tente de
@@ -420,11 +421,9 @@ class Billing
         }
         else # On a trouvé les infos du BG dans vRA donc on ajoute/met à jour l'entité
         {
-            $entityElement = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
-
             # Ajout de l'entité à la base de données (si pas déjà présente)
             $entityId = $this.addEntity($entityType, `
-                                        ("{0} {1}" -f $entityElement, $this.getEntityElementDesc($entityType, $entityElement)), `
+                                        ("{0} {1}" -f $bgId, $this.getEntityElementDesc($entityType, $bgId)), `
                                         (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
         }
         
