@@ -116,4 +116,15 @@ class LogHistory
         Write-Warning $line
         $this.addLine(("!!WARNING!! {0}" -f $line))
     }
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Ajoute une ligne au fichier Log pour dire que c'est du DEBUG
+
+        IN  : $line -> La ligne à ajouter
+	#>
+	[void] addDebug([string]$line)
+	{
+        $this.addLine(("!!DEBUG!! {0}" -f $line))
+    }
 }
