@@ -421,7 +421,7 @@ function createOrUpdateBG
 					$logHistory.addErrorAndDisplay(("-> Error renaming folder. Error is : {0}" -f $_.Error.Message))
 				
 					# Ajout d'information dans les notifications pour faire en sorte que les admins soient informés par mail.
-					$notifications['ISOFolderNotRenamed'] += ("{0} -> {1}" -f $bgISOFolderCurrent, $bgISOFolderNew)
+					$notifications.ISOFolderNotRenamed += ("{0} -> {1}" -f $bgISOFolderCurrent, $bgISOFolderNew)
 
 					# On continue ensuite l'exécution normalement 
 				}
@@ -777,7 +777,7 @@ function setBGAsGhostIfNot
 	# Si le BG est toujours actif
 	if(isBGAlive -bg $bg)
 	{
-		$notifications['bgSetAsGhost'] += $bg.name
+		$notifications.bgSetAsGhost += $bg.name
 
 		# On marque le BG comme "Ghost"
 		$vra.updateBG($bg, $null, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__GHOST})
@@ -844,7 +844,7 @@ function isBGAlive
 	<# Si on arrive ici, c'est qu'on n'a pas défini de clef (pour une raison inconnue) pour enregistrer le statut
 	   On enregistre donc la chose et on dit que le BG est "vivant"
 	#>
-	$notifications['bgWithoutCustomPropStatus'] += $bg.name
+	$notifications.bgWithoutCustomPropStatus += $bg.name
 	return $true
 }
 
@@ -868,10 +868,10 @@ function handleNotifications
 	ForEach($notif in $notifications.Keys)
 	{
 		# S'il y a des notifications de ce type
-		if($notifications[$notif].count -gt 0)
+		if($notifications.$notif.count -gt 0)
 		{
 			# Suppression des doublons 
-			$uniqueNotifications = $notifications[$notif] | Sort-Object| Get-Unique
+			$uniqueNotifications = $notifications.$notif | Sort-Object| Get-Unique
 
 			$valToReplace = @{}
 
@@ -987,7 +987,7 @@ function checkIfADGroupsExists
 				{
 					$logHistory.addWarningAndDisplay(("Security group '{0}' not found in Active Directory" -f $groupName))
 					# Enregistrement du nom du groupe
-					$notifications['adGroupsNotFound'] += $groupName
+					$notifications.adGroupsNotFound += $groupName
 					$allOK = $false
 				}
 				else # Le groupe est OK
@@ -1571,7 +1571,7 @@ try
 		if((Get-ADGroupMember -server ad2.epfl.ch $_.Name).Count -eq 0)
 		{
 			# On enregistre l'info pour notification
-			$notifications['emptyADGroups'] += ("{0} ({1})" -f $_.Name, $bgName)
+			$notifications.emptyADGroups += ("{0} ({1})" -f $_.Name, $bgName)
 		}
 
 		
@@ -1722,7 +1722,7 @@ try
 		# Si la custom property qui donne les infos n'a pas été trouvée
 		if($null -eq $isBGOfType)
 		{
-			$notifications['bgWithoutCustomPropType'] += $_.name
+			$notifications.bgWithoutCustomPropType += $_.name
 			$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Business Group '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, $_.name))
 		}
 		elseif($isBGOfType -and ($doneBGList -notcontains $_.name))
