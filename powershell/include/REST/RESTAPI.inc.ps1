@@ -68,6 +68,8 @@ class RESTAPI: APIUtils
 	{
 		$this.lastBody = $body
 
+		$this.debugLog(("Invoke-RestMethod: $($method) $($uri) `nBody:`n{0}" -f (ConvertTo-Json -InputObject $body -Depth 20)))
+
 		# Si la requête est de la lecture
 		if($method.ToLower() -eq "get")
 		{
@@ -89,6 +91,7 @@ class RESTAPI: APIUtils
 		$nbCurlAttempts = 2
 		for($currentAttemptNo=1; $currentAttemptNo -le $nbCurlAttempts; $currentAttemptNo++)
 		{
+			$this.debugLog("Invoke-RestMethod attempt: $($currentAttemptNo)")
 			try
 			{
 				if($null -ne $body)
