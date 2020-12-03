@@ -123,4 +123,5 @@ enum BillingEntityType
     Unit
     Service
     Project
+    NotSupported # Pour les éléments non supportés
 }
