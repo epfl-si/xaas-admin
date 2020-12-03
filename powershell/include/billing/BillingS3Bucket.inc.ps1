@@ -56,7 +56,7 @@ class BillingS3Bucket: Billing
         RET : le type d'entité (du type énuméré [BillingEntityType])
                 $null si pas supporté
     #>
-    hidden [PSObject] getEntityType([PSObject]$itemInfos)
+    hidden [BillingEntityType] getEntityType([PSObject]$itemInfos)
     {
 
         # On va utiliser le champ "unitOrSvcID"
@@ -68,8 +68,8 @@ class BillingS3Bucket: Billing
         {
             return [BillingEntityType]::Service
         }
-        # Si on arrive ici, c'est que ce n'est pas géré donc on renvoie $null
-        return $null
+        # Si on arrive ici, c'est que ce n'est pas géré
+        return [BillingEntityType]::NotSupported
     }
 
     <#
@@ -116,11 +116,21 @@ class BillingS3Bucket: Billing
         IN  : $month    -> Le no du mois pour lequel extraire les infos
         IN  : $year     -> L'année pour laquelle extraire les infos
 
-        RET : le nombre d'éléments ajoutés pour être facturés
+        RET : Tableau avec:
+                0 -> le nombre d'éléments ajoutés pour être facturés
+                1 -> le nombre d'éléments non facturable (ex si dans ITServices)
+                2 -> le nombre d'éléments avec une quantité de 0
+                3 -> le nombre d'éléments ne pouvant pas être facturés car données par correctes
+                4 -> le nombre d'éléments pour lesquels on n'a pas assez d'informations pour les facturer
     #>
-    [int] extractData([int]$month, [int]$year)
+    [Array] extractData([int]$month, [int]$year)
     {
+        # Compteurs
         $nbItemsAdded = 0
+        $nbItemsNotBillable = 0
+        $nbItemsAmountZero = 0
+        $nbItemsNotSupported = 0
+        $nbItemsNotEnoughInfos = 0
         
         # On commence par récupérer la totalité des Buckets qui existent. Ceci est fait en interrogeant une table spéciale
         # dans laquelle on a tous les buckets, y compris ceux qui ont été effacés
@@ -137,15 +147,18 @@ class BillingS3Bucket: Billing
             # Si pas supporté, on passe à l'élément suivant. 
             # NOTE: on n'utilise pas de "switch" car l'utilisation de "Continue" n'est pas possible au sein de celui-ci...
             # On n'utilise pas non plus la valeur "targetTenant" présente dans la table BucketArchive car elle ne correspond pas au tenant vRA réel
-            if($null -eq $entityType)
+            if($entityType -eq [BillingEntityType]::NotSupported)
             {
-                # Si on arrive ici, c'est que ce n'est pas supporté ou que potentiellement le champ svcOrUnitId ne contient pas une valeur correcte,
-                # ce qui peut arriver dans l'environnement de test (et prod) parce qu'on met un peu tout et n'importe quoi dans svcOrUnitId...
+                # Si on arrive ici, c'est que ce n'est pas supporté ou que potentiellement le champ unitOrSvcID ne contient pas une valeur correcte,
+                # ce qui peut arriver dans l'environnement de test (et prod) parce qu'on met un peu tout et n'importe quoi dans unitOrSvcID...
+                Write-Warning ("Entity not supported for item (name={0}, unitOrSvcId={1})" -f $bucket.bucketName, $bucket.unitOrSvcID)
+                $nbItemsNotSupported++
                 Continue
             }
             elseif($entityType -eq [BillingEntityType]::Service)
             {
-                Write-Warning ("Skipping 'Service' entity (for bucket {0}) because not billed" -f $bucket.bucketName)
+                Write-Warning ("Skipping 'ITService' entity (for bucket {0}) because not billed" -f $bucket.bucketName)
+                $nbItemsNotBillable++
                 Continue
             }
             elseif($entityType -eq [BillingEntityType]::Unit)
@@ -165,6 +178,7 @@ class BillingS3Bucket: Billing
             {
                 Write-Warning ("Business Group '{0}' with ID {1} ('{2}') has been deleted and item '{3}' wasn't existing last month. Not enough information to bill it" -f `
                                 $entityType.toString(), $bucket.unitOrSvcID, $targetTenant, $bucket.bucketName)
+                $nbItemsNotEnoughInfos++
                 Continue
             }
 
@@ -185,9 +199,13 @@ class BillingS3Bucket: Billing
                 # Incrémentation du nombre d'éléments ajoutés
                 $nbItemsAdded++
             }
+            else # L'item n'a pas été ajouté car quantité égale à 0
+            {
+                $nbItemsAmountZero++
+            }
 
         }# FIN parcours des buckets
 
-        return $nbItemsAdded
+        return @($nbItemsAdded, $nbItemsNotBillable, $nbItemsAmountZero, $nbItemsNotSupported, $nbItemsNotEnoughInfos)
     }
 }

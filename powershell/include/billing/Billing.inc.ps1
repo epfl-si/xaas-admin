@@ -506,9 +506,14 @@ class Billing
         IN  : $month    -> Le no du mois pour lequel extraire les infos
         IN  : $year     -> L'année pour laquelle extraire les infos
 
-        RET : le nombre d'éléments ajoutés pour être facturés
+        RET : Tableau avec:
+                0 -> le nombre d'éléments ajoutés pour être facturés
+                1 -> le nombre d'éléments non facturable (ex si dans ITServices)
+                2 -> le nombre d'éléments avec une quantité de 0
+                3 -> le nombre d'éléments ne pouvant pas être facturés car données par correctes
+                4 -> le nombre d'éléments pour lesquels on n'a pas assez d'informations pour les facturer
     #>
-    [int] extractData([int]$month, [int]$year)
+    [Array] extractData([int]$month, [int]$year)
     {
         <# 
         Cette fonction devra être implémentée par les classes enfants de celle-ci. Elle sera en charge d'extraire mensuellement
@@ -533,7 +538,7 @@ class Billing
         RET : le type d'entité (du type énuméré [BillingEntityType])
                 $null si pas supporté
     #>
-    hidden [PSObject] getEntityType([PSObject]$itemInfos)
+    hidden [BillingEntityType] getEntityType([PSObject]$itemInfos)
     {
         <# 
         Bien que pas appelée directement depuis "l'extérieur", cette fonction devra être implémentée pour être utilisée au sein de la fonction

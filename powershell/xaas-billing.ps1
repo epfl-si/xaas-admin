@@ -326,6 +326,10 @@ try
         {
             # Ajout des différents compteurs
             $counters.add('itemEligibleToBeBilled', '# Items eligible to be billed')
+            $counters.add('itemNonBillable', '# Items non billable (ITServices)')
+            $counters.add('itemsZeroQte', '# Items with zero quantity')
+            $counters.add('itemsNonBillableIncorrectData' , '# Items non billable because incorrect data')
+            $counters.add('itemsNonBillableNotEnoughData' , '# Items non billable not enough data')
 
             $logHistory.addLineAndDisplay("Action => Data extraction")
 
@@ -334,7 +338,13 @@ try
 
             # Extraction des données pour les mettre dans la table où tout est formaté la même chose
             # On enregistre aussi le nombre d'éléments qui peuvent être facturés
-            $counters.set('itemEligibleToBeBilled', $billingObject.extractData($month, $year))
+            $itemEligibleToBeBilled, $itemNonBillable, $itemsZeroQte, $itemsNonBillableIncorrectData, $itemsNonBillableNotEnoughData  =  $billingObject.extractData($month, $year)
+
+            $counters.set('itemEligibleToBeBilled',$itemEligibleToBeBilled)
+            $counters.set('itemNonBillable', $itemNonBillable)
+            $counters.set('itemsZeroQte', $itemsZeroQte)
+            $counters.set('itemsNonBillableIncorrectData', $itemsNonBillableIncorrectData)
+            $counters.set('itemsNonBillableNotEnoughData', $itemsNonBillableNotEnoughData)
 
         }
 
