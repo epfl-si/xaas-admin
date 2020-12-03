@@ -198,7 +198,7 @@ class Billing
         IN  : $priceLevel       -> le nom du niveau à appliquer de la grille de prix
 
         RET : ID de l'entité
-                $null si pas ajouté car trop quantité de zéro
+                0 si pas ajouté car trop quantité de zéro
     #>
     hidden [int] addItem([int]$parentEntityId, [string]$type, [string]$name, [string]$desc, [int]$month, [int]$year, [double]$quantity, [string]$unit, [string]$priceLevel)
     {
@@ -207,7 +207,7 @@ class Billing
         # ensuite manuellement la valeur "quantity".
         if($quantity -eq 0)
         {
-           return $null
+           return 0
         }
 
         $item = $this.getItem($name, $month, $year)
@@ -505,8 +505,10 @@ class Billing
 
         IN  : $month    -> Le no du mois pour lequel extraire les infos
         IN  : $year     -> L'année pour laquelle extraire les infos
+
+        RET : le nombre d'éléments ajoutés pour être facturés
     #>
-    [void] extractData([int]$month, [int]$year)
+    [int] extractData([int]$month, [int]$year)
     {
         <# 
         Cette fonction devra être implémentée par les classes enfants de celle-ci. Elle sera en charge d'extraire mensuellement
@@ -528,7 +530,7 @@ class Billing
 
         IN  : $itemInfos  -> Objet représentant l'item     
         
-        RET : le type d'entité
+        RET : le type d'entité (du type énuméré [BillingEntityType])
                 $null si pas supporté
     #>
     hidden [PSObject] getEntityType([PSObject]$itemInfos)

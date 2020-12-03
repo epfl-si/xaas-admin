@@ -53,7 +53,7 @@ class BillingS3Bucket: Billing
 
         IN  : $itemInfos  -> Objet représentant le bucket     
         
-        RET : le type d'entité
+        RET : le type d'entité (du type énuméré [BillingEntityType])
                 $null si pas supporté
     #>
     hidden [PSObject] getEntityType([PSObject]$itemInfos)
@@ -115,9 +115,12 @@ class BillingS3Bucket: Billing
         
         IN  : $month    -> Le no du mois pour lequel extraire les infos
         IN  : $year     -> L'année pour laquelle extraire les infos
+
+        RET : le nombre d'éléments ajoutés pour être facturés
     #>
-    [void] extractData([int]$month, [int]$year)
+    [int] extractData([int]$month, [int]$year)
     {
+        $nbItemsAdded = 0
         
         # On commence par récupérer la totalité des Buckets qui existent. Ceci est fait en interrogeant une table spéciale
         # dans laquelle on a tous les buckets, y compris ceux qui ont été effacés
@@ -177,9 +180,14 @@ class BillingS3Bucket: Billing
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
             $itemDesc = "{0}`n({1})`nOwner: {2}" -f $bucket.bucketName, $bucket.friendlyName, $this.getItemOwner($bucket.requestor)
 
-            $this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB" ,"U.1") | Out-Null
-
+            if($this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB" ,"U.1") -ne 0)
+            {
+                # Incrémentation du nombre d'éléments ajoutés
+                $nbItemsAdded++
+            }
 
         }# FIN parcours des buckets
+
+        return $nbItemsAdded
     }
 }

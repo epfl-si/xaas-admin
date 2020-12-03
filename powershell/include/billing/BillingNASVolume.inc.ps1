@@ -49,7 +49,7 @@ class BillingNASVolume: Billing
 
         IN  : $itemInfos  -> Objet représentant le volume     
         
-        RET : le type d'entité
+        RET : le type d'entité (du type énuméré [BillingEntityType])
                 $null si pas supporté
     #>
     hidden [PSObject] getEntityType([PSObject]$itemInfos)
@@ -110,10 +110,13 @@ class BillingNASVolume: Billing
         
         IN  : $month    -> Le no du mois pour lequel extraire les infos
         IN  : $year     -> L'année pour laquelle extraire les infos
+
+        RET : le nombre d'éléments ajoutés pour être facturés
     #>
-    [void] extractData([int]$month, [int]$year)
+    [int] extractData([int]$month, [int]$year)
     {
-        
+        $nbItemsAdded = 0
+
         # On commence par récupérer la totalité des volumes qui existent. Ceci est fait en interrogeant une table spéciale
         # dans laquelle on a tous les volumes, y compris ceux qui ont été effacés
         $request = "SELECT * FROM NasVolumeArchive"
@@ -160,9 +163,16 @@ class BillingNASVolume: Billing
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
             $itemDesc = "{0}`nOwner: {1}" -f $volume.volName, $this.getItemOwner($volume.requestor)
 
-            $this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $volume.volId, $itemDesc, $month, $year, $volumeUsage, "TB" ,"U.1") | Out-Null
-
+            # Ajout de l'item et check s'il a effectivement été ajouté
+            if($this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $volume.volId, $itemDesc, $month, $year, $volumeUsage, "TB" ,"U.1") -ne 0)
+            {
+                # Incrémentation du nombre d'éléments ajoutés
+                $nbItemsAdded++
+            }
 
         }# FIN parcours des buckets
+
+        return $nbItemsAdded
+
     }
 }
