@@ -121,6 +121,7 @@ class ScalityAPI: APIUtils
 	#>
     [PSObject] addBucket([string]$bucketName)
     {
+        $this.debugLog("New-S3Bucket -bucketName $($bucketName)")
         # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/New-S3Bucket.html
         return New-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                             -BucketName $bucketName 
@@ -137,6 +138,7 @@ class ScalityAPI: APIUtils
 	#>
     [PSObject] getBucket([string]$bucketName)
     {
+        $this.debugLog("Get-S3Bucket -bucketName $($bucketName)")
         # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-S3Bucket.html
         return Get-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                              -BucketName $bucketName 
@@ -151,6 +153,7 @@ class ScalityAPI: APIUtils
 	#>
     [PSObject] getBucketList()
     {
+        $this.debugLog("Get-S3Bucket (all)")
         # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-S3Bucket.html
         return Get-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials 
     }
@@ -181,6 +184,7 @@ class ScalityAPI: APIUtils
         # On n'efface que si le bucket existe, bien évidemment.
         if($this.bucketExists($bucketName))
         {
+            $this.debugLog("Remove-S3Bucket -bucketName $($bucketName)")
             # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Remove-S3Bucket.html
             Remove-S3Bucket -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                             -BucketName $bucketName -DeleteBucketContent:$false -Confirm:$false
@@ -214,6 +218,7 @@ class ScalityAPI: APIUtils
             $status = "Suspended"
         }
 
+        $this.debugLog("Write-S3BucketVersioning -bucketName $($bucketName) -VersioningConfig_Status $($status)")
         # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Write-S3BucketVersioning.html
         Write-S3BucketVersioning -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                                     -BucketName $bucketName -VersioningConfig_Status $status
@@ -231,6 +236,7 @@ class ScalityAPI: APIUtils
 	#>
     [bool] bucketVersioningEnabled([string]$bucketName)
     {
+        $this.debugLog("Get-S3BucketVersioning -bucketName $($bucketName)")
         # Documentation: https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-S3BucketVersioning.html
         $currentStatus = (Get-S3BucketVersioning -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -BucketName $bucketName).status
 
@@ -248,6 +254,7 @@ class ScalityAPI: APIUtils
 	#>
     [Array] getBucketPolicyList([string]$bucketName)
     {
+        $this.debugLog("Get-IAMPolicyList (all)")
         # Récupération de la liste des policies et filtre si le bucket est contenu dedans
         return Get-IAMPolicyList -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | Where-Object { $this.getPolicyBucketList($_.PolicyName) -contains $bucketName }
     }
@@ -317,6 +324,7 @@ class ScalityAPI: APIUtils
             return $user
         }
 
+        $this.debugLog("New-IAMUser -username $($username)")
         return New-IAMUser -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                             -UserName $username
     }
@@ -332,6 +340,7 @@ class ScalityAPI: APIUtils
 	#>
     [PSObject] getUser([string]$username)
     {
+        $this.debugLog("Get-IAMUserList")
         return Get-IAMUserList -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | Where-Object {$_.Username -eq $username}
     }
 
@@ -344,6 +353,7 @@ class ScalityAPI: APIUtils
 	#>
     [void] deleteUser([string]$username)
     {
+        $this.debugLog("Remove-IAMUser -UserName $($username)")
         Remove-IAMUser -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                          -UserName $username -Confirm:$false
     }
@@ -361,9 +371,11 @@ class ScalityAPI: APIUtils
     {
         $userList = @()
 
+        $this.debugLog("Get-IAMUserList")
         # Parcours de tous les utilisateurs du système
         Get-IAMUserList -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | ForEach-Object {
 
+            $this.debugLog("Get-IAMAttachedUserPolicyList -UserName $($_.UserName)")
             # Recherche si l'utilisateur courant est attaché à la policy recherchée 
             # https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-IAMAttachedUserPolicyList.html
             if($null -ne (Get-IAMAttachedUserPolicyList -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
@@ -388,7 +400,11 @@ class ScalityAPI: APIUtils
 	#>
     hidden [bool] userIsInPolicy([string]$username, [string]$policyName)
     {
-        return  ($this.getPolicyUserList($policyName) | Where-Object {$_.UserName -eq $username} ).Count -gt 0
+        $this.debugLog("Get-IAMAttachedUserPolicyList -UserName $($username)")
+        # Recherche si l'utilisateur courant est attaché à la policy recherchée 
+        # https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-IAMAttachedUserPolicyList.html
+        return ($null -ne (Get-IAMAttachedUserPolicyList -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                          -UserName $username | Where-Object { $_.PolicyName -eq $policyName}  ))
     }
 
     <#
@@ -412,6 +428,8 @@ class ScalityAPI: APIUtils
     {
         # On commence par supprimer les clefs existantes afin de toujours en avoir qu'une seule de valide
         $this.deleteUserAccessKeys($username)
+
+        $this.debugLog("New-IAMAccessKey -UserName $($username)")
         # Génération de nouvelles clefs
         return New-IAMAccessKey -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                                 -UserName $username
@@ -429,6 +447,7 @@ class ScalityAPI: APIUtils
 	#>
     [Array] getUserAccessKeys([string]$username)
     {
+        $this.debugLog("Get-IAMAccessKey -UserName $($username)")
         return Get-IAMAccessKey -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                                 -UserName $username
     }
@@ -442,8 +461,11 @@ class ScalityAPI: APIUtils
 	#>
     [void] deleteUserAccessKeys([string] $username)
     {
+        $this.debugLog("Get-IAMAccessKey -UserName $($username)")
         Get-IAMAccessKey -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials -UserName $username | ForEach-Object {
-             Remove-IAMAccessKey -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+
+            $this.debugLog("Remove-IAMAccessKey -UserName $($username) -AccessKeyId $($_.AccessKeyId)")
+            Remove-IAMAccessKey -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                                 -UserName $username -AccessKeyId $_.AccessKeyId -Confirm:$false
         }
     }
@@ -467,6 +489,7 @@ class ScalityAPI: APIUtils
 	#>
     hidden [void] cleanOldPolicyVersions([string]$policyArn)
     {
+        $this.debugLog("Get-IAMPolicyVersionList -PolicyArn $($policyArn)")
         # Recherche de la liste des versions de la policy
         Get-IAMPolicyVersionList -endpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                                  -PolicyArn $policyArn | ForEach-Object {
@@ -474,6 +497,7 @@ class ScalityAPI: APIUtils
             # Si ce n'est pas la version active, on la supprime
             if(!($_.IsDefaultVersion))
             {
+                $this.debugLog("Remove-IAMPolicyVersion -PolicyArn $($policyArn) -VersionId $($_.VersionId)")
                 Remove-IAMPolicyVersion -endpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                                         -PolicyArn $policyArn -VersionId $_.VersionId -Confirm:$false
             }
@@ -509,6 +533,7 @@ class ScalityAPI: APIUtils
 	#>
     hidden [string] getPolicyArn([string]$policyName)
     {
+        $this.debugLog("Get-IAMPolicies")
         $pol = Get-IAMPolicies -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials | Where-Object { $_.PolicyName -eq $policyName}
 
         if($null -eq $pol)
@@ -544,9 +569,11 @@ class ScalityAPI: APIUtils
 
         $body = $this.createObjectFromJSON($jsonFile, $replace)
 
+        $policyDocument = (ConvertTo-Json -InputObject $body -Depth 20)
+        $this.debugLog("New-IAMPolicy -PolicyName $($policyName) -policyDocument $($policyDocument)")
         # Ajout de la nouvelle policy
         $pol = New-IAMPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
-                            -PolicyName $policyName -PolicyDocument (ConvertTo-Json -InputObject $body -Depth 20)
+                            -PolicyName $policyName -PolicyDocument $policyDocument
 
         return $pol
     }
@@ -570,6 +597,7 @@ class ScalityAPI: APIUtils
             return $null
         }
 
+        $this.debugLog("Get-IAMPolicy -PolicyArn $($polArn)")
         # Retour des informations complètes en cherchant avec l'Arn
         return Get-IAMPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                             -PolicyArn $polArn
@@ -598,6 +626,7 @@ class ScalityAPI: APIUtils
         # effacer celle-ci: https://docs.aws.amazon.com/IAM/latest/APIReference/API_DeletePolicy.html
         $this.cleanOldPolicyVersions($polArn)
 
+        $this.debugLog("Remove-IAMPolicy -PolicyArn $($polArn)")
         Remove-IAMPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                             -PolicyArn $polArn -Confirm:$false
     }
@@ -660,10 +689,13 @@ class ScalityAPI: APIUtils
             active passera en 'inactive' et on aura l'historique de la version précédente #>
             $this.cleanOldPolicyVersions($policy.Arn)
 
+            $policyDocument = (ConvertTo-Json -InputObject $polContent -Depth 20)
+
+            $this.debugLog("New-IAMPolicyVersion -PolicyArn $($policy.Arn) -SetAsDefault true -policyDocument $($policyDocument)")
             # Ajout de la nouvelle version de policy
-            $dummy = New-IAMPolicyVersion -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
-                                    -PolicyArn $policy.Arn -PolicyDocument (ConvertTo-Json -InputObject $polContent -Depth 20) `
-                                    -SetAsDefault $true
+            New-IAMPolicyVersion -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                                    -PolicyArn $policy.Arn -PolicyDocument $policyDocument `
+                                    -SetAsDefault $true | Out-Null
             
             $policy = $this.getPolicy($policyName)
         }
@@ -746,10 +778,13 @@ class ScalityAPI: APIUtils
             active passera en 'inactive' et on aura l'historique de la version précédente #>
             $this.cleanOldPolicyVersions($policy.Arn)
 
+            $policyDocument = (ConvertTo-Json -InputObject $polContent -Depth 20)
+
+            $this.debugLog("New-IAMPolicyVersion -PolicyArn $($policy.Arn) -SetAsDefault true -policyDocument $($policyDocument)")
             # Ajout de la nouvelle version de policy
-            $dummy = New-IAMPolicyVersion -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
-                                    -PolicyArn $policy.Arn -PolicyDocument (ConvertTo-Json -InputObject $polContent -Depth 20) `
-                                    -SetAsDefault $true
+            New-IAMPolicyVersion -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
+                                    -PolicyArn $policy.Arn -PolicyDocument $policyDocument `
+                                    -SetAsDefault $true | Out-Null
             
             $policy = $this.getPolicy($policyName)
         }
@@ -814,6 +849,8 @@ class ScalityAPI: APIUtils
             # Récupération des informations de la policy
             $policy = $this.getPolicy($policyName)
 
+            $this.debugLog("Register-IAMUserPolicy -PolicyArn $($policy.Arn) -UserName $($username)")
+
             # Documentation : https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Register-IAMUserPolicy.html
             Register-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                                     -UserName $username -PolicyArn $policy.Arn 
@@ -835,6 +872,8 @@ class ScalityAPI: APIUtils
         {
             # Récupération des informations de la policy
             $policy = $this.getPolicy($policyName)
+
+            $this.debugLog("Unregister-IAMUserPolicy -PolicyArn $($policy.Arn) -UserName $($username)")
 
             # Documentation : https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Unregister-IAMUserPolicy.html
             Unregister-IAMUserPolicy -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
@@ -862,6 +901,7 @@ class ScalityAPI: APIUtils
 	#>
     [PSObject] getBucketObjectList([string]$bucketName)
     {
+        $this.debugLog("Get-S3Object -bucketName $($bucketName)")
         # https://docs.aws.amazon.com/ja_jp/powershell/latest/reference/items/Get-S3Object.html
         return Get-S3Object -EndpointUrl $this.s3EndpointUrl -Credential $this.credentials `
                              -BucketName $bucketName

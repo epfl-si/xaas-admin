@@ -509,6 +509,14 @@ try
                                 $configNAS.getConfigValue($targetEnv, "user"), `
                                 $configNAS.getConfigValue($targetEnv, "password"))
 
+    # Si on doit activer le Debug,
+    if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
+    {
+        # Activation du debug
+        $netapp.activateDebug($logHistory)    
+        $vra.activateDebug($logHistory)
+    }
+
     # Objet pour pouvoir envoyer des mails de notification
 	$valToReplace = @{
 		targetEnv = $targetEnv

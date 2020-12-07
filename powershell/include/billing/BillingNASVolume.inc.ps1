@@ -49,10 +49,10 @@ class BillingNASVolume: Billing
 
         IN  : $itemInfos  -> Objet représentant le volume     
         
-        RET : le type d'entité
+        RET : le type d'entité (du type énuméré [BillingEntityType])
                 $null si pas supporté
     #>
-    hidden [PSObject] getEntityType([PSObject]$itemInfos)
+    hidden [BillingEntityType] getEntityType([PSObject]$itemInfos)
     {
         # Le switch est "case insensitive"
         switch($itemInfos.targetTenant)
@@ -62,8 +62,8 @@ class BillingNASVolume: Billing
             $global:VRA_TENANT__RESEARCH { return [BillingEntityType]::Project }
 
         }
-        # Si on arrive ici, c'est que ce n'est pas géré donc on renvoie $null
-        return $null
+        # Si on arrive ici, c'est que ce n'est pas géré
+        return [BillingEntityType]::NotSupported
     }
 
 
@@ -110,10 +110,23 @@ class BillingNASVolume: Billing
         
         IN  : $month    -> Le no du mois pour lequel extraire les infos
         IN  : $year     -> L'année pour laquelle extraire les infos
+
+        RET : Tableau avec:
+                0 -> le nombre d'éléments ajoutés pour être facturés
+                1 -> le nombre d'éléments non facturable (ex si dans ITServices)
+                2 -> le nombre d'éléments avec une quantité de 0
+                3 -> le nombre d'éléments ne pouvant pas être facturés car données par correctes
+                4 -> le nombre d'éléments pour lesquels on n'a pas assez d'informations pour les facturer
     #>
-    [void] extractData([int]$month, [int]$year)
+    [Array] extractData([int]$month, [int]$year)
     {
-        
+        # Compteurs
+        $nbItemsAdded = 0
+        $nbItemsNotBillable = 0
+        $nbItemsAmountZero = 0
+        $nbItemsNotSupported = 0
+        $nbItemsNotEnoughInfos = 0
+
         # On commence par récupérer la totalité des volumes qui existent. Ceci est fait en interrogeant une table spéciale
         # dans laquelle on a tous les volumes, y compris ceux qui ont été effacés
         $request = "SELECT * FROM NasVolumeArchive"
@@ -126,14 +139,17 @@ class BillingNASVolume: Billing
 
             # Si pas supporté, on passe à l'élément suivant
             # NOTE: on n'utilise pas de "switch" car l'utilisation de "Continue" n'est pas possible au sein de celui-ci...
-            if($null -eq $entityType)
+            if($entityType -eq [BillingEntityType]::NotSupported)
             {
+                Write-Warning ("Entity not supported for item (name={0}, tenant={1})" -f $volume.volName, $volume.targetTenant)
+                $nbItemsNotSupported++
                 Continue
             }
 
             if($volume.targetTenant -eq $global:VRA_TENANT__ITSERVICES)
             {
-                Write-Warning ("Skipping Service entity ({0}) because not billed" -f $volume.volName)
+                Write-Warning ("Skipping ITService entity ({0}) because not billed" -f $volume.volName)
+                $nbItemsNotBillable++
                 Continue
             }
             
@@ -145,6 +161,7 @@ class BillingNASVolume: Billing
             {
                 Write-Warning ("Business Group '{0}' with ID {1} ('{2}') has been deleted and item '{3}' wasn't existing last month. Not enough information to bill it" -f `
                                 $entityType.toString(), $volume.bgId, $volume.targetTenant, $volume.volName)
+                $nbItemsNotEnoughInfos++
                 Continue
             }
             
@@ -160,9 +177,20 @@ class BillingNASVolume: Billing
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
             $itemDesc = "{0}`nOwner: {1}" -f $volume.volName, $this.getItemOwner($volume.requestor)
 
-            $this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $volume.volId, $itemDesc, $month, $year, $volumeUsage, "TB" ,"U.1") | Out-Null
-
+            # Ajout de l'item et check s'il a effectivement été ajouté
+            if($this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $volume.volId, $itemDesc, $month, $year, $volumeUsage, "TB" ,"U.1") -ne 0)
+            {
+                # Incrémentation du nombre d'éléments ajoutés
+                $nbItemsAdded++
+            }
+            else # L'item n'a pas été ajouté car quantité égale à 0
+            {
+                $nbItemsAmountZero++
+            }
 
         }# FIN parcours des buckets
+
+        return @($nbItemsAdded, $nbItemsNotBillable, $nbItemsAmountZero, $nbItemsNotSupported, $nbItemsNotEnoughInfos)
+
     }
 }
