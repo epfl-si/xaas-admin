@@ -438,6 +438,15 @@ try
                                         $configK8s.getConfigValue($targetEnv, "tkgi", "password"),
                                         $configK8s.getConfigValue($targetEnv, "tkgi", "certificate"))
                                 
+    # Si on doit activer le Debug,
+    if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
+    {
+        # Activation du debug
+        $vra.activateDebug($logHistory)
+        $pks.activateDebug($logHistory)
+        $harbor.activateDebug($logHistory)
+    }
+    
     # Objet pour pouvoir envoyer des mails de notification
     $valToReplace = @{
 		targetEnv = $targetEnv
