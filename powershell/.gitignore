@@ -7,3 +7,4 @@ test-*.ps1
 *.progress
 ./xaas/
 filesToPush
+*.debug

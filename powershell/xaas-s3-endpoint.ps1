@@ -266,6 +266,13 @@ try
                                  $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "webConsolePassword"),
                                  $configXaaSS3.getConfigValue($targetEnv, "isScality"))
 
+    # Si on doit activer le Debug,
+    if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
+    {
+        # Activation du debug
+        $scality.activateDebug($logHistory)    
+    }
+    
 
     # Objet pour pouvoir envoyer des mails de notification
 	$valToReplace = @{

@@ -1,0 +1,5 @@
+{
+    "permission": "{{permission}}",
+    "type": "windows",
+    "user_or_group": "{{userOrGroupAtDomain}}"
+  }

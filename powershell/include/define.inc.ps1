@@ -108,6 +108,7 @@ $global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME = "Legacy VLAN"
 # Mail
 $global:VRA_MAIL_SUBJECT_PREFIX = "vRA Service [{0}->{1}]"
 $global:VRA_MAIL_SUBJECT_PREFIX_NO_TENANT = "vRA Service [{0}]"
+$global:MAIL_QUOTES_FILE = ([IO.Path]::Combine("$PSScriptRoot", "..", "data", "mail-quotes.json"))
 
 ## Billing
 $global:XAAS_BILLING_DATA_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "data", "billing"))
@@ -122,4 +123,5 @@ enum BillingEntityType
     Unit
     Service
     Project
+    NotSupported # Pour les éléments non supportés
 }

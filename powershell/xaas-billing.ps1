@@ -249,17 +249,6 @@ try
 
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
-    $counters.add('entityProcessed', '# Entity processed')
-    $counters.add('billDone', '# Entity Bill done')
-    $counters.add('billSkippedToLow', '# Entity bill skipped (amount to low)')
-    $counters.add('billSkippedNothing', '# Entity bill bill skipped (nothing to bill)')
-    $counters.add('billCanceled', '# Bill canceled')
-    $counters.add('billSentToCopernic', '# Bill sent to Copernic')
-    $counters.add('billCopernicError', '# Bill not sent to Copernic because of an error')
-    $counters.add('PDFGenerated', '# PDF generated')
-    $counters.add('PDFOldCleaned', '# Old PDF cleaned')
-    $counters.add('billSentByEmail', '# Bill send by email')
-    $counters.add('billIncorrectFinanceCenter', '# incorrect finance center')
     
     <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -282,6 +271,7 @@ try
                         $configVra.getConfigValue($targetEnv, "db", "password"), `
                         $configVra.getConfigValue($targetEnv, "db", "port"))
 
+    # Pour accéder à LDAP, sera utilisé plus bas
     $ldap = [EPFLLDAP]::new()
 
     $vraTenantList = @{}
@@ -334,14 +324,47 @@ try
         ##             GENERATION DES DONNEES DE FACTURATION                  ##
         $global:ACTION_EXTRACT_DATA
         {
+            # Ajout des différents compteurs
+            $counters.add('itemEligibleToBeBilled', '# Items eligible to be billed')
+            $counters.add('itemNonBillable', '# Items non billable (ITServices)')
+            $counters.add('itemsZeroQte', '# Items with zero quantity')
+            $counters.add('itemsNonBillableIncorrectData' , '# Items non billable because incorrect data')
+            $counters.add('itemsNonBillableNotEnoughData' , '# Items non billable not enough data')
+
             $logHistory.addLineAndDisplay("Action => Data extraction")
 
             $month = [int](Get-Date -Format "MM")
             $year = [int](Get-Date -Format "yyyy")
 
             # Extraction des données pour les mettre dans la table où tout est formaté la même chose
-            $billingObject.extractData($month, $year)
+            # On enregistre aussi le nombre d'éléments qui peuvent être facturés
+            $itemEligibleToBeBilled, $itemNonBillable, $itemsZeroQte, $itemsNonBillableIncorrectData, $itemsNonBillableNotEnoughData  =  $billingObject.extractData($month, $year)
 
+            $counters.set('itemEligibleToBeBilled',$itemEligibleToBeBilled)
+            $counters.set('itemNonBillable', $itemNonBillable)
+            $counters.set('itemsZeroQte', $itemsZeroQte)
+            $counters.set('itemsNonBillableIncorrectData', $itemsNonBillableIncorrectData)
+            $counters.set('itemsNonBillableNotEnoughData', $itemsNonBillableNotEnoughData)
+
+        }
+
+        ########################################################################
+        ##                   GENERATION DES FACTURES                          ##
+        $global:ACTION_BILLING
+        {
+            # Ajout des différents compteurs
+            $counters.add('entityProcessed', '# Entity processed')
+            $counters.add('billCanceled', '# Bill canceled')
+            $counters.add('billDone', '# Entity Bill done')
+            $counters.add('billSkippedToLow', '# Entity bill skipped (amount to low)')
+            $counters.add('billSkippedNothing', '# Entity bill bill skipped (nothing to bill)')
+            $counters.add('billSentToCopernic', '# Bill sent to Copernic')
+            $counters.add('billCopernicError', '# Bill not sent to Copernic because of an error')
+            $counters.add('PDFGenerated', '# PDF generated')
+            $counters.add('PDFOldCleaned', '# Old PDF cleaned')
+            $counters.add('billSentByEmail', '# Bill send by email')
+            $counters.add('billIncorrectFinanceCenter', '# incorrect finance center')
+            
 
             # SI on doit reset une facture pour l'émettre à nouveau
             if($redoBill -ne "")
@@ -350,12 +373,7 @@ try
                 $billingObject.cancelBill($redoBill)
                 $counters.inc('billCanceled')
             }
-        }
 
-        ########################################################################
-        ##                   GENERATION DES FACTURES                          ##
-        $global:ACTION_BILLING
-        {
             $logHistory.addLineAndDisplay("Action => Bill generation")
             # Templates pour la génération de factures
             $billingTemplate = Get-content -path $global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE -Encoding UTF8
