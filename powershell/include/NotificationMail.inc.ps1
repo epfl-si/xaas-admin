@@ -146,6 +146,8 @@ class NotificationMail
         # 3. Ajout du footer
         Get-Content -Path $this.getPathToTemplateFile("_footer") | Out-File $tmpMailFile -Encoding default -Append
 
+        # 4. Ajout de la quote de fin
+        $this.getRandomHTMLQuote() | Out-File $tmpMailFile -Encoding default -Append
 
         $mailMessage = Get-Content $tmpMailFile -Encoding UTF8 | Out-String
         Remove-Item $tmpMailFile -Force
@@ -154,5 +156,21 @@ class NotificationMail
                         -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding Unicode
     }
 
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie une citation au hasard parmi celles présentes dans la liste.
+            Cette fonction est complètement inutile pour le bon fonctionnement du code 
+            mais elle aura pour effet d'agrémenter les mails envoyé avec un petit truc rigolo
+
+        RET : La citation en HTML
+    #>
+    hidden [string] getRandomHTMLQuote()
+    {
+        $quotes = Get-Content $global:MAIL_QUOTES_FILE | ConvertFrom-Json
+
+        $quoteNo = (Get-Random -Maximum ($quotes.count-1))
+        return ("<i>{0}.</i> <small>({1})</small>" -f $quotes[$quoteNo].quote, $quotes[$quoteNo].author)
+    }    
     
 }

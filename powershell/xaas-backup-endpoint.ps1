@@ -141,6 +141,13 @@ try
             $vsphereApi = [vSphereAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "vSphere", "server"), 
             $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "user"), 
             $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "password"))
+
+            # Si on doit activer le Debug,
+            if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
+            {
+                # Activation du debug
+                $vsphereApi.activateDebug($logHistory)    
+            }
         }
 
         { ($_ -eq $ACTION_GET_BACKUP_LIST) -or ($_ -eq $ACTION_RESTORE_BACKUP) -or ($_ -eq $ACTION_GET_RESTORE_STATUS)} {
@@ -148,6 +155,13 @@ try
             $nbu = [NetBackupAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "backup", "server"), 
             $configXaaSBackup.getConfigValue($targetEnv, "backup", "user"), 
             $configXaaSBackup.getConfigValue($targetEnv, "backup", "password"))   
+
+            # Si on doit activer le Debug,
+            if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
+            {
+                # Activation du debug
+                $nbu.activateDebug($logHistory)    
+            }
         }
 
         $ACTION_VM_HAS_RUNNING_SNAPSHOT {
@@ -156,6 +170,13 @@ try
                                 $targetTenant, 
                                 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
                                 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+        
+            # Si on doit activer le Debug,
+            if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
+            {
+                # Activation du debug
+                $vra.activateDebug($logHistory)    
+            }
         }
     }
 

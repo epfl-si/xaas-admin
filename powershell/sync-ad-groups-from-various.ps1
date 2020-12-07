@@ -534,6 +534,7 @@ try
 
 	# Tous les Tenants
 	$counters.add('ADGroupsCreated', '# AD Groups created')
+	$counters.add('ADGroupsExists', '# AD Groups already existing')
 	$counters.add('ADGroupsRemoved', '# AD Groups removed')
 	$counters.add('ADGroupsContentModified', '# AD Groups modified')
 	$counters.add('ADGroupsMembersAdded', '# AD Group members added')
@@ -794,6 +795,7 @@ try
 						Get-ADGroup -Identity $adGroupName | Out-Null
 
 						$adGroupExists = $true
+						$counters.inc('ADGroupsExists')
 						$logHistory.addLineAndDisplay(("--> Group exists ({0}) " -f $adGroupName))
 
 						if(-not $SIMULATION_MODE)
@@ -873,8 +875,6 @@ try
 									# On peut le supprimer car il est de toute façon vide... Et ça ne sert à rien qu'un BG soit créé pour celui-ci du coup
 									Remove-ADGroup $adGroupName -Confirm:$false
 								}
-							
-								$counters.dec('ADGroupsCreated')
 							}
 
 						}
