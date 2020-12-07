@@ -4,7 +4,7 @@ USAGES:
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgId <bgId> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action create -volType app -sizeGB <sizeGB> -bgId <bgId> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action appVolExists -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action appVolExists -volName <volName> -bgId <bgId>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action canHaveNewVol -bgId <bgId> -access cifs|nfs3
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action resize -sizeGB <sizeGB> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolSize [-volName <volName>]
@@ -561,7 +561,7 @@ try
                 # ---- Volume Applicatif
                 ([XaaSNASVolType]::app).ToString()
                 {
-                    $nameGeneratorNAS.setApplicativeDetails($global:APP_VOL_DEFAULT_FAC, $volName)
+                    $nameGeneratorNAS.setApplicativeDetails($bgId, $volName)
 
                     # Chargement des informations sur le mapping des facultés
                     $appSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "applicative-svm.json"))
@@ -921,7 +921,7 @@ try
             }
 
             # Si on veut savoir pour un volume applicatif, 
-            $nameGeneratorNAS.setApplicativeDetails($global:APP_VOL_DEFAULT_FAC, $volName, $bgId)
+            $nameGeneratorNAS.setApplicativeDetails($bgId, $volName)
                 
             # on regarde quel nom devrait avoir le volume applicatif
             $volName = $nameGeneratorNAS.getVolName()
@@ -945,7 +945,15 @@ try
             $logHistory.addLine( "Looking for next volume name..." )
             # Recheche du prochain nom de volume
             $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -access $access
-            $logHistory.addLine( ("Next volume name is '{0}'" ) -f $volName)
+            if($null -eq $volName)
+            {
+                $logHistory.addLine(("Maximum number of volume reached for BG {0} ({1})" -f $bg.name, $bgId))
+            }
+            else
+            {
+                $logHistory.addLine( ("Next volume name is '{0}'" ) -f $volName)
+            }
+            
             $output.results += @{
                 canHaveNewVol = ($null -ne $volName)
             }
