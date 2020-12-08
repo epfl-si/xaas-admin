@@ -83,12 +83,11 @@ class TKGIKubectl
 
         $this.batchFile.StartInfo.CreateNoWindow = $false
 
-        # Liste des commandes à exécuter. Sera remplie via les méthodes:
+        # Reset de la liste des commandes à exécuter. Sera remplie via les méthodes:
         # - addCmd
         # - addCmdWithPassword
-        $this.cmdList = @()
-        # Liste des fichiers temporaire à supprimer après l'exécution de la méthode "exec"
-        $this.filesToClean = @()
+        $this.newBatch()
+        
     }
 
 
@@ -147,12 +146,14 @@ class TKGIKubectl
 
     <#
 	-------------------------------------------------------------------------------------
-		BUT : Exécute une liste de commandes
+        BUT : Exécute une liste de commandes sur un cluster donné
+        
+        IN  : $clusterName -> nom du cluster sur lequel exécuter les commandes
         
         RET : Tableau associatif avec en clef la commande passée et en valeur, le résultat (string) de
                 la commande
 	#>
-    [System.Collections.IDictionary] exec()
+    [System.Collections.IDictionary] exec([string]$clusterName)
     {
         $cmdFile = (New-TemporaryFile).FullName
         # On met une extension qui permettra de l'exécuter correctement par la suite via cmd.exe
@@ -167,6 +168,10 @@ class TKGIKubectl
 
         # Création des lignes de commandes à exécuter
         $this.loginCmd | Out-File -FilePath $batchFilePath -Encoding:default
+        # Ajout de la commande de sélection du cluster, avec authentification, puis sélection du bon contexte
+        $this.getTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName)) | Out-File -FilePath $batchFilePath -Append -Encoding:default
+        $this.getKubectlCmd(("config use-context {0}" -f $clusterName))
+
         $this.cmdList | ForEach-Object{ 
             $_ | Out-File -FilePath $batchFilePath -Append -Encoding:default
         } 
@@ -216,14 +221,15 @@ class TKGIKubectl
                 }
             }
 
-            # Reset de la liste 
-            $this.cmdList = @()
+            
 
             # Suppression des éventuels fichiers temporaires
             $this.filesToClean | ForEach-Object {
                 Remove-Item $_
             }
-            $this.filesToClean = @()
+
+            # Reset et préparation pour le prochain batch
+            $this.newBatch()
         }
         else
         {
@@ -231,6 +237,19 @@ class TKGIKubectl
         }
 
         return $cmdResults
+    }
+
+    
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Fait du nettoyage pour préparer à un nouveau batch de commandes
+	#>
+    hidden [void] newBatch()
+    {
+        # Reset de la liste des commandes
+        $this.cmdList = @()
+        # Liste des fichiers temporaire à supprimer après l'exécution de la méthode "exec"
+        $this.filesToClean = @()
     }
 
 
@@ -249,31 +268,42 @@ class TKGIKubectl
 
     <#
 	-------------------------------------------------------------------------------------
-        BUT : Ajoute une commande TKGI qui a besoin d'avoir à nouveau le mot de passe.
+        BUT : Retourne une commande TKGI qui a besoin d'avoir à nouveau le mot de passe.
                 Typiquement, la commande 'get-credentials' aura besoin du mot de passe.
 
         IN  : $command			-> La commande à exécuter
                                     Pas besoin de mettre "tkgi.exe" au début de la commande
 	#>
-    [void] addTkgiCmdWithPassword([string]$command)
+    hidden [string] getTkgiCmdWithPassword([string]$command)
     {
-        $this.cmdList += ("echo({0}|{1} {2}" -f $this.password, $this.pathTo.tkgi, $command)
+        return ("echo({0}|{1} {2}" -f $this.password, $this.pathTo.tkgi, $command)
         
     }
 
 
     <#
 	-------------------------------------------------------------------------------------
-		BUT : Ajoute une commande Kubectl
+		BUT : Renvoie une commande Kubectl
+
+        IN  : $command			-> La commande à exécuter
+                                    Pas besoin de mettre "kubectl.exe" au début de la commande
+	#>
+    hidden [string] getKubectlCmd([string]$command)
+    {
+        return ("{0} {1}" -f $this.pathTo.kubectl, $command)
+    }
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie une commande Kubectl
 
         IN  : $command			-> La commande à exécuter
                                     Pas besoin de mettre "kubectl.exe" au début de la commande
 	#>
     [void] addKubectlCmd([string]$command)
     {
-        $this.cmdList += ("{0} {1}" -f $this.pathTo.kubectl, $command)
+        $this.cmdList += $this.getKubectlCmd($command)
     }
-
 
     <#
 	-------------------------------------------------------------------------------------
@@ -291,5 +321,8 @@ class TKGIKubectl
     {
         $this.cmdList += ("{0} apply -f {1}" -f $this.pathTo.kubectl, ($this.loadYamlFile($file, $valToReplace)))
     }
+
+
+
 
 }
