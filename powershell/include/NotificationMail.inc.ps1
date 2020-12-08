@@ -147,7 +147,7 @@ class NotificationMail
         Get-Content -Path $this.getPathToTemplateFile("_footer") | Out-File $tmpMailFile -Encoding default -Append
 
         # 4. Ajout de la quote de fin
-        $this.getRandomHTMLQuote() | Out-File $tmpMailFile -Encoding default -Append
+        ("<br>{0}" -f $this.getRandomHTMLQuote() )| Out-File $tmpMailFile -Encoding default -Append
 
         $mailMessage = Get-Content $tmpMailFile -Encoding UTF8 | Out-String
         Remove-Item $tmpMailFile -Force
