@@ -533,7 +533,7 @@ try
             # Préparation des lignes de commande à exécuter
             $nameSpaceReplace = @{
                 name = "app"
-                env = $targetEnv
+                nsxEnv = $targetEnv
             }
             $tkgiKubectl.addKubectlCmdWithYaml("cluster-namespace.yaml", $nameSpaceReplace)
             $tkgiKubectl.addKubectlCmdWithYaml("psp-cluster-role.yaml")
