@@ -199,7 +199,7 @@ class RESTAPICurl: RESTAPI
 		# Explication sur le @'...'@ ici : https://stackoverflow.com/questions/18116186/escaping-quotes-and-double-quotes
 		$this.curl.StartInfo.Arguments = "{0} {1} `"{2}`"" -f ( $this.getCurlHeaders() ), $curlArgs, ($uri -replace " ","%20")
 
-		$this.debugLog(("{0}`nBody:`n{1}" -f $this.curl.StartInfo.Arguments, $body))
+		$this.debugLog(("Command line to use: {0}`nBody:`n{1}" -f $this.curl.StartInfo.Arguments, $body))
 
 		$result = $null
 
@@ -216,6 +216,7 @@ class RESTAPICurl: RESTAPI
 			# Si aucune erreur
 			if($this.curl.ExitCode -eq 0)
 			{
+				$this.debugLog("CURL attempt: $($currentAttemptNo) = SUCCESS")
 				# On teste la récupération de ce qui a été retourné
 				try
 				{
@@ -255,6 +256,7 @@ class RESTAPICurl: RESTAPI
 			# Si erreur Curl
 			else
 			{
+				$this.debugLog("CURL attempt: $($currentAttemptNo) = FAIL")
 				# Si on a fait le max de tentative, on peut lever une erreur
 				if($currentAttemptNo -eq $nbCurlAttempts)
 				{
