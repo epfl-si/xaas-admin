@@ -535,9 +535,9 @@ try
                 name = "app"
                 nsxEnv = $targetEnv
             }
-            $tkgiKubectl.addKubectlCmdWithYaml("cluster-namespace.yaml", $nameSpaceReplace)
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-namespace.yaml", $nameSpaceReplace)
             $tkgiKubectl.addKubectlCmdWithYaml("psp-cluster-role.yaml")
-            $tkgiKubectl.addKubectlCmdWithYaml("psp-restrict.yaml")
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-posSecurityPolicy.yaml", @{ name = "restricted"})
             $tkgiKubectl.addKubectlCmdWithYaml("cluster-role-bindings.yaml", @{ groupName = $groupName} )
             $tkgiKubectl.addKubectlCmd(("delete namespace default"))
             # Exécution
