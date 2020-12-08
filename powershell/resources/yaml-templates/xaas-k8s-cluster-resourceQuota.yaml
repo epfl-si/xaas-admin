@@ -1,0 +1,14 @@
+# Permet d'initialiser(créer) ou mettre à jour les éléments "spec.hard.*"
+# Resource Quotas (limite l'utilisation des resources types services lb et storage)
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{name}}
+  # nom du namespace sur lequel s'applique le resource quota
+  namespace: {{namespace}}
+spec:
+  hard:
+    services.loadbalancers: {{nbLoadBalancers}}
+    services.nodeports: {{nbNodePorts}}
+    # Ex: 10Gi
+    requests.storage: {{storageGi}}Gi
