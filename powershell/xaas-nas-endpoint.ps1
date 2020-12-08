@@ -1158,6 +1158,7 @@ try
             
             # Ajout d'une chaine de caractère pour le prix
             $result.totPriceString = "Monthly price for {0}GB (= {1}CHF)" -f $sizeGB, $result.user.pricePerMonthCHF
+            $result.totPriceStringSimple = "Monthly price: {0} CHF" -f $result.totPricePerMonthCHF
             if($snapPercent -gt 0)
             {
                 $result.totPriceString = "{0} +{1}GB ({2}%) of snapshots, equal {3}GB (= {4}CHF)" -f `
