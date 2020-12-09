@@ -606,7 +606,7 @@ try
 			$geUnitMappingList = (Get-Content -Path $geUnitMappingFile -raw) | ConvertFrom-Json
 
 			# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
-			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "bill-to-mail.json"))
+			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "billing", "bill-to-mail.json"))
 			$billToMailList = (Get-Content -Path $billToMailFile -raw) | ConvertFrom-Json
 
 			# Parcours des facultés trouvées
