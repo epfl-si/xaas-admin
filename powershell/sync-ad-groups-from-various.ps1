@@ -444,6 +444,21 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [string]$name, [str
 }
 
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Renvoie l'adresse mail à utiliser pour la facturation d'une unité dont 
+			les infos sont passées en paramètre
+
+	IN  : $unitInfos	-> Objet avec les informations de l'unité (vient de LDAP,
+							renvoyé par la fonction getFacultyUnitList() )
+
+	RET : L'adresse mail
+#>
+function getSIUnitBillingMail([PSObject]$unitInfos)
+{
+	return "personnel.{0}@epfl.ch" -f $unitInfos.name.toLower()
+}
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -708,14 +723,40 @@ try
 					$financeCenter = $null
 					ForEach($billToMail in $billToMailList)
 					{
-						# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturation
-						if($unit.path -match ("{0}$" -f $billToMail.ldapOU))
+						# Parcours des OU de l'entrées courante
+						ForEach($LDAPOU in $billToMail.ldapOuList)
 						{
-							$logHistory.addLineAndDisplay(("--> Using email ({0}) for finance center..." -f $billToMail.billingMail))
-							$financeCenter = $billToMail.billingMail
+							# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturation
+							if($unit.path -match ("{0}$" -f $LDAPOU))
+							{
+								# Si on a une adresse mail hardcodée de donnée,
+								if($null -ne $billToMail.billingMail)
+								{
+									$financeCenter = $billToMail.billingMail
+								}
+								# On doit utiliser une fonction pour récupérer l'adresse mail.
+								elseif($null -ne $billToMail.billingMailFunc)
+								{
+									Invoke-Expression ('$financeCenter = {0} -unitInfos $unit' -f $billToMail.billingMailFunc)
+									
+								}
+								else # Valeurs dans le fichiers JSON incorrectes
+								{
+									Throw ("Incorrect value combination in 'billing to mail' JSON file for OU '{0}'" -f $LDAPOU)
+								}
+
+								$logHistory.addLineAndDisplay(("--> Using email ({0}) for finance center..." -f $financeCenter))
+								
+								break
+							}
+						}
+						# SI on a trouvé une adresse mail pour la facturation
+						if($null -ne $financeCenter)
+						{
+							# On peut sortir de la boucle
 							break
 						}
-					}
+					}# FIN BOUCLE de parcours des possibilité de facturation par mail
 
 
 					# Si on n'a pas encore de centre financier de défini (donc pas d'adresse mail )
@@ -734,7 +775,7 @@ try
 							$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
 
 							# Suppression des valeurs vides (oui, il peut y en avoir on dirait... )
-							$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" }
+							$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" -and $null -ne $_ }
 							$financeCenter = $null
 
 							# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose

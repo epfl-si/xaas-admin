@@ -1,6 +1,16 @@
 [
     {
-        "ldapOU": "OU=ASSOCIATIONS,O=EHE,C=CH",
-        "billingMail": "associations@epfl.ch"
+        "ldapOUList": [ 
+            "OU=ASSOCIATIONS,O=EHE,C=CH" 
+        ],
+        "billingMail": "associations@epfl.ch",
+        "billingMailFunc": null
+    },
+    {
+        "ldapOUList": [
+            "OU=SI,O=EPFL,C=CH"
+        ],
+        "billingMail": null,
+        "billingMailFunc": "getSIUnitBillingMail"
     }
 ]
