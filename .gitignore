@@ -1,7 +1,7 @@
 src/config/settings/default.py
 
 # Kompose out files
-xaas-*.yaml
+./xaas-*.yaml
 
 .idea/
 conf/

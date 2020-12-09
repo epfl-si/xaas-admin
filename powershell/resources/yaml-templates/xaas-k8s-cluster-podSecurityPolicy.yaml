@@ -1,14 +1,15 @@
----
+# pour forcer ou non la facon dont les pods sont déployés
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: restricted
+  name: {{name}}
   annotations:
     seccomp.security.alpha.kubernetes.io/allowedProfileNames: 'docker/default,runtime/default'
     apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
     seccomp.security.alpha.kubernetes.io/defaultProfileName:  'runtime/default'
     apparmor.security.beta.kubernetes.io/defaultProfileName:  'runtime/default'
 spec:
+  # A "false" par defaut mais pourrait être modifiable en day2 ou en dev pour debug
   privileged: false
   # Required to prevent escalations to root.
   allowPrivilegeEscalation: false

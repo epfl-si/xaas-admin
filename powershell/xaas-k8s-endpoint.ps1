@@ -258,7 +258,7 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
 
     # --------
     # ---- NSX
-    Si on avait pu trouver le cluster
+    #Si on avait pu trouver le cluster
     if($null -ne $cluster)
     {
         $logHistory.addLine("Deleting Load Balancer application profiles...")
@@ -531,15 +531,36 @@ try
 
             $logHistory.addLine("Doing stuff on cluster...")
             # Préparation des lignes de commande à exécuter
-            $tkgiKubectl.addTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName))
-            $tkgiKubectl.addKubectlCmd(("config use-context {0}" -f $clusterName))
-            $tkgiKubectl.addKubectlCmd(("create namespace app"))
+
+            # Nouveau Namespace
+            $nameSpaceReplace = @{
+                name = "app"
+                nsxEnv = $targetEnv
+            }
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-namespace.yaml", $nameSpaceReplace)
+
+            # Cluster Role
+            $clusterRoleReplace = @{
+                name = "testuserclusterole"
+                pspName = "restricted"
+            }
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRole.yaml", $clusterRoleReplace)
+
+            # Pod Security Policy
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-podSecurityPolicy.yaml", @{ name = "restricted"})
+
+            # Cluster Role Bindings
+            $clusterRoleBindingReplace = @{
+                name = "basic-access-exapp-group"
+                groupName = $groupName
+                clusteRoleName = "testuserclusterole"
+            }
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding.yaml",  $clusterRoleBindingReplace)
+
+            # Effacement du namespace par défaut
             $tkgiKubectl.addKubectlCmd(("delete namespace default"))
-            $tkgiKubectl.addKubectlCmdWithYaml("psp-cluster-role.yaml")
-            $tkgiKubectl.addKubectlCmdWithYaml("psp-restrict.yaml")
-            $tkgiKubectl.addKubectlCmdWithYaml("cluster-role-bindings.yaml", @{ groupName = $groupName} )
             # Exécution
-            $tkgiKubectl.exec() | Out-Null
+            $tkgiKubectl.exec($clusterName) | Out-Null
 
             # -----------
             # ---- Harbor
@@ -558,6 +579,7 @@ try
                 $logHistory.addLine(("Project '{0}' already exists in Harbor" -f $harborProjectName))
             }
 
+            Write-Warning "Still can't add AD groups in Project"
             # $logHistory.addLine(("Add group '{0}' in Harbor Project (may already be present)" -f $groupName))
             # $harbor.addProjectMember($harborProject, $groupName, [HarborProjectRole]::Master)
             

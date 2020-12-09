@@ -131,6 +131,7 @@ class PKSAPI: RESTAPICurl
 		do
 		{
 			Start-Sleep -Seconds 30
+			$this.debugLog(("Checking if cluster action is done on {0}..." -f $clusterName))
 			$cluster = $this.getCluster($clusterName)
 		} while (($null -ne $cluster) -and ($cluster.last_action_state -eq "in progress"))
 

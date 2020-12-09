@@ -1,0 +1,23 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # nom du cluster role
+  name: {{name}}
+rules:
+- apiGroups: [""]
+  resources:
+  - persistentvolumes
+  - namespaces
+  # droit d'écriture pour cordon 
+  - nodes
+  - componentstatuses
+  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - extensions
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  # nom du psp que nous allons déployer
+  - {{pspName}}
+  verbs:
+  - use
