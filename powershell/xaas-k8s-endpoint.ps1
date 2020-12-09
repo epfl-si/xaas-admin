@@ -531,14 +531,33 @@ try
 
             $logHistory.addLine("Doing stuff on cluster...")
             # Préparation des lignes de commande à exécuter
+
+            # Nouveau Namespace
             $nameSpaceReplace = @{
                 name = "app"
                 nsxEnv = $targetEnv
             }
             $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-namespace.yaml", $nameSpaceReplace)
-            $tkgiKubectl.addKubectlCmdWithYaml("psp-cluster-role.yaml")
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-posSecurityPolicy.yaml", @{ name = "restricted"})
-            $tkgiKubectl.addKubectlCmdWithYaml("cluster-role-bindings.yaml", @{ groupName = $groupName} )
+
+            # Cluster Role
+            $clusterRoleReplace = @{
+                name = "testuserclusterole"
+                pspName = "restricted"
+            }
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRole.yaml", $clusterRoleReplace)
+
+            # Pod Security Policy
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-podSecurityPolicy.yaml", @{ name = "restricted"})
+
+            # Cluster Role Bindings
+            $clusterRoleBindingReplace = @{
+                name = "basic-access-exapp-group"
+                groupName = $groupName
+                clusteRoleName = "testuserclusterole"
+            }
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding.yaml",  $clusterRoleBindingReplace)
+
+            # Effacement du namespace par défaut
             $tkgiKubectl.addKubectlCmd(("delete namespace default"))
             # Exécution
             $tkgiKubectl.exec($clusterName) | Out-Null
