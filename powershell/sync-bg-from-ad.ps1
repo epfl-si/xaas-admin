@@ -1388,7 +1388,11 @@ try
 		{
 			# Eclatement de la description et du nom pour récupérer le informations
 			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
-			$faculty, $unit, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$descInfos = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			$faculty = $descInfos.faculty
+			$unit = $descInfos.unit
+			$financeCenter = $descInfos.financeCenter
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{facultyName = $faculty
@@ -1414,12 +1418,15 @@ try
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-			$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$descInfos  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			$serviceLongName = $descInfos.svcName
+			$snowServiceId = $descInfos.svcId
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
-				serviceName = $serviceLongName
-				snowServiceId = $snowServiceId})
+										serviceName = $serviceLongName
+										snowServiceId = $snowServiceId})
 
 			# Création du nom/description du business group
 			$bgDesc = $serviceLongName
@@ -1435,7 +1442,10 @@ try
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 			$projectId = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-			$projectAcronym, $financeCenter  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$descInfos  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			$projectAcronym = $descInfos.projectAcronym
+			$financeCenter = $descInfos.financeCenter
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{

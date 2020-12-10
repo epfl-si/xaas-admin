@@ -257,8 +257,13 @@ class NameGenerator: NameGeneratorBase
                     {
                         # vra_<envShort>_<facultyID>_<unitID>
                         $groupName = "{0}{1}_{2}_{3}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getDetail('facultyID'), $this.getDetail('unitID')
-                        # <facultyName>;<unitName>;<financeCenter>
-                        $groupDesc = "{0};{1};{2}" -f $this.getDetail('facultyName').toUpper(), $this.getDetail('unitName').toUpper(), $this.getDetail('financeCenter')
+                        # Informations encodées en JSON
+                        $descStruct = @{
+                            faculty = $this.getDetail('facultyName').toUpper()
+                            unit = $this.getDetail('unitName').toUpper()
+                            financeCenter = $this.getDetail('financeCenter')
+                        }
+                        $groupDesc = $descStruct | ConvertTo-Json -Compress
                     }
                     # Groupe "groups"
                     else
@@ -295,10 +300,14 @@ class NameGenerator: NameGeneratorBase
                     # Groupe AD
                     if($type -eq $this.GROUP_TYPE_AD)
                     {
-                        # <snowServiceId>;<serviceName>
+                        # Information encodée en JSON
                         # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
                         # réutilisé pour d'autres choses dans la création des éléments dans vRA
-                        $groupDesc = "{0};{1}" -f $this.getDetail('snowServiceId').ToUpper(), $this.getDetail('serviceName')
+                        $descStruct = @{
+                            svcId = $this.getDetail('snowServiceId').ToUpper()
+                            svcName = $this.getDetail('serviceName')
+                        }
+                        $groupDesc = $descStruct | ConvertTo-Json -Compress
                     }
                     # Groupe "groups"
                     else
@@ -336,10 +345,14 @@ class NameGenerator: NameGeneratorBase
                     # Groupe AD
                     if($type -eq $this.GROUP_TYPE_AD)
                     {
-                        # <projectAcronym>;<financeCenter>
+                        # Structure en JSON
                         # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
                         # réutilisé pour d'autres choses dans la création des éléments dans vRA
-                        $groupDesc = "{0};{1}" -f $this.getDetail('projectAcronym'), $this.getDetail('financeCenter')
+                        $descStruct = @{
+                            projectAcronym = $this.getDetail('projectAcronym')
+                            financeCenter = $this.getDetail('financeCenter')
+                        }
+                        $groupDesc = $descStruct | ConvertTo-Json -Compress
                     }
                     # Groupe "groups"
                     else
@@ -1500,58 +1513,52 @@ class NameGenerator: NameGeneratorBase
 
         IN  : $groupName    -> Le nom du groupe depuis lequel extraire les infos
 
-        RET : Pour tenant EPFL, tableau avec :
-                - Nom de la faculté
-                - Nom de l'unité
-                - No du centre financier
-            
-              Pour tenant ITServices, tableau avec :
-                - Nom long du service
+        RET : Objet avec un contenu différent selon le tenant
+                EPFL:
+                    .faculty
+                    .unit
+                    .financeCenter
+                ITServices
+                    .svcId
+                    .svcName
+                Research
+                    .projectAcronym
+                    .financeCenter
     #>
-    [System.Collections.ArrayList] extractInfosFromADGroupDesc([string]$ADGroupDesc)
+    [PSCustomObject] extractInfosFromADGroupDesc([string]$ADGroupDesc)
     {
         # Eclatement du nom pour récupérer les informations
-        $partList = $ADGroupDesc.Split(";")
+        $descStruct = $ADGroupDesc | ConvertFrom-Json
 
+        # On regarde combien il y a d'éléments (au premier niveau uniquement)
+        $nbElements = ($descStruct | Get-Member -Type NoteProperty).count
+
+        # Contrôle si les éléments sont OK
         switch($this.tenant)
         {
             $global:VRA_TENANT__EPFL
             {
-                # Le nom du groupe devait avoir la forme :
-                # <facultyNam>;<unitName>;<financeCenter>
-
-                if($partList.Count -lt 3)
+                if($nbElements -lt 3)
                 {
                     Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
                 }
-
             }
 
             $global:VRA_TENANT__ITSERVICES
             {
-                # Le nom du groupe devait avoir la forme :
-                # <snowServiceId>;<serviceName>
-                
-                if($partList.Count -lt 2)
+                if($nbElements -lt 2)
                 {
                     Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
                 }
-
-                $partList = @($partList)
             }
 
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                # Le nom du groupe devait avoir la forme :
-                # <financeCenter>;<description>
-                
-                if($partList.Count -lt 2)
+                if($nbElements -lt 2)
                 {
                     Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
                 }
-
-                $partList = @($partList)
             }
 
             default
@@ -1560,7 +1567,7 @@ class NameGenerator: NameGeneratorBase
             }
         }
 
-        return $partList
+        return $descStruct
 
     }
 

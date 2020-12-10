@@ -106,23 +106,29 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 	else
 	{
 		$logHistory.addLineAndDisplay(("--> AD group '{0}' already exists" -f $groupName))
+		
+		if(-not $SIMULATION_MODE)
+		{
+			# Mise à jour de la description du groupe dans le cas où ça aurait changé
+			Set-ADGroup $groupName -Description $groupDesc -Confirm:$false
+		}
 	}
 
 	# Si on arrive ici, c'est que le groupe à mettre dans le nouveau groupe AD existe
 
 	if(-not $simulation)
 	{
-			# Si le groupe vient d'être CREE
-			# OU
-			# qu'il existe déjà et qu'on a le droit de mettre à jour son contenu,
-			if( ($alreadyExists -eq $false) -or ($alreadyExists -and $updateExistingContent))
-			{
-				$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
-				# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
-				Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
-				# Et on remet les bons membres
-				Add-ADGroupMember $groupName -Members $groupMemberGroup
-			}
+		# Si le groupe vient d'être CREE
+		# OU
+		# qu'il existe déjà et qu'on a le droit de mettre à jour son contenu,
+		if( ($alreadyExists -eq $false) -or ($alreadyExists -and $updateExistingContent))
+		{
+			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
+			# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
+			Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
+			# Et on remet les bons membres
+			Add-ADGroupMember $groupName -Members $groupMemberGroup
+		}
 
 			
 	}
@@ -1400,12 +1406,12 @@ try
 				$logHistory.addLineAndDisplay(("--> Removing rights for '{0}' role in vraUsers table for AD group {1}" -f [TableauRoles]::User.ToString(), $_.name))
 
 				# Extraction des informations
-				$facultyName, $unitName, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+				$descInfos = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
 				# Initialisation des détails pour le générateur de noms
-				$nameGenerator.initDetails(@{facultyName = $facultyName
+				$nameGenerator.initDetails(@{facultyName = $descInfos.faculty
 											facultyID = ''
-											unitName = $unitName
+											unitName = $descInfos.unit
 											unitID = ''
 											financeCenter = ''})
 
