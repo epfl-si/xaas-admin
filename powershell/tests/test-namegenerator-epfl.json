@@ -107,11 +107,11 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "ENT-R;IDEV-ING;1907"
+                "expected": "{\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "ENT-R;IDEV-ING;1907"
+                "expected": "{\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"
             }
         ]
     },
@@ -418,8 +418,12 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["ENT-R;IDEV-ING;1907"],
-                "expected": ["ENT-R", "IDEV-ING", "1907"]
+                "params": ["{\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"],
+                "expected": {
+                    "faculty":  "ENT-R",
+                    "financeCenter":  "1907",
+                    "unit":  "IDEV-ING"
+                }
             }
         ]
     },

@@ -83,7 +83,7 @@
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "SVC0007;Virtualization Service"
+                "expected": "{\"svcId\":\"SVC0007\",\"svcName\":\"Virtualization Service\"}"
             },
             {
                 "params": ["CSP_SUBTENANT_MANAGER"],
@@ -91,7 +91,7 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "SVC0007;Virtualization Service"
+                "expected": "{\"svcId\":\"SVC0007\",\"svcName\":\"Virtualization Service\"}"
             }
         ]
     },
@@ -412,8 +412,11 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["SVC0007;Virtualization Service"],
-                "expected": ["SVC0007", "Virtualization Service"]
+                "params": ["{\"svcId\":\"SVC0007\",\"svcName\":\"Virtualization Service\"}"],
+                "expected": {
+                    "svcId":  "SVC0007",
+                    "svcName":  "Virtualization Service"
+                }
             }
         ]
     },
