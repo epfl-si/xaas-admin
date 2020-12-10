@@ -572,19 +572,20 @@ function createOrUpdateBGEnt
 	IN  : $ent				-> Objet Entitlement auquel lier les services
 	IN  : $approvalPolicy	-> Object Approval Policy qui devra approuver les demandes 
 								pour les nouveaux éléments
+	IN  : $deniedServices	-> Tableau avec les services à ne pas mettre pour le BG	
 	
 	RET : Objet Entitlement mis à jour
 #>
 function prepareAddMissingBGEntPublicServices
 {
-	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy)
+	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices)
 
 
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
-	$publicServices = $vra.getServiceListMatch($global:VRA_SERVICE_SUFFIX__PUBLIC)
+	$publicServiceList = $vra.getServiceListMatch($global:VRA_SERVICE_SUFFIX__PUBLIC)
 
 	# Parcours des services à ajouter à l'entitlement créé
-	ForEach($publicService in $publicServices)
+	ForEach($publicService in $publicServiceList)
 	{
 
 		# Parcours des Services déjà liés à l'entitlement pour chercher le courant
@@ -594,24 +595,49 @@ function prepareAddMissingBGEntPublicServices
 			# Si on trouve le service
 			if($entService.serviceRef.id -eq $publicService.id)
 			{
-				$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement" -f $publicService.name))
 				$serviceExists = $true
 
-				# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
-				$entService.approvalPolicyId = $approvalPolicy.id
-				
-				$counters.inc('EntServices')
+				# Si le service n'est pas dans ceux qui ne sont pas autorisés pour le BG,
+				if($deniedServices -notcontains $publicService.name)
+				{
+					$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement" -f $publicService.name))
+					
+					# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
+					$entService.approvalPolicyId = $approvalPolicy.id
+					
+					$counters.inc('EntServices')
+				}
+				else # Le service courant n'est pas autorisé pour ce BG
+				{
+					$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement but is denied for this BG, removing it" -f $publicService.name))
+					$ent = $vra.prepareRemoveEntService($ent, $publicService.name)
+
+					$counters.inc('EntServicesRemoved')
+				}
+
 				break;
-			}
-		}
+					
+			}# FIN SI on trouve le service
+
+		}# FIN BOUCLE de parcours des services déjà présents dans l'entitlement 
 
 		# Si le service public n'est pas dans l'entitlement,
 		if(-not $serviceExists)
 		{
-			$logHistory.addLineAndDisplay(("--> (prepare) Adding service '{0}' to Entitlement" -f $publicService.name))
-			$ent = $vra.prepareAddEntService($ent, $publicService.id, $publicService.name, $approvalPolicy)
+			# Si le service n'est pas dans ceux qui ne sont pas autorisés pour le BG,
+			if($deniedServices -notcontains $publicService.name)
+			{
+				$logHistory.addLineAndDisplay(("--> (prepare) Adding service '{0}' to Entitlement" -f $publicService.name))
+				$ent = $vra.prepareAddEntService($ent, $publicService.id, $publicService.name, $approvalPolicy)
 
-			$counters.inc('EntServicesAdded')
+				$counters.inc('EntServicesAdded')
+			}
+			else # Le service courant n'est pas autorisé pour ce BG
+			{
+				$logHistory.addLineAndDisplay(("--> (prepare) Skipping service '{0}' because denied for BG" -f $publicService.name))
+				$counters.inc('EntServicesDenied')
+			}
+			
 		}
 	}# FIN BOUCLE de parcours des services à ajouter à l'entitlement
 
@@ -1272,7 +1298,9 @@ try
 	$counters.add('EntUpdated', '# Entitlements updated')
 	# Services
 	$counters.add('EntServices', '# Existing Entitlements Services')
+	$counters.add('EntServicesRemoved', '# Removed Entitlements Services (because denied)')
 	$counters.add('EntServicesAdded', '# Entitlements Services added')
+	$counters.add('EntServicesDenied', '# Entitlements Services denied')
 	# Reservations
 	$counters.add('ResCreated', '# Reservations created')
 	$counters.add('ResUpdated', '# Reservations updated')
@@ -1393,13 +1421,15 @@ try
 			$faculty = $descInfos.faculty
 			$unit = $descInfos.unit
 			$financeCenter = $descInfos.financeCenter
+			$deniedVRASvc = $descInfos.deniedVRASvc
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{facultyName = $faculty
 										 facultyID = $facultyID
 										 unitName = $unit
 										 unitID = $unitID
-										 financeCenter = $financeCenter})
+										 financeCenter = $financeCenter
+										 deniedVRASvc = $deniedVRASvc})
 
 			# Création du nom/description du business group
 			$bgDesc = $nameGenerator.getBGDescription()
@@ -1422,11 +1452,13 @@ try
 
 			$serviceLongName = $descInfos.svcName
 			$snowServiceId = $descInfos.svcId
+			$deniedVRASvc = $descInfos.deniedVRASvc
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
 										serviceName = $serviceLongName
-										snowServiceId = $snowServiceId})
+										snowServiceId = $snowServiceId
+										deniedVRASvc = $deniedVRASvc})
 
 			# Création du nom/description du business group
 			$bgDesc = $serviceLongName
@@ -1458,6 +1490,9 @@ try
 			
 			# Custom properties du Buisness Group
 			$bgEPFLID = $projectId
+
+			# Aucun service de défendu
+			$deniedVRASvc = @()
 		}
 
 		else
@@ -1633,7 +1668,7 @@ try
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
-		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy
+		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc
 
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus

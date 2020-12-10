@@ -608,12 +608,17 @@ try
 			$exitFacLoop = $false
 
 			# Chargement des informations sur le mapping des facultés
+			# FIXME: Voir si c'est toujours pertinent après avoir mergé la PR https://github.com/epfl-si/xaas-admin/pull/109
 			$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "ge-unit-mapping.json"))
 			$geUnitMappingList = (Get-Content -Path $geUnitMappingFile -raw) | ConvertFrom-Json
 
 			# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
 			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "billing", "bill-to-mail.json"))
 			$billToMailList = (Get-Content -Path $billToMailFile -raw) | ConvertFrom-Json
+
+			# Chargement des informations sur les unités qui ont potentiellement des services vRA "non autorisés"
+			$deniedVRASvcListFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "epfl-deny-vra-services.json"))
+			$deniedVRASvcList = (Get-Content -Path $deniedVRASvcListFile -raw) | ConvertFrom-Json
 
 			# Parcours des facultés trouvées
 			ForEach($faculty in $facultyList)
@@ -633,7 +638,8 @@ try
 											facultyID = $faculty['uniqueidentifier']
 											unitName = ''
 											unitID = ''
-											financeCenter = ''})
+											financeCenter = ''
+											deniedVRASvc = @()})
 				
 				# --------------------------------- APPROVE
 
@@ -815,6 +821,19 @@ try
 
 					}# FIN SI on n'a pas encore de centre financier
 
+					$vRAServicesToDeny = @()
+					# Parcours des OU pour lequelles on veut empêcher l'accès à certains services vRA
+					ForEach($denyInfos in $deniedVRASvcList)
+					{
+						# Si l'unité courante est dans l'arborescence où il faut empêcher l'accès à certains services
+						if($unit.path -match ("{0}$" -f $denyInfos.ldapOU))
+						{
+							# Mise à jour de la liste des services "non" autorisés et on sort
+							$vRAServicesToDeny = $denyInfos.deniedVRAServiceList
+							break
+						}
+					}
+
 					# Recherche des membres de l'unité
 					$ldapMemberList = $ldap.getUnitMembers($unit.uniqueidentifier)
 					
@@ -823,7 +842,8 @@ try
 											facultyID = $faculty.uniqueidentifier
 											unitName = $unit.name
 											unitID = $unit.uniqueidentifier
-											financeCenter = $financeCenter})
+											financeCenter = $financeCenter
+											deniedVRASvc = $vRAServicesToDeny})
 
 					# On commence par filtrer les comptes pour savoir s'ils existent tous
 					$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
@@ -1047,7 +1067,8 @@ try
 				# Initialisation des détails pour le générateur de noms
 				$nameGenerator.initDetails(@{serviceShortName = $service.shortName
 											serviceName = $service.longName
-											snowServiceId = $service.snowId})
+											snowServiceId = $service.snowId
+											deniedVRASvc = $service.deniedVRAServiceList})
 	
 				$serviceNo += 1
 
@@ -1413,7 +1434,8 @@ try
 											facultyID = ''
 											unitName = $descInfos.unit
 											unitID = ''
-											financeCenter = ''})
+											financeCenter = ''
+											deniedVRASvc = @()})
 
 				# Suppression des accès pour le business group correspondant au groupe AD courant.
 				updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant

@@ -219,11 +219,13 @@ class NameGeneratorBase
                                         facultyID        -> ID de la faculté du Business Group
                                         unitName         -> Nom de l'unité
                                         unitID           -> ID de l'unité du Business Group
+                                        deniedVRASvc     -> Liste des services vRA non autorisé pour le BG
                                     
                                     ITServices:
                                         serviceShortName    -> Nom court du service
                                         serviceName         -> Nom long du service
                                         snowServiceId       -> ID du service dans ServiceNow
+                                        deniedVRASvc        -> Liste des services vRA non autorisés pour le BG
                                     
                                     Research:
                                         projectId       -> Id du projet
@@ -237,12 +239,12 @@ class NameGeneratorBase
         {
             $global:VRA_TENANT__EPFL 
             {
-                $keysToCheck = @('financeCenter', 'facultyName', 'facultyID', 'unitName', 'unitID')
+                $keysToCheck = @('financeCenter', 'facultyName', 'facultyID', 'unitName', 'unitID', 'deniedVRASvc')
             }
 
             $global:VRA_TENANT__ITSERVICES
             {
-                $keysToCheck = @('serviceShortName', 'serviceName', 'snowServiceId')
+                $keysToCheck = @('serviceShortName', 'serviceName', 'snowServiceId', 'deniedVRASvc')
             } 
 
             $global:VRA_TENANT__RESEARCH
@@ -286,7 +288,7 @@ class NameGeneratorBase
 
         RET : La valeur du détail
     #>
-    hidden [String] getDetail([string]$name)
+    hidden [PSObject] getDetail([string]$name)
     {
         if(!$this.details.ContainsKey($name))
         {

@@ -863,6 +863,24 @@ class vRAAPI: RESTAPICurl
 	}
 
 
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Préparer un objet contenant un Entitlement en lui enlevant le service dont le
+				nom est passé en paramètre.
+
+		IN  : $ent				-> Objet de l'entitlement auquel enlever le service
+		IN  : $serviceName		-> Nom du service à enlever		
+
+		RET : Objet contenant Entitlement avec le service retiré
+	#>
+	[PSCustomObject] prepareRemoveEntService([PSCustomObject]$ent, [string]$serviceName)
+	{
+		# On supprime le service par son nom
+		$ent.entitledServices = @($ent.entitledServices | Where-Object { $_.serviceRef.label -ne $serviceName})
+		return $ent
+	}
+
+
 
 	<#
 		-------------------------------------------------------------------------------------

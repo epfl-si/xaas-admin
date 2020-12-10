@@ -227,6 +227,15 @@ class NameGenerator: NameGeneratorBase
         $groupDesc = ""
         $groupName = ""
 
+        <# Mais WTF? "à quoi sert cette ligne?" me direz-vous? bah.. simplement quand on converti un tableau en JSON,
+            le 'convertTo-Json ne créé pas simplement un tableau mais il fait un DICT avec un champ 'value' qui est le tableau
+            et un champ 'count' avec le nombre d'éléments... 
+            Exécuter la ligne de commande suivante permet d'avoir une "vraie" transformation en JSON.
+            Ce workaround a été trouvé ici:
+            https://stackoverflow.com/questions/20848507/why-does-powershell-give-different-result-in-one-liner-than-two-liner-when-conve/38212718#38212718
+        #>
+        Remove-TypeData System.Array
+
         switch($this.tenant)
         {
             # Tenant EPFL
@@ -262,6 +271,7 @@ class NameGenerator: NameGeneratorBase
                             faculty = $this.getDetail('facultyName').toUpper()
                             unit = $this.getDetail('unitName').toUpper()
                             financeCenter = $this.getDetail('financeCenter')
+                            deniedVRASvc = $this.getDetail('deniedVRASvc')
                         }
                         $groupDesc = $descStruct | ConvertTo-Json -Compress
                     }
@@ -306,6 +316,7 @@ class NameGenerator: NameGeneratorBase
                         $descStruct = @{
                             svcId = $this.getDetail('snowServiceId').ToUpper()
                             svcName = $this.getDetail('serviceName')
+                            deniedVRASvc = $this.getDetail('deniedVRASvc')
                         }
                         $groupDesc = $descStruct | ConvertTo-Json -Compress
                     }
