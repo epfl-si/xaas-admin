@@ -227,7 +227,7 @@ class NameGenerator: NameGeneratorBase
         $groupDesc = ""
         $groupName = ""
 
-        <# Mais WTF? "à quoi sert cette ligne?" me direz-vous? bah.. simplement quand on converti un tableau en JSON,
+        <# "Mais WTF? à quoi sert cette ligne?" me direz-vous? bah.. simplement quand on converti un tableau en JSON,
             le 'convertTo-Json ne créé pas simplement un tableau mais il fait un DICT avec un champ 'value' qui est le tableau
             et un champ 'count' avec le nombre d'éléments... 
             Exécuter la ligne de commande suivante permet d'avoir une "vraie" transformation en JSON.
