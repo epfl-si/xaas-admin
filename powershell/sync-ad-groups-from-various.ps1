@@ -106,23 +106,29 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 	else
 	{
 		$logHistory.addLineAndDisplay(("--> AD group '{0}' already exists" -f $groupName))
+		
+		if(-not $SIMULATION_MODE)
+		{
+			# Mise à jour de la description du groupe dans le cas où ça aurait changé
+			Set-ADGroup $groupName -Description $groupDesc -Confirm:$false
+		}
 	}
 
 	# Si on arrive ici, c'est que le groupe à mettre dans le nouveau groupe AD existe
 
 	if(-not $simulation)
 	{
-			# Si le groupe vient d'être CREE
-			# OU
-			# qu'il existe déjà et qu'on a le droit de mettre à jour son contenu,
-			if( ($alreadyExists -eq $false) -or ($alreadyExists -and $updateExistingContent))
-			{
-				$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
-				# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
-				Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
-				# Et on remet les bons membres
-				Add-ADGroupMember $groupName -Members $groupMemberGroup
-			}
+		# Si le groupe vient d'être CREE
+		# OU
+		# qu'il existe déjà et qu'on a le droit de mettre à jour son contenu,
+		if( ($alreadyExists -eq $false) -or ($alreadyExists -and $updateExistingContent))
+		{
+			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
+			# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
+			Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
+			# Et on remet les bons membres
+			Add-ADGroupMember $groupName -Members $groupMemberGroup
+		}
 
 			
 	}
@@ -444,6 +450,21 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [string]$name, [str
 }
 
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Renvoie l'adresse mail à utiliser pour la facturation d'une unité dont 
+			les infos sont passées en paramètre
+
+	IN  : $unitInfos	-> Objet avec les informations de l'unité (vient de LDAP,
+							renvoyé par la fonction getFacultyUnitList() )
+
+	RET : L'adresse mail
+#>
+function getSIUnitBillingMail([PSObject]$unitInfos)
+{
+	return "personnel.{0}@epfl.ch" -f $unitInfos.name.toLower()
+}
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -587,12 +608,17 @@ try
 			$exitFacLoop = $false
 
 			# Chargement des informations sur le mapping des facultés
+			# FIXME: Voir si c'est toujours pertinent après avoir mergé la PR https://github.com/epfl-si/xaas-admin/pull/109
 			$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "ge-unit-mapping.json"))
 			$geUnitMappingList = (Get-Content -Path $geUnitMappingFile -raw) | ConvertFrom-Json
 
 			# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
-			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "bill-to-mail.json"))
+			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "billing", "bill-to-mail.json"))
 			$billToMailList = (Get-Content -Path $billToMailFile -raw) | ConvertFrom-Json
+
+			# Chargement des informations sur les unités qui ont potentiellement des services vRA "non autorisés"
+			$deniedVRASvcListFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "epfl-deny-vra-services.json"))
+			$deniedVRASvcList = (Get-Content -Path $deniedVRASvcListFile -raw) | ConvertFrom-Json
 
 			# Parcours des facultés trouvées
 			ForEach($faculty in $facultyList)
@@ -612,7 +638,8 @@ try
 											facultyID = $faculty['uniqueidentifier']
 											unitName = ''
 											unitID = ''
-											financeCenter = ''})
+											financeCenter = ''
+											deniedVRASvc = @()})
 				
 				# --------------------------------- APPROVE
 
@@ -708,14 +735,40 @@ try
 					$financeCenter = $null
 					ForEach($billToMail in $billToMailList)
 					{
-						# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturation
-						if($unit.path -match ("{0}$" -f $billToMail.ldapOU))
+						# Parcours des OU de l'entrées courante
+						ForEach($LDAPOU in $billToMail.ldapOuList)
 						{
-							$logHistory.addLineAndDisplay(("--> Using email ({0}) for finance center..." -f $billToMail.billingMail))
-							$financeCenter = $billToMail.billingMail
+							# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturation
+							if($unit.path -match ("{0}$" -f $LDAPOU))
+							{
+								# Si on a une adresse mail hardcodée de donnée,
+								if($null -ne $billToMail.billingMail)
+								{
+									$financeCenter = $billToMail.billingMail
+								}
+								# On doit utiliser une fonction pour récupérer l'adresse mail.
+								elseif($null -ne $billToMail.billingMailFunc)
+								{
+									Invoke-Expression ('$financeCenter = {0} -unitInfos $unit' -f $billToMail.billingMailFunc)
+									
+								}
+								else # Valeurs dans le fichiers JSON incorrectes
+								{
+									Throw ("Incorrect value combination in 'billing to mail' JSON file for OU '{0}'" -f $LDAPOU)
+								}
+
+								$logHistory.addLineAndDisplay(("--> Using email ({0}) for finance center..." -f $financeCenter))
+								
+								break
+							}
+						}
+						# SI on a trouvé une adresse mail pour la facturation
+						if($null -ne $financeCenter)
+						{
+							# On peut sortir de la boucle
 							break
 						}
-					}
+					}# FIN BOUCLE de parcours des possibilité de facturation par mail
 
 
 					# Si on n'a pas encore de centre financier de défini (donc pas d'adresse mail )
@@ -734,7 +787,7 @@ try
 							$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
 
 							# Suppression des valeurs vides (oui, il peut y en avoir on dirait... )
-							$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" }
+							$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" -and $null -ne $_ }
 							$financeCenter = $null
 
 							# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
@@ -768,6 +821,19 @@ try
 
 					}# FIN SI on n'a pas encore de centre financier
 
+					$vRAServicesToDeny = @()
+					# Parcours des OU pour lequelles on veut empêcher l'accès à certains services vRA
+					ForEach($denyInfos in $deniedVRASvcList)
+					{
+						# Si l'unité courante est dans l'arborescence où il faut empêcher l'accès à certains services
+						if($unit.path -match ("{0}$" -f $denyInfos.ldapOU))
+						{
+							# Mise à jour de la liste des services "non" autorisés et on sort
+							$vRAServicesToDeny = $denyInfos.deniedVRAServiceList
+							break
+						}
+					}
+
 					# Recherche des membres de l'unité
 					$ldapMemberList = $ldap.getUnitMembers($unit.uniqueidentifier)
 					
@@ -776,7 +842,8 @@ try
 											facultyID = $faculty.uniqueidentifier
 											unitName = $unit.name
 											unitID = $unit.uniqueidentifier
-											financeCenter = $financeCenter})
+											financeCenter = $financeCenter
+											deniedVRASvc = $vRAServicesToDeny})
 
 					# On commence par filtrer les comptes pour savoir s'ils existent tous
 					$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
@@ -1000,7 +1067,8 @@ try
 				# Initialisation des détails pour le générateur de noms
 				$nameGenerator.initDetails(@{serviceShortName = $service.shortName
 											serviceName = $service.longName
-											snowServiceId = $service.snowId})
+											snowServiceId = $service.snowId
+											deniedVRASvc = $service.deniedVRAServiceList})
 	
 				$serviceNo += 1
 
@@ -1359,14 +1427,15 @@ try
 				$logHistory.addLineAndDisplay(("--> Removing rights for '{0}' role in vraUsers table for AD group {1}" -f [TableauRoles]::User.ToString(), $_.name))
 
 				# Extraction des informations
-				$facultyName, $unitName, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+				$descInfos = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
 				# Initialisation des détails pour le générateur de noms
-				$nameGenerator.initDetails(@{facultyName = $facultyName
+				$nameGenerator.initDetails(@{facultyName = $descInfos.faculty
 											facultyID = ''
-											unitName = $unitName
+											unitName = $descInfos.unit
 											unitID = ''
-											financeCenter = ''})
+											financeCenter = ''
+											deniedVRASvc = @()})
 
 				# Suppression des accès pour le business group correspondant au groupe AD courant.
 				updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant

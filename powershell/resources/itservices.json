@@ -5,73 +5,97 @@
             "longName":  "Antivirus",
             "shortName":  "Antivirus",
             "snowId":  "SVC0062",
-            "serviceManagerSciper": "114096"
+            "serviceManagerSciper": "114096",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "MySQL hosting",
             "shortName":  "MySQL",
             "snowId":  "SVC0020",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Virtualization Servers",
             "shortName":  "vs",
             "snowId":  "SVC0080",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
 		{
             "longName":  "Groups & Guests TEST",
             "shortName":  "grpguestst",
             "snowId":  "SVC0007",
-            "serviceManagerSciper": "164486"
+            "serviceManagerSciper": "164486",
+            "deniedVRAServiceList": []
         },
 		{
             "longName":  "Web hosting at the EPFL TEST",
             "shortName":  "wbhstt",
             "snowId":  "SVC0041",
-            "serviceManagerSciper": "116080"
+            "serviceManagerSciper": "116080",
+            "deniedVRAServiceList": []
         },
 		{
             "longName":  "Press review",
             "shortName":  "presst",
             "snowId":  "SVC0046",
-            "serviceManagerSciper": "116080"
+            "serviceManagerSciper": "116080",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Service for server backup TEST",
             "shortName":  "bkpt",
             "snowId":  "SVC0003",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Stockage Objet-S3 TEST",
             "shortName":  "s3t",
             "snowId":  "SVC1057",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Multimedia library",
             "shortName":  "Media",
             "snowId":  "SVC0067",
-            "serviceManagerSciper": "182712"
+            "serviceManagerSciper": "182712",
+            "deniedVRAServiceList": []
         },
 		{
             "longName":  "Exchange Calendar TEST",
             "shortName":  "excalt",
             "snowId":  "SVC0088",
-            "serviceManagerSciper": "263587"
+            "serviceManagerSciper": "263587",
+            "deniedVRAServiceList": []
         },
 		{
             "longName":  "Wired Network",
             "shortName":  "wnet",
             "snowId":  "SVC0101",
-            "serviceManagerSciper": "270770"
+            "serviceManagerSciper": "270770",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Kubernetes",
             "shortName":  "k8st",
             "snowId":  "SVC1219",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
+        },
+        {
+            "longName":  "EXHEB Fonctionnement",
+            "shortName":  "exheb",
+            "snowId":  "SVC0166",
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         }
     ],
     "prod": [
@@ -79,565 +103,659 @@
             "longName":  "Antivirus",
             "shortName":  "Antivirus",
             "snowId":  "SVC0062",
-            "serviceManagerSciper": "114096"
+            "serviceManagerSciper": "114096",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "AntiSpam",
             "shortName":  "aspam",
             "snowId":  "SVC0058",
-            "serviceManagerSciper": "114096"
+            "serviceManagerSciper": "114096",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "IT security audit",
             "shortName":  "audit",
             "snowId":  "SVC0091",
-            "serviceManagerSciper": "114096"
+            "serviceManagerSciper": "114096",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Service for server backup",
             "shortName":  "bkp",
             "snowId":  "SVC0003",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Certificates",
             "shortName":  "cert",
             "snowId":  "SVC0011",
-            "serviceManagerSciper": "114096"
+            "serviceManagerSciper": "114096",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Confluence",
             "shortName":  "cnfl",
             "snowId":  "SVC0108",
-            "serviceManagerSciper": "182712"
+            "serviceManagerSciper": "182712",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Hardware repair and recycling",
             "shortName":  "CRI",
             "snowId":  "SVC0069",
-            "serviceManagerSciper": "115218"
+            "serviceManagerSciper": "115218",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Diode Network Security",
             "shortName":  "diod",
             "snowId":  "SVC0040",
-            "serviceManagerSciper": "114096"
+            "serviceManagerSciper": "114096",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "End to End monitoring",
             "shortName":  "e2e",
             "snowId":  "SVC0345",
-            "serviceManagerSciper": "173654"
+            "serviceManagerSciper": "173654",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "ERP exploitation",
             "shortName":  "erpe",
             "snowId":  "SVC0642",
-            "serviceManagerSciper": "240207"
+            "serviceManagerSciper": "240207",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "LDAP Directory",
             "shortName":  "ldap",
             "snowId":  "SVC0052",
-            "serviceManagerSciper": "164486"
+            "serviceManagerSciper": "164486",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Email at EPFL",
             "shortName":  "mail",
             "snowId":  "SVC0082",
-            "serviceManagerSciper": "182712"
+            "serviceManagerSciper": "182712",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Multimedia library",
             "shortName":  "Media",
             "snowId":  "SVC0067",
-            "serviceManagerSciper": "182712"
+            "serviceManagerSciper": "182712",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Mailing lists",
             "shortName":  "mlist",
             "snowId":  "SVC0004",
-            "serviceManagerSciper": "182712"
+            "serviceManagerSciper": "182712",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "moodle",
             "shortName":  "moodle",
             "snowId":  "SVC0060",
-            "serviceManagerSciper": "179348"
+            "serviceManagerSciper": "179348",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "MS-SQL",
             "shortName":  "mssql",
             "snowId":  "SVC0021",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Individual storage",
             "shortName":  "MyNAS",
             "snowId":  "SVC0047",
-            "serviceManagerSciper": "115218"
+            "serviceManagerSciper": "115218",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "MySQL hosting",
             "shortName":  "MySQL",
             "snowId":  "SVC0020",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "File storage services",
             "shortName":  "NAS",
             "snowId":  "SVC0075",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Project Cloud Microsoft AZURE",
             "shortName":  "prjcma",
             "snowId":  "PRJ0016078",
-            "serviceManagerSciper": "276200"
+            "serviceManagerSciper": "276200",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Project Data Repository",
             "shortName":  "prjdr",
             "snowId":  "PRJ0011973",
-            "serviceManagerSciper": "173654"
+            "serviceManagerSciper": "173654",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Stockage Objet-S3",
             "shortName":  "S3",
             "snowId":  "SVC1057",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "SafeNet",
             "shortName":  "safenet",
             "snowId":  "SVC0094",
-            "serviceManagerSciper": "114096"
+            "serviceManagerSciper": "114096",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "SAP",
             "shortName":  "sap",
             "snowId":  "SVC0196",
-            "serviceManagerSciper": "310926"
+            "serviceManagerSciper": "310926",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "SAP Finance",
             "shortName":  "sapf",
             "snowId":  "SVC0649",
-            "serviceManagerSciper": "148402"
+            "serviceManagerSciper": "148402",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "SAP Hosting",
             "shortName":  "saph",
             "snowId":  "SVC0099",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "SAP RH",
             "shortName":  "sapr",
             "snowId":  "SVC0651",
-            "serviceManagerSciper": "113371"
+            "serviceManagerSciper": "113371",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Search engines management",
             "shortName":  "search",
             "snowId":  "SVC0012",
-            "serviceManagerSciper": "116080"
+            "serviceManagerSciper": "116080",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "SharePoint",
             "shortName":  "shrp",
             "snowId":  "SVC0128",
-            "serviceManagerSciper": "182712"
+            "serviceManagerSciper": "182712",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Support in case of hacking",
             "shortName":  "suphack",
             "snowId":  "SVC0015",
-            "serviceManagerSciper": "114096"
+            "serviceManagerSciper": "114096",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Unified communication",
             "shortName":  "uc",
             "snowId":  "SVC0029",
-            "serviceManagerSciper": "264019"
+            "serviceManagerSciper": "264019",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Virtual Desktop for courses",
             "shortName":  "vdic",
             "snowId":  "SVC0116",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Virtual Desktop for employees",
             "shortName":  "vdie",
             "snowId":  "SVC0019",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Virtualization Servers",
             "shortName":  "vs",
             "snowId":  "SVC0080",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Windows Operation",
             "shortName":  "winop",
             "snowId":  "SVC1168",
-            "serviceManagerSciper": "102753"
+            "serviceManagerSciper": "102753",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Wired Network",
             "shortName":  "wnet",
             "snowId":  "SVC0101",
-            "serviceManagerSciper": "270770"
+            "serviceManagerSciper": "270770",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Web Proxy",
             "shortName":  "wproxy",
             "snowId":  "SVC0066",
-            "serviceManagerSciper": "114096"
+            "serviceManagerSciper": "114096",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "IS-Academia",
             "shortName":  "isa",
             "snowId":  "SVC0034",
-            "serviceManagerSciper": "310396"
+            "serviceManagerSciper": "310396",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Oracle hosting",
             "shortName":  "ora",
             "snowId":  "SVC0072",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Online news publication",
             "shortName":  "actu",
             "snowId":  "SVC0016",
-            "serviceManagerSciper": "116080"
+            "serviceManagerSciper": "116080",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Map (Plan.epfl)",
             "shortName":  "plan",
             "snowId":  "SVC0028",
-            "serviceManagerSciper": "116080"
+            "serviceManagerSciper": "116080",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Web hosting at the EPFL",
             "shortName":  "wbhst",
             "snowId":  "SVC0041",
-            "serviceManagerSciper": "116080"
+            "serviceManagerSciper": "116080",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "PocketCampus",
             "shortName":  "pktcmp",
             "snowId":  "SVC0086",
-            "serviceManagerSciper": "116080"
+            "serviceManagerSciper": "116080",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Online events publication (Memento)",
             "shortName":  "memto",
             "snowId":  "SVC0095",
-            "serviceManagerSciper": "116080"
+            "serviceManagerSciper": "116080",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "EXHEB Fonctionnement",
             "shortName":  "exheb",
             "snowId":  "SVC0166",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "MyPrint",
             "shortName":  "mprnt",
             "snowId":  "SVC0056",
-            "serviceManagerSciper": "115218"
+            "serviceManagerSciper": "115218",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Press review",
             "shortName":  "press",
             "snowId":  "SVC0046",
-            "serviceManagerSciper": "116080"
+            "serviceManagerSciper": "116080",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "EPFL directory (People, CV)",
             "shortName":  "peopl",
             "snowId":  "SVC0033",
-            "serviceManagerSciper": "116080"
+            "serviceManagerSciper": "116080",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "AD directory",
             "shortName":  "ad",
             "snowId":  "SVC0026",
-            "serviceManagerSciper": "164486"
+            "serviceManagerSciper": "164486",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Identity & Accreditation management",
             "shortName":  "accred",
             "snowId":  "SVC0055",
-            "serviceManagerSciper": "164486"
+            "serviceManagerSciper": "164486",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Shared documents & agenda my.epfl.ch",
             "shortName":  "my",
             "snowId":  "SVC0024",
-            "serviceManagerSciper": "164486"
+            "serviceManagerSciper": "164486",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Cadi 2.0",
             "shortName":  "cadi",
             "snowId":  "SVC0074",
-            "serviceManagerSciper": "164486"
+            "serviceManagerSciper": "164486",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Passwords management",
             "shortName":  "gaspar",
             "snowId":  "SVC0085",
-            "serviceManagerSciper": "164486"
+            "serviceManagerSciper": "164486",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Authentication & authorisation Tequila",
             "shortName":  "tequila",
             "snowId":  "SVC0018",
-            "serviceManagerSciper": "164486"
+            "serviceManagerSciper": "164486",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "GOUV-GE Fonctionnement",
             "shortName":  "gouvge",
             "snowId":  "SVC0141",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "VPSI Fonctionnement",
             "shortName":  "vpsi",
             "snowId":  "SVC0173",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "IDEVAM Fonctionnement",
             "shortName":  "idevam",
             "snowId":  "SVC0174",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "IDEV-FSD Fonctionnement",
             "shortName":  "idevfsd",
             "snowId":  "SVC0176",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "IDEVING Fonctionnement",
             "shortName":  "ideving",
             "snowId":  "SVC0177",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "EXDESK Fonctionnement",
             "shortName":  "exdesk",
             "snowId":  "SVC0178",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "EXTERP Fonctionnement",
             "shortName":  "exterp",
             "snowId":  "SVC0179",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "EXINFR Fonctionnement",
             "shortName":  "exinfr",
             "snowId":  "SVC0181",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "GIF-GE Fonctionnement",
             "shortName":  "gifge",
             "snowId":  "SVC0182",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "EXAPP Fonctionnement",
             "shortName":  "exapp",
             "snowId":  "SVC0183",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "IDEV-GE Fonctionnement",
             "shortName":  "idevge",
             "snowId":  "SVC0184",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "EXOP-GE Fonctionnement",
             "shortName":  "exopge",
             "snowId":  "SVC0185",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "IDEV-RH Fonctionnement",
             "shortName":  "idevrh",
             "snowId":  "SVC0602",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "IDEV-FIN Fonctionnement",
             "shortName":  "idevfin",
             "snowId":  "SVC0606",
-            "serviceManagerSciper": ""
+            "serviceManagerSciper": "",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Online form (InForm)",
             "shortName":  "inform",
             "snowId":  "SVC0092",
-            "serviceManagerSciper": "243371"
+            "serviceManagerSciper": "243371",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Archiving of Research Data",
             "shortName":  "archi",
             "snowId":  "SVC1203",
-            "serviceManagerSciper": "173654"
+            "serviceManagerSciper": "173654",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Camipro",
             "shortName":  "camip",
             "snowId":  "SVC0117",
-            "serviceManagerSciper": "161014"
+            "serviceManagerSciper": "161014",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Datacenter hosting",
             "shortName":  "dchst",
             "snowId":  "SVC0051",
-            "serviceManagerSciper": "264019"
+            "serviceManagerSciper": "264019",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "CRM",
             "shortName":  "crm",
             "snowId":  "SVC0955",
-            "serviceManagerSciper": "240207"
+            "serviceManagerSciper": "240207",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Software support",
             "shortName":  "softsup",
             "snowId":  "SVC0006",
-            "serviceManagerSciper": "115218"
+            "serviceManagerSciper": "115218",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Service Desk",
             "shortName":  "svcdsk",
             "snowId":  "SVC0017",
-            "serviceManagerSciper": "282746"
+            "serviceManagerSciper": "282746",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Poseidon (laptops - support and discount)",
             "shortName":  "psdn",
             "snowId":  "SVC0025",
-            "serviceManagerSciper": "140997"
+            "serviceManagerSciper": "140997",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "SSC (Central services) management and support",
             "shortName":  "sscsup",
             "snowId":  "SVC0043",
-            "serviceManagerSciper": "115218"
+            "serviceManagerSciper": "115218",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Achats - Catalyse",
             "shortName":  "pur",
             "snowId":  "SVC0187",
-            "serviceManagerSciper": "227203"
+            "serviceManagerSciper": "227203",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "ServiceNow",
             "shortName":  "snow",
             "snowId":  "SVC0048",
-            "serviceManagerSciper": "282746"
+            "serviceManagerSciper": "282746",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Blogs & Wikis",
             "shortName":  "blgwk",
             "snowId":  "SVC0070",
-            "serviceManagerSciper": "243371"
+            "serviceManagerSciper": "243371",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "EPFL's Software Use Conditions & Distrilog",
             "shortName":  "dstlg",
             "snowId":  "SVC0084",
-            "serviceManagerSciper": "192126"
+            "serviceManagerSciper": "192126",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Business Intelligence",
             "shortName":  "bi",
             "snowId":  "SVC0647",
-            "serviceManagerSciper": "103364"
+            "serviceManagerSciper": "103364",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Scientific publications (Infoscience)",
             "shortName":  "infosc",
             "snowId":  "SVC0089",
-            "serviceManagerSciper": "173654"
+            "serviceManagerSciper": "173654",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Disclosure of external activities for Professors",
             "shortName":  "xact",
             "snowId":  "SVC0723",
-            "serviceManagerSciper": "104782"
+            "serviceManagerSciper": "104782",
+            "deniedVRAServiceList": []
         },
 		{
             "longName":  "Laboratory Hazards Directory (LHD) Annuaire des dangers des laboratoires",
             "shortName":  "lhdadl",
             "snowId":  "SVC1172",
-            "serviceManagerSciper": "243371"
+            "serviceManagerSciper": "243371",
+            "deniedVRAServiceList": []
         },
 		{
             "longName":  "Exchange Calendar",
             "shortName":  "excal",
             "snowId":  "SVC0088",
-            "serviceManagerSciper": "263587"
+            "serviceManagerSciper": "263587",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Gestion de la facturation des Alumni",
             "shortName":  "prjalu",
             "snowId":  "PRJ0012176",
-            "serviceManagerSciper": "296747"
+            "serviceManagerSciper": "296747",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Research grants (GrantsDB)",
             "shortName":  "grants",
             "snowId":  "SVC0002",
-            "serviceManagerSciper": "240207"
+            "serviceManagerSciper": "240207",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Kubernetes",
             "shortName":  "k8s",
             "snowId":  "SVC1219",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Exploitation LINUX",
             "shortName":  "lnx",
             "snowId":  "SVC1215",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Ex MyVM – to be deleted",
             "shortName":  "exmyvm",
             "snowId":  "SVC1223",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "Gestion des Alumni",
             "shortName":  "prjalumgmt",
             "snowId":  "PRJ0012151",
-            "serviceManagerSciper": "296747"
+            "serviceManagerSciper": "296747",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "audiovisuel SAVE_S3",
             "shortName":  "save",
             "snowId":  "SVC1307",
-            "serviceManagerSciper": "124695"
+            "serviceManagerSciper": "124695",
+            "deniedVRAServiceList": []
         },
         {
             "longName":  "SAM – Software Asset Management",
             "shortName":  "prjsam",
             "snowId":  "PRJ0011982",
-            "serviceManagerSciper": "318457"
+            "serviceManagerSciper": "318457",
+            "deniedVRAServiceList": []
         }
     ]
 }

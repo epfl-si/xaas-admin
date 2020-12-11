@@ -572,47 +572,118 @@ function createOrUpdateBGEnt
 	IN  : $ent				-> Objet Entitlement auquel lier les services
 	IN  : $approvalPolicy	-> Object Approval Policy qui devra approuver les demandes 
 								pour les nouveaux éléments
+	IN  : $deniedServices	-> Tableau avec les services à ne pas mettre pour le BG.
+								Le tableau contient une liste d'objet ayant les clefs suivantes:
+								.svc	-> nom du service concerné
+								.items 	-> tableau des items "denied". Si vide, c'est l'entier du
+											service qui est "denied". Sinon, on ajoute spécifiquement
+											les autres items du catalogue, à l'exception de ceux qui
+											sont présents dans la liste
 	
 	RET : Objet Entitlement mis à jour
 #>
 function prepareAddMissingBGEntPublicServices
 {
-	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy)
+	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices)
 
 
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
-	$publicServices = $vra.getServiceListMatch($global:VRA_SERVICE_SUFFIX__PUBLIC)
+	$publicServiceList = $vra.getServiceListMatch($global:VRA_SERVICE_SUFFIX__PUBLIC)
 
+	# Extraction des noms des services non autorisés
+	$deniedServicesNames = @($deniedServices | Select-Object -ExpandProperty svc)
+
+	# On supprime de l'entitlement tous les items de catalogue appartenant au service. Cela permet de repartir
+	# sur une base propre pour potentiellement ajouter les "nouveaux" services et où des éléments de catalogue
+	$ent = $vra.prepareRemoveAllCatalogItems($ent)
+	
 	# Parcours des services à ajouter à l'entitlement créé
-	ForEach($publicService in $publicServices)
+	ForEach($publicService in $publicServiceList)
 	{
-
+		
 		# Parcours des Services déjà liés à l'entitlement pour chercher le courant
 		$serviceExists = $false
 		ForEach($entService in $ent.entitledServices)
 		{
-			# Si on trouve le service
+			# Si on trouve le service dans l'entitlement
 			if($entService.serviceRef.id -eq $publicService.id)
 			{
-				$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement" -f $publicService.name))
 				$serviceExists = $true
+
+				# Si le service n'est pas dans ceux qui ne sont pas autorisés pour le BG,
+				if($deniedServicesNames -notcontains $publicService.name)
+				{
+					$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement" -f $publicService.name))
+					
+					# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
+					$entService.approvalPolicyId = $approvalPolicy.id
+					
+					$counters.inc('EntServices')
+				}
+				else # Le service courant n'est pas autorisé pour ce BG
+				{
+					$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement but is denied for this BG, removing it" -f $publicService.name))
+					$ent = $vra.prepareRemoveEntService($ent, $publicService)
+
+					$counters.inc('EntServicesRemoved')
+
+				}# FIN SI le service courant n'est pas autorisé pour ce BG
+
+				break;
+					
+			}# FIN SI on trouve le service
+
+		}# FIN BOUCLE de parcours des services déjà présents dans l'entitlement 
+
+		# Si le service public n'a pas été trouvé dans l'entitlement,
+		if(-not $serviceExists)
+		{
+			# Si le service n'est pas dans ceux qui ne sont pas autorisés pour le BG,
+			if($deniedServicesNames -notcontains $publicService.name)
+			{
+				$logHistory.addLineAndDisplay(("--> (prepare) Adding service '{0}' to Entitlement" -f $publicService.name))
+				$ent = $vra.prepareAddEntService($ent, $publicService, $approvalPolicy)
+
+				$counters.inc('EntServicesAdded')
+			}
+			else # Le service courant n'est pas autorisé pour ce BG
+			{
+				$logHistory.addLineAndDisplay(("--> (prepare) Skipping service '{0}' because denied for BG" -f $publicService.name))
+				$counters.inc('EntServicesDenied')
+			}
+			
+		}# FIN SI le service public n'a pas été trouvé dans l'entitlement
+
+
+		# Si le service public courant ne doit pas être dans la liste,
+		if($deniedServicesNames -contains $publicService.name)
+		{
+			# Recherche des infos pour savoir ce qui doit réellement être retiré de la liste au niveau des items de catalogues
+			$deniedSvcInfos = $deniedServices | Where-Object { $_.svc -eq  $publicService.name}
+
+			# Si c'est seulement certains items du catalogue pour le service courant qui ne doivent pas être affichés (mais que d'autres oui)
+			if($deniedSvcInfos.items.count -gt 0)
+			{
+				$logHistory.addLineAndDisplay(("--> (prepare) Service '{0}' has been denied but only for {1} catalog item(s), adding the others" -f $publicService.name, $deniedSvcInfos.items.count))
+
+				# Recherche de la liste des items de catalogue disponibles dans le service courant
+				$catalogItems = $vra.getServiceCatalogItemList($publicService)
+
+				# Ajout des items de catalogue qui peuvent être présents
+				$catalogItems | ForEach-Object {
+					# Si l'élément de catalogue courant n'est pas "défendu", 
+					if($deniedSvcInfos.items -notcontains $_.catalogItem.name)
+					{
+						$ent = $vra.prepareAddEntCatalogItem($ent, $_, $approvalPolicy)
+					}
+				}
 
 				# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
 				$entService.approvalPolicyId = $approvalPolicy.id
-				
-				$counters.inc('EntServices')
-				break;
 			}
-		}
 
-		# Si le service public n'est pas dans l'entitlement,
-		if(-not $serviceExists)
-		{
-			$logHistory.addLineAndDisplay(("--> (prepare) Adding service '{0}' to Entitlement" -f $publicService.name))
-			$ent = $vra.prepareAddEntService($ent, $publicService.id, $publicService.name, $approvalPolicy)
+		}# FIN SI le service public courant ne doit pas être dans la liste,
 
-			$counters.inc('EntServicesAdded')
-		}
 	}# FIN BOUCLE de parcours des services à ajouter à l'entitlement
 
 	return $ent
@@ -1272,7 +1343,9 @@ try
 	$counters.add('EntUpdated', '# Entitlements updated')
 	# Services
 	$counters.add('EntServices', '# Existing Entitlements Services')
+	$counters.add('EntServicesRemoved', '# Removed Entitlements Services (because denied)')
 	$counters.add('EntServicesAdded', '# Entitlements Services added')
+	$counters.add('EntServicesDenied', '# Entitlements Services denied')
 	# Reservations
 	$counters.add('ResCreated', '# Reservations created')
 	$counters.add('ResUpdated', '# Reservations updated')
@@ -1388,14 +1461,20 @@ try
 		{
 			# Eclatement de la description et du nom pour récupérer le informations
 			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
-			$faculty, $unit, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$descInfos = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			$faculty = $descInfos.faculty
+			$unit = $descInfos.unit
+			$financeCenter = $descInfos.financeCenter
+			$deniedVRASvc = $descInfos.deniedVRASvc
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{facultyName = $faculty
 										 facultyID = $facultyID
 										 unitName = $unit
 										 unitID = $unitID
-										 financeCenter = $financeCenter})
+										 financeCenter = $financeCenter
+										 deniedVRASvc = $deniedVRASvc})
 
 			# Création du nom/description du business group
 			$bgDesc = $nameGenerator.getBGDescription()
@@ -1414,12 +1493,17 @@ try
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-			$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$descInfos  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			$serviceLongName = $descInfos.svcName
+			$snowServiceId = $descInfos.svcId
+			$deniedVRASvc = $descInfos.deniedVRASvc
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
-				serviceName = $serviceLongName
-				snowServiceId = $snowServiceId})
+										serviceName = $serviceLongName
+										snowServiceId = $snowServiceId
+										deniedVRASvc = $deniedVRASvc})
 
 			# Création du nom/description du business group
 			$bgDesc = $serviceLongName
@@ -1435,7 +1519,10 @@ try
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 			$projectId = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-			$projectAcronym, $financeCenter  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$descInfos  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			$projectAcronym = $descInfos.projectAcronym
+			$financeCenter = $descInfos.financeCenter
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{
@@ -1448,6 +1535,9 @@ try
 			
 			# Custom properties du Buisness Group
 			$bgEPFLID = $projectId
+
+			# Aucun service de défendu
+			$deniedVRASvc = @()
 		}
 
 		else
@@ -1623,7 +1713,7 @@ try
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
-		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy
+		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc
 
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus
