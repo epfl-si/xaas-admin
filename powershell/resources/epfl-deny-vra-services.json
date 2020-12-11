@@ -2,7 +2,10 @@
     {
         "ldapOU": "OU=SI,O=EPFL,C=CH",
         "deniedVRAServiceList": [
-            "MyVM (Public)"
+            {
+                "svc": "NAS (Public)",
+                "items": ["NAS applicative volume"]
+            }   
         ]
     }
 ]

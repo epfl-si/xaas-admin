@@ -572,7 +572,13 @@ function createOrUpdateBGEnt
 	IN  : $ent				-> Objet Entitlement auquel lier les services
 	IN  : $approvalPolicy	-> Object Approval Policy qui devra approuver les demandes 
 								pour les nouveaux éléments
-	IN  : $deniedServices	-> Tableau avec les services à ne pas mettre pour le BG	
+	IN  : $deniedServices	-> Tableau avec les services à ne pas mettre pour le BG.
+								Le tableau contient une liste d'objet ayant les clefs suivantes:
+								.svc	-> nom du service concerné
+								.items 	-> tableau des items "denied". Si vide, c'est l'entier du
+											service qui est "denied". Sinon, on ajoute spécifiquement
+											les autres items du catalogue, à l'exception de ceux qui
+											sont présents dans la liste
 	
 	RET : Objet Entitlement mis à jour
 #>
@@ -584,21 +590,28 @@ function prepareAddMissingBGEntPublicServices
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
 	$publicServiceList = $vra.getServiceListMatch($global:VRA_SERVICE_SUFFIX__PUBLIC)
 
+	# Extraction des noms des services non autorisés
+	$deniedServicesNames = @($deniedServices | Select-Object -ExpandProperty svc)
+
+	# On supprime de l'entitlement tous les items de catalogue appartenant au service. Cela permet de repartir
+	# sur une base propre pour potentiellement ajouter les "nouveaux" services et où des éléments de catalogue
+	$ent = $vra.prepareRemoveAllServiceCatalogItems($ent)
+	
 	# Parcours des services à ajouter à l'entitlement créé
 	ForEach($publicService in $publicServiceList)
 	{
-
+		
 		# Parcours des Services déjà liés à l'entitlement pour chercher le courant
 		$serviceExists = $false
 		ForEach($entService in $ent.entitledServices)
 		{
-			# Si on trouve le service
+			# Si on trouve le service dans l'entitlement
 			if($entService.serviceRef.id -eq $publicService.id)
 			{
 				$serviceExists = $true
 
 				# Si le service n'est pas dans ceux qui ne sont pas autorisés pour le BG,
-				if($deniedServices -notcontains $publicService.name)
+				if($deniedServicesNames -notcontains $publicService.name)
 				{
 					$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement" -f $publicService.name))
 					
@@ -610,10 +623,11 @@ function prepareAddMissingBGEntPublicServices
 				else # Le service courant n'est pas autorisé pour ce BG
 				{
 					$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement but is denied for this BG, removing it" -f $publicService.name))
-					$ent = $vra.prepareRemoveEntService($ent, $publicService.name)
+					$ent = $vra.prepareRemoveEntService($ent, $publicService)
 
 					$counters.inc('EntServicesRemoved')
-				}
+
+				}# FIN SI le service courant n'est pas autorisé pour ce BG
 
 				break;
 					
@@ -621,14 +635,14 @@ function prepareAddMissingBGEntPublicServices
 
 		}# FIN BOUCLE de parcours des services déjà présents dans l'entitlement 
 
-		# Si le service public n'est pas dans l'entitlement,
+		# Si le service public n'a pas été trouvé dans l'entitlement,
 		if(-not $serviceExists)
 		{
 			# Si le service n'est pas dans ceux qui ne sont pas autorisés pour le BG,
-			if($deniedServices -notcontains $publicService.name)
+			if($deniedServicesNames -notcontains $publicService.name)
 			{
 				$logHistory.addLineAndDisplay(("--> (prepare) Adding service '{0}' to Entitlement" -f $publicService.name))
-				$ent = $vra.prepareAddEntService($ent, $publicService.id, $publicService.name, $approvalPolicy)
+				$ent = $vra.prepareAddEntService($ent, $publicService, $approvalPolicy)
 
 				$counters.inc('EntServicesAdded')
 			}
@@ -638,7 +652,37 @@ function prepareAddMissingBGEntPublicServices
 				$counters.inc('EntServicesDenied')
 			}
 			
-		}
+		}# FIN SI le service public n'a pas été trouvé dans l'entitlement
+
+
+		# Si le service public courant ne doit pas être dans la liste,
+		if($deniedServicesNames -contains $publicService.name)
+		{
+			# Recherche des infos pour savoir ce qui doit réellement être retiré de la liste au niveau des items de catalogues
+			$deniedSvcInfos = $deniedServices | Where-Object { $_.svc -eq  $publicService.name}
+
+			# Si c'est seulement certains items du catalogue pour le service courant qui ne doivent pas être affichés (mais que d'autres oui)
+			if($deniedSvcInfos.items.count -gt 0)
+			{
+				
+				# Recherche de la liste des items de catalogue disponibles dans le service courant
+				$catalogItems = $vra.getServiceCatalogItemList($publicService)
+
+				# Ajout des items de catalogue qui peuvent être présents
+				$catalogItems | ForEach-Object {
+					# Si l'élément de catalogue courant n'est pas "défendu", 
+					if($deniedSvcInfos.items -notcontains $_.catalogItem.name)
+					{
+						$ent = $vra.prepareAddEntCatalogItem($ent, $_, $approvalPolicy)
+					}
+				}
+
+				# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
+				$entService.approvalPolicyId = $approvalPolicy.id
+			}
+
+		}# FIN SI le service public courant ne doit pas être dans la liste,
+
 	}# FIN BOUCLE de parcours des services à ajouter à l'entitlement
 
 	return $ent
