@@ -84,6 +84,18 @@
             "snowId":  "SVC1219",
             "serviceManagerSciper": "287589",
             "deniedVRAServiceList": []
+        },
+        {
+            "longName":  "EXHEB Fonctionnement",
+            "shortName":  "exheb",
+            "snowId":  "SVC0166",
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         }
     ],
     "prod": [
