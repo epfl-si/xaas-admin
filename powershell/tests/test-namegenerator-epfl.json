@@ -9,7 +9,13 @@
                         "facultyID": "12635",
                         "unitName": "IDEV-ING",
                         "unitID": "13031",
-                        "financeCenter": "1907"
+                        "financeCenter": "1907",
+                        "deniedVRASvc": [
+                            {
+                                "svc": "MyVM (Public)",
+                                "items": []
+                            }
+                        ]
                     }
                 ],
                 "expected": null
@@ -107,11 +113,11 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "{\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"
+                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "{\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"
+                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"
             }
         ]
     },
