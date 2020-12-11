@@ -273,7 +273,7 @@ class NameGenerator: NameGeneratorBase
                             financeCenter = $this.getDetail('financeCenter')
                             deniedVRASvc = $this.getDetail('deniedVRASvc')
                         }
-                        $groupDesc = $descStruct | ConvertTo-Json -Compress
+                        $groupDesc = $descStruct | ConvertTo-Json -Compress -Depth 20
                     }
                     # Groupe "groups"
                     else
@@ -318,7 +318,7 @@ class NameGenerator: NameGeneratorBase
                             svcName = $this.getDetail('serviceName')
                             deniedVRASvc = $this.getDetail('deniedVRASvc')
                         }
-                        $groupDesc = $descStruct | ConvertTo-Json -Compress
+                        $groupDesc = $descStruct | ConvertTo-Json -Compress -Depth 20
                     }
                     # Groupe "groups"
                     else
@@ -363,7 +363,7 @@ class NameGenerator: NameGeneratorBase
                             projectAcronym = $this.getDetail('projectAcronym')
                             financeCenter = $this.getDetail('financeCenter')
                         }
-                        $groupDesc = $descStruct | ConvertTo-Json -Compress
+                        $groupDesc = $descStruct | ConvertTo-Json -Compress -Depth 20
                     }
                     # Groupe "groups"
                     else
