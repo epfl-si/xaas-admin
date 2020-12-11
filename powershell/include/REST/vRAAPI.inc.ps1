@@ -920,7 +920,7 @@ class vRAAPI: RESTAPICurl
 
 		RET : Objet contenant Entitlement avec tous les éléments de catalogue
 	#>
-	[PSCustomObject] prepareRemoveAllServiceCatalogItems([PSCustomObject]$ent)
+	[PSCustomObject] prepareRemoveAllCatalogItems([PSCustomObject]$ent)
 	{
 		# On supprime tous les éléments 
 		$ent.entitledCatalogItems = @()

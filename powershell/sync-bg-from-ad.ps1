@@ -595,7 +595,7 @@ function prepareAddMissingBGEntPublicServices
 
 	# On supprime de l'entitlement tous les items de catalogue appartenant au service. Cela permet de repartir
 	# sur une base propre pour potentiellement ajouter les "nouveaux" services et où des éléments de catalogue
-	$ent = $vra.prepareRemoveAllServiceCatalogItems($ent)
+	$ent = $vra.prepareRemoveAllCatalogItems($ent)
 	
 	# Parcours des services à ajouter à l'entitlement créé
 	ForEach($publicService in $publicServiceList)
