@@ -664,7 +664,8 @@ function prepareAddMissingBGEntPublicServices
 			# Si c'est seulement certains items du catalogue pour le service courant qui ne doivent pas être affichés (mais que d'autres oui)
 			if($deniedSvcInfos.items.count -gt 0)
 			{
-				
+				$logHistory.addLineAndDisplay(("--> (prepare) Service '{0}' has been denied but only for {1} catalog item(s), adding the others" -f $publicService.name, $deniedSvcInfos.items.count))
+
 				# Recherche de la liste des items de catalogue disponibles dans le service courant
 				$catalogItems = $vra.getServiceCatalogItemList($publicService)
 
