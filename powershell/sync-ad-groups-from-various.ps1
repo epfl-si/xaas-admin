@@ -452,6 +452,122 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [string]$name, [str
 
 <#
 -------------------------------------------------------------------------------------
+	BUT : Détermine quel est le centre financier à utiliser pour une unité. Ceci
+			peut être un numéro de centre financier existant ou alors une adresse
+			mail à laquelle les informations vont être envoyées.
+			Si on n'a pas pu déterminer le centre financier avec les directives
+			définies dans le fichier JSON ($billToMailList), on essaie de trouver 
+			l'unité de niveau 4 (car on est probablement sur une unité de niveau 3)
+			afin de récupérer le centre financier de celle-ci.
+
+	IN  : $unit					-> Objet représentant l'unité que l'on est en train de 
+									traiter
+	IN  : $unitList				-> Liste des unités, afin de pouvoir potentiellement chercher
+									une unité de niveau 4 pour un centre (niveau 3) afin 
+									de pouvoir faire de la facturation
+	IN  : $billToMailList		-> Tableau avec les informations sur les directives
+									de facturation définies dans un fichier JSON.
+
+	RET : Le centre financier à utiliser pour l'unité
+#>
+function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Array]$billToMailList)
+{
+	# Si on doit utiliser une adresse mail pour la facturation au lieu du centre financier
+	$financeCenter = $null
+	ForEach($billToMail in $billToMailList)
+	{
+		# Parcours des OU de l'entrées courante
+		ForEach($LDAPOU in $billToMail.ldapOuList)
+		{
+			# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturation
+			if($unit.path -match ("{0}$" -f $LDAPOU))
+			{
+				# Si on a une adresse mail hardcodée de donnée,
+				if($null -ne $billToMail.billingMail)
+				{
+					$financeCenter = $billToMail.billingMail
+				}
+				# On doit utiliser une fonction pour récupérer l'adresse mail.
+				elseif($null -ne $billToMail.billingMailFunc)
+				{
+					Invoke-Expression ('$financeCenter = {0} -unitInfos $unit' -f $billToMail.billingMailFunc)
+					
+				}
+				else # Valeurs dans le fichiers JSON incorrectes
+				{
+					Throw ("Incorrect value combination in 'billing to mail' JSON file for OU '{0}'" -f $LDAPOU)
+				}
+
+				$logHistory.addLineAndDisplay(("--> Using email ({0}) for finance center..." -f $financeCenter))
+				
+				break
+			}
+		}
+		# SI on a trouvé une adresse mail pour la facturation
+		if($null -ne $financeCenter)
+		{
+			# On peut sortir de la boucle
+			break
+		}
+	}# FIN BOUCLE de parcours des possibilité de facturation par mail
+
+
+	# Si on n'a pas encore de centre financier de défini (donc pas d'adresse mail )
+	if($null -eq $financeCenter)
+	{
+		# Si c'est une unité de niveau 3 (centre), on doit chercher l'unité de niveau 4 qui fait office de "gestion"
+		if($unit.level -eq 3)
+		{
+			$logHistory.addLineAndDisplay("--> Level 3 unit (Center), looking for level 4 'GE' unit for finance center..." )
+
+			# Noms d'unité à rechercher. On cherche de plusieurs manières parce qu'ils ont été incapables de nommer ça d'une façon cohérente...
+			$geUnitNameList = @( ("{0}-GE" -f $unit.name)
+								("{0}-GE" -f [Regex]::match($unit.name, '[A-Za-z]+-(.*)').groups[1].value) )
+
+			# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
+			$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
+
+			# Suppression des valeurs vides (oui, il peut y en avoir on dirait... )
+			$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" -and $null -ne $_ }
+			$financeCenter = $null
+
+			# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
+			ForEach($geUnitName in $geUnitNameList)
+			{
+				$logHistory.addLineAndDisplay(("---> Looking for '{0}' unit..." -f $geUnitName))
+				$geUnit = $unitList | Where-Object { $_.name -eq $geUnitName }
+
+				if($null -ne $geUnit)
+				{
+					$logHistory.addLineAndDisplay("---> Unit found, getting finance center")
+					$financeCenter = $geUnit.accountingnumber
+					break
+				}
+			}
+
+			# Si on n'a rien trouvé... 
+			if($null -eq $financeCenter)
+			{
+				$logHistory.addLineAndDisplay("--> 'GE' unit not found... using 'normal' finance center")
+				$financeCenter = $unit.accountingnumber
+				$counters.inc('level3GEUnitNotFound')
+				# Ajout du nom de l'unité niveau 3 pour notifier par mail que pas trouvée
+				$notifications.level3GEUnitNotFound += $unit.name
+			}
+		}
+		else # Ce n'est pas une unité de niveau 3 (centre)
+		{
+			$financeCenter = $unit.accountingnumber
+		}
+
+	}# FIN SI on n'a pas encore de centre financier
+
+	return $financeCenter
+
+}
+
+<#
+-------------------------------------------------------------------------------------
 	BUT : Renvoie l'adresse mail à utiliser pour la facturation d'une unité dont 
 			les infos sont passées en paramètre
 
@@ -557,9 +673,7 @@ try
 	$counters.add('ADGroupsCreated', '# AD Groups created')
 	$counters.add('ADGroupsExists', '# AD Groups already existing')
 	$counters.add('ADGroupsRemoved', '# AD Groups removed')
-	$counters.add('ADGroupsContentModified', '# AD Groups modified')
-	$counters.add('ADGroupsMembersAdded', '# AD Group members added')
-	$counters.add('ADGroupsMembersRemoved', '# AD Group members removed')
+	$counters.add('ADGroupsContentUpdated', '# AD Groups updated')
 	$counters.add('ADMembersNotFound', '# AD members not found')
 	$counters.add('groupsGroupsCreated', '# Groups groups created')
 	$counters.add('membersAddedTovRAUsers', '# Users added to vraUsers table (Tableau)')
@@ -731,95 +845,8 @@ try
 				{
 					$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty.name, $unit.name))
 
-					# Si on doit utiliser une adresse mail pour la facturation au lieu du centre financier
-					$financeCenter = $null
-					ForEach($billToMail in $billToMailList)
-					{
-						# Parcours des OU de l'entrées courante
-						ForEach($LDAPOU in $billToMail.ldapOuList)
-						{
-							# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturation
-							if($unit.path -match ("{0}$" -f $LDAPOU))
-							{
-								# Si on a une adresse mail hardcodée de donnée,
-								if($null -ne $billToMail.billingMail)
-								{
-									$financeCenter = $billToMail.billingMail
-								}
-								# On doit utiliser une fonction pour récupérer l'adresse mail.
-								elseif($null -ne $billToMail.billingMailFunc)
-								{
-									Invoke-Expression ('$financeCenter = {0} -unitInfos $unit' -f $billToMail.billingMailFunc)
-									
-								}
-								else # Valeurs dans le fichiers JSON incorrectes
-								{
-									Throw ("Incorrect value combination in 'billing to mail' JSON file for OU '{0}'" -f $LDAPOU)
-								}
-
-								$logHistory.addLineAndDisplay(("--> Using email ({0}) for finance center..." -f $financeCenter))
-								
-								break
-							}
-						}
-						# SI on a trouvé une adresse mail pour la facturation
-						if($null -ne $financeCenter)
-						{
-							# On peut sortir de la boucle
-							break
-						}
-					}# FIN BOUCLE de parcours des possibilité de facturation par mail
-
-
-					# Si on n'a pas encore de centre financier de défini (donc pas d'adresse mail )
-					if($null -eq $financeCenter)
-					{
-						# Si c'est une unité de niveau 3 (centre), on doit chercher l'unité de niveau 4 qui fait office de "gestion"
-						if($unit.level -eq 3)
-						{
-							$logHistory.addLineAndDisplay("--> Level 3 unit (Center), looking for level 4 'GE' unit for finance center..." )
-
-							# Noms d'unité à rechercher. On cherche de plusieurs manières parce qu'ils ont été incapables de nommer ça d'une façon cohérente...
-							$geUnitNameList = @( ("{0}-GE" -f $unit.name)
-												("{0}-GE" -f [Regex]::match($unit.name, '[A-Za-z]+-(.*)').groups[1].value) )
-
-							# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
-							$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
-
-							# Suppression des valeurs vides (oui, il peut y en avoir on dirait... )
-							$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" -and $null -ne $_ }
-							$financeCenter = $null
-
-							# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
-							ForEach($geUnitName in $geUnitNameList)
-							{
-								$logHistory.addLineAndDisplay(("---> Looking for '{0}' unit..." -f $geUnitName))
-								$geUnit = $unitList | Where-Object { $_.name -eq $geUnitName }
-
-								if($null -ne $geUnit)
-								{
-									$logHistory.addLineAndDisplay("---> Unit found, getting finance center")
-									$financeCenter = $geUnit.accountingnumber
-									break
-								}
-							}
-
-							# Si on n'a rien trouvé... 
-							if($null -eq $financeCenter)
-							{
-								$logHistory.addLineAndDisplay("--> 'GE' unit not found... using 'normal' finance center")
-								$financeCenter = $unit.accountingnumber
-								$counters.inc('level3GEUnitNotFound')
-								# Ajout du nom de l'unité niveau 3 pour notifier par mail que pas trouvée
-								$notifications.level3GEUnitNotFound += $unit.name
-							}
-						}
-						else # Ce n'est pas une unité de niveau 3 (centre)
-						{
-							$financeCenter = $unit.accountingnumber
-						}
-
-					}# FIN SI on n'a pas encore de centre financier
+					# Recherche du centre financier à utiliser
+					$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList -billToMailList $billToMailList
 
 					$vRAServicesToDeny = @()
 					# Parcours des OU pour lequelles on veut empêcher l'accès à certains services vRA
@@ -853,9 +880,6 @@ try
 					$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
 					$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
 
-					# Pour définir si un groupe AD a été créé lors de l'itération courante
-					$newADGroupCreated = $false
-
 					try
 					{
 						# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
@@ -888,8 +912,6 @@ try
 								# Création du groupe
 								New-ADGroup -Name $adGroupName -Description $adGroupDesc -GroupScope DomainLocal -Path $nameGenerator.getADGroupsOUDN($true)
 							}
-							
-							$newADGroupCreated = $true;
 
 							$counters.inc('ADGroupsCreated')
 
@@ -908,59 +930,18 @@ try
 					# Si le groupe AD existe
 					if($adGroupExists)
 					{
-						# S'il n'y a aucun membre dans le groupe AD,
-						if($null -eq $adMemberList)
+						# S'il y a des membres dedans
+						if($adMemberList.count -gt 0)
 						{
-							$toAdd = $ldapMemberList
-							$toRemove = @()
-						}
-						else # Il y a des membres dans le groupe AD
-						{
-							# Définition des membres à ajouter/supprimer du groupe AD
-							$toAdd = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '<=' } | ForEach-Object {$_.InputObject}
-							$toRemove = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '=>' }  | ForEach-Object {$_.InputObject}
+							$logHistory.addLineAndDisplay(("--> Removing all members ({0}) in group '{1}'..." -f $adMemberList.count, $adGroupName))
+							Remove-ADGroupMember $adGroupName -Members $adMemberList -confirm:$false
 						}
 
-						# Ajout des nouveaux membres s'il y en a
-						if($toAdd.Count -gt 0)
-						{
-							$logHistory.addLineAndDisplay(("--> Adding {0} members in group {1} " -f $toAdd.Count, $adGroupName))
-							if(-not $SIMULATION_MODE)
-							{
-								Add-ADGroupMember $adGroupName -Members $toAdd
-							}
+						# Ajout des membres
+						$logHistory.addLineAndDisplay(("--> Adding {0} members in group '{1}'..." -f $ldapMemberList.count, $adGroupName))
+						Add-ADGroupMember $adGroupName -Members $ldapMemberList
 
-							$counters.inc('ADGroupsMembersAdded')
-						}
-						else # Il n'y a aucun membre à ajouter dans le groupe 
-						{
-							# Si on vient de créer le groupe AD
-							if($newADGroupCreated)
-							{
-								if(-not $SIMULATION_MODE)
-								{
-									# On peut le supprimer car il est de toute façon vide... Et ça ne sert à rien qu'un BG soit créé pour celui-ci du coup
-									Remove-ADGroup $adGroupName -Confirm:$false
-								}
-							}
-
-						}
-						# Suppression des "vieux" membres s'il y en a
-						if($toRemove.Count -gt 0)
-						{
-							$logHistory.addLineAndDisplay(("--> Removing {0} members from group {1} " -f $toRemove.Count, $adGroupName))
-							if(-not $SIMULATION_MODE)
-							{
-								Remove-ADGroupMember $adGroupName -Members $toRemove -Confirm:$false
-							}
-
-							$counters.inc('ADGroupsMembersRemoved')
-						}
-
-						if(($toRemove.Count -gt 0) -or ($toAdd.Count -gt 0))
-						{
-							$counters.inc('ADGroupsContentModified')
-						}
+						$counters.inc('ADGroupsContentUpdated')
 
 						# On enregistre le nom du groupe AD traité
 						$doneADGroupList += $adGroupName
@@ -975,7 +956,6 @@ try
 						updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
 					}
 
-
 					$counters.inc('epfl.LDAPUnitsProcessed')
 					$unitNo += 1
 
@@ -985,7 +965,6 @@ try
 						$exitFacLoop = $true
 						break
 					}
-
 
 				}# FIN BOUCLE de parcours des unités de la faculté
 
@@ -1002,7 +981,6 @@ try
 					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
 					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower()) -targetTenant $targetTenant
 				}
-
 
 				if($exitFacLoop)
 				{

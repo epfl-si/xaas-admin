@@ -689,25 +689,6 @@ function prepareAddMissingBGEntPublicServices
 	return $ent
 }
 
-<#
--------------------------------------------------------------------------------------
-	BUT : Envoie un mail aux admins pour leur dire qu'il y a eu un problème avec le
-		fichier JSON contenant les "2nd day actions" 
-	
-	REMARQUE:
-	La variable $targetEnv est utilisée de manière globale.
-
-	IN  : $errorMsg		-> Message d'erreur
-
-	RET : Rien
-#>
-function sendErrorMail2ndDayActionFile
-{
-	(param [string] $errorMsg)
-
-	$valToReplace = @{errorMsg = $errorMsg}
-	$notificationMail.send("Error - 2nd day action JSON file error!", "2nd-action-json-file-error", $valToReplace)
-}
 
 <#
 -------------------------------------------------------------------------------------

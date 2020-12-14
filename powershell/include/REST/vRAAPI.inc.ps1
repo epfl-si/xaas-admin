@@ -1359,9 +1359,6 @@ class vRAAPI: RESTAPICurl
 		# Récupération du résultat pour l'ajouter dans le cache
 		$result = ($this.callAPI($uri, "Get", $null))
 
-		# Ajout dans le cache
-		$this.addInCache($result, $uri)
-
 		return $result.content
 
 	}
