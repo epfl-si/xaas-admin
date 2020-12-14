@@ -1639,7 +1639,7 @@ try
 
 
 		# Si le groupe est vide,
-		if((Get-ADGroupMember -server ad2.epfl.ch $_.Name).Count -eq 0)
+		if((Get-ADGroupMember $_.Name).Count -eq 0)
 		{
 			# On enregistre l'info pour notification
 			$notifications.emptyADGroups += ("{0} ({1})" -f $_.Name, $bgName)
