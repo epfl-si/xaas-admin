@@ -348,3 +348,22 @@ function getBillingEntityTypeFromTenant([string]$tenant)
         $global:VRA_TENANT__RESEARCH { return [BillingEntityType]::Project }
     }
 }
+
+
+<#
+    -------------------------------------------------------------------------------------
+	BUT : Charge le contenu d'un fichier JSON qui peut contenir des commentaires.
+			// commentaire sur une ligne
+			/* commentaire
+			sur plusieurs lignes */
+
+			Les commentaires sont simplement supprimés au chargement du fichier.
+    
+    IN  : $jsonFile		-> Chemin jusqu'au fichier JSON à charger
+
+    RET : Objet représentant le contenu du fichier JSON
+#>
+function loadFromCommentedJSON([string]$jsonFile)
+{
+	return ((Get-Content -Path $jsonFile -raw -Encoding:UTF8) -replace '(?m)\s*//.*?$' -replace '(?ms)/\*.*?\*/') | ConvertFrom-JSON
+}
