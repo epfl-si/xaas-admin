@@ -96,6 +96,13 @@
                     "items": ["NAS collaborative volume"]
                 }
             ]
+        },
+        {
+            "longName":  "XaaS Admins",
+            "shortName":  "xaasadm",
+            "snowId":  "SVC0000",
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         }
     ],
     "prod": [
@@ -825,6 +832,13 @@
             "shortName":  "prjsam",
             "snowId":  "PRJ0011982",
             "serviceManagerSciper": "318457",
+            "deniedVRAServiceList": []
+        },
+        {
+            "longName":  "XaaS Admins",
+            "shortName":  "xaasadm",
+            "snowId":  "SVC0000",
+            "serviceManagerSciper": "287589",
             "deniedVRAServiceList": []
         }
     ]
