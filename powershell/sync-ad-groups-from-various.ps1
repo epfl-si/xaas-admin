@@ -624,9 +624,7 @@ try
 	$counters.add('ADGroupsCreated', '# AD Groups created')
 	$counters.add('ADGroupsExists', '# AD Groups already existing')
 	$counters.add('ADGroupsRemoved', '# AD Groups removed')
-	$counters.add('ADGroupsContentModified', '# AD Groups modified')
-	$counters.add('ADGroupsMembersAdded', '# AD Group members added')
-	$counters.add('ADGroupsMembersRemoved', '# AD Group members removed')
+	$counters.add('ADGroupsContentUpdated', '# AD Groups updated')
 	$counters.add('ADMembersNotFound', '# AD members not found')
 	$counters.add('groupsGroupsCreated', '# Groups groups created')
 	$counters.add('membersAddedTovRAUsers', '# Users added to vraUsers table (Tableau)')
@@ -813,9 +811,6 @@ try
 					$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
 					$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
 
-					# Pour définir si un groupe AD a été créé lors de l'itération courante
-					$newADGroupCreated = $false
-
 					try
 					{
 						# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
@@ -848,8 +843,6 @@ try
 								# Création du groupe
 								New-ADGroup -Name $adGroupName -Description $adGroupDesc -GroupScope DomainLocal -Path $nameGenerator.getADGroupsOUDN($true)
 							}
-							
-							$newADGroupCreated = $true;
 
 							$counters.inc('ADGroupsCreated')
 
@@ -868,59 +861,18 @@ try
 					# Si le groupe AD existe
 					if($adGroupExists)
 					{
-						# S'il n'y a aucun membre dans le groupe AD,
-						if($null -eq $adMemberList)
+						# S'il y a des membres dedans
+						if($adMemberList.count -gt 0)
 						{
-							$toAdd = $ldapMemberList
-							$toRemove = @()
-						}
-						else # Il y a des membres dans le groupe AD
-						{
-							# Définition des membres à ajouter/supprimer du groupe AD
-							$toAdd = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '<=' } | ForEach-Object {$_.InputObject}
-							$toRemove = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '=>' }  | ForEach-Object {$_.InputObject}
+							$logHistory.addLineAndDisplay(("--> Removing all members ({0}) in group '{1}'..." -f $adMemberList.count, $adGroupName))
+							Remove-ADGroupMember $adGroupName -Members $adMemberList -confirm:$false
 						}
 
-						# Ajout des nouveaux membres s'il y en a
-						if($toAdd.Count -gt 0)
-						{
-							$logHistory.addLineAndDisplay(("--> Adding {0} members in group {1} " -f $toAdd.Count, $adGroupName))
-							if(-not $SIMULATION_MODE)
-							{
-								Add-ADGroupMember $adGroupName -Members $toAdd
-							}
+						# Ajout des membres
+						$logHistory.addLineAndDisplay(("--> Adding {0} members in group '{1}'..." -f $ldapMemberList.count, $adGroupName))
+						Add-ADGroupMember $adGroupName -Members $ldapMemberList
 
-							$counters.inc('ADGroupsMembersAdded')
-						}
-						else # Il n'y a aucun membre à ajouter dans le groupe 
-						{
-							# Si on vient de créer le groupe AD
-							if($newADGroupCreated)
-							{
-								if(-not $SIMULATION_MODE)
-								{
-									# On peut le supprimer car il est de toute façon vide... Et ça ne sert à rien qu'un BG soit créé pour celui-ci du coup
-									Remove-ADGroup $adGroupName -Confirm:$false
-								}
-							}
-
-						}
-						# Suppression des "vieux" membres s'il y en a
-						if($toRemove.Count -gt 0)
-						{
-							$logHistory.addLineAndDisplay(("--> Removing {0} members from group {1} " -f $toRemove.Count, $adGroupName))
-							if(-not $SIMULATION_MODE)
-							{
-								Remove-ADGroupMember $adGroupName -Members $toRemove -Confirm:$false
-							}
-
-							$counters.inc('ADGroupsMembersRemoved')
-						}
-
-						if(($toRemove.Count -gt 0) -or ($toAdd.Count -gt 0))
-						{
-							$counters.inc('ADGroupsContentModified')
-						}
+						$counters.inc('ADGroupsContentUpdated')
 
 						# On enregistre le nom du groupe AD traité
 						$doneADGroupList += $adGroupName
@@ -935,7 +887,6 @@ try
 						updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
 					}
 
-
 					$counters.inc('epfl.LDAPUnitsProcessed')
 					$unitNo += 1
 
@@ -945,7 +896,6 @@ try
 						$exitFacLoop = $true
 						break
 					}
-
 
 				}# FIN BOUCLE de parcours des unités de la faculté
 
@@ -962,7 +912,6 @@ try
 					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
 					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower()) -targetTenant $targetTenant
 				}
-
 
 				if($exitFacLoop)
 				{
