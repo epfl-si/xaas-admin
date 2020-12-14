@@ -482,98 +482,168 @@
             "shortName":  "gouvge",
             "snowId":  "SVC0141",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "VPSI Fonctionnement",
             "shortName":  "vpsi",
             "snowId":  "SVC0173",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "IDEVAM Fonctionnement",
             "shortName":  "idevam",
             "snowId":  "SVC0174",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "IDEV-FSD Fonctionnement",
             "shortName":  "idevfsd",
             "snowId":  "SVC0176",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "IDEVING Fonctionnement",
             "shortName":  "ideving",
             "snowId":  "SVC0177",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "EXDESK Fonctionnement",
             "shortName":  "exdesk",
             "snowId":  "SVC0178",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "EXTERP Fonctionnement",
             "shortName":  "exterp",
             "snowId":  "SVC0179",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "EXINFR Fonctionnement",
             "shortName":  "exinfr",
             "snowId":  "SVC0181",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "GIF-GE Fonctionnement",
             "shortName":  "gifge",
             "snowId":  "SVC0182",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "EXAPP Fonctionnement",
             "shortName":  "exapp",
             "snowId":  "SVC0183",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "IDEV-GE Fonctionnement",
             "shortName":  "idevge",
             "snowId":  "SVC0184",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "EXOP-GE Fonctionnement",
             "shortName":  "exopge",
             "snowId":  "SVC0185",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "IDEV-RH Fonctionnement",
             "shortName":  "idevrh",
             "snowId":  "SVC0602",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "IDEV-FIN Fonctionnement",
             "shortName":  "idevfin",
             "snowId":  "SVC0606",
             "serviceManagerSciper": "",
-            "deniedVRAServiceList": []
+            "deniedVRAServiceList": [
+                {
+                    "svc": "NAS (Public)",
+                    "items": ["NAS collaborative volume"]
+                }
+            ]
         },
         {
             "longName":  "Online form (InForm)",
