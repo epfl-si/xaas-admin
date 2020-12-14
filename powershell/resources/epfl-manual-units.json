@@ -1,0 +1,23 @@
+[
+    {
+        "faculty": "SI",
+        "manualUnits": [
+            {
+                "name": "XAASADM",
+                "uniqueidentifier": "00000",
+                "accountingnumber": null, // on peut se permettre de mettre NULL car on va utiliser une adresse mail pour la facturation
+                "level": "4",
+                /* On peut mettre un chemin qui n'existe pas, il faut juste faire en sorte de reprendre celui-ci
+                dans le fichier 'data/billing/bill-to-mail.json' pour ajouter un élément tout en haut du fichier
+                afin de retourner une adresse mail pour la facturation */
+                "path": "OU=XAAS-ADM,OU=XAAS,O=EPFL,C=CH",
+                // contenu quelque peu bidon, juste pour que l'on créé le groupe dans AD (car si vide, il ne va pas être créé)
+                "contentUsers": [
+                    "chaboude",
+                    "macowicz",
+                    "krejci"
+                ]
+            }
+        ]
+    }
+]

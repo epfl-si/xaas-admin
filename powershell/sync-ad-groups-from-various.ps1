@@ -724,15 +724,20 @@ try
 			# Chargement des informations sur le mapping des facultés
 			# FIXME: Voir si c'est toujours pertinent après avoir mergé la PR https://github.com/epfl-si/xaas-admin/pull/109
 			$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "ge-unit-mapping.json"))
-			$geUnitMappingList = (Get-Content -Path $geUnitMappingFile -raw) | ConvertFrom-Json
+			$geUnitMappingList = loadFromCommentedJSON -jsonFile $geUnitMappingFile
 
 			# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
 			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "billing", "bill-to-mail.json"))
-			$billToMailList = (Get-Content -Path $billToMailFile -raw) | ConvertFrom-Json
-
+			$billToMailList = loadFromCommentedJSON -jsonFile $billToMailFile
+			
 			# Chargement des informations sur les unités qui ont potentiellement des services vRA "non autorisés"
 			$deniedVRASvcListFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "epfl-deny-vra-services.json"))
-			$deniedVRASvcList = (Get-Content -Path $deniedVRASvcListFile -raw) | ConvertFrom-Json
+			$deniedVRASvcList = loadFromCommentedJSON -jsonFile $deniedVRASvcListFile
+			
+			# Chargement des informations sur les unités qu'il faut ajouter manuellement à une faculté donnée
+			$manualUnitsFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "epfl-manual-units.json"))
+			$manualUnitsList = loadFromCommentedJSON -jsonFile $manualUnitsFile
+			
 
 			# Parcours des facultés trouvées
 			ForEach($faculty in $facultyList)
@@ -839,6 +844,16 @@ try
 				# Recherche des unités pour la facultés
 				$unitList = $ldap.getFacultyUnitList($faculty.name, $EPFL_FAC_UNIT_NB_LEVEL) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et modifier pour limiter à une unité donnée
 
+				# On regarde si on a des unités à ajouter "manuellement" à la faculté courante. Cela permet par exemple d'ajouter une unité "admin" à une faculté.
+				# Dans ce cas-là, il faudra aussi ajouter une information dans le fichier 'data/billing/bill-to-mail.json' pour faire en sorte que l'unité en question
+				# ait une adresse de facturation.
+				$manualUnitsFacInfos = $manualUnitsList | Where-Object { $_.faculty -eq $faculty.name }
+				if(($null -ne $manualUnitsFacInfos) -and ($manualUnitsFacInfos.manualUnits.count -gt 0))
+				{
+					$logHistory.addLineAndDisplay(("Adding {0} 'manual units' to faculty {1} unit list" -f $manualUnitsFacInfos.manualUnits.count, $faculty.name))
+					$unitList = @($manualUnitsFacInfos.manualUnits) + $unitList
+				}
+
 				$unitNo = 1
 				# Parcours des unités de la faculté
 				ForEach($unit in $unitList)
@@ -861,9 +876,24 @@ try
 						}
 					}
 
-					# Recherche des membres de l'unité
-					$ldapMemberList = $ldap.getUnitMembers($unit.uniqueidentifier)
-					
+					# Si on a une propriété 'contentGroups' dans l'unité courante, c'est qu'elle a été ajoutée
+					# manuellement via le fichier 'resources/epfl-manual-units.json'
+					if(objectPropertyExists -obj $unit -propertyName "contentUsers")
+					{
+						$logHistory.addLineAndDisplay("--> Manual unit, taking users from JSON file")
+						$ldapMemberList = $unit.contentUsers
+					}
+					else # Ce n'est pas une unité qui a été ajouté manuellement
+					{
+						$logHistory.addLineAndDisplay(("--> Normal unit, taking users from LDAP"))
+						# Recherche des membres de l'unité
+						$ldapMemberList = $ldap.getUnitMembers($unit.uniqueidentifier)
+
+						# On commence par filtrer les comptes pour savoir s'ils existent tous
+						$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
+
+					}# FIN SI ce n'est pas une unité qui a été ajoutée manuellement
+
 					# Initialisation des détails pour le générateur de noms
 					$nameGenerator.initDetails(@{facultyName = $faculty.name
 											facultyID = $faculty.uniqueidentifier
@@ -871,10 +901,6 @@ try
 											unitID = $unit.uniqueidentifier
 											financeCenter = $financeCenter
 											deniedVRASvc = $vRAServicesToDeny})
-
-					# On commence par filtrer les comptes pour savoir s'ils existent tous
-					$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
-
 
 					# Création du nom du groupe AD et de la description
 					$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
@@ -1009,7 +1035,7 @@ try
 				updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
 			}
 			
-		}
+		}# FIN SI Tenant EPFL
 
 		# -------------------------------------------------------------------------------------------------------------------------------------
 		# -------------------------------------------------------------------------------------------------------------------------------------
@@ -1172,7 +1198,7 @@ try
 	
 			}# FIN BOUCLE de parcours des services renvoyés
 	
-		}
+		}# FIN SI Tenant ITServices
 
 		# -------------------------------------------------------------------------------------------------------------------------------------
 		# -------------------------------------------------------------------------------------------------------------------------------------

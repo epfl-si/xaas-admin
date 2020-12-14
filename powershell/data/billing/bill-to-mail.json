@@ -1,5 +1,12 @@
 [
     {
+        "ldapOUList": [
+            "OU=XAAS-ADM,OU=XAAS,O=EPFL,C=CH"
+        ],
+        "billingMail": "vsissp-test-notification@groupes.epfl.ch",
+        "billingMailFunc": ""
+    },
+    {
         "ldapOUList": [ 
             "OU=ASSOCIATIONS,O=EHE,C=CH" 
         ],
