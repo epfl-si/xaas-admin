@@ -25,7 +25,7 @@ class ITServices
     ITServices()
     {
 
-        $itServiceJSONFile = ([IO.Path]::Combine($global:DATA_FOLDER, "itservices.json"))
+        $itServiceJSONFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "itservices.json"))
 		if(!(Test-Path $itServiceJSONFile ))
 		{
 			Throw ("JSON file with ITServices not found ! ({0})" -f $itServiceJSONFile)
