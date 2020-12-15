@@ -778,8 +778,7 @@ try
 				$nameGenerator.initDetails(@{facultyName = $faculty['name']
 											facultyID = $faculty['uniqueidentifier']
 											unitName = ''
-											unitID = ''
-											financeCenter = ''})
+											unitID = ''})
 				
 				# --------------------------------- APPROVE
 
