@@ -119,7 +119,9 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 			# Mise à jour de la description du groupe dans le cas où ça aurait changé
 			if($adGroup.Description -ne $groupDesc)
 			{
+				$logHistory.addLineAndDisplay(("--> Updating AD group '{0}' description because it changed" -f $groupName))
 				Set-ADGroup $groupName -Description $groupDesc -Confirm:$false
+				$counters.inc('ADGroupsDescriptionUpdated')
 			}
 			
 		}
@@ -140,7 +142,6 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 			# Et on remet les bons membres
 			Add-ADGroupMember $groupName -Members $groupMemberGroup
 		}
-
 			
 	}
 	
@@ -691,6 +692,7 @@ try
 
 	# Tous les Tenants
 	$counters.add('ADGroupsCreated', '# AD Groups created')
+	$counters.add('ADGroupsDescriptionUpdated', '# AD Group descriptions updated')
 	$counters.add('ADGroupsExists', '# AD Groups already existing')
 	$counters.add('ADGroupsRemoved', '# AD Groups removed')
 	$counters.add('ADGroupsContentUpdated', '# AD Groups updated')
@@ -893,6 +895,7 @@ try
 						# On ne gère les "deny" de service/items de catalogue uniquement si on est dans une source pour les utilisateurs
 						if($sourceType -eq [ADGroupCreateSourceType]::User)
 						{
+							$hasApproval = $true
 							# Parcours des OU pour lequelles on veut empêcher l'accès à certains services vRA
 							ForEach($denyInfos in $deniedVRASvcList)
 							{
@@ -913,11 +916,14 @@ try
 							$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
 
 						}
-						else # C'est une unité qui a été ajoutée manuellement 
+						else # C'est une unité "admin"
 						{
 							# Les membres à mettre dans le groupe sont définis par le contenu du groupe AD donné dans le JSON
 							$logHistory.addLineAndDisplay(("--> Manual unit, taking users from group defined in JSON file ({0})" -f $unit.contentGroup))
 							$ldapMemberList = Get-ADGroupMember $unit.contentGroup -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
+
+							# Pas d'approbation pour les unités "Admin"
+							$hasApproval = $false
 						}
 						
 
@@ -932,6 +938,7 @@ try
 						$additionalDetails = @{
 							deniedVRASvc = $vRAServicesToDeny
 							financeCenter = $financeCenter
+							hasApproval = $hasApproval
 						}
 						$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
 
@@ -1135,11 +1142,13 @@ try
 					if($sourceType -eq [ADGroupCreateSourceType]::User)
 					{
 						$deniedVRAServiceList = $service.deniedVRAServiceList
+						$hasApproval = $true
 					}
 					else # Service de type "Admin"
 					{
 						# Aucun service restreint
 						$deniedVRAServiceList = @()
+						$hasApproval = $false
 					}
 
 					# Initialisation des détails pour le générateur de noms
@@ -1216,6 +1225,7 @@ try
 					$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
 					$additionalDetails = @{
 						deniedVRASvc = $deniedVRAServiceList
+						hasApproval = $hasApproval
 					}
 					$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
 					$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
@@ -1404,6 +1414,7 @@ try
 				$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
 				$additionalDetails = @{
 					financeCenter = $project.labo_no
+					hasApproval = $true
 				}
 				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
 				$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
