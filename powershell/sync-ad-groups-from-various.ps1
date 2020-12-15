@@ -58,6 +58,12 @@ enum TableauRoles
 	AdminEPFL
 }
 
+# Types de sources pour les Business Group
+enum ADGroupCreateSourceType {
+	Manual
+	Normal
+}
+
 <#
 -------------------------------------------------------------------------------------
 	BUT : Regarde si un groupe Active Directory existe et si ce n'est pas le cas, il 
@@ -467,11 +473,20 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [string]$name, [str
 									de pouvoir faire de la facturation
 	IN  : $billToMailList		-> Tableau avec les informations sur les directives
 									de facturation définies dans un fichier JSON.
+	IN  : $sourceType			-> Type de source pour les unités (LDAP ou manuelle)	
 
 	RET : Le centre financier à utiliser pour l'unité
 #>
-function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Array]$billToMailList)
+function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Array]$billToMailList, [ADGroupCreateSourceType]$sourceType)
 {
+	# Si on est dans la source d'unités "normale" (LDAP)
+	if($sourceType -eq [ADGroupCreateSourceType]::Manual)
+	{
+		# On retourne l'adresse mail entrée pour la facturation
+		return $unit.billingMail
+	}
+	
+
 	# Si on doit utiliser une adresse mail pour la facturation au lieu du centre financier
 	$financeCenter = $null
 	ForEach($billToMail in $billToMailList)
@@ -708,6 +723,7 @@ try
 			$counters.add('epfl.facSkipped', '# Faculty skipped')
 			$counters.add('epfl.facIgnored', '# Faculty ignored (because of filter)')
 			$counters.add('epfl.LDAPUnitsProcessed', '# LDAP Units processed')
+			$counters.add('epfl.ManualUnitsProcessed', '# Manual Units processed')
 			$counters.add('epfl.LDAPUnitsEmpty', '# LDAP Units empty')
 
 			# Ajout du nécessaire pour gérer les notifications pour ce Tenant
@@ -842,158 +858,176 @@ try
 				# --------------------------------- UNITÉS
 				# ----------------------------------------------------------------------------------
 				# Recherche des unités pour la facultés
-				$unitList = $ldap.getFacultyUnitList($faculty.name, $EPFL_FAC_UNIT_NB_LEVEL) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et modifier pour limiter à une unité donnée
-
+				$unitList = @{}
+				$unitList.add([ADGroupCreateSourceType]::Normal, $ldap.getFacultyUnitList($faculty.name, $EPFL_FAC_UNIT_NB_LEVEL)) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et adapter pour limiter à une unité donnée
+					
 				# On regarde si on a des unités à ajouter "manuellement" à la faculté courante. Cela permet par exemple d'ajouter une unité "admin" à une faculté.
 				# Dans ce cas-là, il faudra aussi ajouter une information dans le fichier 'data/billing/bill-to-mail.json' pour faire en sorte que l'unité en question
 				# ait une adresse de facturation.
-				$manualUnitsFacInfos = $manualUnitsList | Where-Object { $_.faculty -eq $faculty.name }
+				$manualUnitsFacInfos = $manualUnitsList.$targetTenant | Where-Object { $_.faculty -eq $faculty.name }
 				if(($null -ne $manualUnitsFacInfos) -and ($manualUnitsFacInfos.manualUnits.count -gt 0))
 				{
 					$logHistory.addLineAndDisplay(("Adding {0} 'manual units' to faculty {1} unit list" -f $manualUnitsFacInfos.manualUnits.count, $faculty.name))
-					$unitList = @($manualUnitsFacInfos.manualUnits) + $unitList
+					$unitList.add([ADGroupCreateSourceType]::Manual, @($manualUnitsFacInfos.manualUnits))
 				}
 
 				$unitNo = 1
-				# Parcours des unités de la faculté
-				ForEach($unit in $unitList)
+
+				# Parcours des types d'unité
+				Foreach($sourceType in $unitList.keys)
 				{
-					$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty.name, $unit.name))
-
-					# Recherche du centre financier à utiliser
-					$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList -billToMailList $billToMailList
-
-					$vRAServicesToDeny = @()
-					# Parcours des OU pour lequelles on veut empêcher l'accès à certains services vRA
-					ForEach($denyInfos in $deniedVRASvcList)
+					$logHistory.addLineAndDisplay(("Processing '{0}' units ({1} units found)..." -f $sourceType.toString(), $unitList.$sourceType.count))
+				
+					# Parcours des unités de la faculté
+					ForEach($unit in $unitList.$sourceType)
 					{
-						# Si l'unité courante est dans l'arborescence où il faut empêcher l'accès à certains services
-						if($unit.path -match ("{0}$" -f $denyInfos.ldapOU))
+						$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty.name, $unit.name))
+
+						# Recherche du centre financier à utiliser
+						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList -billToMailList $billToMailList -sourceType $sourceType
+
+						$vRAServicesToDeny = @()
+						# On ne gère les "deny" de service/items de catalogue uniquement si on est dans une source "normale"
+						if($sourceType -eq [ADGroupCreateSourceType]::Normal)
 						{
-							# Mise à jour de la liste des services "non" autorisés et on sort
-							$vRAServicesToDeny = $denyInfos.deniedVRAServiceList
-							break
+							# Parcours des OU pour lequelles on veut empêcher l'accès à certains services vRA
+							ForEach($denyInfos in $deniedVRASvcList)
+							{
+								# Si l'unité courante est dans l'arborescence où il faut empêcher l'accès à certains services
+								if($unit.path -match ("{0}$" -f $denyInfos.ldapOU))
+								{
+									# Mise à jour de la liste des services "non" autorisés et on sort
+									$vRAServicesToDeny = $denyInfos.deniedVRAServiceList
+									break
+								}
+							}
+
+							$logHistory.addLineAndDisplay(("--> Normal unit, taking users from LDAP"))
+							# Recherche des membres de l'unité
+							$ldapMemberList = $ldap.getUnitMembers($unit.uniqueidentifier)
+
+							# On commence par filtrer les comptes pour savoir s'ils existent tous
+							$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
+
 						}
-					}
-
-					# Si on a une propriété 'contentGroups' dans l'unité courante, c'est qu'elle a été ajoutée
-					# manuellement via le fichier 'resources/epfl-manual-units.json'
-					if(objectPropertyExists -obj $unit -propertyName "contentUsers")
-					{
-						$logHistory.addLineAndDisplay("--> Manual unit, taking users from JSON file")
-						$ldapMemberList = $unit.contentUsers
-					}
-					else # Ce n'est pas une unité qui a été ajouté manuellement
-					{
-						$logHistory.addLineAndDisplay(("--> Normal unit, taking users from LDAP"))
-						# Recherche des membres de l'unité
-						$ldapMemberList = $ldap.getUnitMembers($unit.uniqueidentifier)
-
-						# On commence par filtrer les comptes pour savoir s'ils existent tous
-						$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
-
-					}# FIN SI ce n'est pas une unité qui a été ajoutée manuellement
-
-					# Initialisation des détails pour le générateur de noms
-					$nameGenerator.initDetails(@{facultyName = $faculty.name
-											facultyID = $faculty.uniqueidentifier
-											unitName = $unit.name
-											unitID = $unit.uniqueidentifier
-											financeCenter = $financeCenter
-											deniedVRASvc = $vRAServicesToDeny})
-
-					# Création du nom du groupe AD et de la description
-					$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
-					$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
-
-					try
-					{
-						# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
-						Get-ADGroup -Identity $adGroupName | Out-Null
-
-						$adGroupExists = $true
-						$counters.inc('ADGroupsExists')
-						$logHistory.addLineAndDisplay(("--> Group exists ({0}) " -f $adGroupName))
-
-						if(-not $SIMULATION_MODE)
+						else # C'est une unité qui a été ajoutée manuellement 
 						{
-							# Mise à jour de la description du groupe dans le cas où ça aurait changé
-							Set-ADGroup $adGroupName -Description $adGroupDesc -Confirm:$false
+							# Les membres à mettre dans le groupe sont définis par le contenu du groupe AD donné dans le JSON
+							$logHistory.addLineAndDisplay(("--> Manual unit, taking users from group defined in JSON file ({0})" -f $unit.contentGroup))
+							$ldapMemberList = Get-ADGroupMember $unit.contentGroup -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
 						}
+						
 
-						# Listing des usernames des utilisateurs présents dans le groupe
-						$adMemberList = Get-ADGroupMember $adGroupName | ForEach-Object {$_.SamAccountName}
+						# Initialisation des détails pour le générateur de noms
+						$nameGenerator.initDetails(@{facultyName = $faculty.name
+												facultyID = $faculty.uniqueidentifier
+												unitName = $unit.name
+												unitID = $unit.uniqueidentifier
+												financeCenter = $financeCenter
+												deniedVRASvc = $vRAServicesToDeny})
 
-					}
-					catch # Le groupe n'existe pas.
-					{
-						Write-Debug ("--> Group doesn't exists ({0}) " -f $adGroupName)
+						# Création du nom du groupe AD et de la description
+						$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+						$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
+
+						try
+						{
+							# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
+							Get-ADGroup -Identity $adGroupName | Out-Null
+
+							$adGroupExists = $true
+							$counters.inc('ADGroupsExists')
+							$logHistory.addLineAndDisplay(("--> Group exists ({0}) " -f $adGroupName))
+
+							if(-not $SIMULATION_MODE)
+							{
+								# Mise à jour de la description du groupe dans le cas où ça aurait changé
+								Set-ADGroup $adGroupName -Description $adGroupDesc -Confirm:$false
+							}
+
+							# Listing des usernames des utilisateurs présents dans le groupe
+							$adMemberList = Get-ADGroupMember $adGroupName | ForEach-Object {$_.SamAccountName}
+
+						}
+						catch # Le groupe n'existe pas.
+						{
+							Write-Debug ("--> Group doesn't exists ({0}) " -f $adGroupName)
+							# Si l'unité courante a des membres
+							if($ldapMemberList.Count -gt 0)
+							{
+								$logHistory.addLineAndDisplay(("--> Creating group ({0}) " -f $adGroupName))
+					
+								if(-not $SIMULATION_MODE)
+								{
+									# Création du groupe
+									New-ADGroup -Name $adGroupName -Description $adGroupDesc -GroupScope DomainLocal -Path $nameGenerator.getADGroupsOUDN($true)
+								}
+
+								$counters.inc('ADGroupsCreated')
+
+								$adGroupExists = $true
+								# le groupe est vide.
+								$adMemberList = @()
+							}
+							else # Pas de membres donc on ne créé pas le groupe
+							{
+								$logHistory.addLineAndDisplay(("--> No members in unit '{0}', skipping group creation " -f $unit.name))
+								$counters.inc('epfl.LDAPUnitsEmpty')
+								$adGroupExists = $false
+							}
+						}# FIN CATCH le groupe n'existe pas
+
+						# Si le groupe AD existe
+						if($adGroupExists)
+						{
+							# S'il y a des membres dedans
+							if($adMemberList.count -gt 0)
+							{
+								$logHistory.addLineAndDisplay(("--> Removing all members ({0}) in group '{1}'..." -f $adMemberList.count, $adGroupName))
+								Remove-ADGroupMember $adGroupName -Members $adMemberList -confirm:$false
+							}
+
+							# Ajout des membres
+							$logHistory.addLineAndDisplay(("--> Adding {0} members in group '{1}'..." -f $ldapMemberList.count, $adGroupName))
+							Add-ADGroupMember $adGroupName -Members $ldapMemberList
+
+							$counters.inc('ADGroupsContentUpdated')
+
+							# On enregistre le nom du groupe AD traité
+							$doneADGroupList += $adGroupName
+
+						} # FIN SI le groupe AD existe
+
+						###### Roles pour Tableau --> Utilisateurs dans les Business Groups
 						# Si l'unité courante a des membres
 						if($ldapMemberList.Count -gt 0)
 						{
-							$logHistory.addLineAndDisplay(("--> Creating group ({0}) " -f $adGroupName))
-				
-							if(-not $SIMULATION_MODE)
-							{
-								# Création du groupe
-								New-ADGroup -Name $adGroupName -Description $adGroupDesc -GroupScope DomainLocal -Path $nameGenerator.getADGroupsOUDN($true)
-							}
-
-							$counters.inc('ADGroupsCreated')
-
-							$adGroupExists = $true
-							# le groupe est vide.
-							$adMemberList = @()
+							$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
+							updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
 						}
-						else # Pas de membres donc on ne créé pas le groupe
+
+						# Mise à jour des compteurs
+						if($sourceType -eq [ADGroupCreateSourceType]::Normal)
 						{
-							$logHistory.addLineAndDisplay(("--> No members in unit '{0}', skipping group creation " -f $unit.name))
-							$counters.inc('epfl.LDAPUnitsEmpty')
-							$adGroupExists = $false
+							$counters.inc('epfl.LDAPUnitsProcessed')
 						}
-					}# FIN CATCH le groupe n'existe pas
-
-					# Si le groupe AD existe
-					if($adGroupExists)
-					{
-						# S'il y a des membres dedans
-						if($adMemberList.count -gt 0)
+						else
 						{
-							$logHistory.addLineAndDisplay(("--> Removing all members ({0}) in group '{1}'..." -f $adMemberList.count, $adGroupName))
-							Remove-ADGroupMember $adGroupName -Members $adMemberList -confirm:$false
+							$counters.inc('epfl.ManualUnitsProcessed')
+						}
+						
+						$unitNo += 1
+
+						# Pour faire des tests
+						if($TEST_MODE -and ($counters.get('epfl.LDAPUnitsProcessed') -ge $EPFL_TEST_NB_UNITS_MAX))
+						{
+							$exitFacLoop = $true
+							break
 						}
 
-						# Ajout des membres
-						$logHistory.addLineAndDisplay(("--> Adding {0} members in group '{1}'..." -f $ldapMemberList.count, $adGroupName))
-						Add-ADGroupMember $adGroupName -Members $ldapMemberList
+					}# FIN BOUCLE de parcours des unités de la faculté
 
-						$counters.inc('ADGroupsContentUpdated')
-
-						# On enregistre le nom du groupe AD traité
-						$doneADGroupList += $adGroupName
-
-					} # FIN SI le groupe AD existe
-
-					###### Roles pour Tableau --> Utilisateurs dans les Business Groups
-					# Si l'unité courante a des membres
-					if($ldapMemberList.Count -gt 0)
-					{
-						$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
-						updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
-					}
-
-					$counters.inc('epfl.LDAPUnitsProcessed')
-					$unitNo += 1
-
-					# Pour faire des tests
-					if($TEST_MODE -and ($counters.get('epfl.LDAPUnitsProcessed') -ge $EPFL_TEST_NB_UNITS_MAX))
-					{
-						$exitFacLoop = $true
-						break
-					}
-
-				}# FIN BOUCLE de parcours des unités de la faculté
-
+				} # FIN BOUCLE de parcours des types unités (automatiques ou manuelles)
 
 				###### Roles pour Tableau --> Admin de faculté
 				# Recherche du nom du groupe AD d'approbation pour la faculté
