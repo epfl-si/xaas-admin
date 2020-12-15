@@ -572,6 +572,7 @@ function createOrUpdateBGEnt
 	IN  : $ent				-> Objet Entitlement auquel lier les services
 	IN  : $approvalPolicy	-> Object Approval Policy qui devra approuver les demandes 
 								pour les nouveaux éléments
+							   Peut être $null si on ne veut pas d'approbation
 	IN  : $deniedServices	-> Tableau avec les services à ne pas mettre pour le BG.
 								Le tableau contient une liste d'objet ayant les clefs suivantes:
 								.svc	-> nom du service concerné
@@ -615,8 +616,16 @@ function prepareAddMissingBGEntPublicServices
 				{
 					$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement" -f $publicService.name))
 					
-					# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
-					$entService.approvalPolicyId = $approvalPolicy.id
+					# Si pas besoin d'approval policy
+					if($null -eq $approvalPolicy)
+					{
+						$entService.approvalPolicyId = ""
+					}
+					else 
+					{
+						# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
+						$entService.approvalPolicyId = $approvalPolicy.id
+					}
 					
 					$counters.inc('EntServices')
 				}
@@ -678,8 +687,17 @@ function prepareAddMissingBGEntPublicServices
 					}
 				}
 
-				# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
-				$entService.approvalPolicyId = $approvalPolicy.id
+				# Si pas d'approval policy de définie
+				if($null -eq $approvalPolicy)
+				{
+					$entService.approvalPolicyId = ""
+				}
+				else
+				{
+					# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
+					$entService.approvalPolicyId = $approvalPolicy.id
+				}
+				
 			}
 
 		}# FIN SI le service public courant ne doit pas être dans la liste,
@@ -1659,20 +1677,27 @@ try
 			return
 		}
 
+		# Si l'élément courant (unité, service, projet...) doit avoir une approval policy,
+		if($descInfos.hasApproval)
+		{
+			# ----------------------------------------------------------------------------------
+			# --------------------------------- Approval policies
+			# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
+			$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
+										-approvalLevelJSON $itemReqApprovalLevelJSON -approverGroupAtDomainList $approverGroupAtDomainList  `
+										-approvalPolicyJSON $itemReqApprovalPolicyJSON `
+										-additionnalReplace @{} -processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
 
-		# ----------------------------------------------------------------------------------
-		# --------------------------------- Approval policies
-		# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
-		$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
-																 -approvalLevelJSON $itemReqApprovalLevelJSON -approverGroupAtDomainList $approverGroupAtDomainList  `
-																 -approvalPolicyJSON $itemReqApprovalPolicyJSON `
-																 -additionnalReplace @{} -processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
-
-		# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
-		create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
-											-approverGroupAtDomainList $approverGroupAtDomainList -secondDayActions $secondDayActions `
-											-processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
-
+			# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
+			create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
+										-approverGroupAtDomainList $approverGroupAtDomainList -secondDayActions $secondDayActions `
+										-processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
+		}
+		else # Pas d'approval policy de définie
+		{
+			$itemReqApprovalPolicy = $null
+		}
+		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Roles
 		createOrUpdateBGRoles -vra $vra -bg $bg -managerGrpList $managerGrpList -supportGrpList $supportGrpList `

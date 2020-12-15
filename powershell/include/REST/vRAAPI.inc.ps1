@@ -840,16 +840,27 @@ class vRAAPI: RESTAPICurl
 
 		IN  : $ent				-> Objet de l'entitlement auquel ajouter le service
 		IN  : $service			-> Objet représentant le service à ajouter
-		IN  : $approvalPolicy	-> Objet de l'approval policy.
+		IN  : $approvalPolicy	-> Objet de l'approval policy
+									$null si pas besoin d'approval policy
 
 		RET : Objet contenant Entitlement avec le nouveau service
 	#>
 	[PSCustomObject] prepareAddEntService([PSCustomObject] $ent, [PSCustomObject]$service, [PSCustomObject]$approvalPolicy)
 	{
+		# Définition de l'ID d'approval policy en fonction de ce qui est passé
+		if($null -eq $approvalPolicy)
+		{
+			$approvalPolicyId = ""
+		}
+		else
+		{
+			$approvalPolicyId = $approvalPolicy.id
+		}
+		
 		# Valeur à mettre pour la configuration du Service
 		$replace = @{id = $service.id
 					label = $service.name
-					approvalPolicyId = $approvalPolicy.id}
+					approvalPolicyId = $approvalPolicyId}
 
 		# Création du nécessaire pour le service à ajouter
 		$service = $this.createObjectFromJSON("vra-entitlement-service.json", $replace)
@@ -895,10 +906,20 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] prepareAddEntCatalogItem([PSCustomObject] $ent, [PSCustomObject]$catalogItem, [PSCustomObject]$approvalPolicy)
 	{
+		# Définition de l'ID d'approval policy en fonction de ce qui est passé
+		if($null -eq $approvalPolicy)
+		{
+			$approvalPolicyId = ""
+		}
+		else
+		{
+			$approvalPolicyId = $approvalPolicy.id
+		}
+
 		# Valeur à mettre pour la configuration du Service
 		$replace = @{id = $catalogItem.catalogItem.id
 					label = $catalogItem.catalogItem.name
-					approvalPolicyId = $approvalPolicy.id}
+					approvalPolicyId = $approvalPolicyId}
 
 		# Création du nécessaire pour le service à ajouter
 		$catalogItem = $this.createObjectFromJSON("vra-entitlement-catalog-item.json", $replace)
