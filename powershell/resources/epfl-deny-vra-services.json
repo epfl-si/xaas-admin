@@ -6,7 +6,15 @@
             {
                 "svc": "NAS (Public)",
                 // si on laisse la liste vide, ça aura pour effet de ne pas mettre l'entièreté du service vRA à disposition
-                "items": ["NAS applicative volume"] 
+                "items": ["NAS applicative volume"]
+            },
+            {
+                "svc": "MyVM (Public)",
+                "items": []
+            },
+            {
+                "svc": "Kubernetes (Public)",
+                "items": []
             }
         ]
     }
