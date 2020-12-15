@@ -480,10 +480,12 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [string]$name, [str
 	IN  : $billToMailList		-> Tableau avec les informations sur les directives
 									de facturation définies dans un fichier JSON.
 	IN  : $sourceType			-> Type de source pour les unités (User ou admin)
+	IN  : $geUnitMappingList	-> Objet avec les informations sur le mapping d'unité de gestion.
+									Le contenu provient du fichier 'data/billing/ge-unit-mapping.json'
 
 	RET : Le centre financier à utiliser pour l'unité
 #>
-function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Array]$billToMailList, [ADGroupCreateSourceType]$sourceType)
+function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Array]$billToMailList, [ADGroupCreateSourceType]$sourceType, [PSCustomObject]$geUnitMappingList)
 {
 	# Si on est dans la source d'unités "admin" 
 	if($sourceType -eq [ADGroupCreateSourceType]::Admin)
@@ -888,7 +890,8 @@ try
 						$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.$sourceType.Count, $faculty.name, $unit.name))
 
 						# Recherche du centre financier à utiliser
-						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList -billToMailList $billToMailList -sourceType $sourceType
+						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList -billToMailList $billToMailList `
+										-sourceType $sourceType -geUnitMappingList $geUnitMappingList
 
 						$vRAServicesToDeny = @()
 						# On ne gère les "deny" de service/items de catalogue uniquement si on est dans une source pour les utilisateurs
