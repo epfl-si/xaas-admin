@@ -93,23 +93,25 @@ function getResClusterName([PSObject]$reservation)
 
 <#
 	-------------------------------------------------------------------------------------
-	BUT : Permet de savoir si un groupe Active Directory existe.
+	BUT : Recherche et renvoie un group AD défini par son nom.
+			On renvoie aussi la description du groupe
 	   
-	IN  : $groupName	-> Le nom du groupe à contrôler.
+	IN  : $groupName	-> Le nom du groupe à renvoer
+
+	RET : le groupe
+			$NULL si pas trouvé
 #>
-function ADGroupExists([string]$groupName)
+function getADGroup([string]$groupName)
 {
 	try
 	{
 		# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
-		Get-ADGroup -Identity $groupName | Out-Null
-		# Si on a pu le récupérer, c'est qu'il existe.
-		return $true
-
+		return (Get-ADGroup -Identity $groupName -Properties Description)
+		
 	}
 	catch # Une erreur est survenue donc le groupe n'existe pas
 	{
-		return $false
+		return $null
 	}
 }
 

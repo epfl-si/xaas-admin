@@ -89,16 +89,17 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 	$groupDesc = $groupDesc -replace '–', '-'
 
 	# On regarde si le groupe à ajouter dans le nouveau groupe existe
-	if((ADGroupExists -groupName $groupMemberGroup) -eq $false)
+	if($null -eq (getADGroup -groupName $groupMemberGroup))
 	{
 		$logHistory.addWarningAndDisplay(("Inner group '{0}' doesn't exists, skipping AD group '{1}' creation!" -f $groupMemberGroup, $groupName))
 		return $false
 	}
 
-	$alreadyExists = ADGroupExists -groupName $groupName
+	# Recherche du groupe qu'on doit créer
+	$adGroup = getADGroup -groupName $groupName
 
 	# Si le groupe n'existe pas encore 
-	if($alreadyExists -eq $false)
+	if($null -eq $adGroup)
 	{
 		if(-not $simulation)
 		{
@@ -116,7 +117,11 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 		if(-not $SIMULATION_MODE)
 		{
 			# Mise à jour de la description du groupe dans le cas où ça aurait changé
-			Set-ADGroup $groupName -Description $groupDesc -Confirm:$false
+			if($adGroup.Description -ne $groupDesc)
+			{
+				Set-ADGroup $groupName -Description $groupDesc -Confirm:$false
+			}
+			
 		}
 	}
 
@@ -127,7 +132,7 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 		# Si le groupe vient d'être CREE
 		# OU
 		# qu'il existe déjà et qu'on a le droit de mettre à jour son contenu,
-		if( ($alreadyExists -eq $false) -or ($alreadyExists -and $updateExistingContent))
+		if( ($null -eq $adGroup) -or (($null -ne $ADGroup) -and $updateExistingContent))
 		{
 			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
 			# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour

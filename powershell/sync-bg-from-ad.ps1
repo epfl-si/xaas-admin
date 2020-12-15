@@ -1035,7 +1035,7 @@ function checkIfADGroupsExists
 				# $groupShort = 'xyz' 
 				# $domain = 'intranet.epfl.ch'
 				$groupShort, $domain = $groupName.Split('@')
-				if((ADGroupExists -groupName $groupShort) -eq $false)
+				if($null -eq (getADGroup -groupName $groupShort))
 				{
 					$logHistory.addWarningAndDisplay(("Security group '{0}' not found in Active Directory" -f $groupName))
 					# Enregistrement du nom du groupe
