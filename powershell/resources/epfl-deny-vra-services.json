@@ -5,6 +5,14 @@
             {
                 "svc": "NAS (Public)",
                 "items": ["NAS applicative volume"]
+            },
+            {
+                "svc": "MyVM (Public)",
+                "items": []
+            },
+            {
+                "svc": "Kubernetes (Public)",
+                "items": []
             }
         ]
     }
