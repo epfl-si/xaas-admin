@@ -207,6 +207,10 @@ class NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : initialise les détails nécessaires pour utiliser les fonctions ci-dessous.
                 On devra ensuite passer par la fonction 'getDetails' pour récupérer une des valeurs.
+                Les informations passées ici ne sont QUE celles qui sont utilisées pour la génération 
+                des noms. Pour les autres fonctions comme la génération de descriptions textuelles, 
+                là, on admettra que des informations complémentaires peuvent être passées directement
+                à la fonction qui génère la description.
 
         IN  : $details          -> Dictionnaire avec les détails nécessaire. Le contenu varie en fonction du tenant 
                                     passé lors de l'instanciation de l'objet.
