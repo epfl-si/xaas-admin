@@ -60,8 +60,8 @@ enum TableauRoles
 
 # Types de sources pour les Business Group
 enum ADGroupCreateSourceType {
-	Manual
-	Normal
+	Admin
+	User
 }
 
 <#
@@ -473,14 +473,14 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [string]$name, [str
 									de pouvoir faire de la facturation
 	IN  : $billToMailList		-> Tableau avec les informations sur les directives
 									de facturation définies dans un fichier JSON.
-	IN  : $sourceType			-> Type de source pour les unités (LDAP ou manuelle)	
+	IN  : $sourceType			-> Type de source pour les unités (User ou admin)
 
 	RET : Le centre financier à utiliser pour l'unité
 #>
 function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Array]$billToMailList, [ADGroupCreateSourceType]$sourceType)
 {
-	# Si on est dans la source d'unités "normale" (LDAP)
-	if($sourceType -eq [ADGroupCreateSourceType]::Manual)
+	# Si on est dans la source d'unités "admin" 
+	if($sourceType -eq [ADGroupCreateSourceType]::Admin)
 	{
 		# On retourne l'adresse mail entrée pour la facturation
 		return $unit.billingMail
@@ -706,6 +706,9 @@ try
 	$notifications.level3GEUnitNotFound = @()
 	$notifications.missingADGroups = @()
 
+	# Chargement des informations sur les unités qu'il faut ajouter manuellement à une faculté donnée
+	$adminBGFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "admin-bg.json"))
+	$adminBGList = loadFromCommentedJSON -jsonFile $adminBGFile
 
 	switch($targetTenant)
 	{
@@ -749,10 +752,6 @@ try
 			# Chargement des informations sur les unités qui ont potentiellement des services vRA "non autorisés"
 			$deniedVRASvcListFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "epfl-deny-vra-services.json"))
 			$deniedVRASvcList = loadFromCommentedJSON -jsonFile $deniedVRASvcListFile
-			
-			# Chargement des informations sur les unités qu'il faut ajouter manuellement à une faculté donnée
-			$manualUnitsFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "epfl-manual-units.json"))
-			$manualUnitsList = loadFromCommentedJSON -jsonFile $manualUnitsFile
 			
 
 			# Parcours des facultés trouvées
@@ -859,36 +858,36 @@ try
 				# ----------------------------------------------------------------------------------
 				# Recherche des unités pour la facultés
 				$unitList = @{}
-				$unitList.add([ADGroupCreateSourceType]::Normal, $ldap.getFacultyUnitList($faculty.name, $EPFL_FAC_UNIT_NB_LEVEL)) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et adapter pour limiter à une unité donnée
+				$unitList.add([ADGroupCreateSourceType]::User, $ldap.getFacultyUnitList($faculty.name, $EPFL_FAC_UNIT_NB_LEVEL)) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et adapter pour limiter à une unité donnée
 					
-				# On regarde si on a des unités à ajouter "manuellement" à la faculté courante. Cela permet par exemple d'ajouter une unité "admin" à une faculté.
-				# Dans ce cas-là, il faudra aussi ajouter une information dans le fichier 'data/billing/bill-to-mail.json' pour faire en sorte que l'unité en question
-				# ait une adresse de facturation.
-				$manualUnitsFacInfos = $manualUnitsList.$targetTenant | Where-Object { $_.faculty -eq $faculty.name }
+				# On regarde si on a des unités à ajouter en tant que BG "admin" à la faculté courante. 
+				$manualUnitsFacInfos = $adminBGList.$targetTenant | Where-Object { $_.faculty -eq $faculty.name }
 				if(($null -ne $manualUnitsFacInfos) -and ($manualUnitsFacInfos.manualUnits.count -gt 0))
 				{
-					$logHistory.addLineAndDisplay(("Adding {0} 'manual units' to faculty {1} unit list" -f $manualUnitsFacInfos.manualUnits.count, $faculty.name))
-					$unitList.add([ADGroupCreateSourceType]::Manual, @($manualUnitsFacInfos.manualUnits))
+					$logHistory.addLineAndDisplay(("Adding {0} 'admin units' to faculty {1} unit list" -f $manualUnitsFacInfos.manualUnits.count, $faculty.name))
+					$unitList.add([ADGroupCreateSourceType]::Admin, @($manualUnitsFacInfos.manualUnits))
 				}
 
-				$unitNo = 1
+				
 
-				# Parcours des types d'unité
+				# Parcours des types de sources
 				Foreach($sourceType in $unitList.keys)
 				{
 					$logHistory.addLineAndDisplay(("Processing '{0}' units ({1} units found)..." -f $sourceType.toString(), $unitList.$sourceType.count))
 				
+					$unitNo = 1
+
 					# Parcours des unités de la faculté
 					ForEach($unit in $unitList.$sourceType)
 					{
-						$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty.name, $unit.name))
+						$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.$sourceType.Count, $faculty.name, $unit.name))
 
 						# Recherche du centre financier à utiliser
 						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList -billToMailList $billToMailList -sourceType $sourceType
 
 						$vRAServicesToDeny = @()
-						# On ne gère les "deny" de service/items de catalogue uniquement si on est dans une source "normale"
-						if($sourceType -eq [ADGroupCreateSourceType]::Normal)
+						# On ne gère les "deny" de service/items de catalogue uniquement si on est dans une source pour les utilisateurs
+						if($sourceType -eq [ADGroupCreateSourceType]::User)
 						{
 							# Parcours des OU pour lequelles on veut empêcher l'accès à certains services vRA
 							ForEach($denyInfos in $deniedVRASvcList)
@@ -1007,7 +1006,7 @@ try
 						}
 
 						# Mise à jour des compteurs
-						if($sourceType -eq [ADGroupCreateSourceType]::Normal)
+						if($sourceType -eq [ADGroupCreateSourceType]::User)
 						{
 							$counters.inc('epfl.LDAPUnitsProcessed')
 						}
@@ -1090,147 +1089,175 @@ try
 
 			$notifications.missingITSADGroups = @()
 			
-			# On prend la liste correspondant à l'environnement sur lequel on se trouve
-			$servicesList = $itServices.getServiceList($targetEnv) 
-	
-			$serviceNo = 1 
-			# Parcours des services renvoyés par Django
-			ForEach($service in $servicesList)
-			{
-	
-				$logHistory.addLineAndDisplay(("-> [{0}/{1}] Service {2}..." -f $serviceNo, $servicesList.Count, $service.shortName))
-	
-				$counters.inc('its.serviceProcessed')
-	
-				# Initialisation des détails pour le générateur de noms
-				$nameGenerator.initDetails(@{serviceShortName = $service.shortName
-											serviceName = $service.longName
-											snowServiceId = $service.snowId
-											deniedVRASvc = $service.deniedVRAServiceList})
-	
-				$serviceNo += 1
+			$servicesList = @{}
 
-				if($service.serviceManagerSciper -ne "")
+			# On prend la liste correspondant à l'environnement sur lequel on se trouve
+			$servicesList.add([ADGroupCreateSourceType]::User, $itServices.getServiceList($targetEnv))
+			
+			# Ajout des services à ajouter en tant que "Admin"
+			$logHistory.addLineAndDisplay(("Adding {0} 'admin services'" -f $adminBGList.$targetTenant.count))
+			$servicesList.add([ADGroupCreateSourceType]::Admin, @($adminBGList.$targetTenant))
+			
+
+			# Parcours des types de sources
+			Foreach($sourceType in $servicesList.keys)
+			{
+
+				$logHistory.addLineAndDisplay(("Processing '{0}' services ({1} found)..." -f $sourceType.toString(), $servicesList.$sourceType.count))
+				$serviceNo = 1 
+				# Parcours des services 
+				ForEach($service in $servicesList.$sourceType)
 				{
-					$groupsContentAndAdmin = @($service.serviceManagerSciper)
-				}
-				else
-				{
+		
+					$logHistory.addLineAndDisplay(("-> [{0}/{1}] Service {2}..." -f $serviceNo, $servicesList.$sourceType.Count, $service.shortName))
+		
+					$counters.inc('its.serviceProcessed')
+		
 					$groupsContentAndAdmin = @()
-				}
-	
-				# --------------------------------- APPROVE
-				$allGroupsOK = $true
-				# Génération des noms des X groupes dont on va avoir besoin pour approuver les NOUVELLES demandes pour le service. 
-				$level = 0
-				while($true)
-				{
-					$level += 1
-					# Recherche des informations pour le level courant.
-					$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
-	
-					# Si vide, c'est qu'on a atteint le niveau max pour les level
-					if($null -eq $approveGroupInfos)
+
+					if($service.serviceManagerSciper -ne "")
 					{
-						break
+						$groupsContentAndAdmin = @($service.serviceManagerSciper)
 					}
-	
-					$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
-					$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
+					else
+					{
+						# On est obligé d'avoir un service manager
+						Throw ("Service manager sciper for Service '{0}' cannot be empty" -f $service.longName)
+					}
+
+					# Service de type "User"
+					if($sourceType -eq [ADGroupCreateSourceType]::User)
+					{
+						$deniedVRAServiceList = $service.deniedVRAServiceList
+					}
+					else # Service de type "Admin"
+					{
+						# Aucun service restreint
+						$deniedVRAServiceList = @()
+					}
+
+					# Initialisation des détails pour le générateur de noms
+					$nameGenerator.initDetails(@{serviceShortName = $service.shortName
+												serviceName = $service.longName
+												snowServiceId = $service.snowId
+												deniedVRASvc = $deniedVRAServiceList})
+		
+					$serviceNo += 1
+
+					# --------------------------------- APPROVE
+					$allGroupsOK = $true
+					# Génération des noms des X groupes dont on va avoir besoin pour approuver les NOUVELLES demandes pour le service. 
+					$level = 0
+					while($true)
+					{
+						$level += 1
+						# Recherche des informations pour le level courant.
+						$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
+		
+						# Si vide, c'est qu'on a atteint le niveau max pour les level
+						if($null -eq $approveGroupInfos)
+						{
+							break
+						}
+		
+						$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
+						$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
+
+						# Création des groupes + gestion des groupes prérequis 
+						if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+							-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+						{
+							# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
+							if($notifications.missingITSADGroups -notcontains $approveGroupNameGroups)
+							{
+								$notifications.missingITSADGroups += $approveGroupNameGroups
+							}
+								
+							$allGroupsOK = $false
+						}
+		
+					} # FIN BOUCLE de création des groupes pour les différents level d'approbation 
+					
+					# Si on n'a pas pu créer tous les groupes, on passe au service suivant 
+					if($allGroupsOK -eq $false)
+					{
+						$counters.inc('its.serviceSkipped')
+						continue
+					}
+		
+					# --------------------------------- ROLES
+		
+					# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
+					# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
+					# sera le même
+					$admSupGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
+					$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
+					$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
+		
+					# Création des groupes + gestion des groupes prérequis 
+					if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
+						-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
+					{
+						# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
+						$notifications.missingITSADGroups += $admSupGroupNameGroups
+						continue
+					}
+					# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+					$doneADGroupList += $admSupGroupNameAD
+		
+		
+		
+					# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
+					# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
+					# sera le même
+					$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+					$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
+					$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
+		
+					# Récupération des infos du groupe dans Groups
+					$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
+					$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
+					
+
+					# Création du groupe dans Groups s'il n'existe pas
+					$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
+																		-memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin
 
 					# Création des groupes + gestion des groupes prérequis 
-					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+					if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
+						-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
-						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
-						if($notifications.missingITSADGroups -notcontains $approveGroupNameGroups)
+						# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
+						if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
 						{
-							$notifications.missingITSADGroups += $approveGroupNameGroups
+							$notifications.missingADGroups += $userSharedGroupNameGroupsAD
 						}
-							
-						$allGroupsOK = $false
 					}
-	
-				} # FIN BOUCLE de création des groupes pour les différents level d'approbation 
-				
-				# Si on n'a pas pu créer tous les groupes, on passe au service suivant 
-				if($allGroupsOK -eq $false)
-				{
-					$counters.inc('its.serviceSkipped')
-					continue
-				}
-	
-				# --------------------------------- ROLES
-	
-				# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
-				# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
-				# sera le même
-				$admSupGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
-				$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
-				$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
-	
-				# Création des groupes + gestion des groupes prérequis 
-				if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
-				{
-					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					$notifications.missingITSADGroups += $admSupGroupNameGroups
-					continue
-				}
-				# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-				$doneADGroupList += $admSupGroupNameAD
-	
-	
-	
-				# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
-				# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
-				# sera le même
-				$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
-				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
-				$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
-	
-				# Récupération des infos du groupe dans Groups
-				$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
-				$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
-				
-
-				# Création du groupe dans Groups s'il n'existe pas
-				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
-																	 -memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin
-
-				# Création des groupes + gestion des groupes prérequis 
-				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
-				{
-					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
+					else
 					{
-						$notifications.missingADGroups += $userSharedGroupNameGroupsAD
+						# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+						$doneADGroupList += $userSharedGroupNameAD
 					}
-				}
-				else
-				{
-					# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-					$doneADGroupList += $userSharedGroupNameAD
-				}
 
-				# ###### Roles pour Tableau --> Utilisateurs dans les Business Groups
-				# if(($groupsUsernameList = Get-ADGroupMember $userSharedGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
-				# {
-				# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $groupsUsernameList.Count, [TableauRoles]::User.ToString() ))
-				# 	updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
-				# }
-				
-				# # ###### Roles pour Tableau --> Admin du service
-				# # Recherche de la liste des membres
-				# if(($adminMembers = Get-ADGroupMember $admSupGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).Count -gt 0)
-				# {
-				# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
-				# 	updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
-				# }
-				
-	
-			}# FIN BOUCLE de parcours des services renvoyés
+					# ###### Roles pour Tableau --> Utilisateurs dans les Business Groups
+					# if(($groupsUsernameList = Get-ADGroupMember $userSharedGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
+					# {
+					# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $groupsUsernameList.Count, [TableauRoles]::User.ToString() ))
+					# 	updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+					# }
+					
+					# # ###### Roles pour Tableau --> Admin du service
+					# # Recherche de la liste des membres
+					# if(($adminMembers = Get-ADGroupMember $admSupGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).Count -gt 0)
+					# {
+					# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
+					# 	updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
+					# }
+					
+		
+				}# FIN BOUCLE de parcours des services renvoyés
+
+			}# FIN BOUCLE de parcours des types d sources pour la création des services
 	
 		}# FIN SI Tenant ITServices
 
