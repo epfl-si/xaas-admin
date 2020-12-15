@@ -1453,9 +1453,7 @@ try
 			$nameGenerator.initDetails(@{facultyName = $faculty
 										 facultyID = $facultyID
 										 unitName = $unit
-										 unitID = $unitID
-										 financeCenter = $financeCenter
-										 deniedVRASvc = $deniedVRASvc})
+										 unitID = $unitID})
 
 			# Création du nom/description du business group
 			$bgDesc = $nameGenerator.getBGDescription()
@@ -1483,8 +1481,7 @@ try
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
 										serviceName = $serviceLongName
-										snowServiceId = $snowServiceId
-										deniedVRASvc = $deniedVRASvc})
+										snowServiceId = $snowServiceId})
 
 			# Création du nom/description du business group
 			$bgDesc = $serviceLongName
@@ -1508,7 +1505,6 @@ try
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{
 				projectId = $projectId
-				financeCenter = $financeCenter
 				projectAcronym = $projectAcronym})
 
 			# Création du nom/description du business group

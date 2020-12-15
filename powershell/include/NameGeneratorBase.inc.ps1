@@ -165,7 +165,6 @@ class NameGeneratorBase
                 
                 # le nom du BG est au format <tenantShort>_<faculty>_<unit>
                 $withDetails = @{
-                    financeCenter = ''
                     facultyName = $bgDetails.faculty
                     facultyID = ''
                     unitName = $bgDetails.unit
@@ -190,7 +189,6 @@ class NameGeneratorBase
                 # le nom du BG est au format <tenantShort>_<projectId>
                 $withDetails = @{
                     projectId = $bgDetails.projectId
-                    financeCenter = ''
                     projectAcronym = ''
                 }
             }
@@ -214,22 +212,18 @@ class NameGeneratorBase
                                     passé lors de l'instanciation de l'objet.
 
                                     EPFL:
-                                        financeCenter    -> no du centre financier de l'unité
                                         facultyName      -> Le nom de la faculté du Business Group
                                         facultyID        -> ID de la faculté du Business Group
                                         unitName         -> Nom de l'unité
                                         unitID           -> ID de l'unité du Business Group
-                                        deniedVRASvc     -> Liste des services vRA non autorisé pour le BG
                                     
                                     ITServices:
                                         serviceShortName    -> Nom court du service
                                         serviceName         -> Nom long du service
                                         snowServiceId       -> ID du service dans ServiceNow
-                                        deniedVRASvc        -> Liste des services vRA non autorisés pour le BG
                                     
                                     Research:
                                         projectId       -> Id du projet
-                                        financeCenter   -> No du centre financier du projet
                                         projectAcronym  -> Acronyme du projet
     #>
     [void] initDetails([System.Collections.IDictionary]$details)
@@ -239,17 +233,17 @@ class NameGeneratorBase
         {
             $global:VRA_TENANT__EPFL 
             {
-                $keysToCheck = @('financeCenter', 'facultyName', 'facultyID', 'unitName', 'unitID', 'deniedVRASvc')
+                $keysToCheck = @('facultyName', 'facultyID', 'unitName', 'unitID')
             }
 
             $global:VRA_TENANT__ITSERVICES
             {
-                $keysToCheck = @('serviceShortName', 'serviceName', 'snowServiceId', 'deniedVRASvc')
+                $keysToCheck = @('serviceShortName', 'serviceName', 'snowServiceId')
             } 
 
             $global:VRA_TENANT__RESEARCH
             {
-                $keysToCheck = @('projectId', 'financeCenter', 'projectAcronym')
+                $keysToCheck = @('projectId', 'projectAcronym')
             }
 
             # Tenant pas géré

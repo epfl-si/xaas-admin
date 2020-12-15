@@ -205,23 +205,25 @@ class NameGenerator: NameGeneratorBase
         REMARQUE : ATTENTION A BIEN PASSER DES [int] POUR CERTAINS PARAMETRES !! SI CE N'EST PAS FAIT, C'EST LE 
                    MAUVAIS PROTOTYPE DE FONCTION QUI RISQUE D'ETRE PRIS EN COMPTE.
 
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
-        IN  : $type             -> Type du nom du groupe:
-                                    $this.GROUP_TYPE_AD
-                                    $this.GROUP_TYPE_GROUPS
-        IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
-                                    $true|$false  
+        IN  : $role                 -> Nom du rôle pour lequel on veut le groupe. 
+                                        "CSP_SUBTENANT_MANAGER"
+                                        "CSP_SUPPORT"
+                                        "CSP_CONSUMER_WITH_SHARED_ACCESS"
+                                        "CSP_CONSUMER"
+        IN  : $type                 -> Type du nom du groupe:
+                                        $this.GROUP_TYPE_AD
+                                        $this.GROUP_TYPE_GROUPS
+        IN  : $fqdn                 -> Pour dire si on veut le nom avec le nom de domaine après.
+                                        $true|$false  
+        IN  : $additionalDetails    -> (optionel) tableau associatif avec les détails additionnels
+                                        à ajouter au format JSON à la description du groupe    
         
                 
         RET : Liste avec :
             - Nom du groupe à utiliser pour le rôle.
             - Description du groupe (si $type == 'ad', sinon, "")
     #>
-    hidden [System.Collections.ArrayList] getRoleGroupNameAndDesc([string]$role, [string]$type, [bool]$fqdn)
+    hidden [System.Collections.ArrayList] getRoleGroupNameAndDesc([string]$role, [string]$type, [bool]$fqdn, [Hashtable]$additionalDetails)
     {
         # On initialise à vide car la description n'est pas toujours générée. 
         $groupDesc = ""
@@ -270,10 +272,9 @@ class NameGenerator: NameGeneratorBase
                         $descStruct = @{
                             faculty = $this.getDetail('facultyName').toUpper()
                             unit = $this.getDetail('unitName').toUpper()
-                            financeCenter = $this.getDetail('financeCenter')
-                            deniedVRASvc = $this.getDetail('deniedVRASvc')
                         }
-                        $groupDesc = $descStruct | ConvertTo-Json -Compress -Depth 20
+                        # Ajout des détails additionnels potentiels et encodage en JSON
+                        $groupDesc =  ($descStruct + $additionalDetails) | ConvertTo-Json -Compress -Depth 20
                     }
                     # Groupe "groups"
                     else
@@ -316,9 +317,9 @@ class NameGenerator: NameGeneratorBase
                         $descStruct = @{
                             svcId = $this.getDetail('snowServiceId').ToUpper()
                             svcName = $this.getDetail('serviceName')
-                            deniedVRASvc = $this.getDetail('deniedVRASvc')
                         }
-                        $groupDesc = $descStruct | ConvertTo-Json -Compress -Depth 20
+                        # Ajout des détails additionnels potentiels et encodage en JSON
+                        $groupDesc =  ($descStruct + $additionalDetails) | ConvertTo-Json -Compress -Depth 20
                     }
                     # Groupe "groups"
                     else
@@ -361,9 +362,9 @@ class NameGenerator: NameGeneratorBase
                         # réutilisé pour d'autres choses dans la création des éléments dans vRA
                         $descStruct = @{
                             projectAcronym = $this.getDetail('projectAcronym')
-                            financeCenter = $this.getDetail('financeCenter')
                         }
-                        $groupDesc = $descStruct | ConvertTo-Json -Compress -Depth 20
+                        # Ajout des détails additionnels potentiels et encodage en JSON
+                        $groupDesc =  ($descStruct + $additionalDetails) | ConvertTo-Json -Compress -Depth 20
                     }
                     # Groupe "groups"
                     else
@@ -411,7 +412,7 @@ class NameGenerator: NameGeneratorBase
     #>
     [string] getRoleADGroupName([string]$role, [bool]$fqdn)
     {   
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn)
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn, @{})
         return $groupName
     }
 
@@ -420,15 +421,21 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie la description du groupe AD pour les paramètres passés 
 
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
+        IN  : $role                 -> Nom du rôle pour lequel on veut le groupe. 
+                                        "CSP_SUBTENANT_MANAGER"
+                                        "CSP_SUPPORT"
+                                        "CSP_CONSUMER_WITH_SHARED_ACCESS"
+                                        "CSP_CONSUMER"
+        IN  : $additionalDetails    -> (optionel) tableau associatif avec les détails additionnels
+                                        à ajouter au format JSON à la description du groupe
     #>
     [string] getRoleADGroupDesc([string]$role)
     {
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $false)
+        return $this.getRoleADGroupDesc($role, @{})
+    }
+    [string] getRoleADGroupDesc([string]$role, [Hashtable]$additionalDetails)
+    {
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $false, $additionalDetails)
         return $groupDesc
     }
 
@@ -445,7 +452,7 @@ class NameGenerator: NameGeneratorBase
     #>
     [string] getRoleGroupsGroupName([string]$role)
     {
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false)
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false, @{})
         return $groupName
     }
 
@@ -462,7 +469,7 @@ class NameGenerator: NameGeneratorBase
     #>
     [string] getRoleGroupsGroupDesc([string]$role)
     {
-        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false)
+        $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false, @{})
         return $groupDesc
     }
 
@@ -1528,13 +1535,11 @@ class NameGenerator: NameGeneratorBase
                 EPFL:
                     .faculty
                     .unit
-                    .financeCenter
                 ITServices
                     .svcId
                     .svcName
                 Research
                     .projectAcronym
-                    .financeCenter
     #>
     [PSCustomObject] extractInfosFromADGroupDesc([string]$ADGroupDesc)
     {

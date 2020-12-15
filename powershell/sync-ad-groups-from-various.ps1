@@ -772,8 +772,7 @@ try
 											facultyID = $faculty['uniqueidentifier']
 											unitName = ''
 											unitID = ''
-											financeCenter = ''
-											deniedVRASvc = @()})
+											financeCenter = ''})
 				
 				# --------------------------------- APPROVE
 
@@ -921,13 +920,15 @@ try
 						$nameGenerator.initDetails(@{facultyName = $faculty.name
 												facultyID = $faculty.uniqueidentifier
 												unitName = $unit.name
-												unitID = $unit.uniqueidentifier
-												financeCenter = $financeCenter
-												deniedVRASvc = $vRAServicesToDeny})
+												unitID = $unit.uniqueidentifier})
 
 						# Création du nom du groupe AD et de la description
 						$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
-						$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
+						$additionalDetails = @{
+							deniedVRASvc = $vRAServicesToDeny
+							financeCenter = $financeCenter
+						}
+						$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
 
 						try
 						{
@@ -1139,8 +1140,7 @@ try
 					# Initialisation des détails pour le générateur de noms
 					$nameGenerator.initDetails(@{serviceShortName = $service.shortName
 												serviceName = $service.longName
-												snowServiceId = $service.snowId
-												deniedVRASvc = $deniedVRAServiceList})
+												snowServiceId = $service.snowId})
 		
 					$serviceNo += 1
 
@@ -1205,13 +1205,14 @@ try
 					# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
 					$doneADGroupList += $admSupGroupNameAD
 		
-		
-		
 					# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
 					# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
 					# sera le même
 					$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
-					$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
+					$additionalDetails = @{
+						deniedVRASvc = $deniedVRAServiceList
+					}
+					$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
 					$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
 		
 					# Récupération des infos du groupe dans Groups
@@ -1300,7 +1301,6 @@ try
 	
 				# Initialisation des détails pour le générateur de noms
 				$nameGenerator.initDetails(@{projectId = $project.id
-											financeCenter = $project.labo_no
 											projectAcronym = $project.acronym})
 	
 				$projectNo += 1
@@ -1397,7 +1397,10 @@ try
 				# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
 				# sera le même
 				$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
-				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
+				$additionalDetails = @{
+					financeCenter = $project.labo_no
+				}
+				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
 				$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
 	
 				# Récupération des infos du groupe dans Groups
@@ -1499,8 +1502,7 @@ try
 											facultyID = ''
 											unitName = $descInfos.unit
 											unitID = ''
-											financeCenter = ''
-											deniedVRASvc = @()})
+											financeCenter = ''})
 
 				# Suppression des accès pour le business group correspondant au groupe AD courant.
 				updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
