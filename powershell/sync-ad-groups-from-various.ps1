@@ -749,7 +749,7 @@ try
 
 			# Chargement des informations sur le mapping des facultés
 			# FIXME: Voir si c'est toujours pertinent après avoir mergé la PR https://github.com/epfl-si/xaas-admin/pull/109
-			$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "ge-unit-mapping.json"))
+			$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "billing", "ge-unit-mapping.json"))
 			$geUnitMappingList = loadFromCommentedJSON -jsonFile $geUnitMappingFile
 
 			# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
