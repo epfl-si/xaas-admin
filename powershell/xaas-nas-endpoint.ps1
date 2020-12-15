@@ -565,7 +565,7 @@ try
 
                     # Chargement des informations sur le mapping des facultés
                     $appSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "applicative-svm.json"))
-                    $appSVMList = (Get-Content -Path $appSVMFile -raw) | ConvertFrom-Json
+                    $appSVMList = loadFromCommentedJSON -jsonFile $appSVMFile
 
                     # Choix de la SVM
                     $logHistory.addLine("Choosing SVM for volume...")
@@ -876,11 +876,11 @@ try
 
             # Chargement des informations sur le mapping des facultés
             $facultyMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-mapping.json"))
-            $facultyMappingList = (Get-Content -Path $facultyMappingFile -raw) | ConvertFrom-Json
+            $facultyMappingList = loadFromCommentedJSON -jsonFile $facultyMappingFile
 
             # Chargement des informations 
             $facultyToSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-to-svm.json"))
-            $facultyToSVM = (Get-Content -Path $facultyToSVMFile -raw) | ConvertFrom-Json
+            $facultyToSVM = loadFromCommentedJSON -jsonFile $facultyToSVMFile
 
             # On commence par regarder s'il y a un mapping pour la faculté donnée
             $targetFaculty = $faculty
@@ -1110,7 +1110,7 @@ try
             }
 
             # Chargement des informations (On spécifie UTF8 sinon les caractères spéciaux ne sont pas bien interprétés)
-            $serviceBillingInfos = Get-Content -Path $serviceBillingInfosFile -Encoding:UTF8 | ConvertFrom-Json
+            $serviceBillingInfos = loadFromCommentedJSON -jsonFile $serviceBillingInfosFile
 
             # On recherche l'entité de facturation en fonction du tenant
             $entityType = getBillingEntityTypeFromTenant -tenant $targetTenant

@@ -1,6 +1,8 @@
 [
     {
-        "fromFac": "SI",
-        "toFac": "VPSI"
+        // Nom de la faculté telle qu'existant maintenant dans LDAP
+        "fromFac": "SI", 
+        // Nom de la faculté utilisé (par le passé) pour créer le(s) SVM de faculté
+        "toFac": "VPSI" 
     }
 ]
