@@ -1,0 +1,25 @@
+{
+    "epfl":
+    [
+        {
+            "faculty": "SI",
+            "manualUnits": [
+                {
+                    "name": "XAASADM",
+                    "uniqueidentifier": "00000",
+                    "billingMail": "vsissp-test-notification@groupes.epfl.ch", 
+                    "contentGroup": "vra_t_adm_epfl"
+                }
+            ]
+        }
+    ],
+    "itservices":
+    [
+        {
+            "longName":  "XaaS Admins",
+            "shortName":  "xaasadm",
+            "snowId":  "SVC0000",
+            "serviceManagerSciper": "287589"
+        }
+    ]
+}

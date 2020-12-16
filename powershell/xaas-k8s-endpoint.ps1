@@ -177,7 +177,7 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     $cluster = $pks.getCluster($clusterName)
     if($null -ne $cluster)
     {
-        $logHistory.addLine(("Deleting cluster '{0}'. This also can take a while... so... another coffee ?..." -f $clusterName))
+        $logHistory.addLine(("Deleting cluster '{0}' ({1}). This also can take a while... so... another coffee ?..." -f $clusterName, $cluster.uuid))
         # On attend que le cluster ait été effacé avant de rendre la main et passer à la suite du job
         $pks.deleteCluster($clusterName)
         $logHistory.addLine("Cluster deleted")

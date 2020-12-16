@@ -1,0 +1,10 @@
+{
+    "approvalPolicyId": "{{approvalPolicyId}}",
+    "hidden": false,
+    "active": true,
+    "catalogItemRef": {
+        "id": "{{id}}",
+        "label": "{{label}}"
+    },
+    "catalogItemRequestable": true
+}

@@ -174,7 +174,7 @@ class APIUtils
 		}
 
 		# Chargement du code JSON
-		$json = (Get-Content -Path $filepath) -join "`n"
+		$json = ((Get-Content -Path $filepath -raw) -replace '(?m)\s*//.*?$' -replace '(?ms)/\*.*?\*/')
 
 		# S'il y a des valeurs à remplacer
 		if($null -ne $valToReplace)

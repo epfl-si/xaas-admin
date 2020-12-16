@@ -304,7 +304,7 @@ try
     }
 
     # Chargement des informations (On spécifie UTF8 sinon les caractères spéciaux ne sont pas bien interprétés)
-    $serviceBillingInfos = Get-Content -Path $serviceBillingInfosFile -Encoding:UTF8 | ConvertFrom-Json
+    $serviceBillingInfos = loadFromCommentedJSON -jsonFile $serviceBillingInfosFile
 
 
     # Création de l'objet pour faire les opérations pour le service donné. On le créée d'une manière dynamique en utilisant la bonne classe
