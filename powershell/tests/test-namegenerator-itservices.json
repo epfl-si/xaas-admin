@@ -7,7 +7,13 @@
                     {
                         "serviceShortName": "vs",
                         "serviceName": "Virtualization Service",
-                        "snowServiceId": "SVC0007"
+                        "snowServiceId": "SVC0007",
+                        "deniedVRASvc": [
+                            {
+                                "svc": "MyVM (Public)",
+                                "items": []
+                            }
+                        ]
                     }
                 ],
                 "expected": null
@@ -83,7 +89,7 @@
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "SVC0007;Virtualization Service"
+                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"svcName\":\"Virtualization Service\",\"svcId\":\"SVC0007\"}"
             },
             {
                 "params": ["CSP_SUBTENANT_MANAGER"],
@@ -91,7 +97,7 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "SVC0007;Virtualization Service"
+                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"svcName\":\"Virtualization Service\",\"svcId\":\"SVC0007\"}"
             }
         ]
     },
@@ -412,8 +418,11 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["SVC0007;Virtualization Service"],
-                "expected": ["SVC0007", "Virtualization Service"]
+                "params": ["{\"svcId\":\"SVC0007\",\"svcName\":\"Virtualization Service\"}"],
+                "expected": {
+                    "svcId":  "SVC0007",
+                    "svcName":  "Virtualization Service"
+                }
             }
         ]
     },

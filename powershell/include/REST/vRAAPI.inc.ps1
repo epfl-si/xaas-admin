@@ -839,18 +839,28 @@ class vRAAPI: RESTAPICurl
 				appeler la méthode updateEnt() en passant l'objet en paramètre.
 
 		IN  : $ent				-> Objet de l'entitlement auquel ajouter le service
-		IN  : $serviceID		-> ID du service à ajouter
-		IN  : $serviceName		-> Nom du service à ajouter
-		IN  : $approvalPolicy	-> Objet de l'approval policy.
+		IN  : $service			-> Objet représentant le service à ajouter
+		IN  : $approvalPolicy	-> Objet de l'approval policy
+									$null si pas besoin d'approval policy
 
 		RET : Objet contenant Entitlement avec le nouveau service
 	#>
-	[PSCustomObject] prepareAddEntService([PSCustomObject] $ent, [string]$serviceID, [string]$serviceName, [PSCustomObject]$approvalPolicy)
+	[PSCustomObject] prepareAddEntService([PSCustomObject] $ent, [PSCustomObject]$service, [PSCustomObject]$approvalPolicy)
 	{
+		# Définition de l'ID d'approval policy en fonction de ce qui est passé
+		if($null -eq $approvalPolicy)
+		{
+			$approvalPolicyId = ""
+		}
+		else
+		{
+			$approvalPolicyId = $approvalPolicy.id
+		}
+		
 		# Valeur à mettre pour la configuration du Service
-		$replace = @{id = $serviceID
-					label = $serviceName
-					approvalPolicyId = $approvalPolicy.id}
+		$replace = @{id = $service.id
+					label = $service.name
+					approvalPolicyId = $approvalPolicyId}
 
 		# Création du nécessaire pour le service à ajouter
 		$service = $this.createObjectFromJSON("vra-entitlement-service.json", $replace)
@@ -862,6 +872,81 @@ class vRAAPI: RESTAPICurl
 		return $ent
 	}
 
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Préparer un objet contenant un Entitlement en lui enlevant le service dont le
+				nom est passé en paramètre.
+
+		IN  : $ent				-> Objet de l'entitlement auquel enlever le service
+		IN  : $service			-> Objet représentant le service à enlever		
+
+		RET : Objet contenant Entitlement avec le service retiré
+	#>
+	[PSCustomObject] prepareRemoveEntService([PSCustomObject]$ent, [PSCustomObject]$service)
+	{
+		# On supprime le service par son nom
+		$ent.entitledServices = @($ent.entitledServices | Where-Object { $_.serviceRef.label -ne $service.name})
+		return $ent
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Préparer un objet contenant un Entitlement en lui ajoutant l'élément de catalogue passé
+				en paramètre.
+				Afin de réellement ajouter les éléments de catalogue pour l'Entitlement dans vRA, il faudra
+				appeler la méthode updateEnt() en passant l'objet en paramètre.
+
+		IN  : $ent				-> Objet de l'entitlement auquel ajouter le service
+		IN  : $catalogItem		-> Objet représentant l'élément de catalogue à ajouter
+		IN  : $approvalPolicy	-> Objet de l'approval policy.
+
+		RET : Objet contenant Entitlement avec le nouvel élément de catalogue
+	#>
+	[PSCustomObject] prepareAddEntCatalogItem([PSCustomObject] $ent, [PSCustomObject]$catalogItem, [PSCustomObject]$approvalPolicy)
+	{
+		# Définition de l'ID d'approval policy en fonction de ce qui est passé
+		if($null -eq $approvalPolicy)
+		{
+			$approvalPolicyId = ""
+		}
+		else
+		{
+			$approvalPolicyId = $approvalPolicy.id
+		}
+
+		# Valeur à mettre pour la configuration du Service
+		$replace = @{id = $catalogItem.catalogItem.id
+					label = $catalogItem.catalogItem.name
+					approvalPolicyId = $approvalPolicyId}
+
+		# Création du nécessaire pour le service à ajouter
+		$catalogItem = $this.createObjectFromJSON("vra-entitlement-catalog-item.json", $replace)
+
+		# Ajout du service à l'objet
+		$ent.entitledCatalogItems += $catalogItem
+
+		# Retour de l'entitlement avec le nouveau Service.
+		return $ent
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Préparer un objet contenant un Entitlement en lui enlevant tous les éléments
+				de catalogue
+
+		IN  : $ent		-> Objet de l'entitlement auquel enlever l'élément de catalogue
+
+		RET : Objet contenant Entitlement avec tous les éléments de catalogue
+	#>
+	[PSCustomObject] prepareRemoveAllCatalogItems([PSCustomObject]$ent)
+	{
+		# On supprime tous les éléments 
+		$ent.entitledCatalogItems = @()
+		return $ent
+	}
 
 
 	<#
@@ -1295,9 +1380,6 @@ class vRAAPI: RESTAPICurl
 		# Récupération du résultat pour l'ajouter dans le cache
 		$result = ($this.callAPI($uri, "Get", $null))
 
-		# Ajout dans le cache
-		$this.addInCache($result, $uri)
-
 		return $result.content
 
 	}
@@ -1367,6 +1449,55 @@ class vRAAPI: RESTAPICurl
 		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/guid'{1}'" -f $this.server, $machinePrefix.id
 
 		$this.callAPI($uri, "DELETE", $null) | Out-Null
+	}
+
+<#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+											CATALOG ITEMS
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	#>
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Items du catalogue selon les paramètres passés dans $queryParams
+
+
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+
+		RET : Tableau contenant les items
+	#>
+	hidden [Array] getCatalogItemListQuery([string] $queryParams)
+	{
+		$uri = "https://{0}/catalog-service/api/consumer/entitledCatalogItems/?page=1&limit=5000" -f $this.server
+
+		# Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+
+		# Retour de la liste mais on ne prend que les éléments qui existent encore.
+		$result = ($this.callAPI($uri, "Get", $null)).content 	
+
+		return $result
+	}
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Items qui sont au catalogue pour un service.
+			  
+		IN  : $service			-> Objet représentant le service pour lequel on veut la liste 
+									des Items du catalogue
+
+		RET : Tableau contenant les items du catalogue
+	#>
+	[Array] getServiceCatalogItemList([PSObject] $service)
+	{
+		return $this.getCatalogItemListQuery(("`$filter=service/id eq '{0}' and status eq 'PUBLISHED'" -f $service.id))
 	}
 
 

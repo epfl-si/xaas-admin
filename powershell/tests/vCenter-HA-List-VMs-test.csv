@@ -1,0 +1,6 @@
+"ObjectName";"FullFormattedMessage";"CreatedTime"
+"itstxaas1122";"vSphere HA restarted virtual machine itstxaas1122 on host vmwhyp-ma024.epfl.ch in cluster clstr-prod-MA-01";"30.11.2020 16:41:20"
+"itstxaas1072";"vSphere HA restarted virtual machine itstxaas1072 on host vmwhyp-ma005.epfl.ch in cluster clstr-prod-MA-01";"30.11.2020 16:41:20"
+"itstxaas0001";"vSphere HA restarted virtual machine itstxaas0001 on host vmwhyp-ma004.epfl.ch in cluster clstr-prod-MA-01";"30.11.2020 16:41:20"
+"vsissp-avi-se-t-01";"vSphere HA restarted virtual machine vsissp-avi-se-t-01 on host vmwhyp-ma004.epfl.ch in cluster clstr-prod-MA-01";"30.11.2020 16:41:20"
+"sitvm0059";"vSphere HA restarted virtual machine sitvm0059 on host vmwhyp-ma004.epfl.ch in cluster clstr-prod-MA-01";"30.11.2020 16:41:20"

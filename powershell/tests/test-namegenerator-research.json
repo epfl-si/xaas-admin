@@ -83,7 +83,7 @@
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "rsrchprjx;F9876"
+                "expected": "{\"projectAcronym\":\"rsrchprjx\",\"financeCenter\":\"F9876\"}"
             },
             {
                 "params": ["CSP_SUBTENANT_MANAGER"],
@@ -91,7 +91,7 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "rsrchprjx;F9876"
+                "expected": "{\"projectAcronym\":\"rsrchprjx\",\"financeCenter\":\"F9876\"}"
             }
         ]
     },
@@ -412,8 +412,11 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["123456;This is my project description"],
-                "expected": ["123456", "This is my project description"]
+                "params": ["{\"projectAcronym\":\"rsrchprjx\",\"financeCenter\":\"F9876\"}"],
+                "expected": {
+                    "projectAcronym":  "rsrchprjx",
+                    "financeCenter":  "F9876"
+                }
             }
         ]
     },
