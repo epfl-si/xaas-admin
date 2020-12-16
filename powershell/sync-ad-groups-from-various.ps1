@@ -1134,11 +1134,6 @@ try
 					{
 						$groupsContentAndAdmin = @($service.serviceManagerSciper)
 					}
-					else
-					{
-						# On est obligé d'avoir un service manager
-						Throw ("Service manager sciper for Service '{0}' cannot be empty" -f $service.longName)
-					}
 
 					# Service de type "User"
 					if($sourceType -eq [ADGroupCreateSourceType]::User)
