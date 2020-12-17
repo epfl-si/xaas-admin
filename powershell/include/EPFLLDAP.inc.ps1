@@ -283,8 +283,7 @@ class EPFLLDAP
 		# Parcours des informations que l'on a
 		ForEach($ldapInfos in $this.LDAPconfig.facultyUnits.locations)
 		{
-
-			# Recherche des unités de manière récursive
+			# Recherche de l'unité
 			$unit = $this.LDAPSearch($this.LDAPconfig.facultyUnits.server, $ldapInfos.rootDN, "subtree", `
 									("(&(objectClass=organizationalUnit)(uniqueidentifier={0}))" -f $unitUniqueIdentifier), @("*"))
 
@@ -295,6 +294,42 @@ class EPFLLDAP
 		}
 
 		return $null
+	}
 
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Retourne les informations d'une personne
+
+		IN  : $sciper	-> Sciper de la personne recherchée
+
+		RET : Objet avec les informations suivantes
+				- description
+				- uniqueidentifier
+				- memberuid
+				- displayname
+				- member
+				- cn
+				- memberuniqueid
+				- adspath
+				- objectclass
+				- gidnumber
+	#>
+	[PSObject] getPersonInfos([string]$sciper)
+	{
+		# Parcours des informations que l'on a
+		ForEach($ldapInfos in $this.LDAPconfig.facultyUnits.locations)
+		{
+			# Recherche de la personne de manière récursive
+			$person = $this.LDAPSearch($this.LDAPconfig.facultyUnits.server, $ldapInfos.rootDN, "subtree", `
+									("(&(objectClass=organizationalPerson)(uniqueidentifier={0}))" -f $sciper), @("*"))
+
+			if($person.count -eq 1)
+			{
+				return $person[0].Properties
+			}
+		}
+
+		return $null
 	}
 }
