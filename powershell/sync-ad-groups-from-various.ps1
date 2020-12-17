@@ -960,7 +960,7 @@ try
 							}
 
 							# Listing des usernames des utilisateurs présents dans le groupe
-							$adMemberList = Get-ADGroupMember $adGroupName | ForEach-Object {$_.SamAccountName}
+							$adMemberList = @(Get-ADGroupMember $adGroupName | ForEach-Object {$_.SamAccountName})
 
 						}
 						catch # Le groupe n'existe pas.
@@ -989,6 +989,7 @@ try
 								$counters.inc('epfl.LDAPUnitsEmpty')
 								$adGroupExists = $false
 							}
+
 						}# FIN CATCH le groupe n'existe pas
 
 						# Si le groupe AD existe
@@ -998,14 +999,35 @@ try
 							if($adMemberList.count -gt 0)
 							{
 								$logHistory.addLineAndDisplay(("--> Removing all members ({0}) in group '{1}'..." -f $adMemberList.count, $adGroupName))
-								Remove-ADGroupMember $adGroupName -Members $adMemberList -confirm:$false
+								if(-not $SIMULATION_MODE)
+								{
+									Remove-ADGroupMember $adGroupName -Members $adMemberList -confirm:$false
+								}
 							}
 
-							# Ajout des membres
-							$logHistory.addLineAndDisplay(("--> Adding {0} members in group '{1}'..." -f $ldapMemberList.count, $adGroupName))
-							Add-ADGroupMember $adGroupName -Members $ldapMemberList
+							# S'il y a des membres à ajouter
+							if($ldapMemberList.count -gt 0)
+							{
+								# Ajout des membres
+								$logHistory.addLineAndDisplay(("--> Adding {0} members in group '{1}'..." -f $ldapMemberList.count, $adGroupName))
+								if(-not $SIMULATION_MODE)
+								{
+									Add-ADGroupMember $adGroupName -Members $ldapMemberList
+								}
 
-							$counters.inc('ADGroupsContentUpdated')
+								$counters.inc('ADGroupsContentUpdated')
+							}
+							else # Aucun membre à ajouter
+							{
+								if(-not $SIMULATION_MODE)
+								{
+									# Comme on a vidé le groupe juste avant s'il contenait des membres et que là on n'a rien à ajouter dedans,
+									# on peut supprimer le groupe
+									Remove-ADGroup $adGroupName -Confirm:$false
+								}
+
+								$counters.inc('ADGroupsRemoved')
+							}
 
 							# On enregistre le nom du groupe AD traité
 							$doneADGroupList += $adGroupName
@@ -1133,11 +1155,6 @@ try
 					if($service.serviceManagerSciper -ne "")
 					{
 						$groupsContentAndAdmin = @($service.serviceManagerSciper)
-					}
-					else
-					{
-						# On est obligé d'avoir un service manager
-						Throw ("Service manager sciper for Service '{0}' cannot be empty" -f $service.longName)
 					}
 
 					# Service de type "User"

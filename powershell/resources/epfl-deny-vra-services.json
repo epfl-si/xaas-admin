@@ -9,7 +9,7 @@
                 "items": ["NAS applicative volume"]
             },
             {
-                "svc": "MyVM (Public)",
+                "svc": "VM (Public)",
                 "items": []
             },
             {
