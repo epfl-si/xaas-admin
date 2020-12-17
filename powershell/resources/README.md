@@ -20,3 +20,8 @@ Contient la liste des services IT pour lesquels il faut créer un Business Group
 
 ### mail-quotes.json
 Juste pour le fun :rofl: pour ajouter des quotes aléatoires à la fin des mails envoyés aux admins.
+
+### mandatory-entitled-items.json
+Afin de pouvoir continuer à gérer les VM importées depuis MyVM sans pouvoir avoir la possibilité de demander une nouvelle VM de ce type, on doit ajouter des éléments du catalogue
+non pas dans le service "VM (Public)" mais directement dans les "Entitled items" qui sont dans chaque "Entitlement". 
+On liste donc ici ces éléments de catalogue à ajouter dans tous les cas, en définissant s'ils ont besoin d'avoir une approval policy ou pas.
