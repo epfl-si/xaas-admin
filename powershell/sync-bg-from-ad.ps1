@@ -580,12 +580,14 @@ function createOrUpdateBGEnt
 											service qui est "denied". Sinon, on ajoute spécifiquement
 											les autres items du catalogue, à l'exception de ceux qui
 											sont présents dans la liste
+	IN  : $mandatoryItems	-> Tableau avec la liste des items de catalogue à ajouter obligatoirement
+								à la liste des "Entitled items"	
 	
 	RET : Objet Entitlement mis à jour
 #>
 function prepareAddMissingBGEntPublicServices
 {
-	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices)
+	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices, [Array]$mandatoryItems)
 
 
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
@@ -597,7 +599,29 @@ function prepareAddMissingBGEntPublicServices
 	# On supprime de l'entitlement tous les items de catalogue appartenant au service. Cela permet de repartir
 	# sur une base propre pour potentiellement ajouter les "nouveaux" services et où des éléments de catalogue
 	$ent = $vra.prepareRemoveAllCatalogItems($ent)
-	
+
+	# Ajout des Items de catalogue "mandatory" s'il y en a
+	if($mandatoryItems.count -gt 0)
+	{
+		$logHistory.addLineAndDisplay(("-> Adding {0} mandatory catalog items..." -f $mandatoryItems.count))
+
+		# Parcours et ajout
+		$mandatoryItems | ForEach-Object {
+			$catalogItem = $vra.getCatalogItem($_)
+
+			if($null -eq $catalogItem)
+			{
+				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not found!" -f $_))
+				$notifications.mandatoryItemsNotFound += $_
+			}
+			else
+			{
+				$logHistory.addLineAndDisplay(("--> Adding catalog item '{0}'..." -f $_))
+				$ent = $vra.prepareAddEntCatalogItem($ent, $catalogItem, $approvalPolicy)
+			}
+		}
+	}# FIN SI il y a des éléments de catalogue obligatoires à ajouter
+
 	# Parcours des services à ajouter à l'entitlement créé
 	ForEach($publicService in $publicServiceList)
 	{
@@ -1004,6 +1028,15 @@ function handleNotifications
 					$templateName = "iso-folder-not-renamed"
 				}
 				
+				# ---------------------------------------
+				# Liste des éléments de catalogue "obligatoires" non trouvés
+				'mandatoryItemsNotFound'
+				{
+					$valToReplace.itemList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Mandatory catalog items not found"
+					$templateName = "mandatory-catalog-items-not-found"
+					
+				}
 
 				default
 				{
@@ -1379,7 +1412,8 @@ try
 					bgSetAsGhost = @()
 					emptyADGroups = @()
 					adGroupsNotFound = @()
-					ISOFolderNotRenamed = @()}
+					ISOFolderNotRenamed = @()
+					mandatoryItemsNotFound = @()}
 
 
 	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
@@ -1440,6 +1474,10 @@ try
 	# On détermine s'il est nécessaire de mettre à jour les ACLs des dossiers contenant les ISO
 	$forceACLsUpdateFile =  ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE))
 	$forceACLsUpdate = (Test-path $forceACLsUpdateFile)
+
+	# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
+	$mandatoryEntItemsFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "mandatory-entitled-items.json"))
+	$mandatoryEntItemsList = loadFromCommentedJSON -jsonFile $mandatoryEntItemsFile
 
 	# Calcul de la date dans le passé jusqu'à laquelle on peut prendre les groupes modifiés.
 	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
@@ -1715,7 +1753,7 @@ try
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
-		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc
+		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
 
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus
