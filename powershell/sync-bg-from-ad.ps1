@@ -607,19 +607,32 @@ function prepareAddMissingBGEntPublicServices
 
 		# Parcours et ajout
 		$mandatoryItems | ForEach-Object {
-			$catalogItem = $vra.getCatalogItem($_)
+			$catalogItem = $vra.getCatalogItem($_.name)
 
 			if($null -eq $catalogItem)
 			{
-				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not found!" -f $_))
-				$notifications.mandatoryItemsNotFound += $_
+				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not found!" -f $_.name))
+				$notifications.mandatoryItemsNotFound += $_.name
 			}
-			else
+			else # L'élément de catalogue existe
 			{
-				$logHistory.addLineAndDisplay(("--> Adding catalog item '{0}'..." -f $_))
-				$ent = $vra.prepareAddEntCatalogItem($ent, $catalogItem, $approvalPolicy)
+				$logHistory.addLineAndDisplay(("--> Adding catalog item '{0}'..." -f $_.name))
+
+				# Définition de la potentielle approval policy à mettre
+				if($_.hasApproval)
+				{
+					$itemApprovalPolicy = $approvalPolicy
+				}
+				else
+				{
+					$itemApprovalPolicy = $null
+				}
+				
+				$ent = $vra.prepareAddEntCatalogItem($ent, $catalogItem, $itemApprovalPolicy)
 			}
-		}
+			
+		}# FIN BOUCLE de parcours des éléments de catalogue obligatoires
+
 	}# FIN SI il y a des éléments de catalogue obligatoires à ajouter
 
 	# Parcours des services à ajouter à l'entitlement créé
