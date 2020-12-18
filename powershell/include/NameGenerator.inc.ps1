@@ -25,6 +25,15 @@
         ensuite de fonctions plus génériques
 
 #>
+
+# Types d'OU qui peut se trouver dans une OU de tenant.
+enum ADSubOUType
+{
+    Approval
+    Support
+    User
+}
+
 class NameGenerator: NameGeneratorBase
 {
     
@@ -1168,17 +1177,28 @@ class NameGenerator: NameGeneratorBase
         BUT : Renvoie le DN de l'OU Active Directory à utiliser pour mettre les groupes 
               de l'environnement et du tenant courant.
 
-        IN  : $onlyForTenant -> $true|$false pour dire si on veut l'OU pour un groupe
-                                    qui sera utilisé par tous les tenants et pas qu'un seul.  
+        IN  : $forCurrentTenantOnly -> $true|$false pour dire si on veut l'OU pour un groupe
+                                        qui sera utilisé pour le tenant courant OU pour tous les tenants
+        IN  : $finalOUType          -> (optionnel) Type de l'OU finale
 
 		RET : DN de l'OU
     #>
-    [string] getADGroupsOUDN([bool]$onlyForTenant)
+    [string] getADGroupsOUDN([bool]$forCurrentTenantOnly)
     {
-        
+        return $this.getADGroupsOUDN($forCurrentTenantOnly, $null)
+    }
+    [string] getADGroupsOUDN([bool]$forCurrentTenantOnly, [ADSubOUType]$finalOUType)
+    {
+        $subOU =""
+        # Si on doit ajouter le niveau final, 
+        if($null -ne $finalOUType)
+        {
+            $subOU = "OU={0}," -f $finalOUType.ToString().ToLower()
+        }
+
         $tenantOU = ""
         # Si le groupe que l'on veut créer dans l'OU doit être dispo pour le tenant courant uniquement, 
-        if($onlyForTenant)
+        if($forCurrentTenantOnly)
         {
             $tenantOU = "OU="
             switch($this.tenant)
@@ -1201,7 +1221,7 @@ class NameGenerator: NameGeneratorBase
         }
 
         # Retour du résultat 
-        return '{0}OU={1},OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch' -f $tenantOU, $envOU
+        return '{0}{1}OU={2},OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch' -f $subOU, $tenantOU, $envOU
     }
 
 
