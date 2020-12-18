@@ -4,5 +4,9 @@
         "fromFacList": [ "SI", "E"],
         // Nom de la faculté utilisé (par le passé) pour créer le(s) SVM de faculté
         "toFac": "VPSI" 
-    }    
+    },
+    {
+        "fromFacList": [ "ENT-E", "ENT-I", "ENT-P", "ENT-R", "AA"],
+        "toFac": "ENT"
+    }
 ]
