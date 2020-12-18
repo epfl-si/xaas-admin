@@ -886,7 +886,7 @@ try
             $targetFaculty = $faculty
             Foreach($facMapping in $facultyMappingList)
             {
-                if($facMapping.fromFac.toLower() -eq $faculty.toLower())
+                if($facMapping.fromFacList -contains $faculty)
                 {
                     $targetFaculty = $facMapping.toFac
                     break
