@@ -113,10 +113,18 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"
+                "expected": "{\"faculty\":\"ENT-R\",\"unit\":\"IDEV-ING\"}"
             },
             {
                 "params": ["CSP_CONSUMER"],
+                "expected": "{\"faculty\":\"ENT-R\",\"unit\":\"IDEV-ING\"}"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", { "deniedVRASvc": [{"svc":"MyVM (Public)","items":[]}], "financeCenter":"1907"}],
+                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"
+            },
+            {
+                "params": ["CSP_CONSUMER", { "deniedVRASvc": [{"svc":"MyVM (Public)","items":[]}], "financeCenter":"1907"}],
                 "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"
             }
         ]
