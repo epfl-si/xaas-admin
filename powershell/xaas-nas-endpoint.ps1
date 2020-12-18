@@ -879,7 +879,7 @@ try
             $facultyMappingList = loadFromCommentedJSON -jsonFile $facultyMappingFile
 
             # Chargement des informations 
-            $facultyToSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-to-svm.json"))
+            $facultyToSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-svm.json"))
             $facultyToSVM = loadFromCommentedJSON -jsonFile $facultyToSVMFile
 
             # On commence par regarder s'il y a un mapping pour la faculté donnée
