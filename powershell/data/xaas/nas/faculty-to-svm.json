@@ -1,5 +1,16 @@
 {
-    "SI": [
-        "nas-mcc-t-test"
-    ]
+    "dev": 
+    {
+
+    },
+    "test":
+    {
+        "SI": [
+            "nas-mcc-t-test"
+        ]
+    },
+    "prod":
+    {
+
+    }
 }

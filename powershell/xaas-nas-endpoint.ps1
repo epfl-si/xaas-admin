@@ -902,10 +902,10 @@ try
             }
 
             # Si on a une liste hard-codée de SVM pour la faculté
-            if([bool]($facultyToSVM.PSobject.Properties.name.toLower() -eq $faculty.toLower()))
+            if(objectPropertyExists -obj $facultyToSVM.$targetEnv -propertyName $faculty)
             {
                 # On ajoute la liste hard-codée
-                $svmList += $facultyToSVM.$faculty
+                $svmList += $facultyToSVM.$targetEnv.$faculty
             }
 
             # Ajout du résultat trié
