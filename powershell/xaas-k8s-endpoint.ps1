@@ -584,7 +584,9 @@ try
             # $harbor.addProjectMember($harborProject, $groupName, [HarborProjectRole]::Master)
             
             $logHistory.addLine(("Add temporary robot in Harbor Project '{0}'" -f $harborProjectName))
-            $robot = $harbor.addTempProjectRobot($harborProject, $ROBOT_NB_DAYS_LIFETIME)
+            # Récupération des informations sur le robot (nom, description, temps unix de fin de validité)
+            $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($ROBOT_NB_DAYS_LIFETIME)
+            $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $robotInfos.expireAt)
 
             # Résultat
             $output.results += @{
@@ -740,7 +742,9 @@ try
 
             # Ajout du compte temporaire
             $logHistory.addLine(("Adding temporary robots to project"))
-            $robot = $harbor.addTempProjectRobot($harborProject, $ROBOT_NB_DAYS_LIFETIME)
+            # Récupération des informations sur le robot (nom, description, temps unix de fin de validité)
+            $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($ROBOT_NB_DAYS_LIFETIME)
+            $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $robotInfos.expireAt)
 
             # Résultat
             $output.results += @{

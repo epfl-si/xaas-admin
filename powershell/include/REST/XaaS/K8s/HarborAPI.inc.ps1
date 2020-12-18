@@ -413,29 +413,24 @@ class HarborAPI: RESTAPICurl
 				du robot sont générés automatiquement.
 
 		IN  : $project			-> Objet représentant le projet
-		IN  : $nbDaysValidity	-> Nombre de jours de validité
+		IN  : $robotName		-> Nom du compte robot
+		IN  : $robotDesc		-> Description du robot
+		IN  : $expireAtUTime	-> Temps unix auquel le robot va expirer
 
 		RET : Le robot créé
 
 		https://vsissp-harbor-t.epfl.ch/#/Robot%20Account/post_projects__project_id__robots
 	#>
-	[PSObject] addTempProjectRobot([PSObject]$project, [int]$nbDaysValidity)
+	[PSObject] addTempProjectRobotAccount([PSObject]$project, [string]$robotName, [string]$robotDesc, [int]$expireAtUTime)
 	{
 		
 		$uri = "https://{0}/api/v2.0/projects/{1}/robots" -f $this.server, $project.project_id
-
-		# Et c'est avec cette expression barbare que nous ajoutons les X jours à la date courante
-		$dateInXDays = (Get-Date).AddDays($nbDaysValidity)
-		$expireAt = [int][double]::Parse((Get-Date $dateInXDays -UFormat %s))
-
-		$robotName = "{0}-{1}" -f $project.name, $expireAt
-		$robotDesc = "Valid until {0}" -f $dateInXDays
 
 		$replace = @{
 			name = $robotName
 			description = $robotDesc
 			projectId = $project.project_id
-			expireAt = @($expireAt, $true)
+			expireAt = @($expireAtUTime, $true)
 		}
 
 		$body = $this.createObjectFromJSON("xaas-k8s-add-harbor-project-robot.json", $replace)

@@ -39,7 +39,9 @@ class NameGeneratorK8s: NameGeneratorBase
    { }
 
 
-
+   <# -------------------------------------------------------------------------------------
+      ------------------------------------ PKS --------------------------------------------
+      ------------------------------------------------------------------------------------- #>
 
    <#
       -------------------------------------------------------------------------------------
@@ -123,6 +125,11 @@ class NameGeneratorK8s: NameGeneratorBase
    }
 
 
+   <# -------------------------------------------------------------------------------------
+      ----------------------------------- HARBOR ------------------------------------------
+      ------------------------------------------------------------------------------------- #>
+
+
    <#
       -------------------------------------------------------------------------------------
       BUT : Renvoie le nom d'un projet
@@ -150,10 +157,38 @@ class NameGeneratorK8s: NameGeneratorBase
          }
       }
       
-
       return ("{0}{1}{2}" -f $this.getTenantShortName(), ` # Nom court du tenant
                $middle, `
                $this.getEnvShortName())
    }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom d'un compte robot temporaire pour un projet Harbor
+
+      IN  : $nbDaysValidity	-> Nombre de jours de validité du compte
+
+      RET : Tableau associatif avec:
+            .name       -> le nom du robot
+            .desc       -> la description
+            .expireAt   -> Unix time de la date d'expiration
+   #>
+   [Hashtable] getHarborRobotAccountInfos([string]$nbDaysValidity)
+   {
+      # Et c'est avec cette expression barbare que nous ajoutons les X jours à la date courante
+		$dateInXDays = (Get-Date).AddDays($nbDaysValidity)
+      $expireAt = [int][double]::Parse((Get-Date $dateInXDays -UFormat %s))
+      
+      $robotName = "{0}{1}" -f $this.getHarborProjectName(), $expireAt
+      $robotDesc = "Valid until {0}" -f $dateInXDays
+      
+      return @{
+         name =$robotName
+         desc = $robotDesc
+         expireAt = $expireAt
+      }
+   }
+
 
 }
