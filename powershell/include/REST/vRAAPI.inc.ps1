@@ -1486,6 +1486,7 @@ class vRAAPI: RESTAPICurl
 		return $result
 	}
 
+
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des Items qui sont au catalogue pour un service.
@@ -1498,6 +1499,27 @@ class vRAAPI: RESTAPICurl
 	[Array] getServiceCatalogItemList([PSObject] $service)
 	{
 		return $this.getCatalogItemListQuery(("`$filter=service/id eq '{0}' and status eq 'PUBLISHED'" -f $service.id))
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie les infos d'un item de catalogue donné par son nom
+			  
+		IN  : $name			-> Nom de l'élément de cataloguq que l'on désire
+
+		RET : Objet avec les détails de l'élément de catalogue
+				$null si pas trouvé
+	#>
+	[PSObject] getCatalogItem([string]$name)
+	{
+		$results = $this.getCatalogItemListQuery(("`$filter=name eq '{0}' and status eq 'PUBLISHED'" -f $name))
+
+		if($results.count -eq 0)
+		{
+			return $null
+		}
+		return $results[0]
 	}
 
 

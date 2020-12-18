@@ -1,0 +1,10 @@
+[
+    {
+        "name": "Legacy_Linux_MyVM",
+        "hasApproval": false
+    },
+    {
+        "name": "Legacy_Windows_MyVM",
+        "hasApproval": false
+    }
+]
