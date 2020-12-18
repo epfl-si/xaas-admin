@@ -276,6 +276,24 @@ class vRAAPI: RESTAPICurl
 		return $this.getBG($body.name)
 	}
 
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Met à jour les infos d'un BG simplement à l'aide de l'objet passé en paramètre
+
+		IN  : $bg					-> Objet du BG à mettre à jour (il contient déjà toutes les infos mises à jour)
+
+		RET : Objet contenant le BG mis à jour
+	#>
+	[PSCustomObject] updateBG([PSCustomObject] $bg)
+	{
+		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.server, $this.tenant, $bg.id
+
+		# Mise à jour des informations
+		$this.callAPI($uri, "Put", $bg) | Out-Null
+		
+		# On recherche l'objet mis à jour
+		return $this.getBG($bg.name)
+	}
 
 	<#
 		-------------------------------------------------------------------------------------
