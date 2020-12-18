@@ -1,0 +1,43 @@
+{
+    "dev": 
+    {
+
+    },
+    "test":
+    {
+        "SI": [
+            "nas-mcc-t-test"
+        ]
+    },
+    "prod":
+    {
+        "SB":[
+            "cibm",
+            "dnp-ac",
+            "sbdata1"
+        ],
+        "ENT":[
+            "censrv2",
+            "scxcraft",
+            "scxbbp"
+        ],
+        "SI": [
+            "scxdata",
+            "scxlcdata",
+            "svdbdata",
+            "sdsdata",
+            "uc-nas1",
+            "olympe",
+            "ditscxvdi01",
+            "ditscxvdi02",
+            "ditti-nas",
+            "sicede",
+            "anubis",
+            "myssqlbackups",
+            "scxcraft"
+        ],
+        "STI": [
+            "stisrv"
+        ]
+    }
+}
