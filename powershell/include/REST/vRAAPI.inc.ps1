@@ -1461,6 +1461,34 @@ class vRAAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Items du catalogue (qui sont disponibles dans des
+				entitlements) selon les paramètres passés dans $queryParams
+
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+
+		RET : Tableau contenant les items
+	#>
+	hidden [Array] getEntitledCatalogItemListQuery([string] $queryParams)
+	{
+		$uri = "https://{0}/catalog-service/api/consumer/entitledCatalogItems/?page=1&limit=5000" -f $this.server
+
+		# Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+
+		# Retour de la liste mais on ne prend que les éléments qui existent encore.
+		$result = ($this.callAPI($uri, "Get", $null)).content 	
+
+		return $result
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des Items du catalogue selon les paramètres passés dans $queryParams
 
 
@@ -1472,7 +1500,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getCatalogItemListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/catalog-service/api/consumer/entitledCatalogItems/?page=1&limit=5000" -f $this.server
+		$uri = "https://{0}/catalog-service/api/catalogItems/?page=1&limit=5000" -f $this.server
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1496,9 +1524,9 @@ class vRAAPI: RESTAPICurl
 
 		RET : Tableau contenant les items du catalogue
 	#>
-	[Array] getServiceCatalogItemList([PSObject] $service)
+	[Array] getServiceEntitledCatalogItemList([PSObject] $service)
 	{
-		return $this.getCatalogItemListQuery(("`$filter=service/id eq '{0}' and status eq 'PUBLISHED'" -f $service.id))
+		return $this.getEntitledCatalogItemListQuery(("`$filter=service/id eq '{0}' and status eq 'PUBLISHED'" -f $service.id))
 	}
 
 
