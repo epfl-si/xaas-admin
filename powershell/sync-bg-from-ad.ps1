@@ -713,7 +713,7 @@ function prepareAddMissingBGEntPublicServices
 				$logHistory.addLineAndDisplay(("--> (prepare) Service '{0}' has been denied but only for {1} catalog item(s), adding the others" -f $publicService.name, $deniedSvcInfos.items.count))
 
 				# Recherche de la liste des items de catalogue disponibles dans le service courant
-				$catalogItems = $vra.getServiceCatalogItemList($publicService)
+				$catalogItems = $vra.getServiceEntitledCatalogItemList($publicService)
 
 				# Ajout des items de catalogue qui peuvent être présents
 				$catalogItems | ForEach-Object {
