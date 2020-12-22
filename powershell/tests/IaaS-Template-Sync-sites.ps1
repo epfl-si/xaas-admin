@@ -27,10 +27,9 @@ param ( [string]$targetEnv)
 $configVsphereTemplate = [ConfigReader]::New("config-vsphere-template.json")
 $configVcenter = [ConfigReader]::New("config-vsphere.json")
 
-$report = @()
-$outfile= $PSScriptRoot +"\test_vm_report.csv"
+
 # $targetEnv="prod"
-$todayDate = Get-Date -Format "yyyy-MM-dd"
+
 
 
 try {
@@ -55,57 +54,40 @@ If ( (Get-module vmware.powercli ) -like "" ) {
     }
 
 
-### functions:
-
-## file selector
-
-## ref: http://msdn.microsoft.com/en-us/library/system.windows.forms.openfiledialog.aspx
-
-function fileselector {
-    param ($Filter ## type of file to be saved
-    ,$Title ## Title of the open file dialog box
-    )
-    
-    [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
-    $ofd = New-Object System.Windows.Forms.OpenFileDialog -Property @{ 
-        # InitialDirectory = "D:\vra\migration_MyVM\"
-        Filter = $Filter
-        Title = $Title
-    }
-    if($ofd.ShowDialog() -eq "OK") { 
-        $ofd.FileName 
-        } else {
-        exit
-    }
-    
-    }
-  
-
 
 
 ### code
 
-
+## set master templates from configuration files
 $masterTemplatesFolderName = $configVsphereTemplate.getConfigValue($targetEnv, "masterTemplatesFolder")
 $masterTemplatesTag = $configVsphereTemplate.getConfigValue($targetEnv, "masterTemplatesTag")
 
 $masterTemplatesFolder = get-folder -name $masterTemplatesFolderName  -Type VM -Server $vCenter
 $masterTemplates = Get-Template -location $masterTemplatesFolder -Server $vCenter | Sort-Object
 
+## get templates targets from configuration file
+
 $TemplatesTargets = $configVsphereTemplate.getConfigValue($targetEnv, "TemplatesTargets") | Get-Member -MemberType NoteProperty | Select-object -ExpandProperty Name 
 
+## loop for each master template
+
 foreach ($masterTemplate in ($masterTemplates | Where-Object {$_.name -like "*master*"}) ) {
+    
+    ## check if the current master tempate has a sync tag.
     $vmtags= $null 
     $vmtags= Get-TagAssignment -Entity $masterTemplate -Category "IaaS" 
 
-    foreach ($vmtag in $vmtags) {
+foreach ($vmtag in $vmtags) {
 
-        if ($vmtag.Tag.Name -match $masterTemplatesTag) {
+    ## if the sync tag is present
+    if ($vmtag.Tag.Name -match $masterTemplatesTag) {
 
-foreach ($TemplatesTarget in $TemplatesTargets){
+    ## for each templates target
+    foreach ($TemplatesTarget in $TemplatesTargets){
 
-# $TemplatesTarget
 
+
+## set replica informations
 $replicaTemplatesFolderName = $configVsphereTemplate.getConfigValue($targetEnv, "TemplatesTargets", $TemplatesTarget, "replicaTemplatesFolder")
 $replicaTemplatesFolder = get-folder -name $replicaTemplatesFolderName  -Type VM -Server $vCenter
 
@@ -122,7 +104,7 @@ $newReplicaTemplates = @()
 $replicaTemplatesSuffixName = $configVsphereTemplate.getConfigValue($targetEnv, "TemplatesTargets", $TemplatesTarget, "replicaTemplatesSuffix")
 
 
-## rename replicaTemplate to add -old at the end (will be removed once copy from parent will be completed)
+
 
 # copy master template to destination replica
 
@@ -133,7 +115,7 @@ $replicaTemplatesSuffixName = $configVsphereTemplate.getConfigValue($targetEnv, 
    write-host "VM Tag is found"
     write-host $masterTemplate.name " will be synched to the replica site" + $replicaTemplatesSuffixName
     $replicaVMHostRandom = Get-VMHost -location (get-cluster -name $replicaClusterName) | get-random -Count 1
-    # clone VM from master template
+    # clone VM from master template to a new replica with -transit at the end
     $replicaTemplateTransit = New-Template -Template $masterTemplate -Name ($masterTemplate.name + "-transit") -Location $replicaTemplatesFolder -Datastore $replicaTemplatesDatastore -VMHost $replicaVMHostRandom -Server $vCenter -Confirm:$false
     # rename replicaTemplate to add -old at the end (will be removed once copy from parent will be completed)
     
@@ -146,6 +128,7 @@ $replicaTemplatesSuffixName = $configVsphereTemplate.getConfigValue($targetEnv, 
             
             $newReplicaTemplates += $replicaTemplates
             
+
             $replicaTemplateToDelete = set-template -Template $replicaTemplate -Name ($masterTemplate.name + "-old") -Server $vCenter
 
             
@@ -154,7 +137,7 @@ $replicaTemplatesSuffixName = $configVsphereTemplate.getConfigValue($targetEnv, 
 
     }
     set-template -Template $replicaTemplateTransit -Name ($masterTemplate.name + $replicaTemplatesSuffixName) -Server $vCenter
-    #Remove -old template 
+    ## Remove -old template 
     if ($replicaTemplateToDelete -notlike "") {Remove-Template -Template $replicaTemplateToDelete -DeletePermanently:$true -Confirm:$false}
 
     
