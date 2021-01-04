@@ -172,21 +172,7 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
         return
     }
 
-    # ------------
-    # ---- Cluster
     $cluster = $pks.getCluster($clusterName)
-    if($null -ne $cluster)
-    {
-        $logHistory.addLine(("Deleting cluster '{0}' ({1}). This also can take a while... so... another coffee ?..." -f $clusterName, $cluster.uuid))
-        # On attend que le cluster ait été effacé avant de rendre la main et passer à la suite du job
-        $pks.deleteCluster($clusterName)
-        $logHistory.addLine("Cluster deleted")
-    }
-    else
-    {
-        $logHistory.addLine(("Cluster '{0}' doesn't exists" -f $clusterName))
-    }
-    
 
     # -----------
     # ---- Réseau
@@ -214,7 +200,7 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
         try
         {
             # Si l'entrée n'existe pas dans le DNS, ça va générer une exception
-            $ip = ([System.Net.Dns]::GetHostAddresses($hostnameFull)).IPAddressToString   
+            $ipList = ([System.Net.Dns]::GetHostAddresses($hostnameFull)).IPAddressToString   
         }
         catch
         {
@@ -223,16 +209,12 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
             Continue
         }
         
-        # Si c'est un tableau, on prend par défaut la première IP
-        if($ip -is [System.Array])
+        ForEach($ip in $ipList)
         {
-            $logHistory.addLine("> Warning, {0} IP addresses found for '{1}'! Releasing only first one..." -f $ip.count, $hostnameFull)
-            $ip = $ip[0]
+            $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostnameFull))
+            $logHistory.addLine("> Unregistering IP for host in DNS...")
+            $EPFLDNS.unregisterDNSIP($hostname, $ip, $global:K8S_DNS_ZONE_NAME)
         }
-
-        $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostnameFull))
-        $logHistory.addLine("> Unregistering IP for host in DNS...")
-        $EPFLDNS.unregisterDNSIP($hostname, $ip, $global:K8S_DNS_ZONE_NAME)
 
         # # Si l'IP est allouée dans NSX,
         # if($nsx.isIPAllocated($pool.id, $ip))
@@ -306,6 +288,21 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
         {
             $logHistory.addLine(("> Project '{0}' doesn't exists" -f $harborProjectName))
         }
+    }
+
+
+    # ------------
+    # ---- Cluster
+    if($null -ne $cluster)
+    {
+        $logHistory.addLine(("Deleting cluster '{0}' ({1}). This also can take a while... so... another coffee ?..." -f $clusterName, $cluster.uuid))
+        # On attend que le cluster ait été effacé avant de rendre la main et passer à la suite du job
+        $pks.deleteCluster($clusterName)
+        $logHistory.addLine("Cluster deleted")
+    }
+    else
+    {
+        $logHistory.addLine(("Cluster '{0}' doesn't exists" -f $clusterName))
     }
     
     
@@ -766,19 +763,18 @@ try
 }
 catch
 {
+    # Récupération des infos
+    $errorMessage = $_.Exception.Message
+    $errorTrace = $_.ScriptStackTrace
     
     # Si on était en train de créer un cluster et qu'on peut effectivement faire du ménage
     if(($action -eq $ACTION_CREATE) -and $cleaningCanBeDoneIfError)
     {
         # On efface celui-ci pour ne rien garder qui "traine"
-        $logHistory.addLine(("Error while creating cluster '{0}', deleting it so everything is clean" -f $clusterName))
+        $logHistory.addLine(("Error while creating cluster '{0}', deleting it so everything is clean:`n{1}`nStack Trace:`n{2}" -f $clusterName, $errorMessage, $errorTrace))
         deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -harbor $harbor `
                 -clusterName $clusterName -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName") -targetTenant $targetTenant
     }
-
-	# Récupération des infos
-	$errorMessage = $_.Exception.Message
-	$errorTrace = $_.ScriptStackTrace
 
     # Ajout de l'erreur et affichage
     $output.error = "{0}`n`n{1}" -f $errorMessage, $errorTrace
