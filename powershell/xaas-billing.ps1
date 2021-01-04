@@ -47,8 +47,6 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SQLDB.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "ITServices.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
@@ -271,9 +269,6 @@ try
                         $configVra.getConfigValue($targetEnv, "db", "password"), `
                         $configVra.getConfigValue($targetEnv, "db", "port"))
 
-    # Pour accéder à LDAP, sera utilisé plus bas
-    $ldap = [EPFLLDAP]::new()
-
     $vraTenantList = @{}
 
     # Créatino des connexions à vRA pour chaque tenant à facturer
@@ -287,13 +282,6 @@ try
                                             $configVra.getConfigValue($targetEnv, "infra", $tenant, "password"))
     }
 
-    
-
-    # Objet pour lire les informations sur le services IT
-    $itServices = [ITServices]::new()
-
-    # On prend la liste correspondant à l'environnement sur lequel on se trouve
-    $itServicesList = $itServices.getServiceList($targetEnv)
 
     # Fichier JSON contenant les détails du service que l'on veut facturer    
     $serviceBillingInfosFile = ([IO.Path]::Combine("$PSScriptRoot", "data", "billing", $service.ToLower(), "service.json"))
@@ -309,7 +297,7 @@ try
 
     # Création de l'objet pour faire les opérations pour le service donné. On le créée d'une manière dynamique en utilisant la bonne classe
     # en fonction du type de service à facturer
-    $expression = '$billingObject = [{0}]::new($vraTenantList, $sqldb, $ldap, $itServicesList, $serviceBillingInfos, $targetEnv)' -f $serviceBillingInfos.billingClassName
+    $expression = '$billingObject = [{0}]::new($vraTenantList, $sqldb, $serviceBillingInfos, $targetEnv)' -f $serviceBillingInfos.billingClassName
     Invoke-expression $expression
 
     # Pour accéder à Copernic

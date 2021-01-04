@@ -23,8 +23,6 @@ class Billing
 {
     hidden [SQLDB] $db
     hidden [string] $targetEnv
-    hidden [PSObject] $serviceList
-    hidden [EPFLLDAP] $ldap
     hidden [PSObject] $serviceBillingInfos
     hidden [Hashtable] $vraTenantList
     hidden [string] $vRODynamicTypeName 
@@ -38,8 +36,6 @@ class Billing
                                         Chaque objet a pour clef le nom du tenant et comme "contenu" le 
                                         nécessaire pour interroger le tenant
         IN  : $db                   -> Objet de la classe SQLDB permettant d'accéder aux données.
-        IN  : $ldap                 -> Connexion au LDAP pour récupérer les infos sur les unités
-        IN  : $serviceList          -> Objet avec la liste de services (chargé depuis le fichier JSON itservices.json)
         IN  : $serviceBillingInfos  -> Objet avec les informations de facturation pour le service 
                                         Ces informations se trouvent dans le fichier JSON "service.json" qui sont 
                                         dans le dossier data/billing/<service>/service.json
@@ -48,12 +44,10 @@ class Billing
 
 		RET : Instance de l'objet
 	#>
-    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv, [string]$vRODynamicTypeName)
+    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [PSObject]$serviceBillingInfos, [string]$targetEnv, [string]$vRODynamicTypeName)
     {
         $this.vraTenantList = $vraTenantList
         $this.db = $db
-        $this.ldap = $ldap
-        $this.serviceList = $serviceList
         $this.serviceBillingInfos = $serviceBillingInfos
         $this.targetEnv = $targetEnv
         $this.vRODynamicTypeName = $vRODynamicTypeName
