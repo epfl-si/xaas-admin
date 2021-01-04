@@ -33,6 +33,7 @@ class NSXAPI: RESTAPICurl
 	{
         $this.headers.Add('Accept', 'application/json')
         $this.headers.Add('Content-Type', 'application/json')
+        $this.headers.Add('X-Allow-Overwrite', 'true')
         
         $this.authInfos = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$password)))
 
