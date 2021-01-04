@@ -257,8 +257,8 @@ try
 	(cette liste sera accédée en variable globale même si c'est pas propre XD)
 	#>
     $notifications=@{
-        copernicBillError = @()
         incorrectFinanceCenter = @()
+        copernicBillNotSent = @()
     }
 
     # Pour accéder à la base de données
