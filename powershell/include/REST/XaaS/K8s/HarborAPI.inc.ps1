@@ -438,4 +438,44 @@ class HarborAPI: RESTAPICurl
 		return $this.callAPI($uri, "POST", $body) 
 		
 	}
+
+
+	<#
+        =====================================================================================
+									PROJECT REPOSITORIES
+        =====================================================================================
+	#>
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des repositories pour un projet donné
+
+		IN  : $project			-> Objet représentant le projet
+
+		RET : La liste
+
+		https://vsissp-harbor-t.epfl.ch/#/repository/listRepositories
+	#>
+	[Array] getProjectRepositoryList([PSObject]$project)
+	{
+		$uri = "https://{0}/api/v2.0/projects/{1}/repositories" -f $this.server, $project.name
+			
+		return $this.callAPI($uri, "GET", $null)
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Efface un repository appartenant à un projet.
+
+		IN  : $project			-> Objet représentant le projet
+		IN  : $repository		-> Objet représentant le repository
+	#>
+	[void] deleteProjectRepository([PSObject]$project, [PSObject]$repository)
+	{
+		$uri = "https://{0}/api/v2.0/projects/{1}/repositories/{2}" -f $this.server, $project.name, $repository.name
+			
+		$this.callAPI($uri, "DELETE", $null)
+	}
+
 }
