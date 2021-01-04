@@ -173,6 +173,19 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     }
 
     $cluster = $pks.getCluster($clusterName)
+    # ------------
+    # ---- Cluster
+    if($null -ne $cluster)
+    {
+        $logHistory.addLine(("Deleting cluster '{0}' ({1}). This also can take a while... so... another coffee ?..." -f $clusterName, $cluster.uuid))
+        # On attend que le cluster ait été effacé avant de rendre la main et passer à la suite du job
+        $pks.deleteCluster($clusterName)
+        $logHistory.addLine("Cluster deleted")
+    }
+    else
+    {
+        $logHistory.addLine(("Cluster '{0}' doesn't exists" -f $clusterName))
+    }
 
     # -----------
     # ---- Réseau
@@ -262,49 +275,33 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
         $logHistory.addLine("Cluster not found before so we can't delete associated Load Balancer application profiles :-/")
     }
 
-    # ------------------
-    # ---- Projet Harbor
-    $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
-    $logHistory.addLine(("Cleaning Harbor project ({0}) if needed..." -f $harborProjectName))
+    # # ------------------
+    # # ---- Projet Harbor
+    # $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
+    # $logHistory.addLine(("Cleaning Harbor project ({0}) if needed..." -f $harborProjectName))
     
-    if($targetTenant -eq $global:VRA_TENANT__EPFL)
-    {
-        <# Rien besoin de faire pour ce tenant car il y a un projet Harbor par faculté donc on n'a pas besoin 
-            de supprimer quoi que ce soit. On pourrait supprimer le groupe AD correspondant au BG mais il n'est 
-            pertinent de supprimer ce groupe d'accès uniquement si on vient de supprimer le tout dernier cluster
-            pour le Business Group #>
-        $logHistory.addLine("> We're on EPFL tenant, one project per Faculty so no cleaning")
-    }
-    else # Tenant ITServices ou Research
-    {
-        $harborProject = $harbor.getProject($harborProjectName)
-        if($null -ne $harborProject)
-        {
-            # On a un Projet Harbor par service donc on peut faire du ménage d'office
-            $logHistory.addLine(("> Removing Project '{0}'..." -f $harborProjectName))
-            $harbor.deleteProject($harborProject)
-        }
-        else # Le projet n'existe pas
-        {
-            $logHistory.addLine(("> Project '{0}' doesn't exists" -f $harborProjectName))
-        }
-    }
-
-
-    # ------------
-    # ---- Cluster
-    if($null -ne $cluster)
-    {
-        $logHistory.addLine(("Deleting cluster '{0}' ({1}). This also can take a while... so... another coffee ?..." -f $clusterName, $cluster.uuid))
-        # On attend que le cluster ait été effacé avant de rendre la main et passer à la suite du job
-        $pks.deleteCluster($clusterName)
-        $logHistory.addLine("Cluster deleted")
-    }
-    else
-    {
-        $logHistory.addLine(("Cluster '{0}' doesn't exists" -f $clusterName))
-    }
-    
+    # if($targetTenant -eq $global:VRA_TENANT__EPFL)
+    # {
+    #     <# Rien besoin de faire pour ce tenant car il y a un projet Harbor par faculté donc on n'a pas besoin 
+    #         de supprimer quoi que ce soit. On pourrait supprimer le groupe AD correspondant au BG mais il n'est 
+    #         pertinent de supprimer ce groupe d'accès uniquement si on vient de supprimer le tout dernier cluster
+    #         pour le Business Group #>
+    #     $logHistory.addLine("> We're on EPFL tenant, one project per Faculty so no cleaning")
+    # }
+    # else # Tenant ITServices ou Research
+    # {
+    #     $harborProject = $harbor.getProject($harborProjectName)
+    #     if($null -ne $harborProject)
+    #     {
+    #         # On a un Projet Harbor par service donc on peut faire du ménage d'office
+    #         $logHistory.addLine(("> Removing Project '{0}'..." -f $harborProjectName))
+    #         $harbor.deleteProject($harborProject)
+    #     }
+    #     else # Le projet n'existe pas
+    #     {
+    #         $logHistory.addLine(("> Project '{0}' doesn't exists" -f $harborProjectName))
+    #     }
+    # }
     
 }
 
