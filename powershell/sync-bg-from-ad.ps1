@@ -374,12 +374,19 @@ function createOrUpdateBG
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
 		# les BG existants avec la nouvelle "Custom Property"
-		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME))
+		# if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME))
+		# {
+		# 	# Ajout de la custom Property avec la valeur par défaut 
+		# 	$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
+		# }
+
+
+		# Si le nom de l'entité de facturation a changé (ce qui peut arriver), on la met à jour
+		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME) -ne $nameGenerator.getBillingEntityName())
 		{
-			# Ajout de la custom Property avec la valeur par défaut 
+			# Mise à jour
 			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
 		}
-
 
 		# ==========================================================================================
 
