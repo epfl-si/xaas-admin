@@ -28,6 +28,7 @@ class vRAAPI: RESTAPICurl
 {
 	hidden [string]$token
 	hidden [string]$tenant
+	hidden [Hashtable]$bgCustomIdMappingCache
 
 	<#
 	-------------------------------------------------------------------------------------
@@ -43,6 +44,9 @@ class vRAAPI: RESTAPICurl
 	{
 		$this.server = $server
 		$this.tenant = $tenant
+
+		# Cache pour le mapping entre l'ID custom d'un BG et celui-ci
+		$this.bgCustomIdMappingCache = $null
 
 		$this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
@@ -199,24 +203,62 @@ class vRAAPI: RESTAPICurl
 		BUT : Renvoie un BG donné par son ID custom, défini dans la custom property ch.epfl.vra.bg.id
 
 		IN  : $customId	-> ID custom du BG que l'on désire
+		IN  : $useCache -> (optionnel) pour dire si on doit utiliser un cache pour faire la requête
 
 		RET : Objet contenant le BG
 				$null si n'existe pas
 	#>
 	[PSCustomObject] getBGByCustomId([string] $customId)
 	{
-		$list = $this.getBGList()
+		return $this.getBGByCustomId($customId, $false)
+	}
+	[PSCustomObject] getBGByCustomId([string] $customId, [bool]$useCache)
+	{
+		$list = @()
+		# Si on doit utiliser le cache ET qu'il est vide
+		# OU 
+		# On ne doit pas utiliser le cache
+		if( ($useCache -and ($null -eq $this.bgCustomIdMappingCache)) -or !$useCache)
+		{
+			$list = $this.getBGList()
 
-		if($list.Count -eq 0){return $null}
+			if($list.Count -eq 0){return $null}
+		}
 		
-		# Retour en cherchant avec le custom ID, y'a pas mal de Where-Object imbriqués pour faire le job mais ça fonctionne. Par contre, 
-		# ça risque d'être un peu galère à debug par la suite ^^'
-		return $list| Where-Object { 
-			($_.extensionData.entries | Where-Object {
-				$null -ne ($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ( $null -ne ($_.value.values.entries | Where-Object { 
-					($null -ne $_.value.value) -and ($_.value.value -is [System.String]) -and ($_.value.value.toLower() -eq $customId.toLower()) } ) ) `
-													} `
-			)}
+		# Si on doit utiliser le cache
+		if($useCache)
+		{
+			# Si on n'a pas encore initilisé le cache, on le fait, ce qui va prendre quelques secondes
+			if($null -eq $this.bgCustomIdMappingCache)
+			{
+				$this.bgCustomIdMappingCache = @{}
+				ForEach($bg in $list)
+				{
+					$bgId = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+					# Si on est bien sur un BG "correcte", qui a donc un ID
+					if($null -ne $bgId)
+					{
+						$this.bgCustomIdMappingCache.add($bgId, $bg)
+					}
+					
+				}
+			}# FIN Si on n'a pas initialisé le cache
+
+			# Arrivé ici, le cache est initialisé donc on peut rechercher avec l'Id demandé
+			return $this.bgCustomIdMappingCache.item($customId)
+		}
+		else # On ne veut pas utiliser le cache (donc ça va prendre vraiment du temps!)
+		{
+			# Retour en cherchant avec le custom ID, y'a pas mal de Where-Object imbriqués pour faire le job mais ça fonctionne. Par contre, 
+			# ça risque d'être un peu galère à debug par la suite ^^'
+			return $list| Where-Object { 
+				($_.extensionData.entries | Where-Object {
+					$null -ne ($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ( $null -ne ($_.value.values.entries | Where-Object { 
+						($null -ne $_.value.value) -and ($_.value.value -is [System.String]) -and ($_.value.value.toLower() -eq $customId.toLower()) } ) ) `
+														} `
+				)}
+		}
+	
 	}
 
 
