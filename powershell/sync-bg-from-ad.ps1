@@ -1053,7 +1053,15 @@ function handleNotifications
 					$valToReplace.itemList = ($uniqueNotifications -join "</li>`n<li>")
 					$mailSubject = "Error - Mandatory catalog items not found"
 					$templateName = "mandatory-catalog-items-not-found"
-					
+				}
+
+				# ---------------------------------------
+				# Liste des actions "day-2" non trouvées
+				'notFound2ndDayActions'
+				{
+					$valToReplace.actionList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Second day actions not found"
+					$templateName = "day2-actions-not-found"
 				}
 
 				default
@@ -1368,7 +1376,9 @@ try
 					emptyADGroups = @()
 					adGroupsNotFound = @()
 					ISOFolderNotRenamed = @()
-					mandatoryItemsNotFound = @()}
+					mandatoryItemsNotFound = @()
+					notFound2ndDayActions = @()
+				}
 
 
 	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
@@ -1698,7 +1708,11 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - 2nd day Actions
 		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
-		$ent = $vra.prepareEntActions($ent, $secondDayActions)
+		$result = $vra.prepareEntActions($ent, $secondDayActions)
+		$ent = $result.entitlement
+		# Mise à jour de la liste des actions non trouvées
+		$notifications.notFound2ndDayActions += $result.notFoundActions
+
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
