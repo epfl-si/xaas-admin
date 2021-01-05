@@ -1012,10 +1012,15 @@ class vRAAPI: RESTAPICurl
 		IN  : $ent				-> Objet de l'entitlement auquel ajouter les actions
 		IN  : $secondDayActions	-> Objet de la classe SecondDayActions contenant la liste des actions à ajouter.
 
-		RET : Objet contenant l'Entitlement avec les actions passée.
+		RET : Tableau associatif avec les éléments suivants:
+				.entitlement		-> Objet contenant l'Entitlement avec les actions passée.
+				.notFoundActions	-> Tableau avec la liste des actions non trouvées
 	#>
-	[PSCustomObject] prepareEntActions([PSCustomObject] $ent, [SecondDayActions]$secondDayActions)
+	[Hashtable] prepareEntActions([PSCustomObject] $ent, [SecondDayActions]$secondDayActions)
 	{
+		# Pour enregistrer la liste des actions non trouvées
+		$notFoundActions = @()
+
 		# Pour stocker la liste des actions à ajouter, avec toutes les infos nécessaires
 		$actionsToAdd = @()
 
@@ -1045,6 +1050,12 @@ class vRAAPI: RESTAPICurl
 				else # Pas d'infos trouvées pour l'action
 				{
 					Write-Warning ("prepareEntActions(): No information found for action '{0}' for element '{1}'" -f $actionName, $targetElementName)
+					
+					if($notFoundActions -notcontains $actionName)
+					{
+						$notFoundActions += $actionName
+					}
+					
 				}
 			} # Fin BOUCLE de parcours des actions pour l'élément courant 
 			
@@ -1054,7 +1065,10 @@ class vRAAPI: RESTAPICurl
 		$ent.entitledResourceOperations = $actionsToAdd
 
 		# Retour de l'entitlement avec les actions
-		return $ent
+		return @{
+			entitlement = $ent
+			notFoundActions = $notFoundActions
+		}
 	}
 
 
