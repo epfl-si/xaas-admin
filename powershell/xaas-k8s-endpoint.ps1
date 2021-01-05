@@ -1,7 +1,7 @@
 <#
 USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgName <bgName> -plan <plan> -netProfile <netProfile>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgName <bgName> -clusterName <clusterName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgName <bgName> -clusterName <clusterName> [-clusterUUID <clusterUUID>]
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action setNbWorkers -clusterName <clusterName> -nbWorkers <nbWorkers>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNbWorkers -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newNamespace -clusterName <clusterName> -namespace <namespace>
@@ -52,6 +52,7 @@ param([string]$targetEnv,
       [int]$nbWorkers,
       [string]$netProfile,
       [string]$clusterName,
+      [string]$clusterUUID,
       [string]$namespace,
       [string]$lbName)
 
@@ -159,10 +160,12 @@ function getNextClusterName([PKSAPI]$pks, [NameGeneratorK8s]$nameGeneratorK8s)
     IN  : $nameGeneratorK8s -> Objet pour la génération des noms
     IN  : $harbor           -> Objet permettant d'accéder à l'API de Harbor
     IN  : $clusterName      -> Nom du cluster à supprimer
+    IN  : $clusterUUID      -> UUID du cluster (peut être $null, à passer si on veut "finaliser" la procédure d'effacement
+                                pour un cluster déjà effacé mais que le reste n'a pas pu être traité.)
     IN  : $ipPoolName       -> Nom du pool IP dans NSX
     IN  : $targetTenant     -> Tenant cible
 #>
-function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGeneratorK8s]$nameGeneratorK8s, [HarborAPI]$harbor, [string]$clusterName, [string]$ipPoolName, [string]$targetTenant)
+function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGeneratorK8s]$nameGeneratorK8s, [HarborAPI]$harbor, [string]$clusterName, [string]$clusterUUID, [string]$ipPoolName, [string]$targetTenant)
 {
     # Le nom du cluster peut être encore vide dans le cas où une erreur surviendrait avait que le nom soit initialisé. 
     # Dans ce cas, on ne fait rien
@@ -172,31 +175,28 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
         return
     }
 
+    # Recherche du cluster par son nom
     $cluster = $pks.getCluster($clusterName)
+
     # ------------
     # ---- Cluster
     if($null -ne $cluster)
     {
+        # Mise à jour pour plus loin
+        $clusterUUID = $cluster.uuid
+
         $logHistory.addLine(("Deleting cluster '{0}' ({1}). This also can take a while... so... another coffee ?..." -f $clusterName, $cluster.uuid))
         # On attend que le cluster ait été effacé avant de rendre la main et passer à la suite du job
         $pks.deleteCluster($clusterName)
         $logHistory.addLine("Cluster deleted")
     }
-    else
+    else # Cluster pas trouvé
     {
         $logHistory.addLine(("Cluster '{0}' doesn't exists" -f $clusterName))
     }
 
     # -----------
     # ---- Réseau
-    # Recherche du pool dans lequel on va demander les adresses IP.
-    # On va faire du nettoyage dans ce pool dans le cas où PKS n'aurait pas fait le job correctement.
-    $pool = $nsx.getIPPoolByName($ipPoolName)
-
-    if($null -eq $pool)
-    {
-        Throw ("NSX IP Pool '{0}' not found" -f $ipPoolName)
-    }
 
     $hostnameList = @(
         # On efface d'abord l'entrée 'ingress' car elle a été créé en dernier
@@ -205,46 +205,25 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     )
     
     $logHistory.addLine("Deleting IPs...")
-    # On commence par nettoyer le cache local pour être sûr de bien interroger le DNS et pas le cache... 
-    Clear-DnsClientCache 
+    # Parcours des noms IP à effacer
     ForEach($hostname in $hostnameList)
     {
         $hostnameFull = ("{0}.{1}" -f $hostname, $global:K8S_DNS_ZONE_NAME)
         
         $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostnameFull))
-        $logHistory.addLine("> Unregistering IP(s) for host in DNS...")
+        $logHistory.addLine("> Unregistering IP(s) for host in DNS if exists...")
         $EPFLDNS.unregisterDNSName($hostname, $global:K8S_DNS_ZONE_NAME)
 
-
-        # # Si l'IP est allouée dans NSX,
-        # if($nsx.isIPAllocated($pool.id, $ip))
-        # {
-        #     $logHistory.addLine("> Releasing IP in NSX (it will take some time before it is available again in pool)...")
-        #     try
-        #     {
-        #         $nsx.releaseIPAddressInPool($pool.id, $ip)
-        #     }
-        #     catch
-        #     {
-        #         # On peut parfois avoir une erreur car même si l'IP est notée comme allouée, il se peut qu'en fait
-        #         # elle soit en cours de désallocation par PKS
-        #         $logHistory.addLine( ("> Error releasing IP: {0} " -f $_.Exception.Message))
-        #     }
-        # }
-        # else
-        # {
-        #     $logHistory.addLine("> IP is not allocated in NSX")
-        # }
         
-    }# FIN BOUCLE de parcours des IP à supprimer
+    }# FIN BOUCLE de parcours des Noms IP à supprimer
 
     # --------
     # ---- NSX
-    #Si on avait pu trouver le cluster
-    if($null -ne $cluster)
+    # Si on a des infos sur le cluster
+    if($clusterUUID -ne "")
     {
         $logHistory.addLine("Deleting Load Balancer application profiles...")
-        $appProfileList = $nsx.getClusterLBAppProfileList($cluster.uuid)
+        $appProfileList = $nsx.getClusterLBAppProfileList($clusterUUID)
 
         if($null -eq $appProfileList)
         {
@@ -592,7 +571,7 @@ try
             # Initialisation pour récupérer les noms des éléments
             $nameGeneratorK8s.initDetailsFromBGName($bgName)
 
-            deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName `
+            deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName -clusterUUID $clusterUUID `
                         -harbor $harbor -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName") -targetTenant $targetTenant
         }
 
@@ -757,7 +736,7 @@ catch
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating cluster '{0}', deleting it so everything is clean:`n{1}`nStack Trace:`n{2}" -f $clusterName, $errorMessage, $errorTrace))
         deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -harbor $harbor `
-                -clusterName $clusterName -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName") -targetTenant $targetTenant
+                -clusterName $clusterName -clusterUUID "" -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName") -targetTenant $targetTenant
     }
 
     # Ajout de l'erreur et affichage

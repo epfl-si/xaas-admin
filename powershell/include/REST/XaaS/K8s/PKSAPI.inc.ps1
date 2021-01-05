@@ -181,6 +181,9 @@ class PKSAPI: RESTAPICurl
 
 		IN  : $clusterName		-> Le nom du cluster
 
+		RET : Objet représentant le cluster
+				$null si pas trouvé
+
 		NOTE: Cette fonction a été implémentée mais à priori, la fonction 'getCluster(..)' renvoie
 				exactement la même chose...
 	#>
@@ -195,9 +198,27 @@ class PKSAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie les infos d'un cluster avec une recherche faite sur son ID
+
+		IN  : $clusterUUID		-> UUID du cluster
+
+		RET : Objet représentant le cluster
+				$null si pas trouvé
+	#>
+	[PSObject] getClusterByUUID([string]$clusterUUID)
+	{
+		return $this.getClusterList() | Where-Object { $_.uuid -eq $clusterUUID }
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie les infos d'un cluster
 
 		IN  : $clusterName		-> Le nom du cluster
+
+		RET : Objet représentant le cluster
+				$null si pas trouvé
 	#>
 	[PSObject] getCluster([string]$clusterName)
 	{
