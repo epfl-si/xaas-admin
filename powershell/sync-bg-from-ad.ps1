@@ -270,8 +270,6 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 	BUT : Créé (si inexistant) ou met à jour un Business Group (si existant)
 
 	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $existingBGList		-> Tableau associatif avec la liste des BG, aura été créé via la fonction 
-									createMappingBGList
 	IN  : $tenantName			-> Nom du tenant sur lequel on bosse
 	IN  : $bgEPFLID				-> ID du BG défini par l'EPFL et pas vRA. Valable pour les BG qui sont sur tous les tenants
 	IN  : $bgName				-> Nom du BG
@@ -285,10 +283,10 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 #>
 function createOrUpdateBG
 {
-	param([vRAAPI]$vra, [Hashtable]$existingBGList, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$financeCenter, [string]$capacityAlertsEmail)
+	param([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$financeCenter, [string]$capacityAlertsEmail)
 
 	# Recherche du BG par son no identifiant (no d'unité, no de service Snow, etc... ).
-	$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgEPFLID
+	$bg = $vra.getBGByCustomId($bgEPFLID, $true)
 
 
 	# ---- EPFL ---- ou ---- Research ----
@@ -376,12 +374,19 @@ function createOrUpdateBG
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
 		# les BG existants avec la nouvelle "Custom Property"
-		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID))
-		{
-			# Ajout de la custom Property avec la valeur par défaut 
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BG_ID" = $bgEPFLID})
-		}
+		# if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME))
+		# {
+		# 	# Ajout de la custom Property avec la valeur par défaut 
+		# 	$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
+		# }
 
+
+		# Si le nom de l'entité de facturation a changé (ce qui peut arriver), on la met à jour
+		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME) -ne $nameGenerator.getBillingEntityName())
+		{
+			# Mise à jour
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
+		}
 
 		# ==========================================================================================
 
@@ -1261,69 +1266,6 @@ function createFirewallSectionRulesIfNotExists
 
 
 <#
--------------------------------------------------------------------------------------
-	BUT : Prend une liste des BG et créé un mapping entre la valeur de la custom
-			property donnée et le BG. On fait ceci pour avoir à éviter de parcourir
-			N fois la liste de BG pour chercher s'il existe. Là, on pourra accéder
-			directement via la valeur de la custom property donc ça sera plus rapide.
-
-	IN  : $bgList			-> La liste des BG pour laquelle créer le mapping
-	IN  : $customPropName	-> Le nom de la custom property à chercher
-
-	RET : Tableau associatif avec en clef la valeur de la custom property cherchée préfixée
-			avec _ histoire d'avoir un caractère autorisé pour commencer le nom de la clef.
-			Et en valeur, on trouve le BG.
-#>
-function createMappingBGList([Array]$bgList, [string]$customPropName)
-{
-	$mappingList = @{}
-
-	$logHistory.addLineAndDisplay(("Creating mapping list for {0} Business Groups..." -f $bgList.count))
-	# Parcours des BG
-	ForEach($bg in $bgList)
-	{
-		# Récupération de la valeur de la customProperty
-		$propValue = getBGCustomPropValue -bg $bg -customPropName $customPropName
-
-		if($null -ne $propValue)
-		{
-			# Création d'un nom de clef pour qu'elle commence avec un caractères autorisé
-			$key = "_{0}" -f $propValue
-
-			$mappingList.$key = $bg
-		}
-	}
-
-	return $mappingList
-}
-
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Renvoie le BG correspondant à la valeur de custom property passée
-
-	IN  : $mappingList			-> La liste de mapping qui aura été générée par la
-									fonction createMappingBGList
-	IN  : $customPropValue		-> Valeur de la custom property pour laquelle on veut le BG
-
-	RET : Le BG
-			$null si pas trouvé
-#>
-function getBGFromMappingList([Hashtable]$mappingList, [string]$customPropValue)
-{
-	# Génération de la clef de recherche
-	$key = "_{0}" -f $customPropValue
-
-	# Si la clef existe, retour du résultat
-	if($mappingList.Keys -contains $key)
-	{
-		return $mappingList.$key
-	}
-	return $null
-}
-
-
-<#
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
@@ -1442,12 +1384,6 @@ try
 	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
 	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
 	$nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), $configNSX.getConfigValue($targetEnv, "user"), $configNSX.getConfigValue($targetEnv, "password"))
-
-	# Recherche de BG existants 
-	$existingBGList = $vra.getBGList()
-
-	# Création de la liste de mapping
-	$customPropToExistingBGMapping = createMappingBGList -bgList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
 
 	$doneBGList = @()
 
@@ -1716,7 +1652,7 @@ try
 		# --------------------------------- Business Group 
 
 		# Création ou mise à jour du Business Group
-		$bg = createOrUpdateBG -vra $vra -existingBGList $customPropToExistingBGMapping -bgEPFLID $bgEPFLID -tenantName $targetTenant -bgName $bgName -bgDesc $bgDesc `
+		$bg = createOrUpdateBG -vra $vra -bgEPFLID $bgEPFLID -tenantName $targetTenant -bgName $bgName -bgDesc $bgDesc `
 									-machinePrefixName $machinePrefixName -financeCenter $financeCenter -capacityAlertsEmail ($capacityAlertMails -join ",") 
 
 		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)

@@ -23,8 +23,6 @@ class Billing
 {
     hidden [SQLDB] $db
     hidden [string] $targetEnv
-    hidden [PSObject] $serviceList
-    hidden [EPFLLDAP] $ldap
     hidden [PSObject] $serviceBillingInfos
     hidden [Hashtable] $vraTenantList
     hidden [string] $vRODynamicTypeName 
@@ -38,8 +36,6 @@ class Billing
                                         Chaque objet a pour clef le nom du tenant et comme "contenu" le 
                                         nécessaire pour interroger le tenant
         IN  : $db                   -> Objet de la classe SQLDB permettant d'accéder aux données.
-        IN  : $ldap                 -> Connexion au LDAP pour récupérer les infos sur les unités
-        IN  : $serviceList          -> Objet avec la liste de services (chargé depuis le fichier JSON itservices.json)
         IN  : $serviceBillingInfos  -> Objet avec les informations de facturation pour le service 
                                         Ces informations se trouvent dans le fichier JSON "service.json" qui sont 
                                         dans le dossier data/billing/<service>/service.json
@@ -48,12 +44,10 @@ class Billing
 
 		RET : Instance de l'objet
 	#>
-    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv, [string]$vRODynamicTypeName)
+    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [PSObject]$serviceBillingInfos, [string]$targetEnv, [string]$vRODynamicTypeName)
     {
         $this.vraTenantList = $vraTenantList
         $this.db = $db
-        $this.ldap = $ldap
-        $this.serviceList = $serviceList
         $this.serviceBillingInfos = $serviceBillingInfos
         $this.targetEnv = $targetEnv
         $this.vRODynamicTypeName = $vRODynamicTypeName
@@ -231,48 +225,6 @@ class Billing
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Renvoie la description d'une EntityElement donné
-        
-        IN  : $entityType    -> Type de l'entité
-        IN  : $entityElement -> élément. Soit no d'unité ou no de service IT, etc...
-
-        RET : Description
-    #>
-    hidden [string] getEntityElementDesc([BillingEntityType]$entityType, [string]$entityElement)
-    {
-        switch($entityType)
-        {
-            Unit
-            { 
-                # Dans ce cas, $entityElement contient le no d'unité
-                $unitInfos = $this.ldap.getUnitInfos($entityElement)
-
-                if($null -eq $unitInfos)
-                {
-                    Throw ("No information found for Unit ID '{0}' in LDAP" -f $entityElement)
-                }
-                return $unitInfos.ou[0]
-            }
-
-            Service 
-            {
-                # Dans ce cas, $entityElement contient l'identifiant du service (ex: SVC007)
-                $serviceInfos = $this.serviceList.getServiceInfos($this.targetEnv, $entityElement)
-
-                if($null -eq $serviceInfos)
-                {
-                    Throw ("No information found for Service ID '{0}' in JSON file" -f $entityElement)
-                }
-                return $serviceInfos.longName
-            }
-
-        }
-        Throw ("Entity type '{0}' not handled" -f $entityType.toString())
-    }
-
-
-    <#
-		-------------------------------------------------------------------------------------
         BUT : Renvoie la liste des entités existantes dans la DB
     #>
     [Array] getEntityList()
@@ -398,8 +350,9 @@ class Billing
     #>
     hidden [int] initAndGetEntityId([BillingEntityType]$entityType, [string]$targetTenant, [string]$bgId, [string]$itemName)
     {
-        # Recherche du BG avec son ID unique
-        $bg = $this.vraTenantList.$targetTenant.getBGByCustomId($bgId)
+        # Recherche du BG avec son ID unique. 
+        # NOTE: On utilise le cache pour faire cette action car on est dans un script qui ne modifie pas la liste des BG
+        $bg = $this.vraTenantList.$targetTenant.getBGByCustomId($bgId, $true)
 
         # Si le BG n'est pas trouvé dans vRA, c'est qu'il a été supprimé
         if($null -eq $bg)
@@ -423,7 +376,7 @@ class Billing
         {
             # Ajout de l'entité à la base de données (si pas déjà présente)
             $entityId = $this.addEntity($entityType, `
-                                        ("{0} {1}" -f $bgId, $this.getEntityElementDesc($entityType, $bgId)), `
+                                        ("{0} {1}" -f $bgId, (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME)), `
                                         (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
         }
         

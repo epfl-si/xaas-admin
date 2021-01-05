@@ -495,7 +495,7 @@ function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Ar
 	}
 	
 
-	# Si on doit utiliser une adresse mail pour la facturation au lieu du centre financier
+	# 1. Si on doit utiliser une adresse mail pour la facturation au lieu du centre financier
 	$financeCenter = $null
 	ForEach($billToMail in $billToMailList)
 	{
@@ -891,7 +891,7 @@ try
 						$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.$sourceType.Count, $faculty.name, $unit.name))
 
 						# Recherche du centre financier à utiliser
-						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList -billToMailList $billToMailList `
+						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList.$sourceType -billToMailList $billToMailList `
 										-sourceType $sourceType -geUnitMappingList $geUnitMappingList
 
 						$vRAServicesToDeny = @()
