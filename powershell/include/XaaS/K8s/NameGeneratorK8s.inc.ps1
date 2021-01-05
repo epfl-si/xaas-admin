@@ -60,7 +60,7 @@ class NameGeneratorK8s: NameGeneratorBase
 
          $global:VRA_TENANT__ITSERVICES
          {
-            $middle = ("{0}{1}" -f $this.sanitizeName($this.getDetail('snowServiceId')), `
+            $middle = ("{0}{1}" -f $this.sanitizeName($this.getDetail('snowServiceId')).toLower(), `
                                     $this.sanitizeName($this.getDetail('serviceShortName'), $global:CLUSTER_NAME_SERVICE_NAME_PART_MAX_CHAR))
          }
 

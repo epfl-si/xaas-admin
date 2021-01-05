@@ -1,7 +1,7 @@
 <#
 USAGES:
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgName <bgName> -plan <plan> -netProfile <netProfile>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgName <bgName> -clusterName <clusterName> [-clusterUUID <clusterUUID>]
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgId <bgId> -plan <plan> -netProfile <netProfile>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgId <bgId> -clusterName <clusterName> [-clusterUUID <clusterUUID>]
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action setNbWorkers -clusterName <clusterName> -nbWorkers <nbWorkers>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNbWorkers -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newNamespace -clusterName <clusterName> -namespace <namespace>
@@ -11,7 +11,7 @@ USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getLBList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delLB -clusterName <clusterName> -lbName <lbName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newStorage -clusterName <clusterName>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newRobot -bgName <bgName> -clusterName <clusterName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newRobot -bgId <bgId> -clusterName <clusterName>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -47,7 +47,7 @@ USAGES:
 param([string]$targetEnv,
       [string]$targetTenant,
       [string]$action,
-      [string]$bgName,
+      [string]$bgId,
       [string]$plan,
       [int]$nbWorkers,
       [string]$netProfile,
@@ -415,6 +415,22 @@ try
     $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
                         ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
+    # Si on nous a passé un ID de BG,
+    if($bgId -ne "")
+    {
+        $logHistory.addLine(("Business group ID given ({0}), looking for object in vRA..." -f $bgId))
+        # Récupération de l'objet représentant le BG dans vRA
+        $bg = $vra.getBGByCustomId($bgId)
+
+        # On check si pas trouvé (on ne sait jamais...)
+        if($null -eq $bg)
+        {
+            Throw ("Business Group with ID '{0}' not found on {1} tenant" -f $bgId, $targetTenant)
+        }
+        $logHistory.addLine(("Business Group found, name={0}" -f $bg.name))
+
+    }
+
     # -------------------------------------------------------------------------
     # En fonction de l'action demandée
     switch ($action)
@@ -430,10 +446,8 @@ try
             # Pour dire si on peut effectuer du cleaning dans le cas d'une erreur
             $cleaningCanBeDoneIfError = $true
             # Initialisation pour récupérer les noms des éléments
-            $nameGeneratorK8s.initDetailsFromBGName($bgName)
+            $nameGeneratorK8s.initDetailsFromBG($bg.name, $bgId)
 
-            # Recherche du Business Group
-            $bg = $vra.getBG($bgName)
             # Récupération des utilisateurs qui ont le droit de demander des cluster, ça sera ceux
             # qui pourront gérer le cluster
             $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
@@ -569,7 +583,7 @@ try
         $ACTION_DELETE
         {
             # Initialisation pour récupérer les noms des éléments
-            $nameGeneratorK8s.initDetailsFromBGName($bgName)
+            $nameGeneratorK8s.initDetailsFromBG($bg.name, $bgId)
 
             deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName -clusterUUID $clusterUUID `
                         -harbor $harbor -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName") -targetTenant $targetTenant
@@ -693,7 +707,7 @@ try
         $ACTION_NEW_ROBOT
         {
             # Initialisation pour récupérer les noms des éléments
-            $nameGeneratorK8s.initDetailsFromBGName($bgName)
+            $nameGeneratorK8s.initDetailsFromBG($bg.name, $bgId)
 
             $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
             $logHistory.addLine(("Harbor project name is '{0}'" -f $harborProjectName))

@@ -151,9 +151,11 @@ class NameGeneratorBase
                 - getVMMachinePrefix 
                 - getApprovalPolicyNameAndDesc
 
-        IN  : $bgName   -> Nom du BG
+        IN  : $bgName       -> Nom du BG
+        IN  : $bgCustomId   -> ID personnalisé du BG affecté par les admins. Ne correspond pas
+                                au "vrai" ID de BG défini dans vRA
     #>
-    [void] initDetailsFromBGName([string]$bgName)
+    [void] initDetailsFromBG([string]$bgName, $bgCustomId)
     {
         $bgDetails = $this.getDetailsFromBGName($bgName)
 
@@ -169,7 +171,7 @@ class NameGeneratorBase
                     facultyName = $bgDetails.faculty
                     facultyID = ''
                     unitName = $bgDetails.unit
-                    unitID = '' 
+                    unitID = $bgCustomId
                 }
             }
 
@@ -180,7 +182,7 @@ class NameGeneratorBase
                 $withDetails = @{
                     serviceShortName = $bgDetails.serviceShortName
                     serviceName = ''
-                    snowServiceId = ''
+                    snowServiceId = $bgCustomId
                 }
             }
 
