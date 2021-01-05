@@ -56,7 +56,7 @@ class EPFLDNS
         $errorVar = $null
         # On exécute la commande en local mais avec des credentials spécifiques
         Invoke-Command -ComputerName $this.psEndpointServer -ScriptBlock $scriptBlockContent -Authentication CredSSP -credential $this.credentials `
-                        -ArgumentList $this.dnsServer, $name, $ip, $zone  -ErrorVariable errorVar -ErrorAction:SilentlyContinue
+                        -ArgumentList @($this.dnsServer, $name, $ip, $zone)  -ErrorVariable errorVar -ErrorAction:SilentlyContinue
 
         # Gestion des erreurs
         if($errorVar.count -gt 0)
@@ -71,34 +71,35 @@ class EPFLDNS
 		BUT : Supprime un enregistrement dans le DNS
 
 		IN  : $name         -> Nom IP
-		IN  : $ip           -> Adresse IP
         IN  : $zone         -> Nom de la Zone DNS
 	#>
-    [void] unregisterDNSIP([string]$name, [string]$ip, [string]$zone)
+    [void] unregisterDNSName([string]$name, [string]$zone)
     {
 
         $scriptBlockContent =
         {
             # Récupération des paramètres
-            $server, $dnsName, $zoneName = $args
+            $dnsServer, $dnsName, $dnsZone = $args
+
+            $nodeARecordList = Get-DnsServerResourceRecord -ZoneName $dnsZone -ComputerName $dnsServer -Node $dnsName -RRType A -ErrorAction SilentlyContinue 
             
-            $nodeARecord = Get-DnsServerResourceRecord -ZoneName $zoneName -ComputerName $server -Node $dnsName -RRType A -ErrorAction SilentlyContinue
-            
-            if(($null -ne $nodeARecord) -and ($nodeARecord.Count -gt 0))
+            if($null -ne $nodeARecordList)
             {
-                Remove-DnsServerResourceRecord -ZoneName $zoneName -ComputerName $server -InputObject $nodeARecord[0] -Force
+                # Si par hasard il y a plusieurs adresses IP, on les vire toutes
+                $nodeARecordList | Foreach-Object { Remove-DnsServerResourceRecord -ZoneName $dnsZone -ComputerName $dnsServer -InputObject $_ -Force} 
             }
 
         }
         $errorVar = $null
         # On exécute la commande en local mais avec des credentials spécifiques
         Invoke-Command -ComputerName $this.psEndpointServer -ScriptBlock $scriptBlockContent -Authentication CredSSP -credential $this.credentials `
-                        -ArgumentList $this.dnsServer, $name, $zone -ErrorVariable errorVar -ErrorAction:SilentlyContinue
+                        -ArgumentList @($this.dnsServer, $name, $zone) -ErrorVariable errorVar -ErrorAction:SilentlyContinue
 
         # Gestion des erreurs
         if($errorVar.count -gt 0)
         {
             Throw ("Error removing DNS information: {0}" -f ($errorVar -join "`n"))
         }    
+        
     }
 }

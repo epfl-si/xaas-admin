@@ -210,24 +210,11 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     ForEach($hostname in $hostnameList)
     {
         $hostnameFull = ("{0}.{1}" -f $hostname, $global:K8S_DNS_ZONE_NAME)
-        try
-        {
-            # Si l'entrée n'existe pas dans le DNS, ça va générer une exception
-            $ipList = ([System.Net.Dns]::GetHostAddresses($hostnameFull)).IPAddressToString   
-        }
-        catch
-        {
-            # Pas trouvé, on passe au hostname suivant
-            $logHistory.addLine(("> IP doesn't exists in DNS for '{0}'" -f $hostnameFull))
-            Continue
-        }
         
-        ForEach($ip in $ipList)
-        {
-            $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostnameFull))
-            $logHistory.addLine("> Unregistering IP for host in DNS...")
-            $EPFLDNS.unregisterDNSIP($hostname, $ip, $global:K8S_DNS_ZONE_NAME)
-        }
+        $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostnameFull))
+        $logHistory.addLine("> Unregistering IP(s) for host in DNS...")
+        $EPFLDNS.unregisterDNSName($hostname, $global:K8S_DNS_ZONE_NAME)
+
 
         # # Si l'IP est allouée dans NSX,
         # if($nsx.isIPAllocated($pool.id, $ip))
