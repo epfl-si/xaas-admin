@@ -360,4 +360,30 @@ class NameGeneratorBase
         $name = $this.sanitizeName($name)
         return (truncateString -str $name -maxChars $maxChars)
     }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la lettre de début pour un tenant
+
+        RET : La lettre de début
+    #>
+    hidden [string] getTenantStartLetter()
+    {
+        $start = ""
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL
+            {
+                $start = "u"
+            }
+
+            $global:VRA_TENANT__RESEARCH
+            {
+                $start = "p"
+            }
+        }
+
+        return $start
+    }
 }

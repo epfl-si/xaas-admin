@@ -55,12 +55,13 @@ class NameGeneratorK8s: NameGeneratorBase
          $global:VRA_TENANT__EPFL
          {
             $middle = ("{0}{1}" -f $this.sanitizeName($this.getDetail('facultyName'), $global:CLUSTER_NAME_FACULTY_PART_MAX_CHAR), `
-                                   $this.sanitizeName($this.getDetail('unitName')))
+                                   $this.sanitizeName($this.getDetail('unitName'), $global:CLUSTER_NAME_UNIT_PART_MAX_CHAR))
          }
 
          $global:VRA_TENANT__ITSERVICES
          {
-            $middle = ($this.sanitizeName($this.getDetail('serviceShortName')))
+            $middle = ("{0}{1}" -f $this.sanitizeName($this.getDetail('snowServiceId')), `
+                                    $this.sanitizeName($this.getDetail('serviceShortName'), $global:CLUSTER_NAME_SERVICE_NAME_PART_MAX_CHAR))
          }
 
          $global:VRA_TENANT__RESEARCH
@@ -81,7 +82,7 @@ class NameGeneratorK8s: NameGeneratorBase
    #>
    [string] getClusterRegex()
    {
-      return ('{0}{1}k{2}([0-9]+)' -f $this.getTenantShortName(), $this.getClusterNameMiddle(), $this.getEnvShortName())
+      return ('{0}{1}k{2}([0-9]+)' -f $this.getTenantStartLetter(), $this.getClusterNameMiddle(), $this.getEnvShortName())
    }
 
    
@@ -97,7 +98,7 @@ class NameGeneratorK8s: NameGeneratorBase
    {
       $numberStr = $number.ToString().PadLeft($global:CLUSTER_NAME_NB_DIGIT, "0")
       
-      return ("{0}{1}k{2}{3}" -f $this.getTenantShortName(), ` # Nom court du tenant
+      return ("{0}{1}k{2}{3}" -f $this.getTenantStartLetter(), ` # Lettre de début du tenant
                $this.getClusterNameMiddle(), `
                $this.getEnvShortName(), `
                $numberStr)
@@ -124,6 +125,106 @@ class NameGeneratorK8s: NameGeneratorBase
       Throw "Invalid value given for 'entryType'"
    }
 
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom d'un Storage Class pour un cluster
+
+      IN  : $clusterName   -> Nom du cluster
+
+      RET : Le nom du storage class
+   #>
+   [string] getStorageClassName([string]$clusterName)
+   {
+      return "stcl-{0}" -f $clusterName
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom d'un Resource Quota pour un cluster et un namespace
+
+      IN  : $clusterName   -> Nom du cluster
+      IN  : $namespace     -> Nom du namespace
+
+      RET : Le nom du resource quota
+   #>
+   [string] getResourceQuotaName([string]$clusterName, [string]$namespace)
+   {
+      return "reqo-{0}-{1}" -f $clusterName, $namespace
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom d'un Pod Security Policy pour un cluster
+
+      IN  : $clusterName   -> Nom du cluster
+
+      RET : Le nom du Pod Security Policy
+   #>
+   [string] getPodSecurityPolicyName([string]$clusterName)
+   {
+      return "posepo-{0}" -f $clusterName
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom d'un Role pour un cluster et un namespace
+
+      IN  : $clusterName   -> Nom du cluster
+      IN  : $namespace     -> Nom du namespace
+
+      RET : Le nom du Role
+   #>
+   [string] getRoleName([string]$clusterName, [string]$namespace)
+   {
+      return "ro-{0}-{1}" -f $clusterName, $namespace
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom d'un Role Binding pour un cluster et un namespace
+
+      IN  : $clusterName   -> Nom du cluster
+      IN  : $namespace     -> Nom du namespace
+
+      RET : Le nom du Role Binding
+   #>
+   [string] getRoleBindingName([string]$clusterName, [string]$namespace)
+   {
+      return "robi-{0}-{1}" -f $clusterName, $namespace
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom d'un Cluster Role pour un cluster
+
+      IN  : $clusterName   -> Nom du cluster
+
+      RET : Le nom du Cluster Role
+   #>
+   [string] getClusterRoleName([string]$clusterName)
+   {
+      return "clro-{0}" -f $clusterName
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom d'un Cluster Role Binding pour un cluster
+
+      IN  : $clusterName   -> Nom du cluster
+
+      RET : Le nom du Cluster Role Binding
+   #>
+   [string] getClusterRoleBindingName([string]$clusterName)
+   {
+      return "clrobi-{0}" -f $clusterName
+   }
 
    <# -------------------------------------------------------------------------------------
       ----------------------------------- HARBOR ------------------------------------------
