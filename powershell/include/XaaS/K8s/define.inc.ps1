@@ -18,3 +18,11 @@ $global:CLUSTER_NAME_SERVICE_NAME_PART_MAX_CHAR = 15
 
 # Nom de la zone DNS
 $global:K8S_DNS_ZONE_NAME = "xaas.epfl.ch"
+
+### Valeurs par défaut pour les fichiers YAML
+$global:NEW_DEFAULT_NAMESPACE = "app"
+$global:PSP_PRIVILEGED = $false
+$global:PSP_ALLOW_PRIVILEGE_ESCALATION = $false
+$global:RESOURCE_QUOTA_LOAD_BALANCERS = 0
+$global:RESOURCE_QUOTA_NODEPORTS = 0
+$global:RESOURCE_QUOTA_STORAGE_GB = 10

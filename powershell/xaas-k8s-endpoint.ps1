@@ -508,10 +508,13 @@ try
 
             # Nouveau Namespace
             $nameSpaceReplace = @{
-                name = "app"
+                name = $global:NEW_DEFAULT_NAMESPACE
                 nsxEnv = $targetEnv
             }
             $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-namespace.yaml", $nameSpaceReplace)
+
+            # Storage Class
+            
 
             # Cluster Role
             $clusterRoleReplace = @{

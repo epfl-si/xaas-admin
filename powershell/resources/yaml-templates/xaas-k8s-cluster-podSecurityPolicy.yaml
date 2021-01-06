@@ -10,9 +10,9 @@ metadata:
     apparmor.security.beta.kubernetes.io/defaultProfileName:  'runtime/default'
 spec:
   # A "false" par defaut mais pourrait être modifiable en day2 ou en dev pour debug
-  privileged: false
+  privileged: {{privileged}}
   # Required to prevent escalations to root.
-  allowPrivilegeEscalation: false
+  allowPrivilegeEscalation: {{allowPrivilegeEscalation}}
   # This is redundant with non-root + disallow privilege escalation,
   # but we can provide it for defense in depth.
   requiredDropCapabilities:
