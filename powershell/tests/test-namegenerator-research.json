@@ -352,8 +352,12 @@
                 "expected": "OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
             },
             {
-                "params": ["[ADSubOUType]::Approval"],
+                "params": [true, "[ADSubOUType]::Approval"],
                 "expected": "OU=approval,OU=Research,OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            },
+            {
+                "params": [false, "[ADSubOUType]::Approval"],
+                "expected": "OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
             }
         ]
     },
