@@ -23,28 +23,6 @@
         ]
     },
     {
-        "name": "getADGroupNameRegEx",
-        "tests": [
-            {
-                "params": ["CSP_SUBTENANT_MANAGER"],
-                "expected": "^vra_t_adm_epfl$"
-            },
-            {
-                "params": ["CSP_SUPPORT"],
-                "expected": "^vra_t_sup_\\d+$"
-            },
-            {
-                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "^vra_t_\\d+_\\d+$"
-            },
-            {
-                "params": ["CSP_CONSUMER"],
-                "expected": "^vra_t_\\d+_\\d+$"
-            }
-
-        ]
-    },
-    {
         "name": "getRoleADGroupName",
         "tests": [
             {
@@ -363,7 +341,7 @@
             }
         ]
     },
-
+    
     {
         "name": "getADGroupsOUDN",
         "tests":[
@@ -374,7 +352,12 @@
             {
                 "params": [false],
                 "expected": "OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            },
+            {
+                "params": ["[ADSubOUType]::Approval"],
+                "expected": "OU=approval,OU=EPFL,OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
             }
+            
         ]
     },
 
