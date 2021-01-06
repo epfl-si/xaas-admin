@@ -1319,7 +1319,7 @@ try
 		targetEnv = $targetEnv
 		targetTenant = $targetTenant
 	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
 												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
 
@@ -1386,14 +1386,16 @@ try
 	
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
-	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
 						 $targetTenant, 
-						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
 	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
 	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
-	$nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), $configNSX.getConfigValue($targetEnv, "user"), $configNSX.getConfigValue($targetEnv, "password"))
+	$nsx = [NSXAPI]::new($configNSX.getConfigValue(@($targetEnv, "server")), 
+						 $configNSX.getConfigValue(@($targetEnv, "user")), 
+						 $configNSX.getConfigValue(@($targetEnv, "password")))
 
 	$doneBGList = @()
 
@@ -1442,7 +1444,7 @@ try
 	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
 
 	# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
-	$capacityAlertMails = @($configGlobal.getConfigValue("mail", "capacityAlert"))
+	$capacityAlertMails = @($configGlobal.getConfigValue(@("mail", "capacityAlert")))
 
 	# Parcours des groupes AD pour l'environnement/tenant donné
 	$adGroupList | ForEach-Object {

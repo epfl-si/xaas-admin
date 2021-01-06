@@ -54,75 +54,45 @@ class ConfigReader
 
    <#
 	-------------------------------------------------------------------------------------
-      BUT : Renvoie une valeur de configuration pour un élément donné
+      BUT : Renvoie une valeur de configuration pour un élément donné par son nom. Il
+            se trouve donc à la racine
       
-      IN  : $scope      -> Scope dans lequel on travaille.
-                           peut être: Test, Dev, Prod, ...
-      IN  : $element    -> Nom de la valeur que l'on veut récupérer
+      IN  : $rootElement  -> Nom de l'élément à la racine
+
+      RET : Valeur demandée
 	#>
-   [PSObject]getConfigValue([string]$scope, [string]$element)
+   [PSObject]getConfigValue([string]$rootElement)
    {
-      # On commence par contrôler que le scope existe 
-      if(!($this.propertyExists($this.config, $scope)))
-      {
-         Throw "ConfigReader: Scope '{0}' doesn't exists in '{1}'" -f $scope, $this.JSONfile
-      }
-
-      # On regarde ensuite si l'élément demandé dans le scope exist aussi.
-      if(!($this.propertyExists($this.config.$scope, $element)))
-      {
-         Throw "ConfigReader: Element '{0}' for scope '{1}' doesn't exists in '{2}'" -f $element, $scope, $this.JSONfile
-      }
-
-      # Retour de ce qui est demandé
-      return $this.config.$scope.$element
+      return $this.getConfigValue(@($rootElement))
    }
 
    <#
 	-------------------------------------------------------------------------------------
-      BUT : Renvoie une valeur de configuration pour un élément donné
+      BUT : Renvoie une valeur de configuration pour un élément donné par son chemin
       
-      IN  : $scope      -> Scope dans lequel on travaille.
-                           peut être: Test, Dev, Prod, ...
-      IN  : $element    -> Nom de l'élément dans lequel se trouve le sous-élément dont on veut la valeur
-      IN  : $subElement -> Nom de l'élément dont on veut la valeur
-	#>
-   [PSObject]getConfigValue([string]$scope, [string]$element, [string]$subElement)
-   {
-      $elementObj = $this.getConfigValue($scope, $element);
+      IN  : $pathToVal  -> Tableau avec le chemin jusqu'à la valeur recherchée
 
-      # On regarde ensuite si le sous-élément demandé dans l'élément exist aussi.
-      if(!($this.propertyExists($elementObj, $subElement)))
-      {
-         Throw "ConfigReader: Asked value ({0} -> {1} -> {2}) doesn't exists in '{3}'  " -f $scope, $element, $subElement, $this.JSONfile
+      RET : Valeur demandée
+	#>
+   [PSObject]getConfigValue([Array]$pathToVal)
+   {
+      $currentElement= $this.config
+      $pathDone = @()
+
+      # Parcours des éléments du chemin 
+      $pathToVal | ForEach-Object {
+         $pathDone += $_
+
+         if(!($this.propertyExists($currentElement, $_)))
+         {
+            Throw "ConfigReader: Path '{0}' doesn't exists in '{1}'" -f ($pathDone -join ">"), $this.JSONfile
+         }
+         # On descend d'un niveau
+         $currentElement = $currentElement.$_
       }
 
-      # Retour de ce qui est demandé
-      return $elementObj.$subElement
-   }
-
-   <#
-	-------------------------------------------------------------------------------------
-      BUT : Renvoie une valeur de configuration pour un élément donné
-      
-      IN  : $scope         -> Scope dans lequel on travaille.
-                              peut être: Test, Dev, Prod, ...
-      IN  : $element       -> Nom de l'élément dans lequel se trouve le sous-élément dont on veut la valeur
-      IN  : $subElement    -> Nom du sous-élément dans lequel se trouve le sous-sous-élément dont on veut la valeur
-      IN  : $subSubElement -> Nom du sous-élément dont on veut la valeur
-	#>
-   [PSObject]getConfigValue([string]$scope, [string]$element, [string]$subElement, [string]$subSubElement)
-   {
-      $elementObj = $this.getConfigValue($scope, $element, $subElement);
-
-      # On regarde ensuite si le sous-élément demandé dans l'élément exist aussi.
-      if(!($this.propertyExists($elementObj, $subSubElement)))
-      {
-         Throw "ConfigReader: Asked value ({0} -> {1} -> {2} -> {3}) doesn't exists in '{4}'  " -f $scope, $element, $subElement, $subSubElement, $this.JSONfile
-      }
-
-      # Retour de ce qui est demandé
-      return $elementObj.$subSubElement
+      # Si on arrive ici, c'est qu'on a trouvé ce qu'on cherchait, on peut le retourner
+      return $currentElement
    }
 
 }

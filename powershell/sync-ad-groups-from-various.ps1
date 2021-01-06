@@ -654,22 +654,22 @@ try
 		targetEnv = $targetEnv
 		targetTenant = $targetTenant
 	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
 												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
 	# Pour s'interfacer avec l'application Groups
-	$groupsApp = [GroupsAPI]::new($configGroups.getConfigValue($targetEnv, "server"),`
-								  $configGroups.getConfigValue($targetEnv, "appName"),`
-								   $configGroups.getConfigValue($targetEnv, "callerSciper"),`
-								   $configGroups.getConfigValue($targetEnv, "password"))
+	$groupsApp = [GroupsAPI]::new($configGroups.getConfigValue(@($targetEnv, "server")),
+								  $configGroups.getConfigValue(@($targetEnv, "appName")),
+								   $configGroups.getConfigValue(@($targetEnv, "callerSciper")),
+								   $configGroups.getConfigValue(@($targetEnv, "password")))
 	
 	# Pour accéder à la base de données
-	$sqldb = [SQLDB]::new([DBType]::MSSQL, `
-							$configVra.getConfigValue($targetEnv, "db", "host"), `
-							$configVra.getConfigValue($targetEnv, "db", "dbName"), `
-							$configVra.getConfigValue($targetEnv, "db", "user"), `
-							$configVra.getConfigValue($targetEnv, "db", "password"), `
-							$configVra.getConfigValue($targetEnv, "db", "port"))
+	$sqldb = [SQLDB]::new([DBType]::MSSQL, 
+							$configVra.getConfigValue(@($targetEnv, "db", "host")),
+							$configVra.getConfigValue(@($targetEnv, "db", "dbName")),
+							$configVra.getConfigValue(@($targetEnv, "db", "user")), 
+							$configVra.getConfigValue(@($targetEnv, "db", "password")),
+							$configVra.getConfigValue(@($targetEnv, "db", "port")))
 
 	Import-Module ActiveDirectory
 
@@ -1325,12 +1325,12 @@ try
 			$counters.add('rsrch.projectSkipped', '# Projects skipped')
 
 			# Pour accéder à la base de données
-			$mysqlGrants = [SQLDB]::new([DBType]::MySQL, `
-										$configGrants.getConfigValue($targetEnv, "host"), `
-										$configGrants.getConfigValue($targetEnv, "dbName"), `
-										$configGrants.getConfigValue($targetEnv, "user"), `
-										$configGrants.getConfigValue($targetEnv, "password"), `
-										$configGrants.getConfigValue($targetEnv, "port"))
+			$mysqlGrants = [SQLDB]::new([DBType]::MySQL, 
+										$configGrants.getConfigValue(@($targetEnv, "host")),
+										$configGrants.getConfigValue(@($targetEnv, "dbName")),
+										$configGrants.getConfigValue(@($targetEnv, "user")),
+										$configGrants.getConfigValue(@($targetEnv, "password")),
+										$configGrants.getConfigValue(@($targetEnv, "port")))
 
 			$projectList = $mysqlGrants.execute("SELECT * FROM v_gdb_iaas WHERE subsides_start_date <= DATE(NOW()) AND subsides_end_date > DATE(NOW())")
 			# Décommenter la ligne suivante et éditer l'ID pour simuler la disparition d'un projet
@@ -1579,10 +1579,10 @@ try
 		Start-Sleep -Seconds $sleepDurationSec
 		try {
 			# Création d'une connexion au serveur
-			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+			$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
 								 $targetTenant, 
-								 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-								 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+								 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+								 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 		}
 		catch {
 			Write-Error "Error connecting to vRA API !"
