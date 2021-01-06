@@ -495,7 +495,7 @@ function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Ar
 	}
 	
 
-	# Si on doit utiliser une adresse mail pour la facturation au lieu du centre financier
+	# 1. Si on doit utiliser une adresse mail pour la facturation au lieu du centre financier
 	$financeCenter = $null
 	ForEach($billToMail in $billToMailList)
 	{
@@ -698,6 +698,7 @@ try
 	$counters.add('ADGroupsExists', '# AD Groups already existing')
 	$counters.add('ADGroupsRemoved', '# AD Groups removed')
 	$counters.add('ADGroupsContentUpdated', '# AD Groups updated')
+	$counters.add('ADGroupsContentOK', '# AD Groups OK')
 	$counters.add('ADMembersNotFound', '# AD members not found')
 	$counters.add('groupsGroupsCreated', '# Groups groups created')
 	$counters.add('membersAddedTovRAUsers', '# Users added to vraUsers table (Tableau)')
@@ -890,7 +891,7 @@ try
 						$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.$sourceType.Count, $faculty.name, $unit.name))
 
 						# Recherche du centre financier à utiliser
-						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList -billToMailList $billToMailList `
+						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList.$sourceType -billToMailList $billToMailList `
 										-sourceType $sourceType -geUnitMappingList $geUnitMappingList
 
 						$vRAServicesToDeny = @()
@@ -995,39 +996,50 @@ try
 						# Si le groupe AD existe
 						if($adGroupExists)
 						{
-							# S'il y a des membres dedans
-							if($adMemberList.count -gt 0)
+							# Si les membres présents dans le groupe AD n'est pas le même que ce qui devrait y être,
+							if($null -ne (Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList))
 							{
-								$logHistory.addLineAndDisplay(("--> Removing all members ({0}) in group '{1}'..." -f $adMemberList.count, $adGroupName))
-								if(-not $SIMULATION_MODE)
+								# On commence par supprimer le contenu du groupe s'il y en a
+								if($adMemberList.count -gt 0)
 								{
-									Remove-ADGroupMember $adGroupName -Members $adMemberList -confirm:$false
+									$logHistory.addLineAndDisplay(("--> Removing all members ({0}) in group '{1}'..." -f $adMemberList.count, $adGroupName))
+									if(-not $SIMULATION_MODE)
+									{
+										Remove-ADGroupMember $adGroupName -Members $adMemberList -confirm:$false
+									}
 								}
+								
+								# Ajout des membres qui doivent y être (s'il y en a)
+								if($ldapMemberList.count -gt 0)
+								{
+									$logHistory.addLineAndDisplay(("--> Adding {0} members in group '{1}'..." -f $ldapMemberList.count, $adGroupName))
+									if(-not $SIMULATION_MODE)
+									{
+										Add-ADGroupMember $adGroupName -Members $ldapMemberList
+									}
+
+									$counters.inc('ADGroupsContentUpdated')
+								}
+								else # Aucun utilisateur à mettre dans le groupe, donc c'est que celui-ci est vide, on peut le supprimer
+								{
+									$logHistory.addLineAndDisplay(("--> AD group '{0}' is empty, removing it..." -f $adGroupName))
+									if(-not $SIMULATION_MODE)
+									{
+										# Comme on a vidé le groupe juste avant s'il contenait des membres et que là on n'a rien à ajouter dedans,
+										# on peut supprimer le groupe
+										Remove-ADGroup $adGroupName -Confirm:$false
+									}
+
+									$counters.inc('ADGroupsRemoved')
+								}
+								
+							}
+							else # Le contenu du groupe AD est à jour
+							{
+								$logHistory.addLineAndDisplay(("--> AD Group '{0}' is up-to-date" -f $adGroupName))
+								$counters.inc('ADGroupsContentOK')
 							}
 
-							# S'il y a des membres à ajouter
-							if($ldapMemberList.count -gt 0)
-							{
-								# Ajout des membres
-								$logHistory.addLineAndDisplay(("--> Adding {0} members in group '{1}'..." -f $ldapMemberList.count, $adGroupName))
-								if(-not $SIMULATION_MODE)
-								{
-									Add-ADGroupMember $adGroupName -Members $ldapMemberList
-								}
-
-								$counters.inc('ADGroupsContentUpdated')
-							}
-							else # Aucun membre à ajouter
-							{
-								if(-not $SIMULATION_MODE)
-								{
-									# Comme on a vidé le groupe juste avant s'il contenait des membres et que là on n'a rien à ajouter dedans,
-									# on peut supprimer le groupe
-									Remove-ADGroup $adGroupName -Confirm:$false
-								}
-
-								$counters.inc('ADGroupsRemoved')
-							}
 
 							# On enregistre le nom du groupe AD traité
 							$doneADGroupList += $adGroupName

@@ -28,6 +28,7 @@ class vRAAPI: RESTAPICurl
 {
 	hidden [string]$token
 	hidden [string]$tenant
+	hidden [Hashtable]$bgCustomIdMappingCache
 
 	<#
 	-------------------------------------------------------------------------------------
@@ -43,6 +44,9 @@ class vRAAPI: RESTAPICurl
 	{
 		$this.server = $server
 		$this.tenant = $tenant
+
+		# Cache pour le mapping entre l'ID custom d'un BG et celui-ci
+		$this.bgCustomIdMappingCache = $null
 
 		$this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
@@ -199,24 +203,62 @@ class vRAAPI: RESTAPICurl
 		BUT : Renvoie un BG donné par son ID custom, défini dans la custom property ch.epfl.vra.bg.id
 
 		IN  : $customId	-> ID custom du BG que l'on désire
+		IN  : $useCache -> (optionnel) pour dire si on doit utiliser un cache pour faire la requête
 
 		RET : Objet contenant le BG
 				$null si n'existe pas
 	#>
 	[PSCustomObject] getBGByCustomId([string] $customId)
 	{
-		$list = $this.getBGList()
+		return $this.getBGByCustomId($customId, $false)
+	}
+	[PSCustomObject] getBGByCustomId([string] $customId, [bool]$useCache)
+	{
+		$list = @()
+		# Si on doit utiliser le cache ET qu'il est vide
+		# OU 
+		# On ne doit pas utiliser le cache
+		if( ($useCache -and ($null -eq $this.bgCustomIdMappingCache)) -or !$useCache)
+		{
+			$list = $this.getBGList()
 
-		if($list.Count -eq 0){return $null}
+			if($list.Count -eq 0){return $null}
+		}
 		
-		# Retour en cherchant avec le custom ID, y'a pas mal de Where-Object imbriqués pour faire le job mais ça fonctionne. Par contre, 
-		# ça risque d'être un peu galère à debug par la suite ^^'
-		return $list| Where-Object { 
-			($_.extensionData.entries | Where-Object {
-				$null -ne ($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ( $null -ne ($_.value.values.entries | Where-Object { 
-					($null -ne $_.value.value) -and ($_.value.value -is [System.String]) -and ($_.value.value.toLower() -eq $customId.toLower()) } ) ) `
-													} `
-			)}
+		# Si on doit utiliser le cache
+		if($useCache)
+		{
+			# Si on n'a pas encore initilisé le cache, on le fait, ce qui va prendre quelques secondes
+			if($null -eq $this.bgCustomIdMappingCache)
+			{
+				$this.bgCustomIdMappingCache = @{}
+				ForEach($bg in $list)
+				{
+					$bgId = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+					# Si on est bien sur un BG "correcte", qui a donc un ID
+					if($null -ne $bgId)
+					{
+						$this.bgCustomIdMappingCache.add($bgId, $bg)
+					}
+					
+				}
+			}# FIN Si on n'a pas initialisé le cache
+
+			# Arrivé ici, le cache est initialisé donc on peut rechercher avec l'Id demandé
+			return $this.bgCustomIdMappingCache.item($customId)
+		}
+		else # On ne veut pas utiliser le cache (donc ça va prendre vraiment du temps!)
+		{
+			# Retour en cherchant avec le custom ID, y'a pas mal de Where-Object imbriqués pour faire le job mais ça fonctionne. Par contre, 
+			# ça risque d'être un peu galère à debug par la suite ^^'
+			return $list| Where-Object { 
+				($_.extensionData.entries | Where-Object {
+					$null -ne ($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ( $null -ne ($_.value.values.entries | Where-Object { 
+						($null -ne $_.value.value) -and ($_.value.value -is [System.String]) -and ($_.value.value.toLower() -eq $customId.toLower()) } ) ) `
+														} `
+				)}
+		}
+	
 	}
 
 
@@ -916,10 +958,21 @@ class vRAAPI: RESTAPICurl
 			$approvalPolicyId = $approvalPolicy.id
 		}
 
-		# Valeur à mettre pour la configuration du Service
-		$replace = @{id = $catalogItem.catalogItem.id
-					label = $catalogItem.catalogItem.name
-					approvalPolicyId = $approvalPolicyId}
+		# Si c'est un élément de catalogue qui fait déjà partie d'un entitlement,
+		if(objectPropertyExists -obj $catalogItem -propertyName "catalogItem")
+		{
+			# Valeur à mettre pour la configuration du Service
+			$replace = @{id = $catalogItem.catalogItem.id
+				label = $catalogItem.catalogItem.name
+				approvalPolicyId = $approvalPolicyId}
+		}
+		else # l'élément de catalogue ne fait pas partie d'un entitlement
+		{
+			# Valeur à mettre pour la configuration du Service
+			$replace = @{id = $catalogItem.id
+				label = $catalogItem.name
+				approvalPolicyId = $approvalPolicyId}
+		}
 
 		# Création du nécessaire pour le service à ajouter
 		$catalogItem = $this.createObjectFromJSON("vra-entitlement-catalog-item.json", $replace)
@@ -959,10 +1012,15 @@ class vRAAPI: RESTAPICurl
 		IN  : $ent				-> Objet de l'entitlement auquel ajouter les actions
 		IN  : $secondDayActions	-> Objet de la classe SecondDayActions contenant la liste des actions à ajouter.
 
-		RET : Objet contenant l'Entitlement avec les actions passée.
+		RET : Tableau associatif avec les éléments suivants:
+				.entitlement		-> Objet contenant l'Entitlement avec les actions passée.
+				.notFoundActions	-> Tableau avec la liste des actions non trouvées
 	#>
-	[PSCustomObject] prepareEntActions([PSCustomObject] $ent, [SecondDayActions]$secondDayActions)
+	[Hashtable] prepareEntActions([PSCustomObject] $ent, [SecondDayActions]$secondDayActions)
 	{
+		# Pour enregistrer la liste des actions non trouvées
+		$notFoundActions = @()
+
 		# Pour stocker la liste des actions à ajouter, avec toutes les infos nécessaires
 		$actionsToAdd = @()
 
@@ -992,6 +1050,12 @@ class vRAAPI: RESTAPICurl
 				else # Pas d'infos trouvées pour l'action
 				{
 					Write-Warning ("prepareEntActions(): No information found for action '{0}' for element '{1}'" -f $actionName, $targetElementName)
+					
+					if($notFoundActions -notcontains $actionName)
+					{
+						$notFoundActions += $actionName
+					}
+					
 				}
 			} # Fin BOUCLE de parcours des actions pour l'élément courant 
 			
@@ -1001,7 +1065,10 @@ class vRAAPI: RESTAPICurl
 		$ent.entitledResourceOperations = $actionsToAdd
 
 		# Retour de l'entitlement avec les actions
-		return $ent
+		return @{
+			entitlement = $ent
+			notFoundActions = $notFoundActions
+		}
 	}
 
 
@@ -1461,6 +1528,34 @@ class vRAAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Items du catalogue (qui sont disponibles dans des
+				entitlements) selon les paramètres passés dans $queryParams
+
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+
+		RET : Tableau contenant les items
+	#>
+	hidden [Array] getEntitledCatalogItemListQuery([string] $queryParams)
+	{
+		$uri = "https://{0}/catalog-service/api/consumer/entitledCatalogItems/?page=1&limit=5000" -f $this.server
+
+		# Si un filtre a été passé, on l'ajoute
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+
+		# Retour de la liste mais on ne prend que les éléments qui existent encore.
+		$result = ($this.callAPI($uri, "Get", $null)).content 	
+
+		return $result
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des Items du catalogue selon les paramètres passés dans $queryParams
 
 
@@ -1472,7 +1567,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getCatalogItemListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/catalog-service/api/consumer/entitledCatalogItems/?page=1&limit=5000" -f $this.server
+		$uri = "https://{0}/catalog-service/api/catalogItems/?page=1&limit=5000" -f $this.server
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1496,9 +1591,9 @@ class vRAAPI: RESTAPICurl
 
 		RET : Tableau contenant les items du catalogue
 	#>
-	[Array] getServiceCatalogItemList([PSObject] $service)
+	[Array] getServiceEntitledCatalogItemList([PSObject] $service)
 	{
-		return $this.getCatalogItemListQuery(("`$filter=service/id eq '{0}' and status eq 'PUBLISHED'" -f $service.id))
+		return $this.getEntitledCatalogItemListQuery(("`$filter=service/id eq '{0}' and status eq 'PUBLISHED'" -f $service.id))
 	}
 
 
