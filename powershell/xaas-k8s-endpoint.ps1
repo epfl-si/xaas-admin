@@ -366,37 +366,37 @@ try
     $nameGeneratorK8s = [NameGeneratorK8s]::new($targetEnv, $targetTenant)
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
-	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
 						 $targetTenant, 
-						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-                         $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+                         $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
     
     # Création d'une connexion au serveur PKS pour accéder à ses API REST
-	$pks = [PKSAPI]::new($configK8s.getConfigValue($targetEnv, "pks", "server"), 
-                            $configK8s.getConfigValue($targetEnv, "pks", "user"), 
-                            $configK8s.getConfigValue($targetEnv, "pks", "password"))
+	$pks = [PKSAPI]::new($configK8s.getConfigValue(@($targetEnv, "pks", "server")),
+                            $configK8s.getConfigValue(@($targetEnv, "pks", "user")),
+                            $configK8s.getConfigValue(@($targetEnv, "pks", "password")))
 
     # Création d'une connexion au serveur Harbor pour accéder à ses API REST
-	$harbor = [HarborAPI]::new($configK8s.getConfigValue($targetEnv, "harbor", "server"), 
-            $configK8s.getConfigValue($targetEnv, "harbor", "user"), 
-            $configK8s.getConfigValue($targetEnv, "harbor", "password"))
+	$harbor = [HarborAPI]::new($configK8s.getConfigValue(@($targetEnv, "harbor", "server")),
+            $configK8s.getConfigValue(@($targetEnv, "harbor", "user")),
+            $configK8s.getConfigValue(@($targetEnv, "harbor", "password")))
 
     # Connexion à NSX pour pouvoir allouer/restituer des adresses IP
-    $nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), `
-                            $configNSX.getConfigValue($targetEnv, "user"), `
-                            $configNSX.getConfigValue($targetEnv, "password"))
+    $nsx = [NSXAPI]::new($configNSX.getConfigValue(@($targetEnv, "server")),
+                            $configNSX.getConfigValue(@($targetEnv, "user")),
+                            $configNSX.getConfigValue(@($targetEnv, "password")))
 
     # Création du nécessaire pour interagir avec le DNS EPFL
-	$EPFLDNS = [EPFLDNS]::new($configK8s.getConfigValue($targetEnv, "dns", "server"), 
-                                $configK8s.getConfigValue($targetEnv, "dns", "psEndpointServer"), 
-                                $configK8s.getConfigValue($targetEnv, "dns", "user"), 
-                                $configK8s.getConfigValue($targetEnv, "dns", "password"))
+	$EPFLDNS = [EPFLDNS]::new($configK8s.getConfigValue(@($targetEnv, "dns", "server")),
+                                $configK8s.getConfigValue(@($targetEnv, "dns", "psEndpointServer")),
+                                $configK8s.getConfigValue(@($targetEnv, "dns", "user")),
+                                $configK8s.getConfigValue(@($targetEnv, "dns", "password")))
 
     # Objet pour passer des commandes TKGI et Kubectl
-    $tkgiKubectl = [TKGIKubectl]::new($configK8s.getConfigValue($targetEnv, "tkgi", "server"), 
-                                        $configK8s.getConfigValue($targetEnv, "tkgi", "user"), 
-                                        $configK8s.getConfigValue($targetEnv, "tkgi", "password"),
-                                        $configK8s.getConfigValue($targetEnv, "tkgi", "certificate"))
+    $tkgiKubectl = [TKGIKubectl]::new($configK8s.getConfigValue(@($targetEnv, "tkgi", "server")),
+                                        $configK8s.getConfigValue(@($targetEnv, "tkgi", "user")),
+                                        $configK8s.getConfigValue(@($targetEnv, "tkgi", "password")),
+                                        $configK8s.getConfigValue(@($targetEnv, "tkgi", "certificate")))
                                 
     # Si on doit activer le Debug,
     if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
@@ -412,7 +412,7 @@ try
 		targetEnv = $targetEnv
 		targetTenant = $targetTenant
 	}
-    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
                         ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
     # Si on nous a passé un ID de BG,
@@ -589,7 +589,7 @@ try
             $nameGeneratorK8s.initDetailsFromBG($bg.name, $bgId)
 
             deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName -clusterUUID $clusterUUID `
-                        -harbor $harbor -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName") -targetTenant $targetTenant
+                        -harbor $harbor -ipPoolName $configK8s.getConfigValue(@($targetEnv, "nsx", "ipPoolName")) -targetTenant $targetTenant
         }
 
 
@@ -753,7 +753,7 @@ catch
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating cluster '{0}', deleting it so everything is clean:`n{1}`nStack Trace:`n{2}" -f $clusterName, $errorMessage, $errorTrace))
         deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -harbor $harbor `
-                -clusterName $clusterName -clusterUUID "" -ipPoolName $configK8s.getConfigValue($targetEnv, "nsx", "ipPoolName") -targetTenant $targetTenant
+                -clusterName $clusterName -clusterUUID "" -ipPoolName $configK8s.getConfigValue(@($targetEnv, "nsx", "ipPoolName")) -targetTenant $targetTenant
     }
 
     # Ajout de l'erreur et affichage
