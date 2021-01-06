@@ -152,7 +152,7 @@ $replicaTemplatesSuffixName = $configVsphereTemplate.getConfigValue($targetEnv, 
 
 } else {
 
-    Write-Host "the entty has tags but not the good: " + $vmtag.Tag.Name
+    Write-Host "the entity has tags but not the good: " + $vmtag.Tag.Name
 }
    
 }
