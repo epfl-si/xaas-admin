@@ -82,15 +82,23 @@
                 "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
             },
             {
-                "params": ["CSP_CONSUMER"],
-                "expected": "{\"projectAcronym\":\"rsrchprjx\",\"financeCenter\":\"F9876\"}"
-            },
-            {
                 "params": ["CSP_SUBTENANT_MANAGER"],
                 "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
+                "expected": "{\"projectAcronym\":\"rsrchprjx\"}"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "{\"projectAcronym\":\"rsrchprjx\"}"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", { "financeCenter":"F9876"}],
+                "expected": "{\"projectAcronym\":\"rsrchprjx\",\"financeCenter\":\"F9876\"}"
+            },
+            {
+                "params": ["CSP_CONSUMER", { "financeCenter":"F9876"}],
                 "expected": "{\"projectAcronym\":\"rsrchprjx\",\"financeCenter\":\"F9876\"}"
             }
         ]
