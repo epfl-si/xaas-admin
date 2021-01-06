@@ -54,20 +54,6 @@ class ConfigReader
 
    <#
 	-------------------------------------------------------------------------------------
-      BUT : Renvoie une valeur de configuration pour un élément donné par son nom. Il
-            se trouve donc à la racine
-      
-      IN  : $rootElement  -> Nom de l'élément à la racine
-
-      RET : Valeur demandée
-	#>
-   [PSObject]getConfigValue([string]$rootElement)
-   {
-      return $this.getConfigValue(@($rootElement))
-   }
-
-   <#
-	-------------------------------------------------------------------------------------
       BUT : Renvoie une valeur de configuration pour un élément donné par son chemin
       
       IN  : $pathToVal  -> Tableau avec le chemin jusqu'à la valeur recherchée
