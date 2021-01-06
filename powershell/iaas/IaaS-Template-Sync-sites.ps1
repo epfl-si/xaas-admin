@@ -75,7 +75,7 @@ foreach ($masterTemplate in ($masterTemplates | Where-Object {$_.name -like "*ma
     
     ## check if the current master tempate has a sync tag.
     $vmtags= $null 
-    $vmtags= Get-TagAssignment -Entity $masterTemplate -Category "IaaS" 
+    $vmtags= Get-TagAssignment -Entity $masterTemplate -Category "IaaS" -Server $vCenter
 
 foreach ($vmtag in $vmtags) {
 
