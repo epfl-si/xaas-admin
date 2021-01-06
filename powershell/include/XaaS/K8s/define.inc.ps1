@@ -20,10 +20,9 @@ $global:CLUSTER_NAME_SERVICE_NAME_PART_MAX_CHAR = 15
 $global:K8S_DNS_ZONE_NAME = "xaas.epfl.ch"
 
 ### Valeurs par défaut pour les fichiers YAML
+# Voir aussi le fichier 'config/config-xaas-k8s.json' pour d'autres valeurs différentes via les environnements
 $global:NEW_DEFAULT_NAMESPACE = "app"
 $global:PSP_PRIVILEGED = $false
 $global:PSP_ALLOW_PRIVILEGE_ESCALATION = $false
-$global:RESOURCE_QUOTA_LOAD_BALANCERS = 0
-$global:RESOURCE_QUOTA_NODEPORTS = 0
-$global:RESOURCE_QUOTA_STORAGE_GB = 10
+$global:RESOURCE_QUOTA_LB_AND_NODEPORTS = 0
 $global:STORAGE_CLASS_PROVISIONER = "kubernetes.io/vsphere-volume"

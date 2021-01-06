@@ -4,7 +4,15 @@
         {
             "server": "",
             "user": "",
-            "password": ""
+            "password": "",
+            "storageClass" : 
+            {
+                "parameters.datastore": ""
+            },
+            "resourceQuota":
+            {
+                "spec.hard.requests.storageGi": 0
+            }
         },
         "tkgi":
         {
@@ -36,7 +44,15 @@
         {
             "server": "",
             "user": "",
-            "password": ""
+            "password": "",
+            "storageClass" : 
+            {
+                "parameters.datastore": ""
+            },
+            "resourceQuota":
+            {
+                "spec.hard.requests.storageGi": 0
+            }
         },
         "tkgi":
         {
@@ -68,7 +84,15 @@
         {
             "server": "",
             "user": "",
-            "password": ""
+            "password": "",
+            "storageClass" : 
+            {
+                "parameters.datastore": ""
+            },
+            "resourceQuota":
+            {
+                "spec.hard.requests.storageGi": 0
+            }
         },
         "tkgi":
         {
