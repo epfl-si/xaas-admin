@@ -270,8 +270,6 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 	BUT : Créé (si inexistant) ou met à jour un Business Group (si existant)
 
 	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $existingBGList		-> Tableau associatif avec la liste des BG, aura été créé via la fonction 
-									createMappingBGList
 	IN  : $tenantName			-> Nom du tenant sur lequel on bosse
 	IN  : $bgEPFLID				-> ID du BG défini par l'EPFL et pas vRA. Valable pour les BG qui sont sur tous les tenants
 	IN  : $bgName				-> Nom du BG
@@ -285,10 +283,10 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 #>
 function createOrUpdateBG
 {
-	param([vRAAPI]$vra, [Hashtable]$existingBGList, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$financeCenter, [string]$capacityAlertsEmail)
+	param([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$financeCenter, [string]$capacityAlertsEmail)
 
 	# Recherche du BG par son no identifiant (no d'unité, no de service Snow, etc... ).
-	$bg = getBGFromMappingList -mappingList $existingBGList -customPropValue $bgEPFLID
+	$bg = $vra.getBGByCustomId($bgEPFLID, $true)
 
 
 	# ---- EPFL ---- ou ---- Research ----
@@ -376,12 +374,19 @@ function createOrUpdateBG
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
 		# les BG existants avec la nouvelle "Custom Property"
-		if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID))
-		{
-			# Ajout de la custom Property avec la valeur par défaut 
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BG_ID" = $bgEPFLID})
-		}
+		# if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME))
+		# {
+		# 	# Ajout de la custom Property avec la valeur par défaut 
+		# 	$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
+		# }
 
+
+		# Si le nom de l'entité de facturation a changé (ce qui peut arriver), on la met à jour
+		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME) -ne $nameGenerator.getBillingEntityName())
+		{
+			# Mise à jour
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
+		}
 
 		# ==========================================================================================
 
@@ -572,71 +577,178 @@ function createOrUpdateBGEnt
 	IN  : $ent				-> Objet Entitlement auquel lier les services
 	IN  : $approvalPolicy	-> Object Approval Policy qui devra approuver les demandes 
 								pour les nouveaux éléments
+							   Peut être $null si on ne veut pas d'approbation
+	IN  : $deniedServices	-> Tableau avec les services à ne pas mettre pour le BG.
+								Le tableau contient une liste d'objet ayant les clefs suivantes:
+								.svc	-> nom du service concerné
+								.items 	-> tableau des items "denied". Si vide, c'est l'entier du
+											service qui est "denied". Sinon, on ajoute spécifiquement
+											les autres items du catalogue, à l'exception de ceux qui
+											sont présents dans la liste
+	IN  : $mandatoryItems	-> Tableau avec la liste des items de catalogue à ajouter obligatoirement
+								à la liste des "Entitled items"	
 	
 	RET : Objet Entitlement mis à jour
 #>
 function prepareAddMissingBGEntPublicServices
 {
-	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy)
+	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices, [Array]$mandatoryItems)
 
 
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
-	$publicServices = $vra.getServiceListMatch($global:VRA_SERVICE_SUFFIX__PUBLIC)
+	$publicServiceList = $vra.getServiceListMatch($global:VRA_SERVICE_SUFFIX__PUBLIC)
+
+	# Extraction des noms des services non autorisés
+	$deniedServicesNames = @($deniedServices | Select-Object -ExpandProperty svc)
+
+	# On supprime de l'entitlement tous les items de catalogue appartenant au service. Cela permet de repartir
+	# sur une base propre pour potentiellement ajouter les "nouveaux" services et où des éléments de catalogue
+	$ent = $vra.prepareRemoveAllCatalogItems($ent)
+
+	# Ajout des Items de catalogue "mandatory" s'il y en a
+	if($mandatoryItems.count -gt 0)
+	{
+		$logHistory.addLineAndDisplay(("-> Adding {0} mandatory catalog items..." -f $mandatoryItems.count))
+
+		# Parcours et ajout
+		$mandatoryItems | ForEach-Object {
+			$catalogItem = $vra.getCatalogItem($_.name)
+
+			if($null -eq $catalogItem)
+			{
+				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not found!" -f $_.name))
+				$notifications.mandatoryItemsNotFound += $_.name
+			}
+			else # L'élément de catalogue existe
+			{
+				$logHistory.addLineAndDisplay(("--> Adding catalog item '{0}'..." -f $_.name))
+
+				# Définition de la potentielle approval policy à mettre
+				if($_.hasApproval)
+				{
+					$itemApprovalPolicy = $approvalPolicy
+				}
+				else
+				{
+					$itemApprovalPolicy = $null
+				}
+				
+				$ent = $vra.prepareAddEntCatalogItem($ent, $catalogItem, $itemApprovalPolicy)
+			}
+			
+		}# FIN BOUCLE de parcours des éléments de catalogue obligatoires
+
+	}# FIN SI il y a des éléments de catalogue obligatoires à ajouter
 
 	# Parcours des services à ajouter à l'entitlement créé
-	ForEach($publicService in $publicServices)
+	ForEach($publicService in $publicServiceList)
 	{
-
+		
 		# Parcours des Services déjà liés à l'entitlement pour chercher le courant
 		$serviceExists = $false
 		ForEach($entService in $ent.entitledServices)
 		{
-			# Si on trouve le service
+			# Si on trouve le service dans l'entitlement
 			if($entService.serviceRef.id -eq $publicService.id)
 			{
-				$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement" -f $publicService.name))
 				$serviceExists = $true
 
-				# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
-				$entService.approvalPolicyId = $approvalPolicy.id
-				
-				$counters.inc('EntServices')
-				break;
-			}
-		}
+				# Si le service n'est pas dans ceux qui ne sont pas autorisés pour le BG,
+				if($deniedServicesNames -notcontains $publicService.name)
+				{
+					$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement" -f $publicService.name))
+					
+					# Si pas besoin d'approval policy
+					if($null -eq $approvalPolicy)
+					{
+						$entService.approvalPolicyId = ""
+					}
+					else 
+					{
+						# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
+						$entService.approvalPolicyId = $approvalPolicy.id
+					}
+					
+					$counters.inc('EntServices')
+				}
+				else # Le service courant n'est pas autorisé pour ce BG
+				{
+					$logHistory.addLineAndDisplay(("--> Service '{0}' already in Entitlement but is denied for this BG, removing it" -f $publicService.name))
+					$ent = $vra.prepareRemoveEntService($ent, $publicService)
 
-		# Si le service public n'est pas dans l'entitlement,
+					$counters.inc('EntServicesRemoved')
+
+				}# FIN SI le service courant n'est pas autorisé pour ce BG
+
+				break;
+					
+			}# FIN SI on trouve le service
+
+		}# FIN BOUCLE de parcours des services déjà présents dans l'entitlement 
+
+		# Si le service public n'a pas été trouvé dans l'entitlement,
 		if(-not $serviceExists)
 		{
-			$logHistory.addLineAndDisplay(("--> (prepare) Adding service '{0}' to Entitlement" -f $publicService.name))
-			$ent = $vra.prepareAddEntService($ent, $publicService.id, $publicService.name, $approvalPolicy)
+			# Si le service n'est pas dans ceux qui ne sont pas autorisés pour le BG,
+			if($deniedServicesNames -notcontains $publicService.name)
+			{
+				$logHistory.addLineAndDisplay(("--> (prepare) Adding service '{0}' to Entitlement" -f $publicService.name))
+				$ent = $vra.prepareAddEntService($ent, $publicService, $approvalPolicy)
 
-			$counters.inc('EntServicesAdded')
-		}
+				$counters.inc('EntServicesAdded')
+			}
+			else # Le service courant n'est pas autorisé pour ce BG
+			{
+				$logHistory.addLineAndDisplay(("--> (prepare) Skipping service '{0}' because denied for BG" -f $publicService.name))
+				$counters.inc('EntServicesDenied')
+			}
+			
+		}# FIN SI le service public n'a pas été trouvé dans l'entitlement
+
+
+		# Si le service public courant ne doit pas être dans la liste,
+		if($deniedServicesNames -contains $publicService.name)
+		{
+			# Recherche des infos pour savoir ce qui doit réellement être retiré de la liste au niveau des items de catalogues
+			$deniedSvcInfos = $deniedServices | Where-Object { $_.svc -eq  $publicService.name}
+
+			# Si c'est seulement certains items du catalogue pour le service courant qui ne doivent pas être affichés (mais que d'autres oui)
+			if($deniedSvcInfos.items.count -gt 0)
+			{
+				$logHistory.addLineAndDisplay(("--> (prepare) Service '{0}' has been denied but only for {1} catalog item(s), adding the others" -f $publicService.name, $deniedSvcInfos.items.count))
+
+				# Recherche de la liste des items de catalogue disponibles dans le service courant
+				$catalogItems = $vra.getServiceEntitledCatalogItemList($publicService)
+
+				# Ajout des items de catalogue qui peuvent être présents
+				$catalogItems | ForEach-Object {
+					# Si l'élément de catalogue courant n'est pas "défendu", 
+					if($deniedSvcInfos.items -notcontains $_.catalogItem.name)
+					{
+						$ent = $vra.prepareAddEntCatalogItem($ent, $_, $approvalPolicy)
+					}
+				}
+
+				# Si pas d'approval policy de définie
+				if($null -eq $approvalPolicy)
+				{
+					$entService.approvalPolicyId = ""
+				}
+				else
+				{
+					# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
+					$entService.approvalPolicyId = $approvalPolicy.id
+				}
+				
+			}
+
+		}# FIN SI le service public courant ne doit pas être dans la liste,
+
 	}# FIN BOUCLE de parcours des services à ajouter à l'entitlement
 
 	return $ent
 }
 
-<#
--------------------------------------------------------------------------------------
-	BUT : Envoie un mail aux admins pour leur dire qu'il y a eu un problème avec le
-		fichier JSON contenant les "2nd day actions" 
-	
-	REMARQUE:
-	La variable $targetEnv est utilisée de manière globale.
-
-	IN  : $errorMsg		-> Message d'erreur
-
-	RET : Rien
-#>
-function sendErrorMail2ndDayActionFile
-{
-	(param [string] $errorMsg)
-
-	$valToReplace = @{errorMsg = $errorMsg}
-	$notificationMail.send("Error - 2nd day action JSON file error!", "2nd-action-json-file-error", $valToReplace)
-}
 
 <#
 -------------------------------------------------------------------------------------
@@ -925,6 +1037,23 @@ function handleNotifications
 					$templateName = "iso-folder-not-renamed"
 				}
 				
+				# ---------------------------------------
+				# Liste des éléments de catalogue "obligatoires" non trouvés
+				'mandatoryItemsNotFound'
+				{
+					$valToReplace.itemList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Mandatory catalog items not found"
+					$templateName = "mandatory-catalog-items-not-found"
+				}
+
+				# ---------------------------------------
+				# Liste des actions "day-2" non trouvées
+				'notFound2ndDayActions'
+				{
+					$valToReplace.actionList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Second day actions not found"
+					$templateName = "day2-actions-not-found"
+				}
 
 				default
 				{
@@ -974,7 +1103,7 @@ function checkIfADGroupsExists
 				# $groupShort = 'xyz' 
 				# $domain = 'intranet.epfl.ch'
 				$groupShort, $domain = $groupName.Split('@')
-				if((ADGroupExists -groupName $groupShort) -eq $false)
+				if($null -eq (getADGroup -groupName $groupShort))
 				{
 					$logHistory.addWarningAndDisplay(("Security group '{0}' not found in Active Directory" -f $groupName))
 					# Enregistrement du nom du groupe
@@ -1136,69 +1265,6 @@ function createFirewallSectionRulesIfNotExists
 
 
 <#
--------------------------------------------------------------------------------------
-	BUT : Prend une liste des BG et créé un mapping entre la valeur de la custom
-			property donnée et le BG. On fait ceci pour avoir à éviter de parcourir
-			N fois la liste de BG pour chercher s'il existe. Là, on pourra accéder
-			directement via la valeur de la custom property donc ça sera plus rapide.
-
-	IN  : $bgList			-> La liste des BG pour laquelle créer le mapping
-	IN  : $customPropName	-> Le nom de la custom property à chercher
-
-	RET : Tableau associatif avec en clef la valeur de la custom property cherchée préfixée
-			avec _ histoire d'avoir un caractère autorisé pour commencer le nom de la clef.
-			Et en valeur, on trouve le BG.
-#>
-function createMappingBGList([Array]$bgList, [string]$customPropName)
-{
-	$mappingList = @{}
-
-	$logHistory.addLineAndDisplay(("Creating mapping list for {0} Business Groups..." -f $bgList.count))
-	# Parcours des BG
-	ForEach($bg in $bgList)
-	{
-		# Récupération de la valeur de la customProperty
-		$propValue = getBGCustomPropValue -bg $bg -customPropName $customPropName
-
-		if($null -ne $propValue)
-		{
-			# Création d'un nom de clef pour qu'elle commence avec un caractères autorisé
-			$key = "_{0}" -f $propValue
-
-			$mappingList.$key = $bg
-		}
-	}
-
-	return $mappingList
-}
-
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Renvoie le BG correspondant à la valeur de custom property passée
-
-	IN  : $mappingList			-> La liste de mapping qui aura été générée par la
-									fonction createMappingBGList
-	IN  : $customPropValue		-> Valeur de la custom property pour laquelle on veut le BG
-
-	RET : Le BG
-			$null si pas trouvé
-#>
-function getBGFromMappingList([Hashtable]$mappingList, [string]$customPropValue)
-{
-	# Génération de la clef de recherche
-	$key = "_{0}" -f $customPropValue
-
-	# Si la clef existe, retour du résultat
-	if($mappingList.Keys -contains $key)
-	{
-		return $mappingList.$key
-	}
-	return $null
-}
-
-
-<#
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
 	-------------------------------------------------------------------------------------
@@ -1263,7 +1329,9 @@ try
 	$counters.add('EntUpdated', '# Entitlements updated')
 	# Services
 	$counters.add('EntServices', '# Existing Entitlements Services')
+	$counters.add('EntServicesRemoved', '# Removed Entitlements Services (because denied)')
 	$counters.add('EntServicesAdded', '# Entitlements Services added')
+	$counters.add('EntServicesDenied', '# Entitlements Services denied')
 	# Reservations
 	$counters.add('ResCreated', '# Reservations created')
 	$counters.add('ResUpdated', '# Reservations updated')
@@ -1298,7 +1366,10 @@ try
 					bgSetAsGhost = @()
 					emptyADGroups = @()
 					adGroupsNotFound = @()
-					ISOFolderNotRenamed = @()}
+					ISOFolderNotRenamed = @()
+					mandatoryItemsNotFound = @()
+					notFound2ndDayActions = @()
+				}
 
 
 	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
@@ -1314,12 +1385,6 @@ try
 	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
 	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
 	$nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), $configNSX.getConfigValue($targetEnv, "user"), $configNSX.getConfigValue($targetEnv, "password"))
-
-	# Recherche de BG existants 
-	$existingBGList = $vra.getBGList()
-
-	# Création de la liste de mapping
-	$customPropToExistingBGMapping = createMappingBGList -bgList $existingBGList -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
 
 	$doneBGList = @()
 
@@ -1360,6 +1425,10 @@ try
 	$forceACLsUpdateFile =  ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE))
 	$forceACLsUpdate = (Test-path $forceACLsUpdateFile)
 
+	# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
+	$mandatoryEntItemsFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "mandatory-entitled-items.json"))
+	$mandatoryEntItemsList = loadFromCommentedJSON -jsonFile $mandatoryEntItemsFile
+
 	# Calcul de la date dans le passé jusqu'à laquelle on peut prendre les groupes modifiés.
 	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
 
@@ -1379,14 +1448,18 @@ try
 		{
 			# Eclatement de la description et du nom pour récupérer le informations
 			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
-			$faculty, $unit, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$descInfos = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			$faculty = $descInfos.faculty
+			$unit = $descInfos.unit
+			$financeCenter = $descInfos.financeCenter
+			$deniedVRASvc = $descInfos.deniedVRASvc
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{facultyName = $faculty
 										 facultyID = $facultyID
 										 unitName = $unit
-										 unitID = $unitID
-										 financeCenter = $financeCenter})
+										 unitID = $unitID})
 
 			# Création du nom/description du business group
 			$bgDesc = $nameGenerator.getBGDescription()
@@ -1405,12 +1478,16 @@ try
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-			$snowServiceId, $serviceLongName  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$descInfos  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			$serviceLongName = $descInfos.svcName
+			$snowServiceId = $descInfos.svcId
+			$deniedVRASvc = $descInfos.deniedVRASvc
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
-				serviceName = $serviceLongName
-				snowServiceId = $snowServiceId})
+										serviceName = $serviceLongName
+										snowServiceId = $snowServiceId})
 
 			# Création du nom/description du business group
 			$bgDesc = $serviceLongName
@@ -1426,12 +1503,14 @@ try
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
 			$projectId = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-			$projectAcronym, $financeCenter  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+			$descInfos  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
+			$projectAcronym = $descInfos.projectAcronym
+			$financeCenter = $descInfos.financeCenter
 
 			# Initialisation des détails pour le générateur de noms
 			$nameGenerator.initDetails(@{
 				projectId = $projectId
-				financeCenter = $financeCenter
 				projectAcronym = $projectAcronym})
 
 			# Création du nom/description du business group
@@ -1439,6 +1518,9 @@ try
 			
 			# Custom properties du Buisness Group
 			$bgEPFLID = $projectId
+
+			# Aucun service de défendu
+			$deniedVRASvc = @()
 		}
 
 		else
@@ -1559,7 +1641,7 @@ try
 
 
 		# Si le groupe est vide,
-		if((Get-ADGroupMember -server ad2.epfl.ch $_.Name).Count -eq 0)
+		if((Get-ADGroupMember $_.Name).Count -eq 0)
 		{
 			# On enregistre l'info pour notification
 			$notifications.emptyADGroups += ("{0} ({1})" -f $_.Name, $bgName)
@@ -1571,7 +1653,7 @@ try
 		# --------------------------------- Business Group 
 
 		# Création ou mise à jour du Business Group
-		$bg = createOrUpdateBG -vra $vra -existingBGList $customPropToExistingBGMapping -bgEPFLID $bgEPFLID -tenantName $targetTenant -bgName $bgName -bgDesc $bgDesc `
+		$bg = createOrUpdateBG -vra $vra -bgEPFLID $bgEPFLID -tenantName $targetTenant -bgName $bgName -bgDesc $bgDesc `
 									-machinePrefixName $machinePrefixName -financeCenter $financeCenter -capacityAlertsEmail ($capacityAlertMails -join ",") 
 
 		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
@@ -1583,20 +1665,27 @@ try
 			return
 		}
 
+		# Si l'élément courant (unité, service, projet...) doit avoir une approval policy,
+		if($descInfos.hasApproval)
+		{
+			# ----------------------------------------------------------------------------------
+			# --------------------------------- Approval policies
+			# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
+			$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
+										-approvalLevelJSON $itemReqApprovalLevelJSON -approverGroupAtDomainList $approverGroupAtDomainList  `
+										-approvalPolicyJSON $itemReqApprovalPolicyJSON `
+										-additionnalReplace @{} -processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
 
-		# ----------------------------------------------------------------------------------
-		# --------------------------------- Approval policies
-		# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
-		$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
-																 -approvalLevelJSON $itemReqApprovalLevelJSON -approverGroupAtDomainList $approverGroupAtDomainList  `
-																 -approvalPolicyJSON $itemReqApprovalPolicyJSON `
-																 -additionnalReplace @{} -processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
-
-		# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
-		create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
-											-approverGroupAtDomainList $approverGroupAtDomainList -secondDayActions $secondDayActions `
-											-processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
-
+			# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
+			create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
+										-approverGroupAtDomainList $approverGroupAtDomainList -secondDayActions $secondDayActions `
+										-processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
+		}
+		else # Pas d'approval policy de définie
+		{
+			$itemReqApprovalPolicy = $null
+		}
+		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Roles
 		createOrUpdateBGRoles -vra $vra -bg $bg -managerGrpList $managerGrpList -supportGrpList $supportGrpList `
@@ -1610,11 +1699,15 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - 2nd day Actions
 		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
-		$ent = $vra.prepareEntActions($ent, $secondDayActions)
+		$result = $vra.prepareEntActions($ent, $secondDayActions)
+		$ent = $result.entitlement
+		# Mise à jour de la liste des actions non trouvées
+		$notifications.notFound2ndDayActions += $result.notFoundActions
+
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
-		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy
+		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
 
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus

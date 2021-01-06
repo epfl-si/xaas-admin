@@ -25,14 +25,14 @@ class ITServices
     ITServices()
     {
 
-        $itServiceJSONFile = ([IO.Path]::Combine($global:DATA_FOLDER, "itservices.json"))
+        $itServiceJSONFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "itservices.json"))
 		if(!(Test-Path $itServiceJSONFile ))
 		{
 			Throw ("JSON file with ITServices not found ! ({0})" -f $itServiceJSONFile)
 		}
 
 		# Chargement des données depuis le fichier 
-		$this.serviceList = ((Get-Content -Path $itServiceJSONFile) -join "`n") | ConvertFrom-Json
+		$this.serviceList = loadFromCommentedJSON -jsonFile $itServiceJSONFile
 		
 		# Si on rencontre une erreur, 
 		if(($this.serviceList -eq $false) -or ($null -eq $this.serviceList))

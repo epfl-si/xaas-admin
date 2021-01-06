@@ -82,16 +82,24 @@
                 "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
             },
             {
-                "params": ["CSP_CONSUMER"],
-                "expected": "rsrchprjx;F9876"
-            },
-            {
                 "params": ["CSP_SUBTENANT_MANAGER"],
                 "expected": "Administrators/Support for Tenant RESEARCH on Environment TEST"
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "rsrchprjx;F9876"
+                "expected": "{\"projectAcronym\":\"rsrchprjx\"}"
+            },
+            {
+                "params": ["CSP_CONSUMER"],
+                "expected": "{\"projectAcronym\":\"rsrchprjx\"}"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", { "financeCenter":"F9876"}],
+                "expected": "{\"projectAcronym\":\"rsrchprjx\",\"financeCenter\":\"F9876\"}"
+            },
+            {
+                "params": ["CSP_CONSUMER", { "financeCenter":"F9876"}],
+                "expected": "{\"projectAcronym\":\"rsrchprjx\",\"financeCenter\":\"F9876\"}"
             }
         ]
     },
@@ -412,8 +420,11 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["123456;This is my project description"],
-                "expected": ["123456", "This is my project description"]
+                "params": ["{\"projectAcronym\":\"rsrchprjx\",\"financeCenter\":\"F9876\"}"],
+                "expected": {
+                    "projectAcronym":  "rsrchprjx",
+                    "financeCenter":  "F9876"
+                }
             }
         ]
     },

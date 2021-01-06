@@ -54,14 +54,15 @@ $global:VRA_SERVICE_SUFFIX__PUBLIC  =" (Public)"
 $global:VRA_SERVICE_SUFFIX__PRIVATE =" (Private)"
 
 # Nom des custom properties à utiliser
-$global:VRA_CUSTOM_PROP_EPFL_BG_ID                    = "ch.epfl.vra.bg.id"
-$global:VRA_CUSTOM_PROP_VRA_BG_TYPE                   = "ch.epfl.vra.bg.type"
-$global:VRA_CUSTOM_PROP_VRA_BG_STATUS                 = "ch.epfl.vra.bg.status"
-$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE             = "ch.epfl.vra.bg.res.manage"
-$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE    = "ch.epfl.vra.bg.roles.support.manage"
-$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME               = "ch.epfl.vra.tenant.name"
-$global:VRA_CUSTOM_PROP_VRA_BG_NAME                   = "ch.epfl.vra.bg.name"
-$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER   = "ch.epfl.billing.financecenter"
+$global:VRA_CUSTOM_PROP_EPFL_BG_ID                  = "ch.epfl.vra.bg.id"
+$global:VRA_CUSTOM_PROP_VRA_BG_TYPE                 = "ch.epfl.vra.bg.type"
+$global:VRA_CUSTOM_PROP_VRA_BG_STATUS               = "ch.epfl.vra.bg.status"
+$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE           = "ch.epfl.vra.bg.res.manage"
+$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE  = "ch.epfl.vra.bg.roles.support.manage"
+$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME             = "ch.epfl.vra.tenant.name"
+$global:VRA_CUSTOM_PROP_VRA_BG_NAME                 = "ch.epfl.vra.bg.name"
+$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER = "ch.epfl.billing.financecenter"
+$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME    = "ch.epfl.billing.entity.name"
 
 
 # Types de Business Group possibles
@@ -108,7 +109,7 @@ $global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME = "Legacy VLAN"
 # Mail
 $global:VRA_MAIL_SUBJECT_PREFIX = "vRA Service [{0}->{1}]"
 $global:VRA_MAIL_SUBJECT_PREFIX_NO_TENANT = "vRA Service [{0}]"
-$global:MAIL_QUOTES_FILE = ([IO.Path]::Combine("$PSScriptRoot", "..", "data", "mail-quotes.json"))
+$global:MAIL_QUOTES_FILE = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "mail-quotes.json"))
 
 ## Billing
 $global:XAAS_BILLING_DATA_FOLDER = ([IO.Path]::Combine("$PSScriptRoot", "..", "data", "billing"))

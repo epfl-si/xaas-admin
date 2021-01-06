@@ -4,7 +4,7 @@ USAGES:
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgId <bgId> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action create -volType app -sizeGB <sizeGB> -bgId <bgId> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action appVolExists -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action appVolExists -volName <volName> -bgId <bgId>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action canHaveNewVol -bgId <bgId> -access cifs|nfs3
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action resize -sizeGB <sizeGB> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolSize [-volName <volName>]
@@ -561,11 +561,11 @@ try
                 # ---- Volume Applicatif
                 ([XaaSNASVolType]::app).ToString()
                 {
-                    $nameGeneratorNAS.setApplicativeDetails($global:APP_VOL_DEFAULT_FAC, $volName)
+                    $nameGeneratorNAS.setApplicativeDetails($bgId, $volName)
 
                     # Chargement des informations sur le mapping des facultés
                     $appSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "applicative-svm.json"))
-                    $appSVMList = (Get-Content -Path $appSVMFile -raw) | ConvertFrom-Json
+                    $appSVMList = loadFromCommentedJSON -jsonFile $appSVMFile
 
                     # Choix de la SVM
                     $logHistory.addLine("Choosing SVM for volume...")
@@ -876,17 +876,17 @@ try
 
             # Chargement des informations sur le mapping des facultés
             $facultyMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-mapping.json"))
-            $facultyMappingList = (Get-Content -Path $facultyMappingFile -raw) | ConvertFrom-Json
+            $facultyMappingList = loadFromCommentedJSON -jsonFile $facultyMappingFile
 
             # Chargement des informations 
-            $facultyToSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-to-svm.json"))
-            $facultyToSVM = (Get-Content -Path $facultyToSVMFile -raw) | ConvertFrom-Json
+            $facultyToSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-svm.json"))
+            $facultyToSVM = loadFromCommentedJSON -jsonFile $facultyToSVMFile
 
             # On commence par regarder s'il y a un mapping pour la faculté donnée
             $targetFaculty = $faculty
             Foreach($facMapping in $facultyMappingList)
             {
-                if($facMapping.fromFac.toLower() -eq $faculty.toLower())
+                if($facMapping.fromFacList -contains $faculty)
                 {
                     $targetFaculty = $facMapping.toFac
                     break
@@ -902,10 +902,10 @@ try
             }
 
             # Si on a une liste hard-codée de SVM pour la faculté
-            if([bool]($facultyToSVM.PSobject.Properties.name.toLower() -eq $faculty.toLower()))
+            if(objectPropertyExists -obj $facultyToSVM.$targetEnv -propertyName $faculty)
             {
                 # On ajoute la liste hard-codée
-                $svmList += $facultyToSVM.$faculty
+                $svmList += $facultyToSVM.$targetEnv.$faculty
             }
 
             # Ajout du résultat trié
@@ -921,7 +921,7 @@ try
             }
 
             # Si on veut savoir pour un volume applicatif, 
-            $nameGeneratorNAS.setApplicativeDetails($global:APP_VOL_DEFAULT_FAC, $volName, $bgId)
+            $nameGeneratorNAS.setApplicativeDetails($bgId, $volName)
                 
             # on regarde quel nom devrait avoir le volume applicatif
             $volName = $nameGeneratorNAS.getVolName()
@@ -945,7 +945,15 @@ try
             $logHistory.addLine( "Looking for next volume name..." )
             # Recheche du prochain nom de volume
             $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -access $access
-            $logHistory.addLine( ("Next volume name is '{0}'" ) -f $volName)
+            if($null -eq $volName)
+            {
+                $logHistory.addLine(("Maximum number of volume reached for BG {0} ({1})" -f $bg.name, $bgId))
+            }
+            else
+            {
+                $logHistory.addLine( ("Next volume name is '{0}'" ) -f $volName)
+            }
+            
             $output.results += @{
                 canHaveNewVol = ($null -ne $volName)
             }
@@ -1102,7 +1110,7 @@ try
             }
 
             # Chargement des informations (On spécifie UTF8 sinon les caractères spéciaux ne sont pas bien interprétés)
-            $serviceBillingInfos = Get-Content -Path $serviceBillingInfosFile -Encoding:UTF8 | ConvertFrom-Json
+            $serviceBillingInfos = loadFromCommentedJSON -jsonFile $serviceBillingInfosFile
 
             # On recherche l'entité de facturation en fonction du tenant
             $entityType = getBillingEntityTypeFromTenant -tenant $targetTenant
@@ -1158,6 +1166,7 @@ try
             
             # Ajout d'une chaine de caractère pour le prix
             $result.totPriceString = "Monthly price for {0}GB (= {1}CHF)" -f $sizeGB, $result.user.pricePerMonthCHF
+            $result.totPriceStringSimple = "Monthly price: {0} CHF" -f $result.totPricePerMonthCHF
             if($snapPercent -gt 0)
             {
                 $result.totPriceString = "{0} +{1}GB ({2}%) of snapshots, equal {3}GB (= {4}CHF)" -f `

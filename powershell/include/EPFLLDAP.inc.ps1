@@ -50,7 +50,7 @@ class EPFLLDAP
 		}
 
 		# Chargement du code JSON
-		$this.LDAPconfig = ((Get-Content -Path $filepath) -join "`n") | ConvertFrom-Json
+		$this.LDAPconfig = loadFromCommentedJSON -jsonFile $filepath
 	}
 
 	<#
