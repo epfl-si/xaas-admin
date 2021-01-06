@@ -1785,4 +1785,41 @@ class NameGenerator: NameGeneratorBase
         return ("vra_{0}_tableau_epfl_AppGrpU" -f $this.getEnvShortName())
     }
 
+
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom de l'entité à utiliser pour identifier le BG dans la facturation
+
+        RET : Le nom de l'entité pour la facturation
+    #>
+    [string] getBillingEntityName()
+    {
+        $entityName = ""
+
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL
+            {
+                $entityName = $this.getDetail('unitName').ToUpper()
+            }
+
+            $global:VRA_TENANT__ITSERVICES
+            {   
+                $entityName = $this.getDetail('serviceName').ToUpper()
+            }
+
+            $global:VRA_TENANT__RESEARCH
+            {
+                $entityName = $this.getDetail('projectId')
+            }
+
+            default
+            {
+                Throw("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+        }
+
+        return $entityName
+    }
+
 }

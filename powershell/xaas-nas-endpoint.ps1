@@ -879,14 +879,14 @@ try
             $facultyMappingList = loadFromCommentedJSON -jsonFile $facultyMappingFile
 
             # Chargement des informations 
-            $facultyToSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-to-svm.json"))
+            $facultyToSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-svm.json"))
             $facultyToSVM = loadFromCommentedJSON -jsonFile $facultyToSVMFile
 
             # On commence par regarder s'il y a un mapping pour la faculté donnée
             $targetFaculty = $faculty
             Foreach($facMapping in $facultyMappingList)
             {
-                if($facMapping.fromFac.toLower() -eq $faculty.toLower())
+                if($facMapping.fromFacList -contains $faculty)
                 {
                     $targetFaculty = $facMapping.toFac
                     break
@@ -902,10 +902,10 @@ try
             }
 
             # Si on a une liste hard-codée de SVM pour la faculté
-            if([bool]($facultyToSVM.PSobject.Properties.name.toLower() -eq $faculty.toLower()))
+            if(objectPropertyExists -obj $facultyToSVM.$targetEnv -propertyName $faculty)
             {
                 # On ajoute la liste hard-codée
-                $svmList += $facultyToSVM.$faculty
+                $svmList += $facultyToSVM.$targetEnv.$faculty
             }
 
             # Ajout du résultat trié
