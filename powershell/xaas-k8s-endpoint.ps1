@@ -506,6 +506,7 @@ try
             $logHistory.addLine("Doing stuff on cluster...")
             # Préparation des lignes de commande à exécuter
 
+            # Storage Class
             # Nouveau Namespace
             $nameSpaceReplace = @{
                 name = $global:NEW_DEFAULT_NAMESPACE
@@ -513,8 +514,16 @@ try
             }
             $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-namespace.yaml", $nameSpaceReplace)
 
-            # Storage Class
-            
+            # Resource Quota
+
+            # Pod Security Policy
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-podSecurityPolicy.yaml", @{ name = "restricted"})
+
+            # Role
+
+            # RoleBindings
+            # préservation namespace system ??
+            # Mettre groupes _AppGrpU
 
             # Cluster Role
             $clusterRoleReplace = @{
@@ -523,10 +532,8 @@ try
             }
             $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRole.yaml", $clusterRoleReplace)
 
-            # Pod Security Policy
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-podSecurityPolicy.yaml", @{ name = "restricted"})
-
             # Cluster Role Bindings
+            # FIXME: Mettre groupes _AppGrpU
             $clusterRoleBindingReplace = @{
                 name = "basic-access-exapp-group"
                 groupName = $groupName
