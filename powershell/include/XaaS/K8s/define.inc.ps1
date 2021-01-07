@@ -25,4 +25,11 @@ $global:NEW_DEFAULT_NAMESPACE = "app"
 $global:PSP_PRIVILEGED = $false
 $global:PSP_ALLOW_PRIVILEGE_ESCALATION = $false
 $global:RESOURCE_QUOTA_LB_AND_NODEPORTS = 0
-$global:STORAGE_CLASS_PROVISIONER = "kubernetes.io/vsphere-volume"
+
+$global:NAMESPACE_TO_PRESERVE_LIST = @(
+   "kube-node-lease"
+   "kube-public"
+   "kube-system"
+   "nsx-system"
+   "pks-system"
+)

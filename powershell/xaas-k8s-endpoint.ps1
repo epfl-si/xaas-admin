@@ -506,44 +506,132 @@ try
             $logHistory.addLine("Doing stuff on cluster...")
             # Préparation des lignes de commande à exécuter
 
-            # Storage Class
-            # Nouveau Namespace
-            $nameSpaceReplace = @{
+
+            # - Storage Class
+            $logHistory.addLine("Preparing StorageClass YAML...")
+            $replace = @{
+                name = $nameGeneratorK8s.getStorageClassName($clusterName)
+                provisioner = $configK8s.getConfigValue(@($targetEnv, "pks", "storageClass", "provisioner"))
+                datastore = $configK8s.getConfigValue(@($targetEnv, "pks", "storageClass", "parameters.datastore"))
+            }
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-storageClass.yaml", $replace)
+
+
+            # - Nouveau Namespace
+            $logHistory.addLine("Preparing new Namespace YAML...")
+            $replace = @{
                 name = $global:NEW_DEFAULT_NAMESPACE
                 nsxEnv = $targetEnv
             }
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-namespace.yaml", $nameSpaceReplace)
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-namespace.yaml", $replace)
 
-            # Resource Quota
 
-            # Pod Security Policy
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-podSecurityPolicy.yaml", @{ name = "restricted"})
-
-            # Role
-
-            # RoleBindings
-            # préservation namespace system ??
-            # Mettre groupes _AppGrpU
-
-            # Cluster Role
-            $clusterRoleReplace = @{
-                name = "testuserclusterole"
-                pspName = "restricted"
+            # - Resource Quota
+            $logHistory.addLine("Preparing ResourceQuota YAML...")
+            $replace = @{
+                name = $nameGeneratorK8s.getResourceQuotaName($clusterName, $global:NEW_DEFAULT_NAMESPACE)
+                namespace = $global:NEW_DEFAULT_NAMESPACE
+                nbLoadBalancers = $global:RESOURCE_QUOTA_LB_AND_NODEPORTS
+                nbNodePorts = $global:RESOURCE_QUOTA_LB_AND_NODEPORTS
+                storageGi = $configK8s.getConfigValue(@($targetEnv, "pks", "resourceQuota", "spec.hard.requests.storageGi"))
             }
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRole.yaml", $clusterRoleReplace)
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-resourceQuota.yaml", $replace)
 
-            # Cluster Role Bindings
-            # FIXME: Mettre groupes _AppGrpU
-            $clusterRoleBindingReplace = @{
-                name = "basic-access-exapp-group"
-                groupName = $groupName
-                clusteRoleName = "testuserclusterole"
+
+            # - Pod Security Policy
+            $logHistory.addLine("Preparing PodSecurityPolicy YAML...")
+            $replace = @{
+                name = $nameGeneratorK8s.getPodSecurityPolicyName($clusterName)
+                privileged = $global:PSP_PRIVILEGED
+                allowPrivilegeEscalation = $global:PSP_ALLOW_PRIVILEGE_ESCALATION
             }
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding.yaml",  $clusterRoleBindingReplace)
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-podSecurityPolicy.yaml", $replace)
+
+
+            # - Role
+            $logHistory.addLine("Preparing Role YAML...")
+            $replace = @{
+                name = $nameGeneratorK8s.getRoleName($clusterName, $global:NEW_DEFAULT_NAMESPACE)
+                namespace = $global:NEW_DEFAULT_NAMESPACE
+            }
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-role.yaml", $replace)
+
+
+            # - RoleBinding
+            $logHistory.addLine("Preparing RoleBinding YAML...")
+            # Récupération de la liste des groupes qui sont présents dans le 1er groupe qui est dans les CONSUMER du BusinessGroup
+            $accessGroupList = Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
+            # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au BG dans vRA
+            $accessGroupList | ForEach-Object {
+                $logHistory.addLine(("> For group '{0}'" -f $_))
+                $replace = @{
+                    name = $nameGeneratorK8s.getRoleBindingName($clusterName, $global:NEW_DEFAULT_NAMESPACE)
+                    namespace = $global:NEW_DEFAULT_NAMESPACE
+                    groupName = $_
+                    roleName = $nameGeneratorK8s.getRoleName($clusterName, $global:NEW_DEFAULT_NAMESPACE)
+                }
+                $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-roleBinding.yaml", $replace)
+            }
+
+
+            # - Cluster Role
+            $logHistory.addLine("Preparing ClusterRole YAML...")
+            $replace = @{
+                name = $nameGeneratorK8s.getClusterRoleName($clusterName)
+                pspName = $nameGeneratorK8s.getPodSecurityPolicyName($clusterName)
+            }
+            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRole.yaml", $replace)
+
+
+            # - Cluster Role Binding
+            $logHistory.addLine("Preparing ClusterRoleBinding YAML...")
+            # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au BG dans vRA
+            $accessGroupList | ForEach-Object {
+                $logHistory.addLine(("> For group '{0}'" -f $_))
+                $replace = @{
+                    name = $nameGeneratorK8s.getClusterRoleBindingName($clusterName)
+                    groupName = $_
+                    clusteRoleName = $nameGeneratorK8s.getClusterRoleName($clusterName)
+                }
+                $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding.yaml",  $replace)
+            }
+
+
+            # - Préservation des éléments systèmes
+            $logHistory.addLine("Preparing YAML for namespaces to preserve...")
+            # Parcours des namespaces à préserver
+            ForEach($namespace in $global:NAMESPACE_TO_PRESERVE_LIST)
+            {
+                $logHistory.addLine(("> For namespace '{0}'" -f $namespace))
+                # Ajout du rôle pour ça
+                $replace = @{
+                    name = $nameGeneratorK8s.getRoleName($clusterName, $namespace)
+                    namespace = $namespace
+                }
+                $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-role-preserve.yaml",  $replace)
+
+                # Ajout du RoleBinding pour chacun des groupes
+                $accessGroupList | ForEach-Object {
+
+                    $logHistory.addLine((">> For group '{0}'" -f $_))
+                    $replace = @{
+                        name = $nameGeneratorK8s.getRoleBindingName($clusterName, $namespace)
+                        namespace = $namespace
+                        groupName = $_
+                        roleName = $nameGeneratorK8s.getRoleName($clusterName, $namespace)
+                    }
+                    $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-roleBinding-preserve.yaml",  $replace)
+
+                }# FIN BOUCLE de parcours des groupes AD sur lesquels faire le binding
+
+            }# FIN BOUCLE de parcours des namespaces à préserver
+
 
             # Effacement du namespace par défaut
+            $logHistory.addLine("Deleting default namespace...")
             $tkgiKubectl.addKubectlCmd(("delete namespace default"))
             # Exécution
+            $logHistory.addLine("Applying commands...")
             $tkgiKubectl.exec($clusterName) | Out-Null
 
             # -----------
@@ -563,11 +651,15 @@ try
                 $logHistory.addLine(("Project '{0}' already exists in Harbor" -f $harborProjectName))
             }
 
-            Write-Warning "Still can't add AD groups in Project"
-            # $logHistory.addLine(("Add group '{0}' in Harbor Project (may already be present)" -f $groupName))
-            # $harbor.addProjectMember($harborProject, $groupName, [HarborProjectRole]::Master)
+            Write-Warning "Add Harbor group access"
+            # $logHistory.addLine("Adding AD groups for Harbor Project access...")
+            # $accessGroupList | ForEach-Object {
+            #     $logHistory.addLine(("Add group '{0}' in Harbor Project (may already be present)" -f $_))
+            #     $harbor.addProjectMember($harborProject, $_, [HarborProjectRole]::Master)
+            # }
             
-            $logHistory.addLine(("Add temporary robot in Harbor Project '{0}'" -f $harborProjectName))
+            
+            $logHistory.addLine(("Adding temporary robot in Harbor Project '{0}'" -f $harborProjectName))
             # Récupération des informations sur le robot (nom, description, temps unix de fin de validité)
             $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($ROBOT_NB_DAYS_LIFETIME)
             $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $robotInfos.expireAt)
