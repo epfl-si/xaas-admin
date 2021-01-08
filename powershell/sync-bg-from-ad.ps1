@@ -1415,14 +1415,10 @@ try
 
 
 	<# Recherche des groupes pour lesquels il faudra créer des OUs
-	 On prend tous les groupes de l'OU et on fait ensuite un filtre avec une expression régulière sur le nom. Au début, on prenait le début du nom du
-	 groupe pour filtrer mais d'autres groupes avec des noms débutant de la même manière ont été ajoutés donc le filtre par expression régulière
-	 a été nécessaire. #>
-	$adGroupNameRegex = $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")
+	 On prend tous les groupes de l'OU #>
 	
 	# La liste des propriétés pouvant être récupérées via -Properties
-	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description,whenChanged | 
-	Where-Object {$_.Name -match $adGroupNameRegex} 
+	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -Properties Description,whenChanged 
 
 	# Création de l'objet pour récupérer les informations sur les approval policies à créer pour les demandes de nouveaux éléments
 	$newItems = [NewItems]::new("vra-new-items.json")

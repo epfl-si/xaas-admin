@@ -804,7 +804,7 @@ try
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						if($notifications.missingEPFLADGroups -notcontains $approveGroupNameGroups)
 						{
@@ -850,7 +850,7 @@ try
 
 
 				if((createADGroupWithContent -groupName $supportGroupNameAD -groupDesc $supportGroupDescAD -groupMemberGroup $supportGroupNameGroups `
-					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
+					-OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::Support) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 					$notifications.missingEPFLADGroups += $supportGroupNameGroups
@@ -975,7 +975,7 @@ try
 								if(-not $SIMULATION_MODE)
 								{
 									# Création du groupe
-									New-ADGroup -Name $adGroupName -Description $adGroupDesc -GroupScope DomainLocal -Path $nameGenerator.getADGroupsOUDN($true)
+									New-ADGroup -Name $adGroupName -Description $adGroupDesc -GroupScope DomainLocal -Path $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User)
 								}
 
 								$counters.inc('ADGroupsCreated')
@@ -996,31 +996,38 @@ try
 						# Si le groupe AD existe
 						if($adGroupExists)
 						{
-							# Si les membres présents dans le groupe AD n'est pas le même que ce qui devrait y être,
-							if($null -ne (Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList))
+							# On compare les 2 listes et on récupère les informations de différence
+							$comparisonResult = (Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList)
+
+							# Si les membres présents dans le groupe AD ne sont pas les mêmes que ceux qui devraient y être
+							if($null -ne $comparisonResult)
 							{
-								# On commence par supprimer le contenu du groupe s'il y en a
-								if($adMemberList.count -gt 0)
+								$toRemove = @($comparisonResult | Where-Object { $_.SideIndicator -eq "=>" } | Select-Object -ExpandProperty InputObject)
+								# On commence par supprimer les membres qui ne doivent pas être dans le groupe, s'il y en a
+								if($toRemove.count -gt 0)
 								{
-									$logHistory.addLineAndDisplay(("--> Removing all members ({0}) in group '{1}'..." -f $adMemberList.count, $adGroupName))
+									$logHistory.addLineAndDisplay(("--> Removing {0} member(s) in group '{1}'..." -f $toRemove.count, $adGroupName))
 									if(-not $SIMULATION_MODE)
 									{
-										Remove-ADGroupMember $adGroupName -Members $adMemberList -confirm:$false
+										Remove-ADGroupMember $adGroupName -Members $toRemove -confirm:$false
 									}
 								}
 								
-								# Ajout des membres qui doivent y être (s'il y en a)
-								if($ldapMemberList.count -gt 0)
+								$toAdd = @($comparisonResult | Where-Object { $_.SideIndicator -eq "<=" } | Select-Object -ExpandProperty InputObject)
+								# Ajout des membres qui manquent
+								if($toAdd.count -gt 0)
 								{
-									$logHistory.addLineAndDisplay(("--> Adding {0} members in group '{1}'..." -f $ldapMemberList.count, $adGroupName))
+									$logHistory.addLineAndDisplay(("--> Adding {0} member(s) in group '{1}'..." -f $toAdd.count, $adGroupName))
 									if(-not $SIMULATION_MODE)
 									{
-										Add-ADGroupMember $adGroupName -Members $ldapMemberList
+										Add-ADGroupMember $adGroupName -Members $toAdd
 									}
 
 									$counters.inc('ADGroupsContentUpdated')
 								}
-								else # Aucun utilisateur à mettre dans le groupe, donc c'est que celui-ci est vide, on peut le supprimer
+
+								# Si le groupe ne doit contenir aucun membre, et donc que l'unité est vide
+								if($ldapMemberList.count -eq 0)
 								{
 									$logHistory.addLineAndDisplay(("--> AD group '{0}' is empty, removing it..." -f $adGroupName))
 									if(-not $SIMULATION_MODE)
@@ -1039,7 +1046,6 @@ try
 								$logHistory.addLineAndDisplay(("--> AD Group '{0}' is up-to-date" -f $adGroupName))
 								$counters.inc('ADGroupsContentOK')
 							}
-
 
 							# On enregistre le nom du groupe AD traité
 							$doneADGroupList += $adGroupName
@@ -1210,7 +1216,7 @@ try
 
 						# Création des groupes + gestion des groupes prérequis 
 						if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-							-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+							-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 						{
 							# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
 							if($notifications.missingITSADGroups -notcontains $approveGroupNameGroups)
@@ -1272,7 +1278,7 @@ try
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
-						-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 						if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
@@ -1394,7 +1400,7 @@ try
 					
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroupsAD `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
 						if($notifications.missingADGroups -notcontains $approveGroupNameGroupsAD)
@@ -1461,7 +1467,7 @@ try
 				$roleSharedGroupOk = $true
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
@@ -1500,9 +1506,8 @@ try
 	# ----------------------------------------------------------------------------------------------------------------------
 
 	# Parcours des groupes AD qui sont dans l'OU de l'environnement donné. On ne prend que les groupes qui sont utilisés pour 
-	# donner des droits d'accès aux unités. Afin de faire ceci, on fait un filtre avec une expression régulière
-	Get-ADGroup  -Filter ("Name -like '*'") -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
-	Where-Object {$_.Name -match $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")} | 
+	# donner des droits d'accès aux unités.
+	Get-ADGroup  -Filter ("Name -like '*'") -SearchBase $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -Properties Description | 
 	ForEach-Object {
 
 		# Si le groupe n'est pas dans ceux créés à partir de la source de données, c'est que l'élément n'existe plus. On supprime donc le groupe AD pour que 
