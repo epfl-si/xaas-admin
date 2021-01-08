@@ -34,7 +34,7 @@ $configVcenter = [ConfigReader]::New("config-vsphere.json")
 
 try {
 	
-	$vCenter = Connect-VIServer -Server ($configVcenter.getConfigValue($targetEnv, "server")) -user ($configVcenter.getConfigValue($targetEnv, "user")) -password ($configVcenter.getConfigValue($targetEnv, "password"))
+	$vCenter = Connect-VIServer -Server ($configVcenter.getConfigValue(@($targetEnv, "server"))) -user ($configVcenter.getConfigValue(@($targetEnv, "user"))) -password ($configVcenter.getConfigValue(@($targetEnv, "password")))
 						 
 
 }
@@ -59,15 +59,15 @@ If ( (Get-module vmware.powercli ) -like "" ) {
 ### code
 
 ## set master templates from configuration files
-$masterTemplatesFolderName = $configVsphereTemplate.getConfigValue($targetEnv, "masterTemplatesFolder")
-$masterTemplatesTag = $configVsphereTemplate.getConfigValue($targetEnv, "masterTemplatesTag")
+$masterTemplatesFolderName = $configVsphereTemplate.getConfigValue(@($targetEnv, "masterTemplatesFolder"))
+$masterTemplatesTag = $configVsphereTemplate.getConfigValue(@($targetEnv, "masterTemplatesTag"))
 
 $masterTemplatesFolder = get-folder -name $masterTemplatesFolderName  -Type VM -Server $vCenter
 $masterTemplates = Get-Template -location $masterTemplatesFolder -Server $vCenter | Sort-Object
 
 ## get templates targets from configuration file
 
-$TemplatesTargets = $configVsphereTemplate.getConfigValue($targetEnv, "TemplatesTargets") | Get-Member -MemberType NoteProperty | Select-object -ExpandProperty Name 
+$TemplatesTargets = $configVsphereTemplate.getConfigValue(@($targetEnv, "TemplatesTargets")) | Get-Member -MemberType NoteProperty | Select-object -ExpandProperty Name 
 
 ## loop for each master template
 
@@ -88,20 +88,20 @@ foreach ($vmtag in $vmtags) {
 
 
 ## set replica informations
-$replicaTemplatesFolderName = $configVsphereTemplate.getConfigValue($targetEnv, "TemplatesTargets", $TemplatesTarget, "replicaTemplatesFolder")
+$replicaTemplatesFolderName = $configVsphereTemplate.getConfigValue(@($targetEnv, "TemplatesTargets", $TemplatesTarget, "replicaTemplatesFolder"))
 $replicaTemplatesFolder = get-folder -name $replicaTemplatesFolderName  -Type VM -Server $vCenter
 
-$replicaClusterName = $configVsphereTemplate.getConfigValue($targetEnv, "TemplatesTargets", $TemplatesTarget, "replicaCluster")
+$replicaClusterName = $configVsphereTemplate.getConfigValue(@($targetEnv, "TemplatesTargets", $TemplatesTarget, "replicaCluster"))
 $replicaVMHost = Get-VMHost -location (get-cluster -name $replicaClusterName) | get-random -Count 1
 
-$replicaDSName = $configVsphereTemplate.getConfigValue($targetEnv, "TemplatesTargets", $TemplatesTarget, "replicaDSName")
+$replicaDSName = $configVsphereTemplate.getConfigValue(@($targetEnv, "TemplatesTargets", $TemplatesTarget, "replicaDSName"))
 $replicaTemplatesDatastore = $replicaVMHost | Get-Datastore -Server $vCenter | Where-Object {($_.name -like $replicaDSName) -and ($_.Type -like "VMFS")}
 
 
 $replicaTemplates = Get-Template -location $replicaTemplatesFolder -Server $vCenter
 $newReplicaTemplates = @()
 
-$replicaTemplatesSuffixName = $configVsphereTemplate.getConfigValue($targetEnv, "TemplatesTargets", $TemplatesTarget, "replicaTemplatesSuffix")
+$replicaTemplatesSuffixName = $configVsphereTemplate.getConfigValue(@($targetEnv, "TemplatesTargets", $TemplatesTarget, "replicaTemplatesSuffix"))
 
 
 
