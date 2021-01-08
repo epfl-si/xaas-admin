@@ -242,7 +242,7 @@ try
 	$valToReplace = @{
 		targetEnv = $targetEnv
 	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
 												($global:VRA_MAIL_SUBJECT_PREFIX_NO_TENANT -f $targetEnv), $valToReplace)
 
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
@@ -262,12 +262,12 @@ try
     }
 
     # Pour accéder à la base de données
-	$sqldb = [SQLDB]::new([DBType]::MSSQL, `
-                        $configVra.getConfigValue($targetEnv, "db", "host"), `
-                        $configVra.getConfigValue($targetEnv, "db", "dbName"), `
-                        $configVra.getConfigValue($targetEnv, "db", "user"), `
-                        $configVra.getConfigValue($targetEnv, "db", "password"), `
-                        $configVra.getConfigValue($targetEnv, "db", "port"))
+	$sqldb = [SQLDB]::new([DBType]::MSSQL,
+                        $configVra.getConfigValue(@($targetEnv, "db", "host")),
+                        $configVra.getConfigValue(@($targetEnv, "db", "dbName")),
+                        $configVra.getConfigValue(@($targetEnv, "db", "user")),
+                        $configVra.getConfigValue(@($targetEnv, "db", "password")),
+                        $configVra.getConfigValue(@($targetEnv, "db", "port")))
 
     $vraTenantList = @{}
 
@@ -276,10 +276,10 @@ try
     {
         # Création d'une connexion au serveur vRA pour accéder à ses API REST
         $logHistory.addLineAndDisplay(("Connecting to vRA tenant {0}...") -f $tenant)
-        $vraTenantList.$tenant = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+        $vraTenantList.$tenant = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
                                             $tenant, 
-                                            $configVra.getConfigValue($targetEnv, "infra", $tenant, "user"), 
-                                            $configVra.getConfigValue($targetEnv, "infra", $tenant, "password"))
+                                            $configVra.getConfigValue(@($targetEnv, "infra", $tenant, "user")),
+                                            $configVra.getConfigValue(@($targetEnv, "infra", $tenant, "password")))
     }
 
 
@@ -301,9 +301,9 @@ try
     Invoke-expression $expression
 
     # Pour accéder à Copernic
-    $copernic = [CopernicAPI]::new($configBilling.getConfigValue($targetEnv, "copernic", "server"), `
-                                   $configBilling.getConfigValue($targetEnv, "copernic", "username"), `
-                                   $configBilling.getConfigValue($targetEnv, "copernic", "password"))
+    $copernic = [CopernicAPI]::new($configBilling.getConfigValue(@($targetEnv, "copernic", "server")),
+                                   $configBilling.getConfigValue(@($targetEnv, "copernic", "username")),
+                                   $configBilling.getConfigValue(@($targetEnv, "copernic", "password")))
 
     # En fonction de l'action demandée
     switch($action)
