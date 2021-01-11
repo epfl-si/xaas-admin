@@ -31,6 +31,7 @@ class TKGIKubectl
     hidden [string]$password
     hidden [Array]$cmdList
     hidden [Array]$filesToClean
+    hidden [LogHistory] $logHistory
 	
     <#
 	-------------------------------------------------------------------------------------
@@ -45,6 +46,8 @@ class TKGIKubectl
 	#>
     TKGIKubectl([string] $server, [string]$username, [string]$password, [string]$certificateFile)
     {
+        $this.logHistory = $null
+
         $this.password = $password
         $certificateFileFull = [IO.Path]::Combine($global:K8S_CERT_FOLDER, $certificateFile)
 
@@ -107,7 +110,8 @@ class TKGIKubectl
     hidden [string] loadYamlFile([string] $file, [System.Collections.IDictionary] $valToReplace)
 	{
 		# Chemin complet jusqu'au fichier à charger
-		$filepath = (Join-Path $global:YAML_TEMPLATE_FOLDER $file)
+        $filepath = (Join-Path $global:YAML_TEMPLATE_FOLDER $file)
+        $inputFileName = Split-Path $file -Leaf
 
 		# Si le fichier n'existe pas
 		if(-not( Test-Path $filepath))
@@ -116,7 +120,7 @@ class TKGIKubectl
 		}
 
 		# Chargement du code JSON
-		$yaml = Get-Content -Path $filepath -raw
+		$yaml = Get-Content -Path $filepath -raw -Encoding:UTF8
 
 		# S'il y a des valeurs à remplacer
 		if($null -ne $valToReplace)
@@ -134,8 +138,11 @@ class TKGIKubectl
         }
         
         # Création d'un fichier temporaire
-        $tmpYamlFile = (New-TemporaryFile).FullName
+        $tmpYamlFile = ("{0}-{1}" -f (New-TemporaryFile).FullName, $inputFileName)
+
         $yaml | Out-File $tmpYamlFile -Encoding:utf8
+
+        $this.debugLog( ("Creating YAML file with content:`n{0}`n" -f $yaml))
         
         # On ajoute le fichier à ceux à effacer
         $this.filesToClean += $tmpYamlFile
@@ -321,6 +328,45 @@ class TKGIKubectl
     {
         $this.cmdList += ("{0} apply -f {1}" -f $this.pathTo.kubectl, ($this.loadYamlFile($file, $valToReplace)))
     }
+
+
+    
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Activation du logging "debug" des requêtes faites sur le système distant.
+
+		IN  : $logHistory	-> Objet de la classe LogHistory qui va permettre de faire le logging.
+	#>
+	[void] activateDebug([LogHistory]$logHistory)
+	{
+		$this.logHistory = $logHistory
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute une ligne au debug si celui-ci est activé
+
+		IN  : $line	-> La ligne à ajouter
+	#>
+	[void] debugLog([string]$line)
+	{
+		if($null -ne $this.logHistory)
+		{
+			$funcName = ""
+
+			ForEach($call in (Get-PSCallStack))
+			{
+				if($call.FunctionName -ne "debugLog")
+				{
+					$funcName = $call.FunctionName
+					break
+				}
+			}
+			
+			$this.logHistory.addDebug(("{0}::{1}(): {2}" -f $this.GetType().Name, $funcName, $line))
+		}
+	}
 
 
 
