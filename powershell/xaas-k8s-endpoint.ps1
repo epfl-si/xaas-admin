@@ -405,6 +405,7 @@ try
         $vra.activateDebug($logHistory)
         $pks.activateDebug($logHistory)
         $harbor.activateDebug($logHistory)
+        $tkgiKubectl.activateDebug($logHistory)
     }
     
     # Objet pour pouvoir envoyer des mails de notification
@@ -591,7 +592,7 @@ try
                 $replace = @{
                     name = $nameGeneratorK8s.getClusterRoleBindingName($clusterName)
                     groupName = $_
-                    clusteRoleName = $nameGeneratorK8s.getClusterRoleName($clusterName)
+                    clusterRoleName = $nameGeneratorK8s.getClusterRoleName($clusterName)
                 }
                 $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding.yaml",  $replace)
             }
