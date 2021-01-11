@@ -499,15 +499,15 @@ try
     $nameGeneratorNAS = [NameGeneratorNAS]::new($targetEnv, $targetTenant)
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
-	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
 						 $targetTenant, 
-						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
     # Création de l'objet pour se connecter aux clusters NetApp
-    $netapp = [NetAppAPI]::new($configNAS.getConfigValue($targetEnv, "serverList"), `
-                                $configNAS.getConfigValue($targetEnv, "user"), `
-                                $configNAS.getConfigValue($targetEnv, "password"))
+    $netapp = [NetAppAPI]::new($configNAS.getConfigValue(@($targetEnv, "serverList")),
+                                $configNAS.getConfigValue(@($targetEnv, "user")),
+                                $configNAS.getConfigValue(@($targetEnv, "password")))
 
     # Si on doit activer le Debug,
     if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
@@ -522,7 +522,7 @@ try
 		targetEnv = $targetEnv
 		targetTenant = $targetTenant
     }
-    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
                                                     ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
     # Si on nous a passé un ID de BG,
@@ -714,8 +714,8 @@ try
                                 d'accéder au share réseau. Donc, pour palier à ceci, on fait les choses d'une manière différente. On récupère les credentials de
                                 l'utilisateur et on monte un lecteur réseau temporaire pour pouvoir utiliser celui-ci pour mettre à jour les ACLs.
                              #>
-                            $secPassword = ConvertTo-SecureString $configNAS.getConfigValue("psGateway", "password") -AsPlainText -Force
-                            $credentials = New-Object System.Management.Automation.PSCredential($configNAS.getConfigValue("psGateway", "user"), $secPassword)
+                            $secPassword = ConvertTo-SecureString $configNAS.getConfigValue(@("psGateway", "password")) -AsPlainText -Force
+                            $credentials = New-Object System.Management.Automation.PSCredential($configNAS.getConfigValue(@("psGateway", "user")), $secPassword)
                             
                             $logHistory.addLine(("Mounting '{0}' on '{1}'..." -f $result.mountPath, $global:XAAS_NAS_TEMPORARY_DRIVE))
                             # On démonte le dossier monté dans le cas hypothétique où il serait déjà utilisé 

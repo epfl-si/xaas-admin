@@ -155,7 +155,17 @@ class ClassTester
 
                 "String"
                 {
-                    $formattedParam = ("'{0}'" -f $param)
+                    # On regarde si c'est un type énuméré
+                    if([Regex]::matches($param, '\[.*?\]::.*?').Success)
+                    {
+                        # On peut le prendre tel quel et il sera interprété
+                        $formattedParam = $param
+                    }
+                    else # C'est un simple string
+                    {
+                        $formattedParam = ("'{0}'" -f $param)
+                    }
+                    
                 }
 
                 "Int32"
