@@ -4,14 +4,39 @@ metadata:
   # nom du cluster role
   name: {{name}}
 rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["get", "list"]
 - apiGroups: [""]
   resources:
-  - persistentvolumes
-  - namespaces
-  # droit d'écriture pour cordon 
-  - nodes
   - componentstatuses
-  verbs: ["get", "list", "watch"]
+  verbs: ["*"]
+- apiGroups: ["apiextensions.k8s.io"]
+  resources:
+  - customresourcedefinitions
+  verbs: ["*"]
+- apiGroups: ["networking.k8s.io"]
+  resources:
+  - ingressclasses
+  verbs: ["*"]
+- apiGroups: ["node.k8s.io"]
+  resources:
+  - runtimeclasses
+  verbs: ["*"]
+- apiGroups: ["pksapi.io"]
+  resources:
+  - clusterlogsinks
+  - clustermetricsinks
+  verbs: ["*"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources:
+  - clusterrolebindings
+  verbs: ["create","delete"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources:
+  - clusterroles
+  verbs: ["bind"]
+  resourceNames: ["users-resources-cluster-access"]
 - apiGroups:
   - extensions
   resources:

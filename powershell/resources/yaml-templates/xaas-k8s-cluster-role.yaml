@@ -9,24 +9,34 @@ metadata:
 rules:
 - apiGroups: [""]
   resources:
+  - services
+  - serviceaccounts
+  - secrets
+  - replicationcontrollers
+  - podtemplates
+  - pods
+  - pods/exec
+  - pods/cp
+  - pods/portforward
   - pods/log
   - persistentvolumeclaims
+  - limitranges
   - events
-  - pods
-  - secrets
-  - serviceaccounts
-  - configmaps
-  - services
-  - pods/portforward
-  - pods/exec
   - endpoints
+  - configmaps
+  - bindings
   verbs: ["*"]
-- apiGroups: ["apps"]
+- apiGroups: [""]
   resources:
-  - statefulsets
-  - deployments
-  - replicasets
+  - resourcequotas
+  verbs: ["get","list"]
+- apiGroups: ["apps", "authorization.k8s.io","autoscaling", "batch","coordination.k8s.io", "discovery.k8s.io", "events.k8s.io", "extensions", "metrics.k8s.io", "monitoring.coreos.com", "pksapi.io", "policy", "projectcontour.io", "rbac.authorization.k8s.io", "vmware.com"]
+  resources: ["*"]
   verbs: ["*"]
+- apiGroups: ["networking.k8s.io"]
+  resources:
+  - networkpolicies
+  verbs: ["list"]
 - apiGroups: ["networking.k8s.io"]
   resources:
   - ingresses
