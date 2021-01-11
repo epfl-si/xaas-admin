@@ -6,5 +6,10 @@
     {
         "name": "Legacy_Windows_MyVM",
         "hasApproval": false
+    },
+    {
+        "name": "Linux_Clone",
+        "hasApproval": false
     }
+
 ]
