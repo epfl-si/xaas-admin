@@ -191,6 +191,8 @@ class TKGIKubectl
         $output = $this.batchFile.StandardOutput.ReadToEnd()
         $errorStr = $this.batchFile.StandardError.ReadToEnd()
 
+        $this.debugLog(("TKGIKubectl Exec error output:`n{0}`n" -f $errorStr))
+
         # Suppression du fichier temporaire
         if(Test-Path $batchFilePath)
         {
@@ -204,6 +206,8 @@ class TKGIKubectl
             # On définit le séparateur en utilisant le chemin jusqu'au script:
             # Ex: PS D:\IDEVING\IaaS\git\xaas-admin\powershell>
             $separator = [string[]]@([Regex]::Matches($output, '(.*?>)(.*)').Groups[1].Value)
+
+            $this.debugLog("TKGIKubectl commands output. See above in log to have YAML content if any.")
 
             # On explose les résultats des différentes commandes via le chemin jusqu'à "tkgi.exe" 
             # et on les parcoure
@@ -224,7 +228,10 @@ class TKGIKubectl
                     # on ne fait pas ça, on aura une erreur lors de l'exécution du "-split juste après
                     $cmdNameShort = [Regex]::Matches($cmdName, '(.*?)(tkgi|kubectl)\.exe(.*)').Groups[3].Value.Trim() -replace "\\", "\\"
                     # Ajout de la commande et de son résultat dans ce qu'on renvoie
-                    $cmdResults.Add($cmdNameShort, ($_ -split $cmdNameShort)[1].Trim())
+                    $cmdOutput = ($_ -split $cmdNameShort)[1].Trim()
+                    $cmdResults.Add($cmdNameShort, $cmdOutput)
+
+                    $this.debugLog(("TKGIKubectl exec command outputs.`nCommand:{0}`nOutput:{1}`n" -f $_, $cmdOutput))
                 }
             }
 
@@ -242,6 +249,8 @@ class TKGIKubectl
         {
             Throw ("Error executing commands ({0}) with error : `n{1}" -f $this.batchFile.StartInfo.Arguments, $errorStr)
         }
+
+        
 
         return $cmdResults
     }
