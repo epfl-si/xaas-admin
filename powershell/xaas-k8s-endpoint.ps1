@@ -521,7 +521,7 @@ try
             # - Nouveau Namespace
             $logHistory.addLine("Preparing new Namespace YAML...")
             $replace = @{
-                name = $global:NEW_DEFAULT_NAMESPACE
+                name = $global:DEFAULT_NAMESPACE
                 nsxEnv = $targetEnv
             }
             $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-namespace.yaml", $replace)
@@ -530,8 +530,8 @@ try
             # - Resource Quota
             $logHistory.addLine("Preparing ResourceQuota YAML...")
             $replace = @{
-                name = $nameGeneratorK8s.getResourceQuotaName($clusterName, $global:NEW_DEFAULT_NAMESPACE)
-                namespace = $global:NEW_DEFAULT_NAMESPACE
+                name = $nameGeneratorK8s.getResourceQuotaName($clusterName, $global:DEFAULT_NAMESPACE)
+                namespace = $global:DEFAULT_NAMESPACE
                 nbLoadBalancers = $global:RESOURCE_QUOTA_LB_AND_NODEPORTS
                 nbNodePorts = $global:RESOURCE_QUOTA_LB_AND_NODEPORTS
                 storageGi = $configK8s.getConfigValue(@($targetEnv, "pks", "resourceQuota", "spec.hard.requests.storageGi"))
@@ -552,8 +552,8 @@ try
             # - Role
             $logHistory.addLine("Preparing Role YAML...")
             $replace = @{
-                name = $nameGeneratorK8s.getRoleName($clusterName, $global:NEW_DEFAULT_NAMESPACE)
-                namespace = $global:NEW_DEFAULT_NAMESPACE
+                name = $nameGeneratorK8s.getRoleName($clusterName, $global:DEFAULT_NAMESPACE)
+                namespace = $global:DEFAULT_NAMESPACE
             }
             $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-role.yaml", $replace)
 
@@ -566,10 +566,10 @@ try
             $accessGroupList | ForEach-Object {
                 $logHistory.addLine(("> For group '{0}'" -f $_))
                 $replace = @{
-                    name = $nameGeneratorK8s.getRoleBindingName($clusterName, $global:NEW_DEFAULT_NAMESPACE)
-                    namespace = $global:NEW_DEFAULT_NAMESPACE
+                    name = $nameGeneratorK8s.getRoleBindingName($clusterName, $global:DEFAULT_NAMESPACE)
+                    namespace = $global:DEFAULT_NAMESPACE
                     groupName = $_
-                    roleName = $nameGeneratorK8s.getRoleName($clusterName, $global:NEW_DEFAULT_NAMESPACE)
+                    roleName = $nameGeneratorK8s.getRoleName($clusterName, $global:DEFAULT_NAMESPACE)
                 }
                 $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-roleBinding.yaml", $replace)
             }
@@ -598,39 +598,6 @@ try
             }
 
 
-            # - Préservation des éléments systèmes
-            $logHistory.addLine("Preparing YAML for namespaces to preserve...")
-            # Parcours des namespaces à préserver
-            ForEach($namespace in $global:NAMESPACE_TO_PRESERVE_LIST)
-            {
-                $logHistory.addLine(("> For namespace '{0}'" -f $namespace))
-                # Ajout du rôle pour ça
-                $replace = @{
-                    name = $nameGeneratorK8s.getRoleName($clusterName, $namespace)
-                    namespace = $namespace
-                }
-                $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-role-preserve.yaml",  $replace)
-
-                # Ajout du RoleBinding pour chacun des groupes
-                $accessGroupList | ForEach-Object {
-
-                    $logHistory.addLine((">> For group '{0}'" -f $_))
-                    $replace = @{
-                        name = $nameGeneratorK8s.getRoleBindingName($clusterName, $namespace)
-                        namespace = $namespace
-                        groupName = $_
-                        roleName = $nameGeneratorK8s.getRoleName($clusterName, $namespace)
-                    }
-                    $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-roleBinding-preserve.yaml",  $replace)
-
-                }# FIN BOUCLE de parcours des groupes AD sur lesquels faire le binding
-
-            }# FIN BOUCLE de parcours des namespaces à préserver
-
-
-            # Effacement du namespace par défaut
-            $logHistory.addLine("Deleting default namespace...")
-            $tkgiKubectl.addKubectlCmd(("delete namespace default"))
             # Exécution
             $logHistory.addLine("Applying commands...")
             $tkgiKubectl.exec($clusterName) | Out-Null
