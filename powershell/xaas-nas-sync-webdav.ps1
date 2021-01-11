@@ -425,7 +425,7 @@ try
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
-    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:NAS_MAIL_TEMPLATE_FOLDER, `
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:NAS_MAIL_TEMPLATE_FOLDER, `
                                                 $global:NAS_MAIL_SUBJECT_PREFIX , $valToReplace)
 
     # Contrôle que l'utilisateur pour exécuter le script soit correct
@@ -451,15 +451,15 @@ try
     # $counters.add('VMNotInvSphere', '# VM not in vSphere')
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
-	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
                         $targetTenant, 
-                        $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-                        $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
     # Création de l'objet pour se connecter aux clusters NetApp
-    $netapp = [NetAppAPI]::new($configNAS.getConfigValue($targetEnv, "serverList"), `
-                                $configNAS.getConfigValue($targetEnv, "user"), `
-                                $configNAS.getConfigValue($targetEnv, "password"))
+    $netapp = [NetAppAPI]::new($configNAS.getConfigValue(@($targetEnv, "serverList")),
+                                $configNAS.getConfigValue(@($targetEnv, "user")),
+                                $configNAS.getConfigValue(@($targetEnv, "password")))
 
             
     # Objet pour pouvoir envoyer des mails de notification

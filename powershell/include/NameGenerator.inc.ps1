@@ -25,6 +25,15 @@
         ensuite de fonctions plus génériques
 
 #>
+
+# Types d'OU qui peut se trouver dans une OU de tenant.
+enum ADSubOUType
+{
+    Approval
+    Support
+    User
+}
+
 class NameGenerator: NameGeneratorBase
 {
     
@@ -89,106 +98,6 @@ class NameGenerator: NameGeneratorBase
         return $this.sanitizeName($facultyName).ToLower()
     }
     
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie l'expression régulière permettant de définir si un nom de groupe est 
-              un nom pour le rôle passé.
-
-        IN  : $role     -> Nom du rôle pour lequel on veut la RegEX
-                            "CSP_SUBTENANT_MANAGER"
-							"CSP_SUPPORT"
-							"CSP_CONSUMER_WITH_SHARED_ACCESS"
-                            "CSP_CONSUMER"
-
-        RET : L'expression régulières
-    #>
-    [string] getADGroupNameRegEx([string]$role)
-    {
-        
-        switch($this.tenant)
-        {
-            # Tenant EPFL
-            $global:VRA_TENANT__EPFL 
-            {
-                if($role -eq "CSP_SUBTENANT_MANAGER")
-                {
-                    # vra_<envShort>_adm_<tenantShort>
-                    return "^{0}{1}_adm_{2}$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
-                }
-                # Support
-                elseif($role -eq "CSP_SUPPORT")
-                {
-                    # vra_<envShort>_sup_<facultyName>
-                    return "^{0}{1}_sup_\d+$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName()
-                }
-                # Shared, Users
-                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
-                        $role -eq "CSP_CONSUMER")
-                {
-                    # vra_<envShort>_<facultyID>_<unitID>
-                    return "^{0}{1}_\d+_\d+$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName()
-                }  
-                else
-                {
-                    Throw ("Incorrect role given ({0})" -f $role)
-                }
-            }
-
-            # Tenant ITServices
-            $global:VRA_TENANT__ITSERVICES
-            {
-                if($role -eq "CSP_SUBTENANT_MANAGER" -or `
-                    $role -eq "CSP_SUPPORT")
-                {
-                    # vra_<envShort>_adm_sup_<tenantShort>
-                    return "^{0}{1}_adm_sup_{2}$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
-                }
-                # Shared, Users
-                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
-                        $role -eq "CSP_CONSUMER")
-                {
-                    # vra_<envShort>_<serviceShort>
-                    # On ajoute une exclusion à la fin pour être sûr de ne pas prendre aussi les éléments qui sont pour les 2 rôles ci-dessus
-                    return "^{0}{1}(?!_approval)_\w+(?<!_adm_sup_{2})$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
-                }  
-                else
-                {
-                    Throw ("Incorrect role given ({0})" -f $role)
-                }
-            }
-
-            # Tenant Research
-            $global:VRA_TENANT__RESEARCH
-            {
-                if($role -eq "CSP_SUBTENANT_MANAGER" -or `
-                    $role -eq "CSP_SUPPORT")
-                {
-                    # vra_<envShort>_adm_sup_<tenantShort>
-                    return "^{0}{1}_adm_sup_{2}$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
-                }
-                # Shared, Users
-                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
-                        $role -eq "CSP_CONSUMER")
-                {
-                    # vra_<envShort>_<projectId>
-                    # On ajoute une exclusion à la fin pour être sûr de ne pas prendre aussi les éléments qui sont pour les 2 rôles ci-dessus
-                    return "^{0}{1}(?!_approval)_[0-9]+(?<!_adm_sup_{2})$" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
-                }  
-                else
-                {
-                    Throw ("Incorrect role given ({0})" -f $role)
-                }
-            }
-
-            # Tenant pas géré
-            default
-            {
-                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
-            }
-        }
-        return $null
-    }
-
 
     <#
         -------------------------------------------------------------------------------------
@@ -1167,13 +1076,12 @@ class NameGenerator: NameGeneratorBase
               de l'environnement et du tenant courant.
 
         IN  : $onlyForTenant -> $true|$false pour dire si on veut l'OU pour un groupe
-                                    qui sera utilisé par tous les tenants et pas qu'un seul.  
+                                        qui sera utilisé pour le tenant courant OU pour tous les tenants
 
 		RET : DN de l'OU
     #>
     [string] getADGroupsOUDN([bool]$onlyForTenant)
     {
-        
         $tenantOU = ""
         # Si le groupe que l'on veut créer dans l'OU doit être dispo pour le tenant courant uniquement, 
         if($onlyForTenant)
@@ -1200,6 +1108,31 @@ class NameGenerator: NameGeneratorBase
 
         # Retour du résultat 
         return '{0}OU={1},OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch' -f $tenantOU, $envOU
+    }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le DN de l'OU Active Directory à utiliser pour mettre les groupes d'un 
+                type donnée dans l'environnement et le tenant courant.
+
+        IN  : $finalOUType          -> (optionnel) Type de l'OU finale
+
+		RET : DN de l'OU
+    #>
+    [string] getADGroupsOUDN([bool]$onlyForTenant, [ADSubOUType]$finalOUType)
+    {
+        $result = $this.getADGroupsOUDN($onlyForTenant)
+
+        # Si on veut la chose avec le tenant
+        if($onlyForTenant)
+        {
+            # Dans ce cas-là on peut ajouter la "sous-OU". Sinon, on ne la met pas
+            $result = 'OU={0},{1}' -f  $finalOUType.ToString().ToLower(), $result
+        }
+
+        return $result
+        
     }
 
 

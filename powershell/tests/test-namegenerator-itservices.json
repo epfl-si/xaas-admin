@@ -21,28 +21,6 @@
         ]
     },
     {
-        "name": "getADGroupNameRegEx",
-        "tests": [
-            {
-                "params": ["CSP_SUBTENANT_MANAGER"],
-                "expected": "^vra_t_adm_sup_its$"
-            },
-            {
-                "params": ["CSP_SUPPORT"],
-                "expected": "^vra_t_adm_sup_its$"
-            },
-            {
-                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "^vra_t(?!_approval)_\\w+(?\u003c!_adm_sup_its)$"
-            },
-            {
-                "params": ["CSP_CONSUMER"],
-                "expected": "^vra_t(?!_approval)_\\w+(?\u003c!_adm_sup_its)$"
-            }
-
-        ]
-    },
-    {
         "name": "getRoleADGroupName",
         "tests": [
             {
@@ -377,6 +355,14 @@
             },
             {
                 "params": [false],
+                "expected": "OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            },
+            {
+                "params": [true, "[ADSubOUType]::Approval"],
+                "expected": "OU=approval,OU=ITServices,OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            },
+            {
+                "params": [false, "[ADSubOUType]::Approval"],
                 "expected": "OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
             }
         ]

@@ -373,14 +373,14 @@ try
 		targetEnv = $targetEnv
 		targetTenant = $targetTenant
 	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, 
 												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
 	# Pour s'interfacer avec l'application Groups
-	$groupsApp = [GroupsAPI]::new($configGroups.getConfigValue($targetEnv, "server"),`
-								  $configGroups.getConfigValue($targetEnv, "appName"),`
-								   $configGroups.getConfigValue($targetEnv, "callerSciper"),`
-								   $configGroups.getConfigValue($targetEnv, "password"))
+	$groupsApp = [GroupsAPI]::new($configGroups.getConfigValue(@($targetEnv, "server")),
+								  $configGroups.getConfigValue(@($targetEnv, "appName")),
+								   $configGroups.getConfigValue(@($targetEnv, "callerSciper")),
+								   $configGroups.getConfigValue(@($targetEnv, "password")))
 
 	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -401,14 +401,16 @@ try
 	
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
-	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
 						 $targetTenant, 
-						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
 	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
 	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
-	$nsx = [NSXAPI]::new($configNSX.getConfigValue($targetEnv, "server"), $configNSX.getConfigValue($targetEnv, "user"), $configNSX.getConfigValue($targetEnv, "password"))
+	$nsx = [NSXAPI]::new($configNSX.getConfigValue(@($targetEnv, "server")), 
+						 $configNSX.getConfigValue(@($targetEnv, "user")), 
+						 $configNSX.getConfigValue(@($targetEnv, "password")))
 
 
 	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")

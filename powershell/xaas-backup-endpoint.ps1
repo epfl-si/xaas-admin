@@ -123,7 +123,7 @@ try
 		targetEnv = $targetEnv
 		targetTenant = $targetTenant
 	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
 												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
     # -------------------------------------------------------------------------------------------
@@ -138,9 +138,9 @@ try
         { ($_ -eq $ACTION_GET_BACKUP_TAG) -or ($_ -eq $ACTION_SET_BACKUP_TAG) }  {
             <# Connexion à l'API Rest de vSphere. On a besoin de cette connxion aussi (en plus de celle du dessus) parce que les opérations sur les tags ne fonctionnent
                 pas via les CMDLet Get-TagAssignement et autre...  #>
-            $vsphereApi = [vSphereAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "vSphere", "server"), 
-            $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "user"), 
-            $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "password"))
+            $vsphereApi = [vSphereAPI]::new($configXaaSBackup.getConfigValue(@($targetEnv, "vSphere", "server")),
+            $configXaaSBackup.getConfigValue(@($targetEnv, "vSphere", "user")),
+            $configXaaSBackup.getConfigValue(@($targetEnv, "vSphere", "password")))
 
             # Si on doit activer le Debug,
             if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
@@ -152,9 +152,9 @@ try
 
         { ($_ -eq $ACTION_GET_BACKUP_LIST) -or ($_ -eq $ACTION_RESTORE_BACKUP) -or ($_ -eq $ACTION_GET_RESTORE_STATUS)} {
             # Connexion à l'API REST de NetBackup
-            $nbu = [NetBackupAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "backup", "server"), 
-            $configXaaSBackup.getConfigValue($targetEnv, "backup", "user"), 
-            $configXaaSBackup.getConfigValue($targetEnv, "backup", "password"))   
+            $nbu = [NetBackupAPI]::new($configXaaSBackup.getConfigValue(@($targetEnv, "backup", "server")),
+                                        $configXaaSBackup.getConfigValue(@($targetEnv, "backup", "user")),
+                                        $configXaaSBackup.getConfigValue(@($targetEnv, "backup", "password")))
 
             # Si on doit activer le Debug,
             if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
@@ -166,10 +166,10 @@ try
 
         $ACTION_VM_HAS_RUNNING_SNAPSHOT {
             # Création d'une connexion au serveur vRA pour accéder à ses API REST
-            $vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+            $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
                                 $targetTenant, 
-                                $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-                                $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+                                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+                                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
         
             # Si on doit activer le Debug,
             if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
