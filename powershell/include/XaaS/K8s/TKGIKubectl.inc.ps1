@@ -142,7 +142,7 @@ class TKGIKubectl
 
         $yaml | Out-File $tmpYamlFile -Encoding:utf8
 
-        $this.debugLog( ("Creating YAML file with content:`n{0}`n" -f $yaml))
+        $this.debugLog( ("Creating YAML (from {0}) and final content is:`n{1}`n" -f $inputFileName, $yaml))
         
         # On ajoute le fichier à ceux à effacer
         $this.filesToClean += $tmpYamlFile
