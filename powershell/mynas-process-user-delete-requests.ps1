@@ -91,20 +91,20 @@ try
    $logHistory = [LogHistory]::new('mynas-process-user-delete', (Join-Path $PSScriptRoot "logs"), 30)
 
    # Objet pour pouvoir envoyer des mails de notification
-   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
+   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
    
    # Création de l'objet pour se connecter aux clusters NetApp
-   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue("nas", "serverList"), `
-                              $configMyNAS.getConfigValue("nas", "user"), `
-                              $configMyNAS.getConfigValue("nas", "password"))
+   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue(@("nas", "serverList")),
+                              $configMyNAS.getConfigValue(@("nas", "user")),
+                              $configMyNAS.getConfigValue(@("nas", "password")))
 
    # Chargement du module (si nécessaire)
    loadDataOnTapModule 
 
    # Génération du mot de passe pour plus tard
-   $secPassword = ConvertTo-SecureString $configMyNAS.getConfigValue("nas", "password") -AsPlainText -Force
+   $secPassword = ConvertTo-SecureString $configMyNAS.getConfigValue(@("nas", "password")) -AsPlainText -Force
    # Création des credentials pour l'utilisateur
-   $credentials = New-Object System.Management.Automation.PSCredential($configMyNAS.getConfigValue("nas", "user"), $secPassword)
+   $credentials = New-Object System.Management.Automation.PSCredential($configMyNAS.getConfigValue(@("nas", "user")), $secPassword)
 
 
    $logHistory.addLineAndDisplay("Getting infos... ")
