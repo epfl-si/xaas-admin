@@ -28,7 +28,7 @@ $configVsphereTemplate = [ConfigReader]::New("config-vsphere-template.json")
 $configVcenter = [ConfigReader]::New("config-vsphere.json")
 
 
-# $targetEnv="prod"
+# $targetEnv="test"
 
 
 
