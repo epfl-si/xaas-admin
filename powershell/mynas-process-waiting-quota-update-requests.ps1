@@ -159,6 +159,14 @@ try
       usersNotInAD = @()
    }
 
+   # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$counters = [Counters]::new()
+
+	# Tous les Tenants
+   $counters.add('nbQuotaUpdated', '# quota updated')
+   $counters.add('nbQuotaOK', '# quota OK')
+   $counters.add('nbUsersNotFound', '# User not found in AD')
+
    # Création de l'objet pour se connecter aux clusters NetApp
    $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue(@("nas", "serverList")),
                               $configMyNAS.getConfigValue(@("nas", "user")),
@@ -204,6 +212,8 @@ try
          setQuotaUpdateDone -userSciper $updateInfos.sciper
 
          $notifications.usersNotInAD += $updateInfos.username
+
+         $counters.inc('nbUsersNotFound')
          continue
       }
 
@@ -246,14 +256,18 @@ try
          # Ajout de l'info au message qu'on aura dans le mail 
          $notifications.quotaUpdatedUser += ("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>" -f $updateInfos.username, $currentQuota, ([Math]::Floor($updateInfos.hardKB/1024)))
          
+         $counters.inc('nbQuotaUpdated')
       }
       else # Le quota est correct
       {
          $logHistory.addLineAndDisplay(( "-> Quota is correct ({0} MB), no change needed" -f $currentQuota.space.hard_limit ))
+         $counters.inc('nbQuotaOK')
       }
 
    }# FIN BOUCLE de parcours des quotas à modifier
 
+   $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
+   
    # Gestion des erreurs s'il y en a
    handleNotifications -notifications $notifications
 
