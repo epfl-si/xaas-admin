@@ -403,6 +403,9 @@ try
         $nameGeneratorK8s.initDetailsFromBG($bg.name, $bgId)
     }
 
+    # On efface le cache DNS pour ne pas avoir de surprise par la suite
+    Clear-DnsClientCache
+
     # -------------------------------------------------------------------------
     # En fonction de l'action demandée
     switch ($action)
