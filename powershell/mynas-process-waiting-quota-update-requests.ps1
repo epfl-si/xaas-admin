@@ -249,7 +249,7 @@ try
       }
       else # Le quota est correct
       {
-         $logHistory.addLineAndDisplay(( "-> Quota is correct ({0} MB), no change needed" -f $currentQuota ))
+         $logHistory.addLineAndDisplay(( "-> Quota is correct ({0} MB), no change needed" -f $currentQuota.space.hard_limit ))
       }
 
    }# FIN BOUCLE de parcours des quotas à modifier
