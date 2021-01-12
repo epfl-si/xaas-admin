@@ -103,6 +103,14 @@ function handleNotifications
 					$mailSubject = "Info - {0} user(s) quota(s) updated" -f $uniqueNotifications.count
 					$templateName = "quota-updated-users"
             }
+
+            # Utilisateurs non trouvés dans AD
+            'usersNotInAD'
+            {
+					$valToReplace.userList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Warning - Quota update - {0} user(s) not found in AD" -f $uniqueNotifications.count
+					$templateName = "quota-update-users-not-in-ad"
+            }
      
 
 				default
@@ -148,6 +156,7 @@ try
    #>
    $notifications = @{
       quotaUpdatedUser = @()
+      usersNotInAD = @()
    }
 
    # Création de l'objet pour se connecter aux clusters NetApp
@@ -188,7 +197,13 @@ try
       }
       catch
       {
+         # Si l'utilisateur n'existe pas, c'est qu'il a dû y avoir une erreur dans la gestion des données (venant de CADI probablement) 
          $logHistory.addWarningAndDisplay(("User {0} doesn't exists in ActiveDirectory, skipping it" -f $updateInfos.username))
+
+         # On initialise la requête comme ayant été traitée pour pas que l'on retombe sur cet utilisateur à la prochaine exécution du script.
+         setQuotaUpdateDone -userSciper $updateInfos.sciper
+
+         $notifications.usersNotInAD += $updateInfos.username
          continue
       }
 
