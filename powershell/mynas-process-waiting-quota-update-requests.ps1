@@ -181,6 +181,17 @@ try
    foreach($updateInfos in $quotaUpdateList)
    {
       
+      # On commence par regarder si l'utilisateur existe dans AD
+      try
+      {
+         Get-ADUser $updateInfos.username | Out-Null
+      }
+      catch
+      {
+         $logHistory.addWarningAndDisplay(("User {0} doesn't exists in ActiveDirectory, skipping it" -f $updateInfos.username))
+         continue
+      }
+
       # Génréation des informations 
       $usernameAndDomain="INTRANET\"+$updateInfos.username
       
