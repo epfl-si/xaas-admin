@@ -86,7 +86,7 @@ try
    $logHistory = [LogHistory]::new('mynas-process-info-from-cadi', (Join-Path $PSScriptRoot "logs"), 30)
 
    # Objet pour pouvoir envoyer des mails de notification
-   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
+   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
    
    $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
 
@@ -95,11 +95,11 @@ try
 
    # Création de l'objet pour faire les requêtes dans CADI
    $mysql_cadi = [SQLDB]::new([DBType]::MySQL, `
-                              $configMyNAS.getConfigValue("cadi", "host"), `
-                              $configMyNAS.getConfigValue("cadi", "db"), `
-                              $configMyNAS.getConfigValue("cadi", "user"), `
-                              $configMyNAS.getConfigValue("cadi", "password"), `
-                              $configMyNAS.getConfigValue("cadi", "port"))                           
+                              $configMyNAS.getConfigValue(@("cadi", "host")),
+                              $configMyNAS.getConfigValue(@("cadi", "db")),
+                              $configMyNAS.getConfigValue(@("cadi", "user")),
+                              $configMyNAS.getConfigValue(@("cadi", "password")),
+                              $configMyNAS.getConfigValue(@("cadi", "port")))
 
    # Création du dossier si n'existe pas
    if(!(Test-path $global:FILES_TO_PUSH_FOLDER))

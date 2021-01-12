@@ -144,7 +144,7 @@ try
    $logHistory = [LogHistory]::new('mynas-process-quota-update', (Join-Path $PSScriptRoot "logs"), 30)
     
    # Objet pour pouvoir envoyer des mails de notification
-   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
+   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
 
    <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -160,9 +160,9 @@ try
    }
 
    # Création de l'objet pour se connecter aux clusters NetApp
-   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue("nas", "serverList"), `
-                              $configMyNAS.getConfigValue("nas", "user"), `
-                              $configMyNAS.getConfigValue("nas", "password"))
+   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue(@("nas", "serverList")),
+                              $configMyNAS.getConfigValue(@("nas", "user")),
+                              $configMyNAS.getConfigValue(@("nas", "password")))
 
    # le format des lignes renvoyées est le suivant :
    # <volumeName>,<usernameShort>,<vServerName>,<Sciper>,<softQuotaKB>,<hardQuotaKB>

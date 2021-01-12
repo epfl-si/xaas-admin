@@ -184,12 +184,12 @@ try
    $logHistory = [LogHistory]::new('mynas-process-username-rename', (Join-Path $PSScriptRoot "logs"), 30)
     
    # Objet pour pouvoir envoyer des mails de notification
-   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
+   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
    
    # Création de l'objet pour se connecter aux clusters NetApp
-   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue("nas", "serverList"), `
-                              $configMyNAS.getConfigValue("nas", "user"), `
-                              $configMyNAS.getConfigValue("nas", "password"))
+   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue(@("nas", "serverList")),
+                              $configMyNAS.getConfigValue(@("nas", "user")),
+                              $configMyNAS.getConfigValue(@("nas", "password")))
 
    $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
    
