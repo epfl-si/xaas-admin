@@ -29,7 +29,6 @@ class TKGIKubectl
     hidden [string]$logoutCmd
     hidden [Hashtable]$pathTo
     hidden [string]$password
-    hidden [Array]$cmdList
     hidden [Array]$filesToClean
     hidden [LogHistory] $logHistory
 	
@@ -86,10 +85,7 @@ class TKGIKubectl
 
         $this.batchFile.StartInfo.CreateNoWindow = $false
 
-        # Reset de la liste des commandes à exécuter. Sera remplie via les méthodes:
-        # - addCmd
-        # - addCmdWithPassword
-        $this.newBatch()
+        $this.filesToClean = @()
         
     }
 
@@ -153,35 +149,32 @@ class TKGIKubectl
 
     <#
 	-------------------------------------------------------------------------------------
-        BUT : Exécute une liste de commandes sur un cluster donné
+        BUT : Exécute une commande sur un cluster donné
         
-        IN  : $clusterName -> nom du cluster sur lequel exécuter les commandes
+        IN  : $clusterName  -> nom du cluster sur lequel exécuter la commande
+        IN  : $command      -> commande à exécuter
         
         RET : Tableau associatif avec en clef la commande passée et en valeur, le résultat (string) de
                 la commande
 	#>
-    [System.Collections.IDictionary] exec([string]$clusterName)
+    [string] exec([string]$clusterName, [string]$command)
     {
         $cmdFile = (New-TemporaryFile).FullName
         # On met une extension qui permettra de l'exécuter correctement par la suite via cmd.exe
         $batchFilePath = ("{0}.cmd" -f $cmdFile)
         Rename-Item -Path $cmdFile -NewName $batchFilePath
 
-        $cmdResults = @{}
-        if($this.cmdList.count -eq 0) 
-        {
-            return $cmdResults
-        }
+        $cmdResult = ""
 
         # Création des lignes de commandes à exécuter
         $this.loginCmd | Out-File -FilePath $batchFilePath -Encoding:default
         # Ajout de la commande de sélection du cluster, avec authentification, puis sélection du bon contexte
         $this.getTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName)) | Out-File -FilePath $batchFilePath -Append -Encoding:default
-        $this.getKubectlCmd(("config use-context {0}" -f $clusterName))
+        $this.generateKubectlCmd(("config use-context {0}" -f $clusterName)) | Out-File -FilePath $batchFilePath -Append -Encoding:default
 
-        $this.cmdList | ForEach-Object{ 
-            $_ | Out-File -FilePath $batchFilePath -Append -Encoding:default
-        } 
+        # Ajout de la commande à exécuter
+        $command | Out-File -FilePath $batchFilePath -Append -Encoding:default
+        
         $this.logoutCmd | Out-File -FilePath $batchFilePath -Append -Encoding:default
 
         $this.batchFile.StartInfo.FileName = $batchFilePath
@@ -191,7 +184,7 @@ class TKGIKubectl
         $output = $this.batchFile.StandardOutput.ReadToEnd()
         $errorStr = $this.batchFile.StandardError.ReadToEnd()
 
-        $this.debugLog(("TKGIKubectl Exec error output:`n{0}`n" -f $errorStr))
+        $this.debugLog(("TKGIKubectl Exec stdError content:`n{0}`n" -f $errorStr))
 
         # Suppression du fichier temporaire
         if(Test-Path $batchFilePath)
@@ -207,43 +200,42 @@ class TKGIKubectl
             # Ex: PS D:\IDEVING\IaaS\git\xaas-admin\powershell>
             $separator = [string[]]@([Regex]::Matches($output, '(.*?>)(.*)').Groups[1].Value)
 
-            $this.debugLog("TKGIKubectl commands output. See above in log to have YAML content if any.")
-
             # On explose les résultats des différentes commandes via le chemin jusqu'à "tkgi.exe" 
             # et on les parcoure
-            $output.Split($separator, [System.StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object {
+            ForEach($cmdOutput in $output.Split($separator, [System.StringSplitOptions]::RemoveEmptyEntries))
+            {
 
-                if($_.Trim() -eq "")
+                if($cmdOutput.Trim() -eq "")
                 {
                     # Passage à l'itération suivante
-                    return
+                    continue
                 }
                 # Extraction du nom de la commande passée
-                $cmdName = ($_ -split "`n")[0].Trim()
+                $currentCmd = ($cmdOutput -split "`n")[0].Trim()
 
                 # Si la commande faisait partie de ce qu'on devait exécuter
-                if($this.cmdList -contains $cmdName)
+                if($command -eq $currentCmd)
                 {
                     # Extraction de la commande et on double les \ dans le cas où il y aurait un chemin qui aurait été passé. Si
                     # on ne fait pas ça, on aura une erreur lors de l'exécution du "-split juste après
-                    $cmdNameShort = [Regex]::Matches($cmdName, '(.*?)(tkgi|kubectl)\.exe(.*)').Groups[3].Value.Trim() -replace "\\", "\\"
+                    $currentCmdShort = [Regex]::Matches($currentCmd, '(.*?)(tkgi|kubectl)\.exe(.*)').Groups[3].Value.Trim() -replace "\\", "\\"
                     # Ajout de la commande et de son résultat dans ce qu'on renvoie
-                    $cmdOutput = ($_ -split $cmdNameShort)[1].Trim()
-                    $cmdResults.Add($cmdNameShort, $cmdOutput)
+                    $cmdResult = ($cmdOutput -split $currentCmdShort)[1].Trim()
+                    
+                    $this.debugLog(("TKGIKubectl exec command outputs.`nCommand: {0}`nOutput: {1}`n" -f $currentCmdShort, $cmdResult))
 
-                    $this.debugLog(("TKGIKubectl exec command outputs.`nCommand:{0}`nOutput:{1}`n" -f $_, $cmdOutput))
+                    # On a trouvé le résultat de la commande exécutée, donc on sort
+                    break
                 }
             }
-
-            
 
             # Suppression des éventuels fichiers temporaires
             $this.filesToClean | ForEach-Object {
                 Remove-Item $_
             }
 
-            # Reset et préparation pour le prochain batch
-            $this.newBatch()
+            $this.filesToClean = @()
+
         }
         else
         {
@@ -252,33 +244,20 @@ class TKGIKubectl
 
         
 
-        return $cmdResults
-    }
-
-    
-    <#
-	-------------------------------------------------------------------------------------
-		BUT : Fait du nettoyage pour préparer à un nouveau batch de commandes
-	#>
-    hidden [void] newBatch()
-    {
-        # Reset de la liste des commandes
-        $this.cmdList = @()
-        # Liste des fichiers temporaire à supprimer après l'exécution de la méthode "exec"
-        $this.filesToClean = @()
+        return $cmdResult
     }
 
 
     <#
 	-------------------------------------------------------------------------------------
-		BUT : Ajoute une commande TKGI à la liste
+		BUT : Renvoie une commande TKGI
 
         IN  : $command			-> La commande à exécuter
                                     Pas besoin de mettre "tkgi.exe" au début de la commande
 	#>
-    [void] addTkgiCmd([string]$command)
+    [string] generateTkgiCmd([string]$command)
     {
-        $this.cmdList += ("{0} {1}" -f $this.pathTo.tkgi, $command)
+        return ("{0} {1}" -f $this.pathTo.tkgi, $command)
     }
 
 
@@ -299,26 +278,14 @@ class TKGIKubectl
 
     <#
 	-------------------------------------------------------------------------------------
-		BUT : Renvoie une commande Kubectl
+		BUT : Génère une commande Kubectl
 
         IN  : $command			-> La commande à exécuter
                                     Pas besoin de mettre "kubectl.exe" au début de la commande
 	#>
-    hidden [string] getKubectlCmd([string]$command)
+    hidden [string] generateKubectlCmd([string]$command)
     {
         return ("{0} {1}" -f $this.pathTo.kubectl, $command)
-    }
-
-    <#
-	-------------------------------------------------------------------------------------
-		BUT : Renvoie une commande Kubectl
-
-        IN  : $command			-> La commande à exécuter
-                                    Pas besoin de mettre "kubectl.exe" au début de la commande
-	#>
-    [void] addKubectlCmd([string]$command)
-    {
-        $this.cmdList += $this.getKubectlCmd($command)
     }
 
     <#
@@ -329,17 +296,238 @@ class TKGIKubectl
         IN  : $valToReplace -> Tableau associatif avec les avec les valeurs à remplacer
                                 dans le fichier YAML que l'on charge.
     #>
-    [void] addKubectlCmdWithYaml([string]$file)
+    hidden [string] genereateKubectlCmdWithYaml([string]$file)
     {
-        $this.addKubectlCmdWithYaml($file, @{})
+        return $this.generateKubectlCmdWithYaml($file, @{})
     }
-    [void] addKubectlCmdWithYaml([string]$file, [System.Collections.IDictionary] $valToReplace)
+    hidden [string] generateKubectlCmdWithYaml([string]$file, [System.Collections.IDictionary] $valToReplace)
     {
-        $this.cmdList += ("{0} apply -f {1}" -f $this.pathTo.kubectl, ($this.loadYamlFile($file, $valToReplace)))
+        return ("{0} apply -f {1}" -f $this.pathTo.kubectl, ($this.loadYamlFile($file, $valToReplace)))
     }
 
 
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un storageClass à un cluster
+
+        IN  : $clusterName      -> Nom du cluster
+        IN  : $storageClassName -> Nom du StorageClass
+        IN  : $provisioner      -> Provisioner
+        IN  : $datastore        -> datastore
+    #>
+    [void] addClusterStorageClass([string]$clusterName, [string]$storageClassName, [string]$provisioner, [string]$datastore)
+    {
+        $replace = @{
+            name = $storageClassName
+            provisioner = $provisioner
+            datastore = $datastore
+        }
+        
+        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-storageClass.yaml", $replace)
+
+        $this.exec($clusterName, $command) | Out-Null
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un Namespace à un cluster
+
+        IN  : $clusterName  -> Nom du cluster
+        IN  : $namespace    -> Nom du namespace
+        IN  : $nsxEnv       -> environnement NSX (prod/test/dev)
+    #>
+    [void] addClusterNamespace([string]$clusterName, [string]$namespace, [string]$nsxEnv)
+    {
+        $replace = @{
+            name = $namespace
+            nsxEnv = $nsxEnv
+        }
+        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-namespace.yaml", $replace)
+
+        $this.exec($clusterName, $command) | Out-Null
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des namespaces d'un cluster
+        
+        IN  : $clusterName  -> Le nom du cluster
+
+        RET : Liste des objets représentants les namespaces. Il faut aller regarder dans 
+                "metadata.name" pour avoir le nom
+    #>
+    [Array] getClusterNamespaceList([string]$clusterName)
+    {
+        $result = $this.exec($clusterName, $this.generateKubectlCmd("get namespaces --output=json"))
+
+        # Filtre pour ne pas renvoyer certains namespaces "system"
+        $ignoreFilterRegex = "(kube|nsx|pks)-.*"
+
+        return ($result | ConvertFrom-Json).items | `
+            Where-Object { $_.metadata.name -notmatch $ignoreFilterRegex }
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un ResourceQuota à un namespace dans un cluster
+
+        IN  : $clusterName          -> Nom du cluster
+        IN  : $namespace            -> Nom du namespace
+        IN  : $resourceQuotaName    -> Nom du ResourceQuota
+        IN  : $nbLB                 -> nombre de load balancers
+        IN  : $nbNodePorts          -> Nombre de node ports
+        IN  : $storageGB            -> Taille allouée en GB
+    #>
+    [void] addClusterNamespaceResourceQuota([string]$clusterName, [string]$namespace, [string]$resourceQuotaName,  [int]$nbLB, [int]$nbNodePorts, [int]$storageGB)
+    {
+        $replace = @{
+            name = $resourceQuotaName
+            namespace = $namespace
+            nbLoadBalancers = $nbLB
+            nbNodePorts = $nbNodePorts
+            storageGi = $storageGB
+        }
+     
+        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-resourceQuota.yaml", $replace)
+
+        $this.exec($clusterName, $command) | Out-Null
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des Resource Quota d'un namespace d'un cluster
+        
+        IN  : $clusterName  -> Le nom du cluster
+        IN  : $namespace    -> Le nom du namespace
+
+        RET : Liste des objets représentants les Resource Quota. Il faut aller regarder dans 
+                "metadata.name" pour avoir le nom
+    #>
+    [Array] getClusterNamespaceResourceQuotaList([string]$clusterName, [string]$namespace)
+    {
+        $result = $this.exec($clusterName, $this.generateKubectlCmd("get resourcequota --output=json"))
+
+        return ($result | ConvertFrom-Json).items | `
+            Where-Object { $_.metadata.namespace -eq $namespace } 
+    }
     
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un Pod Security Policy dans un cluster
+
+        IN  : $clusterName              -> Nom du cluster
+        IN  : $pspName                  -> Nom du Pod Security Policy
+        IN  : $privileged               -> Privileged
+        IN  : $allowPrivilegeEscalation -> Allow privilege escalation
+    #>
+    [void] addClusterPodSecurityPolicy([string]$clusterName, [string]$pspName, [bool]$privileged, [bool]$allowPrivilegeEscalation)
+    {
+        $replace = @{
+            name = $pspName
+            privileged = $privileged
+            allowPrivilegeEscalation = $allowPrivilegeEscalation
+        }
+
+        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-podSecurityPolicy.yaml", $replace)
+
+        $this.exec($clusterName, $command) | Out-Null
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un Role pour un namespace dans un cluster
+
+        IN  : $clusterName  -> Nom du cluster
+        IN  : $namespace    -> Nom namespace
+        IN  : $roleName     -> nom du Role que l'on veut ajouter
+    #>
+    [void] addClusterNamespaceRole([string]$clusterName, [string]$namespace, [string]$roleName)
+    {
+        $replace = @{
+            name = $roleName
+            namespace = $namespace
+        }
+
+        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-role.yaml", $replace)
+
+        $this.exec($clusterName, $command) | Out-Null
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un RoleBinding pour un role dans un namespace dans un cluster
+
+        IN  : $clusterName  -> Nom du cluster
+        IN  : $namespace    -> Nom namespace
+        IN  : $roleName     -> nom du Role 
+        IN  : $roleBinding  -> Nom du RoleBinding à ajouter
+        IN  : $adGroupName  -> Nom du groupe AD 
+    #>
+    [void] addClusterNamespaceRoleBinding([string]$clusterName, [string]$namespace, [string]$roleName, [string]$roleBindingName, [string]$adGroupName)
+    {
+        $replace = @{
+            name = $roleBindingName
+            namespace = $namespace
+            groupName = $adGroupName
+            roleName = $roleName
+        }
+
+        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-roleBinding.yaml", $replace)
+
+        $this.exec($clusterName, $command) | Out-Null
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un Role dans un cluster
+
+        IN  : $clusterName  -> Nom du cluster
+        IN  : $roleName     -> nom du Role 
+        IN  : $pspName      -> Nom du Pod Security Policy lié
+    #>
+    [void] addClusterRole([string]$clusterName, [string]$roleName, [string]$pspName)
+    {
+        $replace = @{
+            name = $roleName
+            pspName = $pspName
+        }
+
+        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-clusterRole.yaml", $replace)
+
+        $this.exec($clusterName, $command) | Out-Null
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un Role dans un cluster
+
+        IN  : $clusterName  -> Nom du cluster
+        IN  : $roleName     -> nom du Role 
+        IN  : $pspName      -> Nom du Pod Security Policy lié
+    #>
+    [void] addClusterRoleBinding([string]$clusterName, [string]$roleName, [string]$roleBindingName, [string]$adGroupName)
+    {
+        $replace = @{
+            name = $roleBindingName
+            groupName = $adGroupName
+            clusterRoleName = $roleName
+        }
+
+        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding.yaml", $replace)
+
+        $this.exec($clusterName, $command) | Out-Null
+    }
+
+
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Activation du logging "debug" des requêtes faites sur le système distant.

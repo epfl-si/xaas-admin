@@ -10,7 +10,7 @@ USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newLB -clusterName <clusterName> -lbName <lbName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getLBList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delLB -clusterName <clusterName> -lbName <lbName>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newStorage -clusterName <clusterName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action extendStorage -clusterName <clusterName> -namespace <namespace> -extSizeGB <extSizeGB>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newRobot -bgId <bgId> -clusterName <clusterName>
 #>
 <#
@@ -105,7 +105,7 @@ $ACTION_DELETE_NAMESPACE        = "delNamespace"
 $ACTION_NEW_LOAD_BALANCER       = "newLB"
 $ACTION_GET_LOAD_BALANCER_LIST  = "getLBList"
 $ACTION_DELETE_LOAD_BALANCER    = "delLB"
-$ACTION_NEW_STORAGE             = "newStorage"
+$ACTION_EXTEND_STORAGE          = "extendStorage"
 $ACTION_NEW_ROBOT               = "newRobot"
 
 $ROBOT_NB_DAYS_LIFETIME         = 7
@@ -307,37 +307,6 @@ function searchClusterIngressIPAddress([string]$clusterIP, [NSXAPI]$nsx)
 }
 
 
-<#
-    -------------------------------------------------------------------------------------
-    BUT : Récupère la liste des namespaces d'un cluster et la renvoie
-
-    IN  : $clusterName  -> Nom du cluster
-#>
-function getNamespaceList([string]$clusterName)
-{
-    $logHistory.addLine(("Getting namespace list for cluster '{0}'" -f $clusterName))
-    # Préparation des lignes de commande à exécuter
-    $tkgiKubectl.addTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName))
-    $tkgiKubectl.addKubectlCmd(("config use-context {0}" -f $clusterName))
-
-    $getNameSpaceCmd = "get namespaces --output=json"
-    $tkgiKubectl.addKubectlCmd($getNameSpaceCmd)
-
-    # Exécution
-    $result = $tkgiKubectl.exec()
-
-    # Filtre pour ne pas renvoyer certains namespaces "system"
-    $ignoreFilterRegex = "(kube|nsx|pks)-.*"
-
-    $list = @()
-    ($result[$getNameSpaceCmd] | ConvertFrom-Json).items | Where-Object { $_.metadata.name -notmatch $ignoreFilterRegex } | Foreach-Object {
-        $list += $_.metadata.name
-    }
-
-    return $list
-}
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -430,6 +399,8 @@ try
         }
         $logHistory.addLine(("Business Group found, name={0}" -f $bg.name))
 
+        # Initialisation pour récupérer les noms des éléments
+        $nameGeneratorK8s.initDetailsFromBG($bg.name, $bgId)
     }
 
     # -------------------------------------------------------------------------
@@ -446,8 +417,7 @@ try
         {
             # Pour dire si on peut effectuer du cleaning dans le cas d'une erreur
             $cleaningCanBeDoneIfError = $true
-            # Initialisation pour récupérer les noms des éléments
-            $nameGeneratorK8s.initDetailsFromBG($bg.name, $bgId)
+            
 
             # Récupération des utilisateurs qui ont le droit de demander des cluster, ça sera ceux
             # qui pourront gérer le cluster
@@ -504,103 +474,74 @@ try
             # d'utilisateur. On explose l'infos <group>@intranet.epfl.ch pour n'extraire que le nom du groupe
             $groupName, $null = $userAndGroupList[0] -split '@'
 
-            $logHistory.addLine("Doing stuff on cluster...")
-            # Préparation des lignes de commande à exécuter
-
 
             # - Storage Class
-            $logHistory.addLine("Preparing StorageClass YAML...")
-            $replace = @{
-                name = $nameGeneratorK8s.getStorageClassName($clusterName)
-                provisioner = $configK8s.getConfigValue(@($targetEnv, "pks", "storageClass", "provisioner"))
-                datastore = $configK8s.getConfigValue(@($targetEnv, "pks", "storageClass", "parameters.datastore"))
-            }
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-storageClass.yaml", $replace)
-
-
-            # - Nouveau Namespace
-            $logHistory.addLine("Preparing new Namespace YAML...")
-            $replace = @{
-                name = $global:DEFAULT_NAMESPACE
-                nsxEnv = $targetEnv
-            }
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-namespace.yaml", $replace)
-
+            $logHistory.addLine("Adding StorageClass...")
+            $tkgiKubectl.addClusterStorageClass($clusterName, 
+                                                $nameGeneratorK8s.getStorageClassName($clusterName), 
+                                                $configK8s.getConfigValue(@($targetEnv, "pks", "storageClass", "provisioner")), 
+                                                $configK8s.getConfigValue(@($targetEnv, "pks", "storageClass", "parameters.datastore")))
+            
 
             # - Resource Quota
-            $logHistory.addLine("Preparing ResourceQuota YAML...")
-            $replace = @{
-                name = $nameGeneratorK8s.getResourceQuotaName($clusterName, $global:DEFAULT_NAMESPACE)
-                namespace = $global:DEFAULT_NAMESPACE
-                nbLoadBalancers = $global:RESOURCE_QUOTA_LB_AND_NODEPORTS
-                nbNodePorts = $global:RESOURCE_QUOTA_LB_AND_NODEPORTS
-                storageGi = $configK8s.getConfigValue(@($targetEnv, "pks", "resourceQuota", "spec.hard.requests.storageGi"))
-            }
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-resourceQuota.yaml", $replace)
-
+            $logHistory.addLine("Adding ResourceQuota...")
+            $tkgiKubectl.addClusterNamespaceResourceQuota($clusterName, 
+                                                          $global:DEFAULT_NAMESPACE,                                               
+                                                          $nameGeneratorK8s.getResourceQuotaName($clusterName, $global:DEFAULT_NAMESPACE),
+                                                          $global:RESOURCE_QUOTA_LB_AND_NODEPORTS, 
+                                                          $global:RESOURCE_QUOTA_LB_AND_NODEPORTS, 
+                                                          $configK8s.getConfigValue(@($targetEnv, "pks", "resourceQuota", "spec.hard.requests.storageGi")))
+            
 
             # - Pod Security Policy
-            $logHistory.addLine("Preparing PodSecurityPolicy YAML...")
-            $replace = @{
-                name = $nameGeneratorK8s.getPodSecurityPolicyName($clusterName)
-                privileged = $global:PSP_PRIVILEGED
-                allowPrivilegeEscalation = $global:PSP_ALLOW_PRIVILEGE_ESCALATION
-            }
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-podSecurityPolicy.yaml", $replace)
+            $logHistory.addLine("Adding PodSecurityPolicy...")
+            $tkgiKubectl.addClusterPodSecurityPolicy($clusterName,
+                                                     $nameGeneratorK8s.getPodSecurityPolicyName($clusterName),
+                                                     $global:PSP_PRIVILEGED,
+                                                     $global:PSP_ALLOW_PRIVILEGE_ESCALATION)
 
 
             # - Role
-            $logHistory.addLine("Preparing Role YAML...")
-            $replace = @{
-                name = $nameGeneratorK8s.getRoleName($clusterName, $global:DEFAULT_NAMESPACE)
-                namespace = $global:DEFAULT_NAMESPACE
-            }
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-role.yaml", $replace)
+            $logHistory.addLine("Adding Role...")
+            $tkgiKubectl.addClusterNamespaceRole($clusterName,
+                                                 $global:DEFAULT_NAMESPACE,
+                                                 $nameGeneratorK8s.getRoleName($clusterName, $global:DEFAULT_NAMESPACE))
 
 
             # - RoleBinding
-            $logHistory.addLine("Preparing RoleBinding YAML...")
+            $logHistory.addLine("Adding RoleBinding...")
             # Récupération de la liste des groupes qui sont présents dans le 1er groupe qui est dans les CONSUMER du BusinessGroup
             $accessGroupList = Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
             # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au BG dans vRA
             $accessGroupList | ForEach-Object {
                 $logHistory.addLine(("> For group '{0}'" -f $_))
-                $replace = @{
-                    name = $nameGeneratorK8s.getRoleBindingName($clusterName, $global:DEFAULT_NAMESPACE)
-                    namespace = $global:DEFAULT_NAMESPACE
-                    groupName = $_
-                    roleName = $nameGeneratorK8s.getRoleName($clusterName, $global:DEFAULT_NAMESPACE)
-                }
-                $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-roleBinding.yaml", $replace)
+                $tkgiKubectl.addClusterNamespaceRoleBinding($clusterName, 
+                                                            $global:DEFAULT_NAMESPACE,
+                                                            $nameGeneratorK8s.getRoleName($clusterName, $global:DEFAULT_NAMESPACE), 
+                                                            $nameGeneratorK8s.getRoleBindingName($clusterName, $global:DEFAULT_NAMESPACE), 
+                                                            $_)
             }
 
 
             # - Cluster Role
-            $logHistory.addLine("Preparing ClusterRole YAML...")
-            $replace = @{
-                name = $nameGeneratorK8s.getClusterRoleName($clusterName)
-                pspName = $nameGeneratorK8s.getPodSecurityPolicyName($clusterName)
-            }
-            $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRole.yaml", $replace)
+            $logHistory.addLine("Adding ClusterRole...")
+            $tkgiKubectl.addClusterRole($clusterName, 
+                                        $nameGeneratorK8s.getClusterRoleName($clusterName),
+                                        $nameGeneratorK8s.getPodSecurityPolicyName($clusterName))
 
 
             # - Cluster Role Binding
-            $logHistory.addLine("Preparing ClusterRoleBinding YAML...")
+            $logHistory.addLine("Adding ClusterRoleBinding...")
             # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au BG dans vRA
             $accessGroupList | ForEach-Object {
                 $logHistory.addLine(("> For group '{0}'" -f $_))
-                $replace = @{
-                    name = $nameGeneratorK8s.getClusterRoleBindingName($clusterName)
-                    groupName = $_
-                    clusterRoleName = $nameGeneratorK8s.getClusterRoleName($clusterName)
-                }
-                $tkgiKubectl.addKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding.yaml",  $replace)
+                
+                $tkgiKubectl.addClusterRoleBinding($clusterName, 
+                                                   $nameGeneratorK8s.getClusterRoleName($clusterName), 
+                                                   $nameGeneratorK8s.getClusterRoleBindingName($clusterName), 
+                                                   $_)
             }
 
-
-            # Exécution
-            $logHistory.addLine("Applying commands...")
-            $tkgiKubectl.exec($clusterName) | Out-Null
 
             # -----------
             # ---- Harbor
@@ -652,9 +593,6 @@ try
         # --- Effacer
         $ACTION_DELETE
         {
-            # Initialisation pour récupérer les noms des éléments
-            $nameGeneratorK8s.initDetailsFromBG($bg.name, $bgId)
-
             deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName -clusterUUID $clusterUUID `
                         -harbor $harbor -ipPoolName $configK8s.getConfigValue(@($targetEnv, "nsx", "ipPoolName")) -targetTenant $targetTenant
         }
@@ -718,7 +656,7 @@ try
         $ACTION_GET_NAMESPACE_LIST
         {
             
-            $output.results = getNamespaceList -clusterName $clusterName
+            $output.results = @($tkgiKubectl.getClusterNamespaceList($clusterName)| Select-Object -eXpandproperty metadata | Select-Object -ExpandProperty name)
 
         }
 
@@ -761,8 +699,8 @@ try
         ------------- STORAGE ------------
         #>
 
-        # -- Nouveau stockag
-        $ACTION_NEW_STORAGE
+        # -- Extension du stockage
+        $ACTION_EXTEND_STORAGE
         {
 
         }
@@ -776,8 +714,6 @@ try
         # -- Nouveau robot
         $ACTION_NEW_ROBOT
         {
-            # Initialisation pour récupérer les noms des éléments
-            $nameGeneratorK8s.initDetailsFromBG($bg.name, $bgId)
 
             $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
             $logHistory.addLine(("Harbor project name is '{0}'" -f $harborProjectName))
