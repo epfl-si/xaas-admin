@@ -102,7 +102,7 @@ try
    $logHistory = [LogHistory]::new('mynas-process-hd-actions', (Join-Path $PSScriptRoot "logs"), 30)
 
    # Objet pour pouvoir envoyer des mails de notification
-   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
+   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
 
    $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
 
