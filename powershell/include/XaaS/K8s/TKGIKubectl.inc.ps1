@@ -149,6 +149,36 @@ class TKGIKubectl
 
     <#
 	-------------------------------------------------------------------------------------
+        BUT : Ajoute une commande au fichier BATCH dont le chemin est passé en paramètre.
+                On pourrait ajouter la commande simplement sans s'embêter à passer par une fonction
+                me direz-vous (oui, j'ose pas tutoyer les lecteurs de mon code 😆). Eh bien en fait
+                on ne va pas qu'ajouter la commande, on va aussi ajouter celle-ci en "echo" au début
+                afin que l'on puisse ensuite récupérer une éventuelle erreur dans le STDERR du 
+                résultat de l'exécution du fichier BATCH
+        
+        IN  : $command              -> commande à ajouter
+        IN  : $batchFilePath        -> Chemin jusqu'au fichier Batch
+        IN  : $outputCommandToFile  -> (optionel) Chemin jusqu'au fichier dans lequel il faut sauvegarder
+                                        la sortie de la commande
+    #>
+    hidden [void] addCmdToBatchFile([string]$command, [string]$batchFilePath)
+    {
+        $this.addCmdToBatchFile($command, $batchFilePath, "")
+    }
+    hidden [void] addCmdToBatchFile([string]$command, [string]$batchFilePath, [string]$outputCommandToFile)
+    {
+        # Affichage de la commande dans le STDError
+        ("echo CMD={0} 1>&2" -f $command) | Out-File -FilePath $batchFilePath -Append -Encoding:default
+        if($outputCommandToFile -ne "")
+        {
+            $command = "{0} > {1}" -f $command, $outputCommandToFile
+        }
+        $command | Out-File -FilePath $batchFilePath -Append -Encoding:default
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
         BUT : Exécute une commande sur un cluster donné
         
         IN  : $clusterName  -> nom du cluster sur lequel exécuter la commande
@@ -157,31 +187,37 @@ class TKGIKubectl
         RET : Tableau associatif avec en clef la commande passée et en valeur, le résultat (string) de
                 la commande
 	#>
-    [string] exec([string]$clusterName, [string]$command)
+    [PSObject] exec([string]$clusterName, [string]$command)
     {
+        # Pour contenir les commandes à exécuter (login, commande, logout)
         $cmdFile = (New-TemporaryFile).FullName
         # On met une extension qui permettra de l'exécuter correctement par la suite via cmd.exe
         $batchFilePath = ("{0}.cmd" -f $cmdFile)
         Rename-Item -Path $cmdFile -NewName $batchFilePath
 
+        # Pour contenir la sortie de la commande $command et le récupérer plus facilement
+        $cmdResultFile = (New-TemporaryFile).FullName
+
         $cmdResult = ""
 
         # Création des lignes de commandes à exécuter
-        $this.loginCmd | Out-File -FilePath $batchFilePath -Encoding:default
+        $this.addCmdToBatchFile($this.loginCmd, $batchFilePath)
         # Ajout de la commande de sélection du cluster, avec authentification, puis sélection du bon contexte
-        $this.getTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName)) | Out-File -FilePath $batchFilePath -Append -Encoding:default
-        $this.generateKubectlCmd(("config use-context {0}" -f $clusterName)) | Out-File -FilePath $batchFilePath -Append -Encoding:default
-
-        # Ajout de la commande à exécuter
-        $command | Out-File -FilePath $batchFilePath -Append -Encoding:default
+        $this.addCmdToBatchFile($this.getTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName)), $batchFilePath)
+        $this.addCmdToBatchFile($this.generateKubectlCmd(("config use-context {0}" -f $clusterName)), $batchFilePath)
         
-        $this.logoutCmd | Out-File -FilePath $batchFilePath -Append -Encoding:default
+        # Ajout de la commande à exécuter avec redirection vers un fichier de sortie
+        $this.addCmdToBatchFile($command, $batchFilePath, $cmdResultFile)
+        
+        $this.addCmdToBatchFile($this.logoutCmd, $batchFilePath)
 
         $this.batchFile.StartInfo.FileName = $batchFilePath
 
         $this.batchFile.Start() | Out-Null
 
-        $output = $this.batchFile.StandardOutput.ReadToEnd()
+        # On récupère uniquement le contenu de la sortir d'erreur, pour savoir s'il y a eu une erreur.
+        # Le résultat de la commande qu'on a voulu exécuter, lui, se trouvait dans le fichier $cmdResultFile
+        # dans lequel on a redirigé le résultat
         $errorStr = $this.batchFile.StandardError.ReadToEnd()
 
         $this.debugLog(("TKGIKubectl Exec stdError content:`n{0}`n" -f $errorStr))
@@ -195,36 +231,40 @@ class TKGIKubectl
         # Si aucune erreur
         if($this.batchFile.ExitCode -eq 0)
         {
-            # J'admets, cette ligne de commande, je l'ai trouvée sur le net, j'aurais jamais trouvé tout seul XD
-            # On définit le séparateur en utilisant le chemin jusqu'au script:
-            # Ex: PS D:\IDEVING\IaaS\git\xaas-admin\powershell>
-            $separator = [string[]]@([Regex]::Matches($output, '(.*?>)(.*)').Groups[1].Value)
-
-            # On explose les résultats des différentes commandes via le chemin jusqu'à "tkgi.exe" 
-            # et on les parcoure
-            ForEach($cmdOutput in $output.Split($separator, [System.StringSplitOptions]::RemoveEmptyEntries))
+            # Récupération de la sortie de la commande
+            $cmdResult = Get-Content -Path $cmdResultFile -Raw
+            Remove-Item $cmdResultFile
+            try
             {
+                # On essaie de transformer le résultat en JSON
+                $cmdResult = $cmdResult | ConvertFrom-Json
+            }
+            catch
+            {
+                # En cas d'erreur, on ne fait rien, on retournera simplement la valeur de $cmdResult
+                # sans que ça soit du JSON.
+            }
+            
+            # -- On contrôle s'il y a eu une erreur d'exécution de la commande que l'on devait passer
 
-                if($cmdOutput.Trim() -eq "")
+            # J'admets, cette ligne de commande, je l'ai trouvée sur le net, j'aurais jamais trouvé tout seul XD
+            $separator = [string[]]@("CMD=")
+            # On explose le contenu de la sortie STDERR pour avoir les sorties d'erreur de toutes les commandes
+            $errorOutputList = $errorStr.Split($separator, [System.StringSplitOptions]::RemoveEmptyEntries)
+
+            # Parcours des outputs des commandes pour lesquelles on a une sortie en erreur
+            ForEach($errorOutput in $errorOutputList)
+            {
+                # Si on est sur la bonne commande
+                if($errorOutput.startsWith($command))
                 {
-                    # Passage à l'itération suivante
-                    continue
-                }
-                # Extraction du nom de la commande passée
-                $currentCmd = ($cmdOutput -split "`n")[0].Trim()
-
-                # Si la commande faisait partie de ce qu'on devait exécuter
-                if($command -eq $currentCmd)
-                {
-                    # Extraction de la commande et on double les \ dans le cas où il y aurait un chemin qui aurait été passé. Si
-                    # on ne fait pas ça, on aura une erreur lors de l'exécution du "-split juste après
-                    $currentCmdShort = [Regex]::Matches($currentCmd, '(.*?)(tkgi|kubectl)\.exe(.*)').Groups[3].Value.Trim() -replace "\\", "\\"
-                    # Ajout de la commande et de son résultat dans ce qu'on renvoie
-                    $cmdResult = ($cmdOutput -split $currentCmdShort)[1].Trim()
-                    
-                    $this.debugLog(("TKGIKubectl exec command outputs.`nCommand: {0}`nOutput: {1}`n" -f $currentCmdShort, $cmdResult))
-
-                    # On a trouvé le résultat de la commande exécutée, donc on sort
+                    $errorOutput = $errorOutput.Replace($command, "").Trim()
+                    # S'il y a eu une erreur,
+                    if($errorOutput -ne "")
+                    {
+                        # Exception !
+                        Throw $errorOutput
+                    }
                     break
                 }
             }
@@ -365,8 +405,7 @@ class TKGIKubectl
         # Filtre pour ne pas renvoyer certains namespaces "system"
         $ignoreFilterRegex = "(kube|nsx|pks)-.*"
 
-        return ($result | ConvertFrom-Json).items | `
-            Where-Object { $_.metadata.name -notmatch $ignoreFilterRegex }
+        return $result.items | Where-Object { $_.metadata.name -notmatch $ignoreFilterRegex }
     }
 
 
@@ -411,8 +450,7 @@ class TKGIKubectl
     {
         $result = $this.exec($clusterName, $this.generateKubectlCmd("get resourcequota --output=json"))
 
-        return ($result | ConvertFrom-Json).items | `
-            Where-Object { $_.metadata.namespace -eq $namespace } 
+        return $result.items | Where-Object { $_.metadata.namespace -eq $namespace } 
     }
     
 

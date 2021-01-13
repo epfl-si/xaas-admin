@@ -314,12 +314,12 @@ function searchClusterIngressIPAddress([string]$clusterIP, [NSXAPI]$nsx)
     IN  : $clusterName      -> Le nom du cluster
     IN  : $namespace        -> Nom du namespace à configurer
     IN  : $targetEnv        -> Environnement cible (prod/test/dev)
-    IN  : $adGroupName      -> Groupe AD sur lequel donner les droits
+    IN  : $adGroupList      -> Liste des groupe AD sur lesquels donner les droits
     IN  : $nameGeneratorK8s -> Générateur de noms
     IN  : $tkgiKubectl      -> Objet pour accéder aux commandes TKGI et Kubectl
     IN  : $logHistory       -> Objet pour avoir un fichier Log de l'exécution
 #>
-function configureNamespaceElements([string]$clusterName, [string]$namespace, [string]$targetEnv, [string]$adGroupName, [NameGeneratorK8s]$nameGeneratorK8s, [TKGIKubectl]$tkgiKubectl, [LogHistory]$logHistory)
+function configureNamespaceElements([string]$clusterName, [string]$namespace, [string]$targetEnv, [Array]$adGroupList, [NameGeneratorK8s]$nameGeneratorK8s, [TKGIKubectl]$tkgiKubectl, [LogHistory]$logHistory)
 {
     # - Resource Quota
     $logHistory.addLine("Adding ResourceQuota...")
@@ -338,10 +338,9 @@ function configureNamespaceElements([string]$clusterName, [string]$namespace, [s
 
     # - RoleBinding
     $logHistory.addLine("Adding RoleBinding...")
-    # Récupération de la liste des groupes qui sont présents dans le 1er groupe qui est dans les CONSUMER du BusinessGroup
-    $accessGroupList = Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
+    
     # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au BG dans vRA
-    $accessGroupList | ForEach-Object {
+    $adGroupList | ForEach-Object {
         $logHistory.addLine(("> For group '{0}'" -f $_))
         $tkgiKubectl.addClusterNamespaceRoleBinding($clusterName, 
                                                     $namespace,
@@ -522,6 +521,8 @@ try
             # d'utilisateur. On explose l'infos <group>@intranet.epfl.ch pour n'extraire que le nom du groupe
             $groupName, $null = $userAndGroupList[0] -split '@'
 
+            # Récupération de la liste des groupes qui sont présents dans le 1er groupe qui est dans les CONSUMER du BusinessGroup
+            $accessGroupList = Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
 
             # - Storage Class
             $logHistory.addLine("Adding StorageClass...")
@@ -532,7 +533,7 @@ try
             
             # Configuration du NameSpace par défaut
             configureNamespaceElements -clusterName $clusterName -namespace $global:DEFAULT_NAMESPACE -targetEnv $targetEnv `
-                                       -adGroupName $groupName -nameGeneratorK8s $nameGeneratorK8s -tkgiKubectl $tkgiKubectl -logHistory $logHistory
+                                       -adGroupList $accessGroupList -nameGeneratorK8s $nameGeneratorK8s -tkgiKubectl $tkgiKubectl -logHistory $logHistory
 
             # - Pod Security Policy
             $logHistory.addLine("Adding PodSecurityPolicy...")
@@ -673,7 +674,7 @@ try
         $ACTION_GET_NAMESPACE_LIST
         {
             
-            $output.results = @($tkgiKubectl.getClusterNamespaceList($clusterName)| Select-Object -eXpandproperty metadata | Select-Object -ExpandProperty name)
+            $output.results = @($tkgiKubectl.getClusterNamespaceList($clusterName)| Select-Object -ExpandProperty metadata | Select-Object -ExpandProperty name)
 
         }
 
