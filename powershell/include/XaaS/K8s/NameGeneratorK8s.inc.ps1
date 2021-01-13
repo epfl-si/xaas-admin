@@ -54,8 +54,9 @@ class NameGeneratorK8s: NameGeneratorBase
       {
          $global:VRA_TENANT__EPFL
          {
-            $middle = ("{0}{1}" -f $this.sanitizeName($this.getDetail('facultyName'), $global:CLUSTER_NAME_FACULTY_PART_MAX_CHAR), `
-                                   $this.sanitizeName($this.getDetail('unitName'), $global:CLUSTER_NAME_UNIT_PART_MAX_CHAR))
+            $middle = ("{0}{1}{2}" -f  $this.getDetail('unitID'),
+                                       $this.sanitizeName($this.getDetail('facultyName'), $global:CLUSTER_NAME_FACULTY_PART_MAX_CHAR), `
+                                       $this.sanitizeName($this.getDetail('unitName'), $global:CLUSTER_NAME_UNIT_PART_MAX_CHAR))
          }
 
          $global:VRA_TENANT__ITSERVICES
