@@ -4,14 +4,14 @@ USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgId <bgId> -clusterName <clusterName> [-clusterUUID <clusterUUID>]
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action setNbWorkers -clusterName <clusterName> -nbWorkers <nbWorkers>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNbWorkers -clusterName <clusterName>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newNamespace -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addNamespace -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNamespaceList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNamespace -clusterName <clusterName> -namespace <namespace>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newLB -clusterName <clusterName> -lbName <lbName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addLB -clusterName <clusterName> -lbName <lbName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getLBList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delLB -clusterName <clusterName> -lbName <lbName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action extendStorage -clusterName <clusterName> -namespace <namespace> -extSizeGB <extSizeGB>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action newRobot -bgId <bgId> -clusterName <clusterName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addRobot -bgId <bgId> -clusterName <clusterName>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -99,14 +99,14 @@ $ACTION_CREATE                  = "create"
 $ACTION_DELETE                  = "delete"
 $ACTION_GET_NB_WORKERS          = "getNbWorkers"
 $ACTION_SET_NB_WORKERS          = "setNbWorkers"
-$ACTION_NEW_NAMESPACE           = "newNamespace"
+$ACTION_ADD_NAMESPACE           = "addNamespace"
 $ACTION_GET_NAMESPACE_LIST      = "getNamespaceList"
 $ACTION_DELETE_NAMESPACE        = "delNamespace"
-$ACTION_NEW_LOAD_BALANCER       = "newLB"
+$ACTION_ADD_LOAD_BALANCER       = "addLB"
 $ACTION_GET_LOAD_BALANCER_LIST  = "getLBList"
 $ACTION_DELETE_LOAD_BALANCER    = "delLB"
 $ACTION_EXTEND_STORAGE          = "extendStorage"
-$ACTION_NEW_ROBOT               = "newRobot"
+$ACTION_ADD_ROBOT               = "addRobot"
 
 $ROBOT_NB_DAYS_LIFETIME         = 7
 
@@ -307,6 +307,51 @@ function searchClusterIngressIPAddress([string]$clusterIP, [NSXAPI]$nsx)
 }
 
 
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Configure les éléments pour un Namespace existant
+
+    IN  : $clusterName      -> Le nom du cluster
+    IN  : $namespace        -> Nom du namespace à configurer
+    IN  : $targetEnv        -> Environnement cible (prod/test/dev)
+    IN  : $adGroupName      -> Groupe AD sur lequel donner les droits
+    IN  : $nameGeneratorK8s -> Générateur de noms
+    IN  : $tkgiKubectl      -> Objet pour accéder aux commandes TKGI et Kubectl
+    IN  : $logHistory       -> Objet pour avoir un fichier Log de l'exécution
+#>
+function configureNamespaceElements([string]$clusterName, [string]$namespace, [string]$targetEnv, [string]$adGroupName, [NameGeneratorK8s]$nameGeneratorK8s, [TKGIKubectl]$tkgiKubectl, [LogHistory]$logHistory)
+{
+    # - Resource Quota
+    $logHistory.addLine("Adding ResourceQuota...")
+    $tkgiKubectl.addClusterNamespaceResourceQuota($clusterName, 
+                                                $namespace,                                               
+                                                $nameGeneratorK8s.getResourceQuotaName($clusterName, $namespace),
+                                                $global:RESOURCE_QUOTA_LB_AND_NODEPORTS, 
+                                                $global:RESOURCE_QUOTA_LB_AND_NODEPORTS, 
+                                                $configK8s.getConfigValue(@($targetEnv, "pks", "resourceQuota", "spec.hard.requests.storageGi")))
+
+    # - Role
+    $logHistory.addLine("Adding Role...")
+    $tkgiKubectl.addClusterNamespaceRole($clusterName,
+                                        $namespace,
+                                        $nameGeneratorK8s.getRoleName($clusterName, $namespace))
+
+    # - RoleBinding
+    $logHistory.addLine("Adding RoleBinding...")
+    # Récupération de la liste des groupes qui sont présents dans le 1er groupe qui est dans les CONSUMER du BusinessGroup
+    $accessGroupList = Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
+    # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au BG dans vRA
+    $accessGroupList | ForEach-Object {
+        $logHistory.addLine(("> For group '{0}'" -f $_))
+        $tkgiKubectl.addClusterNamespaceRoleBinding($clusterName, 
+                                                    $namespace,
+                                                    $nameGeneratorK8s.getRoleName($clusterName, $namespace), 
+                                                    $nameGeneratorK8s.getRoleBindingName($clusterName, $namespace), 
+                                                    $_)
+    }
+}
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -485,16 +530,9 @@ try
                                                 $configK8s.getConfigValue(@($targetEnv, "pks", "storageClass", "provisioner")), 
                                                 $configK8s.getConfigValue(@($targetEnv, "pks", "storageClass", "parameters.datastore")))
             
-
-            # - Resource Quota
-            $logHistory.addLine("Adding ResourceQuota...")
-            $tkgiKubectl.addClusterNamespaceResourceQuota($clusterName, 
-                                                          $global:DEFAULT_NAMESPACE,                                               
-                                                          $nameGeneratorK8s.getResourceQuotaName($clusterName, $global:DEFAULT_NAMESPACE),
-                                                          $global:RESOURCE_QUOTA_LB_AND_NODEPORTS, 
-                                                          $global:RESOURCE_QUOTA_LB_AND_NODEPORTS, 
-                                                          $configK8s.getConfigValue(@($targetEnv, "pks", "resourceQuota", "spec.hard.requests.storageGi")))
-            
+            # Configuration du NameSpace par défaut
+            configureNamespaceElements -clusterName $clusterName -namespace $global:DEFAULT_NAMESPACE -targetEnv $targetEnv `
+                                       -adGroupName $groupName -nameGeneratorK8s $nameGeneratorK8s -tkgiKubectl $tkgiKubectl -logHistory $logHistory
 
             # - Pod Security Policy
             $logHistory.addLine("Adding PodSecurityPolicy...")
@@ -503,35 +541,11 @@ try
                                                      $global:PSP_PRIVILEGED,
                                                      $global:PSP_ALLOW_PRIVILEGE_ESCALATION)
 
-
-            # - Role
-            $logHistory.addLine("Adding Role...")
-            $tkgiKubectl.addClusterNamespaceRole($clusterName,
-                                                 $global:DEFAULT_NAMESPACE,
-                                                 $nameGeneratorK8s.getRoleName($clusterName, $global:DEFAULT_NAMESPACE))
-
-
-            # - RoleBinding
-            $logHistory.addLine("Adding RoleBinding...")
-            # Récupération de la liste des groupes qui sont présents dans le 1er groupe qui est dans les CONSUMER du BusinessGroup
-            $accessGroupList = Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
-            # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au BG dans vRA
-            $accessGroupList | ForEach-Object {
-                $logHistory.addLine(("> For group '{0}'" -f $_))
-                $tkgiKubectl.addClusterNamespaceRoleBinding($clusterName, 
-                                                            $global:DEFAULT_NAMESPACE,
-                                                            $nameGeneratorK8s.getRoleName($clusterName, $global:DEFAULT_NAMESPACE), 
-                                                            $nameGeneratorK8s.getRoleBindingName($clusterName, $global:DEFAULT_NAMESPACE), 
-                                                            $_)
-            }
-
-
             # - Cluster Role
             $logHistory.addLine("Adding ClusterRole...")
             $tkgiKubectl.addClusterRole($clusterName, 
                                         $nameGeneratorK8s.getClusterRoleName($clusterName),
                                         $nameGeneratorK8s.getPodSecurityPolicyName($clusterName))
-
 
             # - Cluster Role Binding
             $logHistory.addLine("Adding ClusterRoleBinding...")
@@ -649,7 +663,7 @@ try
         #>
 
         # -- Nouveau namespace
-        $ACTION_NEW_NAMESPACE
+        $ACTION_ADD_NAMESPACE
         {
 
         }
@@ -677,7 +691,7 @@ try
         #>
 
         # -- Nouveau Load Balancer
-        $ACTION_NEW_LOAD_BALANCER
+        $ACTION_ADD_LOAD_BALANCER
         {
 
         }
@@ -715,7 +729,7 @@ try
         #>
 
         # -- Nouveau robot
-        $ACTION_NEW_ROBOT
+        $ACTION_ADD_ROBOT
         {
 
             $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
