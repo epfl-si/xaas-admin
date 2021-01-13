@@ -465,15 +465,38 @@ try
             # Pour dire si on peut effectuer du cleaning dans le cas d'une erreur
             $cleaningCanBeDoneIfError = $true
             
-
-            # Récupération des utilisateurs qui ont le droit de demander des cluster, ça sera ceux
-            # qui pourront gérer le cluster
-            $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
-
             $logHistory.addLine("Generating cluster name...")
             # Recherche du nom du nouveau cluster
             $clusterName = getNextClusterName -pks $pks -nameGeneratorK8s $nameGeneratorK8s
             $logHistory.addLine(("Cluster name will be '{0}'" -f $clusterName))
+
+            # -------------------
+            # ---- Droits d'accès 
+            # Ajout des droits d'accès mais uniquement pour le premier groupe de la liste, et on admet que c'est un nom de groupe et pas
+            # d'utilisateur. On explose l'infos <group>@intranet.epfl.ch pour n'extraire que le nom du groupe
+            # Récupération des utilisateurs qui ont le droit de demander des cluster, ça sera ceux
+            # qui pourront gérer le cluster
+            $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
+            $groupName, $null = $userAndGroupList[0] -split '@'
+
+            # Si on est dans le tenant ITS
+            if($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
+            {
+                # Récupération de la liste des groupes qui sont présents dans le 1er groupe qui est dans les CONSUMER du BusinessGroup
+                # NOTE: On fait ceci car TKGI/Harbor ne gèrent pas les groupes nested... 
+                # FIXME: A supprimer une fois que TKGI/Harbor pourra gérer le groupes nested
+                $accessGroupList = Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
+
+                if($null -eq $accessGroupList)
+                {
+                    Throw ("AD group '{0}' doesn't exists or is empty" -f $groupName)
+                }
+            }
+            else # Autres tenants
+            {
+                # On prent le groupe tel quel
+                $accessGroupList = @($groupName)
+            }
 
             # Histoire d'avoir ceinture et bretelles, on check quand même que le cluster n'existe pas. 
             # On ne devrait JAMAIS arriver dans ce cas de figure mais on le code tout de même afin d'éviter de
@@ -514,15 +537,6 @@ try
             $logHistory.addLine(("Adding DNS entries in {0} zone..." -f $global:K8S_DNS_ZONE_NAME))
             $EPFLDNS.registerDNSIP($dnsHostName, $ipMain, $global:K8S_DNS_ZONE_NAME)
             $EPFLDNS.registerDNSIP($dnsHostNameIngress, $ipIngress, $global:K8S_DNS_ZONE_NAME)
-
-            # -------------------
-            # ---- Droits d'accès 
-            # Ajout des droits d'accès mais uniquement pour le premier groupe de la liste, et on admet que c'est un nom de groupe et pas
-            # d'utilisateur. On explose l'infos <group>@intranet.epfl.ch pour n'extraire que le nom du groupe
-            $groupName, $null = $userAndGroupList[0] -split '@'
-
-            # Récupération de la liste des groupes qui sont présents dans le 1er groupe qui est dans les CONSUMER du BusinessGroup
-            $accessGroupList = Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
 
             # - Storage Class
             $logHistory.addLine("Adding StorageClass...")
