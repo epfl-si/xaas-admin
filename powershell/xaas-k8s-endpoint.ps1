@@ -365,6 +365,7 @@ function configureNamespaceElements([string]$clusterName, [string]$namespace, [s
     IN  : $targetTenant -> Tenant sur lequel se trouve le BusinessGroup
 
     RET : Tableau avec la liste des groupes d'accès à utiliser
+        $null si pas trouvé
 #>
 function getBGAccessGroupList([vRAAPI]$vra, [PSObject]$bg, [string]$targetTenant)
 {
@@ -386,10 +387,6 @@ function getBGAccessGroupList([vRAAPI]$vra, [PSObject]$bg, [string]$targetTenant
         # FIXME: A supprimer une fois que TKGI/Harbor pourra gérer le groupes nested
         $accessGroupList = Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
 
-        if($null -eq $accessGroupList)
-        {
-            Throw ("AD group '{0}' doesn't exists or is empty" -f $groupName)
-        }
     }
     else # Autres tenants
     {
@@ -599,7 +596,8 @@ try
             # On contrôle que la valeur de "plan" soit OK
             if($allowedPlans -notcontains $plan)
             {
-                Throw ("Incorrect plan given ({0}). Possible values are: {1}" -f $plan, ($allowedPlans -join ", "))
+                $output.error = ("Incorrect plan given ({0}). Possible values are: {1}" -f $plan, ($allowedPlans -join ", "))
+                break
             }
 
             $logHistory.addLine("Generating cluster name...")
@@ -612,6 +610,11 @@ try
             # Ajout des droits d'accès mais uniquement pour le premier groupe de la liste, et on admet que c'est un nom de groupe et pas
             # d'utilisateur. 
             $accessGroupList = getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant
+            if($null -eq $accessGroupList)
+            {
+                $output.error = "Access group list not found"
+                break
+            }
 
             # Histoire d'avoir ceinture et bretelles, on check quand même que le cluster n'existe pas. 
             # On ne devrait JAMAIS arriver dans ce cas de figure mais on le code tout de même afin d'éviter de
@@ -752,7 +755,8 @@ try
 
             if($null -eq $cluster)
             {
-                Throw ("Cluster '{0}' doesn't exists" -f $clusterName)
+                $output.error = ("Cluster '{0}' doesn't exists" -f $clusterName)
+                break
             }
 
             # Liste des Namespace du cluster
@@ -791,7 +795,8 @@ try
 
             if($null -eq $cluster)
             {
-                Throw ("Cluster '{0}' doesn't exists" -f $clusterName)
+                $output.error = ("Cluster '{0}' doesn't exists" -f $clusterName)
+                break
             }
 
             $output.results += @{
@@ -814,16 +819,18 @@ try
 
             if($null -eq $cluster)
             {
-                Throw ("Cluster '{0}' doesn't exists" -f $clusterName)
+                $output.error = ("Cluster '{0}' doesn't exists" -f $clusterName)
+                break
             }
 
             # On contrôle si le nombre de workers demandés est incorrect par rapport à ce qui est défini dans le plan
             if($nbWorkers -lt $resourceQuotaLimits.nbWorkers.($cluster.plan_name).min -or `
                 $nbWorkers -gt $resourceQuotaLimits.nbWorkers.($cluster.plan_name).max)
             {
-                Throw ("Incorrect workers number ({0}). With cluster plan '{1}', only {2} to {3} workers are allowed ({4} workers are currently configured)" -f `
+                $output.error = ("Incorrect workers number ({0}). With cluster plan '{1}', only {2} to {3} workers are allowed ({4} workers are currently configured)" -f `
                         $nbWorkers, $cluster.plan_name, $resourceQuotaLimits.nbWorkers.($cluster.plan_name).min, 
                         $resourceQuotaLimits.nbWorkers.($cluster.plan_name).max, $cluster.parameters.kubernetes_worker_instances)
+                break
             }
 
             $res = @{
@@ -860,7 +867,8 @@ try
             # On regarde si le namespace à crée existe déjà
             if($namespaceList -contains $namespace)
             {
-                Throw "Namespace '{0}' already exists in cluster '{1}'" -f $namespace, $clusterName
+                $output.error = "Namespace '{0}' already exists in cluster '{1}'" -f $namespace, $clusterName
+                break
             }
 
             # Ajout du nouveau namespace
@@ -869,6 +877,12 @@ try
 
             $logHistory.addLine(("Getting access group list for Business Group '{0}'..." -f $bg.name))
             $accessGroupList = getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant
+            if($null -eq $accessGroupList)
+            {
+                $output.error = "Access group list not found"
+                break
+            }
+            
             $logHistory.addLine(("Group list will be: {0}" -f ($accessGroupList -join ", ")))
 
             try
@@ -879,11 +893,9 @@ try
             }
             catch
             {
-                $logHistory.addLine(("Error while configuring namespace '{0}', deleting it..." -f $namespace))
+                $output.error = ("Error while configuring namespace '{0}', deleting it..." -f $namespace)
                 $tkgiKubectl.deleteClusterNamespace($clusterName, $namespace)
-
-                # On continue à propager l'exception
-                Throw
+                
             }
             
         }
@@ -907,7 +919,8 @@ try
             # Si le namespace n'existe pas
             if($namespaceList -notcontains $namespace)
             {
-                Throw "Namespace '{0}' doesn't exists in cluster '{1}'" -f $namespace, $clusterName
+                $output.error = "Namespace '{0}' doesn't exists in cluster '{1}'" -f $namespace, $clusterName
+                break
             }
 
             $logHistory.addLine(("Deleting namespace '{0}' from cluster '{1}'" -f $namespace, $clusterName))
@@ -950,7 +963,8 @@ try
             # Si on est déjà au max
             if($currentNBLB -ge $resourceQuotaLimits.nbLoadBalancers)
             {
-                Throw ("Maximum LoadBalancers already reached ({0})" -f $resourceQuotaLimits.nbLoadBalancers)
+                $output.error = ("Maximum LoadBalancers already reached ({0})" -f $resourceQuotaLimits.nbLoadBalancers)
+                break
             }
 
             # Récupération de la taille en virant l'unité (ex. 10Gi -> 10) et du coup on transforme en entier aussi
@@ -998,7 +1012,8 @@ try
             # Si on est déjà au min
             if($currentNBLB -eq 0)
             {
-                Throw "No LoadBalancer defined, impossible to delete one"
+                $output.error = "No LoadBalancer defined, impossible to delete one"
+                break
             }
 
             # Récupération de la taille en virant l'unité (ex. 10Gi -> 10) et du coup on transforme en entier aussi
