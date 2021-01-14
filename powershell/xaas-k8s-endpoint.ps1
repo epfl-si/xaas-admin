@@ -243,6 +243,7 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
 
     # # ------------------
     # # ---- Projet Harbor
+    # FIXME: Voir pour finaliser cette partie
     # $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
     # $logHistory.addLine(("Cleaning Harbor project ({0}) if needed..." -f $harborProjectName))
     
@@ -477,7 +478,11 @@ try
                                         $configK8s.getConfigValue(@($targetEnv, "tkgi", "user")),
                                         $configK8s.getConfigValue(@($targetEnv, "tkgi", "password")),
                                         $configK8s.getConfigValue(@($targetEnv, "tkgi", "certificate")))
-                                
+    
+    # Chargement des informations sur le nombre de Workers pour les plans
+    $planWorkersFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "k8s", "plan-workers.json"))
+    $planWorkers = loadFromCommentedJSON -jsonFile $planWorkersFile                                        
+
     # Si on doit activer le Debug,
     if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
     {
@@ -532,6 +537,13 @@ try
             # Pour dire si on peut effectuer du cleaning dans le cas d'une erreur
             $cleaningCanBeDoneIfError = $true
             
+            $allowedPlans = $planWorkers | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name
+            # On contrôle que la valeur de "plan" soit OK
+            if($allowedPlans -notcontains $plan)
+            {
+                Throw ("Incorrect plan given ({0}). Possible values are: {1}" -f $plan, ($allowedPlans -join ", "))
+            }
+
             $logHistory.addLine("Generating cluster name...")
             # Recherche du nom du nouveau cluster
             $clusterName = getNextClusterName -pks $pks -nameGeneratorK8s $nameGeneratorK8s
@@ -693,7 +705,12 @@ try
 
             $output.results += @{
                 clusterName = $clusterName
-                nbWorkers = $cluster.parameters.kubernetes_worker_instances
+                nbWorkers = @{
+                    current = $cluster.parameters.kubernetes_worker_instances
+                    # On ajoute aussi les informations sur les valeurs min et max
+                    min = $planWorkers.($cluster.plan_name).min
+                    max = $planWorkers.($cluster.plan_name).max
+                }
             }
         }
 
@@ -709,10 +726,29 @@ try
                 Throw ("Cluster '{0}' doesn't exists" -f $clusterName)
             }
 
-            $logHistory.addLine(("Cluster '{0}' currently have {1} worker(s). New value will be: {2} workers. Updating..." -f $clusterName, $cluster.parameters.kubernetes_worker_instances, $nbWorkers))
+            # On contrôle si le nombre de workers demandés est incorrect par rapport à ce qui est défini dans le plan
+            if($nbWorkers -lt $planWorkers.($cluster.plan_name).min -or `
+                $nbWorkers -gt $planWorkers.($cluster.plan_name).max)
+            {
+                Throw ("Incorrect workers number ({0}). With cluster plan '{1}', only {2} to {3} workers are allowed ({4} workers are currently configured)" -f `
+                        $nbWorkers, $cluster.plan_name, $planWorkers.($cluster.plan_name).min, $planWorkers.($cluster.plan_name).max, $cluster.parameters.kubernetes_worker_instances)
+            }
+
+            $res = @{
+                clusterName = $clusterName
+                oldNbWorkers = $cluster.parameters.kubernetes_worker_instances
+                newNbWorkers = $nbWorkers
+            }
+
+            $logHistory.addLine(("Cluster '{0}' currently have {1} worker(s). New value will be: {2} workers. Updating..." -f `
+                                 $clusterName, $cluster.parameters.kubernetes_worker_instances, $nbWorkers))
 
             # Mise à jour du cluster
+            $logHistory.addLine(("Modifying cluster '{0}' to update nb workers from {1} to {2}" -f `
+                                 $clusterName, $cluster.parameters.kubernetes_worker_instances, $nbWorkers))
             $pks.updateCluster($clusterName, $nbWorkers)
+
+            $output.results += $res
 
         }
 
