@@ -8,7 +8,7 @@ USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addNamespace -bgId <bgId> -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNamespaceList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNamespace -clusterName <clusterName> -namespace <namespace>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNameSpaceResources -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNamespaceResources -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addLB -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNBLB -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delLB -clusterName <clusterName> -namespace <namespace>
@@ -109,7 +109,7 @@ $ACTION_ADD_LOAD_BALANCER           = "addLB"
 $ACTION_GET_NB_LOAD_BALANCER        = "getNBLB"
 $ACTION_DELETE_LOAD_BALANCER        = "delLB"
 $ACTION_EXTEND_NAMESPACE_STORAGE    = "extendNamespaceStorage"
-$ACTION_GET_NAMESPACE_RESOURCES     = "getNameSpaceResources"
+$ACTION_GET_NAMESPACE_RESOURCES     = "getNamespaceResources"
 $ACTION_ADD_ROBOT                   = "addRobot"
 
 $ROBOT_NB_DAYS_LIFETIME         = 7
