@@ -28,9 +28,7 @@ function getObjectForOutput
     IN  : $output -> objet (créé à la base avec getObjectForOutput) contenant le 
                         résultat à afficher
 #>
-function displayJSONOutput
+function displayJSONOutput([psobject]$output)
 {
-    param([psobject]$output)
-
     Write-Host ($output | ConvertTo-Json -Depth 100)
 }
