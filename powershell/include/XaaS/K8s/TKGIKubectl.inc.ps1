@@ -16,7 +16,6 @@
                 se trouver dans le dossier "powershell/bin"
                 Il faut aussi avoir un certificat pour la connexion
 				
-
    AUTEUR : Lucien Chaboudez
    DATE   : Octobre 2020
 
@@ -179,13 +178,15 @@ class TKGIKubectl
 
     <#
 	-------------------------------------------------------------------------------------
-        BUT : Exécute une commande sur un cluster donné
+        BUT : Exécute une commande sur un cluster donné. La fonction va crééer un fichier CMD
+                temporaire avec la commande de LOGIN, se positionner sur le bon cluster,
+                puis la commande à exécuter et pour terminer, un LOGOUT
         
         IN  : $clusterName  -> nom du cluster sur lequel exécuter la commande
         IN  : $command      -> commande à exécuter
         
-        RET : Tableau associatif avec en clef la commande passée et en valeur, le résultat (string) de
-                la commande
+        RET : - Objet généré avec le JSON renvoyé par la commande
+              - Chaine de caractères toute simple (en fonction de ce qui est renvoyé)
 	#>
     [PSObject] exec([string]$clusterName, [string]$command)
     {
@@ -281,8 +282,6 @@ class TKGIKubectl
         {
             Throw ("Error executing commands ({0}) with error : `n{1}" -f $this.batchFile.StartInfo.Arguments, $errorStr)
         }
-
-        
 
         return $cmdResult
     }
@@ -391,6 +390,21 @@ class TKGIKubectl
 
     <#
 	-------------------------------------------------------------------------------------
+		BUT : Efface un Namespace d'un cluster
+
+        IN  : $clusterName  -> Nom du cluster
+        IN  : $namespace    -> Nom du namespace
+    #>
+    [void] deleteClusterNamespace([string]$clusterName, [string]$namespace)
+    {
+        $command = $this.generateKubectlCmd(("delete namespace {0}" -f $namespace))
+
+        $this.exec($clusterName, $command) | Out-Null
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
         BUT : Renvoie la liste des namespaces d'un cluster
         
         IN  : $clusterName  -> Le nom du cluster
@@ -402,10 +416,7 @@ class TKGIKubectl
     {
         $result = $this.exec($clusterName, $this.generateKubectlCmd("get namespaces --output=json"))
 
-        # Filtre pour ne pas renvoyer certains namespaces "system"
-        $ignoreFilterRegex = "(kube|nsx|pks)-.*"
-
-        return $result.items | Where-Object { $_.metadata.name -notmatch $ignoreFilterRegex }
+        return $result.items
     }
 
 
