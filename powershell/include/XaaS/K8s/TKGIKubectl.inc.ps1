@@ -431,7 +431,7 @@ class TKGIKubectl
         IN  : $nbNodePorts          -> Nombre de node ports
         IN  : $storageGB            -> Taille allouée en GB
     #>
-    [void] addClusterNamespaceResourceQuota([string]$clusterName, [string]$namespace, [string]$resourceQuotaName,  [int]$nbLB, [int]$nbNodePorts, [int]$storageGB)
+    [void] addOrUpdateClusterNamespaceResourceQuota([string]$clusterName, [string]$namespace, [string]$resourceQuotaName,  [int]$nbLB, [int]$nbNodePorts, [int]$storageGB)
     {
         $replace = @{
             name = $resourceQuotaName
@@ -449,21 +449,26 @@ class TKGIKubectl
 
     <#
 	-------------------------------------------------------------------------------------
-        BUT : Renvoie la liste des Resource Quota d'un namespace d'un cluster
+        BUT : Renvoie le Resource Quota d'un namespace d'un cluster
         
         IN  : $clusterName  -> Le nom du cluster
         IN  : $namespace    -> Le nom du namespace
 
-        RET : Liste des objets représentants les Resource Quota. Il faut aller regarder dans 
-                "metadata.name" pour avoir le nom
+        RET : Objet contenant les infos du ResourceQuota d'un namespace de cluster
+            $null si pas trouvé
     #>
-    [Array] getClusterNamespaceResourceQuotaList([string]$clusterName, [string]$namespace)
+    [PSObject] getClusterNamespaceResourceQuota([string]$clusterName, [string]$namespace)
     {
-        $result = $this.exec($clusterName, $this.generateKubectlCmd("get resourcequota --output=json"))
+        $result = ($this.exec($clusterName, $this.generateKubectlCmd("get resourcequota --output=json"))).items | Where-Object { $_.metadata.namespace -eq $namespace } 
 
-        return $result.items | Where-Object { $_.metadata.namespace -eq $namespace } 
+        if($result.count -gt 1)
+        {
+            Throw ("Too many ResourceQuota defined ({0}) for cluster '{1}' and namespace '{2}'" -f $result.count, $clusterName, $namespace)
+        }
+        return $result
     }
     
+
 
     <#
 	-------------------------------------------------------------------------------------

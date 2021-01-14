@@ -54,7 +54,8 @@ param([string]$targetEnv,
       [string]$clusterName,
       [string]$clusterUUID,
       [string]$namespace,
-      [string]$lbName)
+      [string]$lbName,
+      [int]$extSizeGB)
 
 
 # Inclusion des fichiers nécessaires (génériques)
@@ -324,7 +325,7 @@ function configureNamespaceElements([string]$clusterName, [string]$namespace, [s
 {
     # - Resource Quota
     $logHistory.addLine("Adding ResourceQuota...")
-    $tkgiKubectl.addClusterNamespaceResourceQuota($clusterName, 
+    $tkgiKubectl.addOrUpdateClusterNamespaceResourceQuota($clusterName, 
                                                 $namespace,                                               
                                                 $nameGeneratorK8s.getResourceQuotaName($clusterName, $namespace),
                                                 $global:RESOURCE_QUOTA_LB_AND_NODEPORTS, 
@@ -858,7 +859,40 @@ try
         # -- Extension du stockage
         $ACTION_EXTEND_STORAGE
         {
+            $logHistory.addLine(("Getting ResourceQuota for cluster '{0}' and namespace '{1}'..." -f $clusterName, $namespace))
+            # On commence par récupérer les infos sur le stockage existant
+            $resourceQuota = $tkgiKubectl.getClusterNamespaceResourceQuota($clusterName, $namespace)
 
+            # Si pas trouvé 
+            if($null -eq $resourceQuota)
+            {
+                Throw ("No ResourceQuota found for cluster '{0}' and namespace '{1}'" -f $clusterName, $namespace)
+            }
+
+            $logHistory.addLine(("ResourceQuota is '{0}'" -f $resourceQuota.metadata.name))
+
+            # Récupération de la taille en virant l'unité (ex. 10Gi -> 10) et du coup on transforme en entier aussi
+            $currentSizeGB = [int](($resourceQuota.spec.hard | Select-Object -ExpandProperty requests.storage).replace("Gi", ""))
+            $newSizeGB = $currentSizeGB + $extSizeGB
+
+            $logHistory.addLine(("Adding {0}GB to ResourceQuota storage. Old: {1}GB, New:{2}GB" -f $extSizeGB, $currentSizeGB, $newSizeGB))
+            $tkgiKubectl.addOrUpdateClusterNamespaceResourceQuota($clusterName, $namespace, $resourceQuota.metadata.name,`
+                # On accède avec Select-Object car le nom des propriétés contient un "."... on ne peut donc pas y accéder 
+                # via ".<property>" ou via ".(<property>)"
+                ($resourceQuota.spec.hard | Select-Object -ExpandProperty services.loadbalancers), `
+                ($resourceQuota.spec.hard | Select-Object -ExpandProperty services.nodeports), `
+                # Mise à jour de la taille
+                $newSizeGB)
+            
+            # Ajout du résultat
+            $output.results += @{
+                clusterName = $clusterName
+                namespace = $namespace
+                storageGB = @{
+                    old = $currentSizeGB
+                    new = $newSizeGB
+                }
+            }
         }
 
 
