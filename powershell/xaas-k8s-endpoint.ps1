@@ -2,15 +2,17 @@
 USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgId <bgId> -plan <plan> -netProfile <netProfile>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgId <bgId> -clusterName <clusterName> [-clusterUUID <clusterUUID>]
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getClusterInfos -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action setNbWorkers -clusterName <clusterName> -nbWorkers <nbWorkers>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNbWorkers -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addNamespace -bgId <bgId> -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNamespaceList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNamespace -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNameSpaceResources -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addLB -clusterName <clusterName> -lbName <lbName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getLBList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delLB -clusterName <clusterName> -lbName <lbName>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action extendStorage -clusterName <clusterName> -namespace <namespace> -extSizeGB <extSizeGB>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action extendNamespaceStorage -clusterName <clusterName> -namespace <namespace> -extSizeGB <extSizeGB>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addRobot -bgId <bgId> -clusterName <clusterName>
 #>
 <#
@@ -96,18 +98,20 @@ $configNSX = [ConfigReader]::New("config-nsx.json")
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
 # Liste des actions possibles
-$ACTION_CREATE                  = "create"
-$ACTION_DELETE                  = "delete"
-$ACTION_GET_NB_WORKERS          = "getNbWorkers"
-$ACTION_SET_NB_WORKERS          = "setNbWorkers"
-$ACTION_ADD_NAMESPACE           = "addNamespace"
-$ACTION_GET_NAMESPACE_LIST      = "getNamespaceList"
-$ACTION_DELETE_NAMESPACE        = "delNamespace"
-$ACTION_ADD_LOAD_BALANCER       = "addLB"
-$ACTION_GET_LOAD_BALANCER_LIST  = "getLBList"
-$ACTION_DELETE_LOAD_BALANCER    = "delLB"
-$ACTION_EXTEND_STORAGE          = "extendStorage"
-$ACTION_ADD_ROBOT               = "addRobot"
+$ACTION_CREATE                      = "create"
+$ACTION_DELETE                      = "delete"
+$ACTION_GET_CLUSTER_INFOS           = "getClusterInfos"
+$ACTION_GET_NB_WORKERS              = "getNbWorkers"
+$ACTION_SET_NB_WORKERS              = "setNbWorkers"
+$ACTION_ADD_NAMESPACE               = "addNamespace"
+$ACTION_GET_NAMESPACE_LIST          = "getNamespaceList"
+$ACTION_DELETE_NAMESPACE            = "delNamespace"
+$ACTION_ADD_LOAD_BALANCER           = "addLB"
+$ACTION_GET_LOAD_BALANCER_LIST      = "getLBList"
+$ACTION_DELETE_LOAD_BALANCER        = "delLB"
+$ACTION_EXTEND_NAMESPACE_STORAGE    = "extendNamespaceStorage"
+$ACTION_GET_NAMESPACE_RESOURCES     = "getNameSpaceResources"
+$ACTION_ADD_ROBOT                   = "addRobot"
 
 $ROBOT_NB_DAYS_LIFETIME         = 7
 
@@ -405,18 +409,25 @@ function getBGAccessGroupList([vRAAPI]$vra, [PSObject]$bg, [string]$targetTenant
     IN  : $tkgikubectl      -> Objet permettant d'effectuer des actions via les commandes
                                 tkgi.exe et kubectl.exe
     IN  : $clusterName      -> Nom du cluster
+    IN  : $returnOnlyNames  -> Pour dire si on doit retourner uniquement les noms ou la totale
     
     RET : Tableau avec la liste des namespaces
 #>
-function getClusterNamespaceList([TKGIKubectl]$tkgiKubectl, [string]$clusterName)
+function getClusterNamespaceList([TKGIKubectl]$tkgiKubectl, [string]$clusterName, [bool]$returnOnlyNames)
 {
     # Filtre pour ne pas renvoyer certains namespaces "system"
     $ignoreFilterRegex = "(kube|nsx|pks)-.*"
 
-    return @($tkgiKubectl.getClusterNamespaceList($clusterName)  | `
-                Where-Object { $_.metadata.name -notmatch $ignoreFilterRegex } | `
-                    Select-Object -ExpandProperty metadata | `
-                        Select-Object -ExpandProperty name)
+    $list = $tkgiKubectl.getClusterNamespaceList($clusterName)  | `
+                Where-Object { $_.metadata.name -notmatch $ignoreFilterRegex }
+    
+    # Si on doit retourner uniquement les noms, on extrait ceux-ci
+    if($returnOnlyNames)
+    {
+        $list = $list | Select-Object -ExpandProperty metadata | Select-Object -ExpandProperty name
+    }
+
+    return @($list)
 }
 
 
@@ -688,6 +699,42 @@ try
         }
 
 
+        # --- Détails d'un cluster
+        $ACTION_GET_CLUSTER_INFOS
+        {
+            $cluster = $pks.getCluster($clusterName)
+
+            if($null -eq $cluster)
+            {
+                Throw ("Cluster '{0}' doesn't exists" -f $clusterName)
+            }
+
+            # Liste des Namespace du cluster
+            $namespaceList = getClusterNamespaceList -tkgiKubectl $tkgiKubectl -clusterName $clusterName -returnOnlyNames $false
+
+            $namespaces = @()
+            # Parcours des Namespaces du cluster
+            ForEach($namespaceInfos in $namespaceList)
+            {
+                $resourceQuota = $tkgiKubectl.getClusterNamespaceResourceQuota($clusterName, $namespaceInfos.metadata.name)
+                
+                if($null -eq $resourceQuota)
+                {
+                    Throw ("ResourceQuota not found for cluster '{0}' and namespace '{1}'" -f $clusterName, $namespaceInfos.metadata.name)
+                }
+                $namespaces += @{ 
+                    name = $namespaceInfos.metadata.name
+                    infos = $namespaceInfos
+                    resourceQuota = $resourceQuota
+                }
+            }
+
+            $output.results += @{
+                cluster = $cluster
+                namespaces = $namespaces
+            }
+        }
+
         <#
         --------------------------------------
         --------------- WORKERS --------------
@@ -763,7 +810,7 @@ try
         $ACTION_ADD_NAMESPACE
         {
             $logHistory.addLine(("Getting existing namespaces for cluster '{0}'..." -f $clusterName))
-            $namespaceList = getClusterNamespaceList -tkgiKubectl $tkgiKubectl -clusterName $clusterName
+            $namespaceList = getClusterNamespaceList -tkgiKubectl $tkgiKubectl -clusterName $clusterName -returnOnlyNames $true
             $logHistory.addLine(("Found {0} namespaces:`n- {0}" -f $namespaceList.count, ($namespaceList -join "`n- ")))
 
             # On regarde si le namespace à crée existe déjà
@@ -802,7 +849,7 @@ try
         $ACTION_GET_NAMESPACE_LIST
         {
             $logHistory.addLine(("Getting namespace list for cluster '{0}'" -f $clusterName))
-            $output.results = getClusterNamespaceList -tkgiKubectl $tkgiKubectl -clusterName $clusterName
+            $output.results = getClusterNamespaceList -tkgiKubectl $tkgiKubectl -clusterName $clusterName -returnOnlyNames $true
 
         }
 
@@ -811,7 +858,7 @@ try
         $ACTION_DELETE_NAMESPACE
         {
             $logHistory.addLine(("Getting namespace list for cluster '{0}'" -f $clusterName))
-            $namespaceList = getClusterNamespaceList -tkgiKubectl $tkgiKubectl -clusterName $clusterName
+            $namespaceList = getClusterNamespaceList -tkgiKubectl $tkgiKubectl -clusterName $clusterName -returnOnlyNames $true
 
             # Si le namespace n'existe pas
             if($namespaceList -notcontains $namespace)
@@ -822,6 +869,30 @@ try
             $logHistory.addLine(("Deleting namespace '{0}' from cluster '{1}'" -f $namespace, $clusterName))
             $tkgiKubectl.deleteClusterNamespace($clusterName, $namespace)
 
+        }
+
+
+        # -- Resources pour le namespace
+        $ACTION_GET_NAMESPACE_RESOURCES
+        {
+            $logHistory.addLine(("Getting ResourceQuota for cluster '{0}' and namespace '{1}'..." -f $clusterName, $namespace))
+            # On commence par récupérer les infos sur le stockage existant
+            $resourceQuota = $tkgiKubectl.getClusterNamespaceResourceQuota($clusterName, $namespace)
+
+            # Si pas trouvé 
+            if($null -eq $resourceQuota)
+            {
+                Throw ("No ResourceQuota found for cluster '{0}' and namespace '{1}'" -f $clusterName, $namespace)
+            }
+
+            # Ajout du résultat
+            $output.results += @{
+                clusterName = $clusterName
+                namespace = $namespace
+                storageGB = [int](($resourceQuota.spec.hard | Select-Object -ExpandProperty requests.storage).replace("Gi", ""))
+                nbLoadBalancers = [int]($resourceQuota.spec.hard | Select-Object -ExpandProperty services.loadbalancers)
+                nbNodePorts = [int]($resourceQuota.spec.hard | Select-Object -ExpandProperty services.nodeports)
+            }
         }
 
 
@@ -857,7 +928,7 @@ try
         #>
 
         # -- Extension du stockage
-        $ACTION_EXTEND_STORAGE
+        $ACTION_EXTEND_NAMESPACE_STORAGE
         {
             $logHistory.addLine(("Getting ResourceQuota for cluster '{0}' and namespace '{1}'..." -f $clusterName, $namespace))
             # On commence par récupérer les infos sur le stockage existant
@@ -895,6 +966,8 @@ try
             }
         }
 
+
+        
 
         <#
         ----------------------------------
@@ -949,7 +1022,8 @@ catch
                 -clusterName $clusterName -clusterUUID "" -ipPoolName $configK8s.getConfigValue(@($targetEnv, "nsx", "ipPoolName")) -targetTenant $targetTenant
     }
 
-    # Ajout de l'erreur et affichage
+    # Reset des infos s'il y en avait, ajout de l'erreur et affichage
+    $output = getObjectForOutput
     $output.error = "{0}`n`n{1}" -f $errorMessage, $errorTrace
     displayJSONOutput -output $output
 
