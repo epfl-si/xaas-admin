@@ -9,9 +9,9 @@ USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNamespaceList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNamespace -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNameSpaceResources -clusterName <clusterName> -namespace <namespace>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addLB -clusterName <clusterName> -lbName <lbName>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getLBList -clusterName <clusterName>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delLB -clusterName <clusterName> -lbName <lbName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addLB -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNBLB -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delLB -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action extendNamespaceStorage -clusterName <clusterName> -namespace <namespace> -extSizeGB <extSizeGB>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addRobot -bgId <bgId> -clusterName <clusterName>
 #>
@@ -56,7 +56,6 @@ param([string]$targetEnv,
       [string]$clusterName,
       [string]$clusterUUID,
       [string]$namespace,
-      [string]$lbName,
       [int]$extSizeGB)
 
 
@@ -107,7 +106,7 @@ $ACTION_ADD_NAMESPACE               = "addNamespace"
 $ACTION_GET_NAMESPACE_LIST          = "getNamespaceList"
 $ACTION_DELETE_NAMESPACE            = "delNamespace"
 $ACTION_ADD_LOAD_BALANCER           = "addLB"
-$ACTION_GET_LOAD_BALANCER_LIST      = "getLBList"
+$ACTION_GET_NB_LOAD_BALANCER        = "getNBLB"
 $ACTION_DELETE_LOAD_BALANCER        = "delLB"
 $ACTION_EXTEND_NAMESPACE_STORAGE    = "extendNamespaceStorage"
 $ACTION_GET_NAMESPACE_RESOURCES     = "getNameSpaceResources"
@@ -406,14 +405,14 @@ function getBGAccessGroupList([vRAAPI]$vra, [PSObject]$bg, [string]$targetTenant
     -------------------------------------------------------------------------------------
     BUT : Renvoie la liste des namespaces d'un cluster
 
-    IN  : $tkgikubectl      -> Objet permettant d'effectuer des actions via les commandes
-                                tkgi.exe et kubectl.exe
     IN  : $clusterName      -> Nom du cluster
     IN  : $returnOnlyNames  -> Pour dire si on doit retourner uniquement les noms ou la totale
+    IN  : $tkgikubectl      -> Objet permettant d'effectuer des actions via les commandes
+                                tkgi.exe et kubectl.exe
     
     RET : Tableau avec la liste des namespaces
 #>
-function getClusterNamespaceList([TKGIKubectl]$tkgiKubectl, [string]$clusterName, [bool]$returnOnlyNames)
+function getClusterNamespaceList([string]$clusterName, [bool]$returnOnlyNames, [TKGIKubectl]$tkgiKubectl)
 {
     # Filtre pour ne pas renvoyer certains namespaces "system"
     $ignoreFilterRegex = "(kube|nsx|pks)-.*"
@@ -428,6 +427,51 @@ function getClusterNamespaceList([TKGIKubectl]$tkgiKubectl, [string]$clusterName
     }
 
     return @($list)
+}
+
+
+<#
+    -------------------------------------------------------------------------------------
+    BUT : Renvoie le resource quota d'un namespace de cluster
+
+    IN  : $clusterName      -> Nom du cluster
+    IN  : $namespace        -> Nom du namespace
+    IN  : $tkgikubectl      -> Objet permettant d'effectuer des actions via les commandes
+                                tkgi.exe et kubectl.exe
+    IN  : $logHistory       -> Objet pour avoir un fichier Log de l'exécution
+    
+    RET : Objet avec les détails du resource quota
+#>
+function getClusterNamespaceResourceQuota([string]$clusterName, [string]$namespace, [TKGIKubectl]$tkgiKubectl, [LogHistory]$logHistory)
+{
+    $logHistory.addLine(("Getting ResourceQuota for cluster '{0}' and namespace '{1}'..." -f $clusterName, $namespace))
+    # On commence par récupérer les infos sur le stockage existant
+    $resourceQuota = $tkgiKubectl.getClusterNamespaceResourceQuota($clusterName, $namespace)
+
+    # Si pas trouvé 
+    if($null -eq $resourceQuota)
+    {
+        Throw ("No ResourceQuota found for cluster '{0}' and namespace '{1}'" -f $clusterName, $namespace)
+    }
+
+    $logHistory.addLine(("ResourceQuota is '{0}'" -f $resourceQuota.metadata.name))
+
+    <# Mise à jour de certaines valeurs pour qu'elles soient utilisables par la suite sans faire de mic-mac.
+        Pour faire ceci, il faut supprimer et ajouter à nouveau la propriété contenant les valeurs... pourquoi?
+        bah parce que pas trouvé comment mettre à jour sa valeur autrement ... 😑
+    #>
+    $currentSizeGB = [int](($resourceQuota.spec.hard | Select-Object -ExpandProperty requests.storage).replace("Gi", ""))
+    $resourceQuota.spec.hard.PSObject.Properties.Remove('requests.storage')
+    $resourceQuota.spec.hard | Add-Member -NotePropertyName requests.storage -NotePropertyValue $currentSizeGB -TypeName int
+
+    # On transforme certaines valeurs en entiers
+    @("services.loadbalancers", "services.nodeports") | ForEach-Object {
+        $val = [int](($resourceQuota.spec.hard | Select-Object -ExpandProperty $_))
+        $resourceQuota.spec.hard.PSObject.Properties.Remove($_)
+        $resourceQuota.spec.hard | Add-Member -NotePropertyName $_ -NotePropertyValue $val -TypeName int
+    }
+
+    return $resourceQuota
 }
 
 
@@ -492,8 +536,8 @@ try
                                         $configK8s.getConfigValue(@($targetEnv, "tkgi", "certificate")))
     
     # Chargement des informations sur le nombre de Workers pour les plans
-    $planWorkersFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "k8s", "plan-workers.json"))
-    $planWorkers = loadFromCommentedJSON -jsonFile $planWorkersFile                                        
+    $resourceQuotaLimitsFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "k8s", "resource-quota-limits.json"))
+    $resourceQuotaLimits = loadFromCommentedJSON -jsonFile $resourceQuotaLimitsFile                                        
 
     # Si on doit activer le Debug,
     if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
@@ -549,7 +593,9 @@ try
             # Pour dire si on peut effectuer du cleaning dans le cas d'une erreur
             $cleaningCanBeDoneIfError = $true
             
-            $allowedPlans = $planWorkers | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name
+            # Extraction des plans disponibles
+            $allowedPlans = $resourceQuotaLimits.nbWorkers | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name
+
             # On contrôle que la valeur de "plan" soit OK
             if($allowedPlans -notcontains $plan)
             {
@@ -716,12 +762,9 @@ try
             # Parcours des Namespaces du cluster
             ForEach($namespaceInfos in $namespaceList)
             {
-                $resourceQuota = $tkgiKubectl.getClusterNamespaceResourceQuota($clusterName, $namespaceInfos.metadata.name)
+                # Récupération du resourceQuota du namespace du cluster
+                $resourceQuota = getClusterNamespaceResourceQuota -clusterName $clusterName -namespace $namespaceInfos.metadata.name -tkgiKubectl $tkgiKubectl -logHistory $logHistory
                 
-                if($null -eq $resourceQuota)
-                {
-                    Throw ("ResourceQuota not found for cluster '{0}' and namespace '{1}'" -f $clusterName, $namespaceInfos.metadata.name)
-                }
                 $namespaces += @{ 
                     name = $namespaceInfos.metadata.name
                     infos = $namespaceInfos
@@ -756,8 +799,8 @@ try
                 nbWorkers = @{
                     current = $cluster.parameters.kubernetes_worker_instances
                     # On ajoute aussi les informations sur les valeurs min et max
-                    min = $planWorkers.($cluster.plan_name).min
-                    max = $planWorkers.($cluster.plan_name).max
+                    min = $resourceQuotaLimits.nbWorkers.($cluster.plan_name).min
+                    max = $resourceQuotaLimits.nbWorkers.($cluster.plan_name).max
                 }
             }
         }
@@ -775,11 +818,12 @@ try
             }
 
             # On contrôle si le nombre de workers demandés est incorrect par rapport à ce qui est défini dans le plan
-            if($nbWorkers -lt $planWorkers.($cluster.plan_name).min -or `
-                $nbWorkers -gt $planWorkers.($cluster.plan_name).max)
+            if($nbWorkers -lt $resourceQuotaLimits.nbWorkers.($cluster.plan_name).min -or `
+                $nbWorkers -gt $resourceQuotaLimits.nbWorkers.($cluster.plan_name).max)
             {
                 Throw ("Incorrect workers number ({0}). With cluster plan '{1}', only {2} to {3} workers are allowed ({4} workers are currently configured)" -f `
-                        $nbWorkers, $cluster.plan_name, $planWorkers.($cluster.plan_name).min, $planWorkers.($cluster.plan_name).max, $cluster.parameters.kubernetes_worker_instances)
+                        $nbWorkers, $cluster.plan_name, $resourceQuotaLimits.nbWorkers.($cluster.plan_name).min, 
+                        $resourceQuotaLimits.nbWorkers.($cluster.plan_name).max, $cluster.parameters.kubernetes_worker_instances)
             }
 
             $res = @{
@@ -875,23 +919,16 @@ try
         # -- Resources pour le namespace
         $ACTION_GET_NAMESPACE_RESOURCES
         {
-            $logHistory.addLine(("Getting ResourceQuota for cluster '{0}' and namespace '{1}'..." -f $clusterName, $namespace))
-            # On commence par récupérer les infos sur le stockage existant
-            $resourceQuota = $tkgiKubectl.getClusterNamespaceResourceQuota($clusterName, $namespace)
-
-            # Si pas trouvé 
-            if($null -eq $resourceQuota)
-            {
-                Throw ("No ResourceQuota found for cluster '{0}' and namespace '{1}'" -f $clusterName, $namespace)
-            }
+            # Récupération du resourceQuota du namespace du cluster
+            $resourceQuota = getClusterNamespaceResourceQuota -clusterName $clusterName -namespace $namespace -tkgiKubectl $tkgiKubectl -logHistory $logHistory
 
             # Ajout du résultat
             $output.results += @{
                 clusterName = $clusterName
                 namespace = $namespace
-                storageGB = [int](($resourceQuota.spec.hard | Select-Object -ExpandProperty requests.storage).replace("Gi", ""))
-                nbLoadBalancers = [int]($resourceQuota.spec.hard | Select-Object -ExpandProperty services.loadbalancers)
-                nbNodePorts = [int]($resourceQuota.spec.hard | Select-Object -ExpandProperty services.nodeports)
+                storageGB = $resourceQuota.spec.hard | Select-Object -ExpandProperty requests.storage
+                nbLoadBalancers = $resourceQuota.spec.hard | Select-Object -ExpandProperty services.loadbalancers
+                nbNodePorts = $resourceQuota.spec.hard | Select-Object -ExpandProperty services.nodeports
             }
         }
 
@@ -904,21 +941,82 @@ try
         # -- Nouveau Load Balancer
         $ACTION_ADD_LOAD_BALANCER
         {
+            # Récupération du resourceQuota du namespace du cluster
+            $resourceQuota = getClusterNamespaceResourceQuota -clusterName $clusterName -namespace $namespace -tkgiKubectl $tkgiKubectl -logHistory $logHistory
 
+            # Récupération du nombre de load balancers actuel
+            $currentNBLB = $resourceQuota.spec.hard | Select-Object -ExpandProperty services.loadbalancers
+
+            # Si on est déjà au max
+            if($currentNBLB -ge $resourceQuotaLimits.nbLoadBalancers)
+            {
+                Throw ("Maximum LoadBalancers already reached ({0})" -f $resourceQuotaLimits.nbLoadBalancers)
+            }
+
+            # Récupération de la taille en virant l'unité (ex. 10Gi -> 10) et du coup on transforme en entier aussi
+            $currentSizeGB = $resourceQuota.spec.hard | Select-Object -ExpandProperty requests.storage
+
+            $logHistory.addLine("Adding 1 LoadBalancer to ResourceQuota")
+            $tkgiKubectl.addOrUpdateClusterNamespaceResourceQuota($clusterName, $namespace, $resourceQuota.metadata.name,`
+                $currentNBLB+1, $currentNBLB+1, $currentSizeGB)
+            
+            # Ajout du résultat
+            $output.results += @{
+                clusterName = $clusterName
+                namespace = $namespace
+                nbLoadBalancers = @{
+                    old = $currentNBLB
+                    new = $currentNBLB+1
+                }
+            }
         }
 
 
-        # -- Liste des Load Balancer
-        $ACTION_GET_LOAD_BALANCER_LIST
+        # -- Nombre de Load Balancers
+        $ACTION_GET_NB_LOAD_BALANCER
         {
+            # Récupération du resourceQuota du namespace du cluster
+            $resourceQuota = getClusterNamespaceResourceQuota -clusterName $clusterName -namespace $namespace -tkgiKubectl $tkgiKubectl -logHistory $logHistory
 
+            $output.results += @{
+                clusterName = $clusterName
+                namespace = $namespace
+                nbLoadBalancers = ($resourceQuota.spec.hard | Select-Object -ExpandProperty services.loadbalancers)
+            }
         }
 
 
         # -- Effacement d'un Load Balancer
         $ACTION_DELETE_LOAD_BALANCER
         {
+            # Récupération du resourceQuota du namespace du cluster
+            $resourceQuota = getClusterNamespaceResourceQuota -clusterName $clusterName -namespace $namespace -tkgiKubectl $tkgiKubectl -logHistory $logHistory
 
+            # Récupération du nombre de load balancers actuel
+            $currentNBLB = $resourceQuota.spec.hard | Select-Object -ExpandProperty services.loadbalancers
+
+            # Si on est déjà au min
+            if($currentNBLB -eq 0)
+            {
+                Throw "No LoadBalancer defined, impossible to delete one"
+            }
+
+            # Récupération de la taille en virant l'unité (ex. 10Gi -> 10) et du coup on transforme en entier aussi
+            $currentSizeGB = $resourceQuota.spec.hard | Select-Object -ExpandProperty requests.storage
+
+            $logHistory.addLine("Adding 1 LoadBalancer to ResourceQuota")
+            $tkgiKubectl.addOrUpdateClusterNamespaceResourceQuota($clusterName, $namespace, $resourceQuota.metadata.name,`
+                $currentNBLB-1, $currentNBLB-1, $currentSizeGB)
+            
+            # Ajout du résultat
+            $output.results += @{
+                clusterName = $clusterName
+                namespace = $namespace
+                nbLoadBalancers = @{
+                    old = $currentNBLB
+                    new = $currentNBLB-1
+                }
+            }
         }
 
 
@@ -930,20 +1028,11 @@ try
         # -- Extension du stockage
         $ACTION_EXTEND_NAMESPACE_STORAGE
         {
-            $logHistory.addLine(("Getting ResourceQuota for cluster '{0}' and namespace '{1}'..." -f $clusterName, $namespace))
-            # On commence par récupérer les infos sur le stockage existant
-            $resourceQuota = $tkgiKubectl.getClusterNamespaceResourceQuota($clusterName, $namespace)
-
-            # Si pas trouvé 
-            if($null -eq $resourceQuota)
-            {
-                Throw ("No ResourceQuota found for cluster '{0}' and namespace '{1}'" -f $clusterName, $namespace)
-            }
-
-            $logHistory.addLine(("ResourceQuota is '{0}'" -f $resourceQuota.metadata.name))
+            # Récupération du resourceQuota du namespace du cluster
+            $resourceQuota = getClusterNamespaceResourceQuota -clusterName $clusterName -namespace $namespace -tkgiKubectl $tkgiKubectl -logHistory $logHistory
 
             # Récupération de la taille en virant l'unité (ex. 10Gi -> 10) et du coup on transforme en entier aussi
-            $currentSizeGB = [int](($resourceQuota.spec.hard | Select-Object -ExpandProperty requests.storage).replace("Gi", ""))
+            $currentSizeGB = $resourceQuota.spec.hard | Select-Object -ExpandProperty requests.storage
             $newSizeGB = $currentSizeGB + $extSizeGB
 
             $logHistory.addLine(("Adding {0}GB to ResourceQuota storage. Old: {1}GB, New:{2}GB" -f $extSizeGB, $currentSizeGB, $newSizeGB))
@@ -966,8 +1055,6 @@ try
             }
         }
 
-
-        
 
         <#
         ----------------------------------

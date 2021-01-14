@@ -1,0 +1,22 @@
+{
+    "nbWorkers":
+    {
+        "small":
+        {
+            "min":2,
+            "max":3
+        },
+        "medium":
+        {
+            "min":2,
+            "max":5
+        },
+        "large":
+        {
+            "min":3,
+            "max":7
+        }
+    },
+    "nbLoadBalancers" : 1
+    
+}
