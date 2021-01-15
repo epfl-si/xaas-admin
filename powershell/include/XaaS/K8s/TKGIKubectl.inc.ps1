@@ -29,6 +29,7 @@ class TKGIKubectl
     hidden [Hashtable]$pathTo
     hidden [string]$password
     hidden [Array]$filesToClean
+    hidden [Array]$cmdToOutputFile
     hidden [LogHistory] $logHistory
 	
     <#
@@ -149,30 +150,44 @@ class TKGIKubectl
     <#
 	-------------------------------------------------------------------------------------
         BUT : Ajoute une commande au fichier BATCH dont le chemin est passé en paramètre.
-                On pourrait ajouter la commande simplement sans s'embêter à passer par une fonction
-                me direz-vous (oui, j'ose pas tutoyer les lecteurs de mon code 😆). Eh bien en fait
-                on ne va pas qu'ajouter la commande, on va aussi ajouter celle-ci en "echo" au début
-                afin que l'on puisse ensuite récupérer une éventuelle erreur dans le STDERR du 
-                résultat de l'exécution du fichier BATCH
+                On va aussi faire en sorte que les 2 sorties (STDERR, STDOUT) de la commande
+                soient redirigées vers des fichiers, ce qui facilitera le traitement par la 
+                suite vu qu'on va passer les commandes à la suite, en BATCH
         
         IN  : $command              -> commande à ajouter
         IN  : $batchFilePath        -> Chemin jusqu'au fichier Batch
-        IN  : $outputCommandToFile  -> (optionel) Chemin jusqu'au fichier dans lequel il faut sauvegarder
-                                        la sortie de la commande
     #>
     hidden [void] addCmdToBatchFile([string]$command, [string]$batchFilePath)
     {
-        $this.addCmdToBatchFile($command, $batchFilePath, "")
-    }
-    hidden [void] addCmdToBatchFile([string]$command, [string]$batchFilePath, [string]$outputCommandToFile)
-    {
-        # Affichage de la commande dans le STDError
-        ("echo CMD={0} 1>&2" -f $command) | Out-File -FilePath $batchFilePath -Append -Encoding:default
-        if($outputCommandToFile -ne "")
-        {
-            $command = "{0} > {1}" -f $command, $outputCommandToFile
+        # Pour contenir la sortie de la commande $command et le récupérer plus facilement
+        $stdoutFile = (New-TemporaryFile).FullName
+        $stdErrFile = (New-TemporaryFile).FullName
+
+        # Pour savoir où retrouver les sorties
+        $this.cmdToOutputFile += @{
+            cmd = $command
+            stdout = $stdoutFile
+            stderr = $stdErrFile
         }
+
+        # Ajout du nécessaire pour rediriger les sorties de la commande, STDOUT et STDERR, vers des fichiers
+        $command = "{0} > {1} 2> {2}" -f $command, $stdoutFile, $stdErrFile
+        
         $command | Out-File -FilePath $batchFilePath -Append -Encoding:default
+
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Efface les fichiers temporaires de sorties utilisés
+    #>
+    hidden [void] cleanOutputFiles()
+    {
+        $this.cmdToOutputFile | ForEach-Object {
+            Remove-Item $_.stdout
+            Remove-Item $_.stderr
+        }
     }
 
 
@@ -190,14 +205,13 @@ class TKGIKubectl
 	#>
     [PSObject] exec([string]$clusterName, [string]$command)
     {
+        $this.cmdToOutputFile = @()
+
         # Pour contenir les commandes à exécuter (login, commande, logout)
         $cmdFile = (New-TemporaryFile).FullName
         # On met une extension qui permettra de l'exécuter correctement par la suite via cmd.exe
         $batchFilePath = ("{0}.cmd" -f $cmdFile)
         Rename-Item -Path $cmdFile -NewName $batchFilePath
-
-        # Pour contenir la sortie de la commande $command et le récupérer plus facilement
-        $cmdResultFile = (New-TemporaryFile).FullName
 
         $cmdResult = ""
 
@@ -208,7 +222,7 @@ class TKGIKubectl
         $this.addCmdToBatchFile($this.generateKubectlCmd(("config use-context {0}" -f $clusterName)), $batchFilePath)
         
         # Ajout de la commande à exécuter avec redirection vers un fichier de sortie
-        $this.addCmdToBatchFile($command, $batchFilePath, $cmdResultFile)
+        $this.addCmdToBatchFile($command, $batchFilePath)
         
         $this.addCmdToBatchFile($this.logoutCmd, $batchFilePath)
 
@@ -221,8 +235,6 @@ class TKGIKubectl
         # dans lequel on a redirigé le résultat
         $errorStr = $this.batchFile.StandardError.ReadToEnd()
 
-        $this.debugLog(("TKGIKubectl Exec stdError content:`n{0}`n" -f $errorStr))
-
         # Suppression du fichier temporaire
         if(Test-Path $batchFilePath)
         {
@@ -232,43 +244,43 @@ class TKGIKubectl
         # Si aucune erreur
         if($this.batchFile.ExitCode -eq 0)
         {
-            # Récupération de la sortie de la commande
-            $cmdResult = Get-Content -Path $cmdResultFile -Raw
-            Remove-Item $cmdResultFile
-            try
+            # Parcour des commandes exécutées
+            ForEach($executedCommand in $this.cmdToOutputFile)
             {
-                # On essaie de transformer le résultat en JSON
-                $cmdResult = $cmdResult | ConvertFrom-Json
-            }
-            catch
-            {
-                # En cas d'erreur, on ne fait rien, on retournera simplement la valeur de $cmdResult
-                # sans que ça soit du JSON.
-            }
-            
-            # -- On contrôle s'il y a eu une erreur d'exécution de la commande que l'on devait passer
+                # Récupération de la sortie d'erreur de la commande
+                $cmdStdErr = Get-Content -Path $executedCommand.stderr -Raw
 
-            # J'admets, cette ligne de commande, je l'ai trouvée sur le net, j'aurais jamais trouvé tout seul XD
-            $separator = [string[]]@("CMD=")
-            # On explose le contenu de la sortie STDERR pour avoir les sorties d'erreur de toutes les commandes
-            $errorOutputList = $errorStr.Split($separator, [System.StringSplitOptions]::RemoveEmptyEntries)
-
-            # Parcours des outputs des commandes pour lesquelles on a une sortie en erreur
-            ForEach($errorOutput in $errorOutputList)
-            {
-                # Si on est sur la bonne commande
-                if($errorOutput.startsWith($command))
+                # Si la sortie contient un message d'erreur (oui parce que la sortie peut aussi contenir autre chose... 🙄)
+                if($cmdStdErr -like "*Error: *")
                 {
-                    $errorOutput = $errorOutput.Replace($command, "").Trim()
-                    # S'il y a eu une erreur,
-                    if($errorOutput -ne "")
+                    # Un peu de nettoyage et erreuuur !
+                    $this.cleanOutputFiles()
+                    Throw ([Regex]::Match($cmdStdErr, 'Error: (.*)').Groups[1].Value)
+                }
+
+                # Si c'est la commande qu'on nous a demandé d'exécuter,
+                if($executedCommand.cmd.startsWith($command))
+                {
+                    # Récupération de la sortie de la commande
+                    $cmdResult = Get-Content -Path $executedCommand.stdout -Raw
+
+                    try
                     {
-                        # Exception !
-                        Throw $errorOutput
+                        # On essaie de transformer le résultat en JSON
+                        $cmdResult = $cmdResult | ConvertFrom-Json
+                    }
+                    catch
+                    {
+                        # En cas d'erreur, on ne fait rien, on retournera simplement la valeur de $cmdResult
+                        # sans que ça soit du JSON.
                     }
                     break
-                }
-            }
+
+                }# FIN SI C'est la commande qu'il fallait exécuter
+
+            }# FIN BOUCLE de parcours des commandes exécutées
+
+            $this.cleanOutputFiles()
 
             # Suppression des éventuels fichiers temporaires
             $this.filesToClean | ForEach-Object {
