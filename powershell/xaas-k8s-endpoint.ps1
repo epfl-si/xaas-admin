@@ -605,6 +605,15 @@ try
             $clusterName = getNextClusterName -pks $pks -nameGeneratorK8s $nameGeneratorK8s
             $logHistory.addLine(("Cluster name will be '{0}'" -f $clusterName))
 
+            # Histoire d'avoir ceinture et bretelles, on check quand même que le cluster n'existe pas. 
+            # On ne devrait JAMAIS arriver dans ce cas de figure mais on le code tout de même afin d'éviter de
+            # passer dans le code de "nettoyage" en bas du script
+            if($null -ne $pks.getCluster($clusterName))
+            {
+                $cleaningCanBeDoneIfError = $false
+                Throw ("Error while generating cluster name. Choosen one ({0}) already exists!" -f $clusterName)
+            }
+
             # -------------------
             # ---- Droits d'accès 
             # Ajout des droits d'accès mais uniquement pour le premier groupe de la liste, et on admet que c'est un nom de groupe et pas
@@ -616,15 +625,6 @@ try
                 break
             }
 
-            # Histoire d'avoir ceinture et bretelles, on check quand même que le cluster n'existe pas. 
-            # On ne devrait JAMAIS arriver dans ce cas de figure mais on le code tout de même afin d'éviter de
-            # passer dans le code de "nettoyage" en bas du script
-            if($null -ne $pks.getCluster($clusterName))
-            {
-                $cleaningCanBeDoneIfError = $false
-                Throw ("Error while generating cluster name. Choosen one ({0}) already exists!" -f $clusterName)
-            }
-
             # Génération des noms pour le DNS
             $logHistory.addLine("Generating DNS hostnames...")
             $dnsHostName = $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryMain)
@@ -632,6 +632,7 @@ try
             $dnsHostNameIngress = $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryIngress)
             $logHistory.addLine(("DNS hosnames will be '{0}' for main cluster and '{1}' for Ingress part" -f $dnsHostName, $dnsHostNameIngress))
 
+            # Création du cluster
             $logHistory.addLine(("Creating cluster '{0}' with '{1}' plan and '{2}' network profile (this will take time, you can go to grab a coffee)..." -f $clusterName, $plan, $netProfile))
             $cluster = $pks.addCluster($clusterName, $plan, $netProfile, $dnsHostNameFull)
 
@@ -711,6 +712,7 @@ try
             }
 
             Write-Warning "Add Harbor group access"
+            # FIXME: A résoudre lorsqu'on pourra avoir des "nested groups"
             # $logHistory.addLine("Adding AD groups for Harbor Project access...")
             # $accessGroupList | ForEach-Object {
             #     $logHistory.addLine(("Add group '{0}' in Harbor Project (may already be present)" -f $_))
