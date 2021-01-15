@@ -29,7 +29,7 @@ $configVcenter = [ConfigReader]::New("config-vsphere.json")
 
 
 $targetEnv="Test"
-$VMName="vsissp-avi-se-t-01"
+$VMName="vsissp-avi-se-t-01" #comment 
 
 
 try {
