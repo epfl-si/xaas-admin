@@ -29,12 +29,12 @@ $configVcenter = [ConfigReader]::New("config-vsphere.json")
 
 
 $targetEnv="Test"
-$VMName="itstxaas1134"
+$VMName="vsissp-avi-se-t-01" #comment 2
 
 
 try {
 	
-	$vCenter = Connect-VIServer -Server ($configVcenter.getConfigValue($targetEnv, "server")) -user ($configVcenter.getConfigValue($targetEnv, "user")) -password ($configVcenter.getConfigValue($targetEnv, "password"))
+	$vCenter = Connect-VIServer -Server ($configVcenter.getConfigValue(@($targetEnv, "server"))) -user ($configVcenter.getConfigValue(@($targetEnv, "user"))) -password ($configVcenter.getConfigValue(@($targetEnv, "password")))
 						 
 
 }

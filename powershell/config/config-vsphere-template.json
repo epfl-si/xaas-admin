@@ -1,7 +1,7 @@
 {
     
     "dev": {
-        "masterTemplatesFolder": "",
+        "masterTemplatesFolder": "", 
         "masterTemplatesTag": "",
         "TemplatesTargets": {
             "INJ" : {
