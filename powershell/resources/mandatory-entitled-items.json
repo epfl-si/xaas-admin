@@ -15,9 +15,18 @@
         "onlyForBG": []
     },
     {
+        "name": "OVA_Import",
+        "hasApproval": false,
+        "onlyForBG": []
+    },
+    {
         "name": "Linux-Debug",
         "hasApproval": false,
         "onlyForBG": ["its_lnx"]
+    },
+    {
+        "name": "SAP_Application_Clone",
+        "hasApproval": false,
+        "onlyForBG": ["its_erpe"]
     }
-
 ]
