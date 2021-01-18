@@ -1,19 +1,13 @@
 <#
-    Fichier script d'exemple pour "endpoint" à adapter au besoin. 
-    TODO: Virer ce bloc de commentaires
-
-    TODO: Suivre les todo ci-dessous et les virer une fois qu'ils auront été traité
-#>
-<#
 USAGES:
-    xaas-sample-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -friendlyName <friendlyName> [-linkedTo <linkedTo>] [-bucketTag <bucketTag>]
+    xaas-mysql-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -friendlyName <friendlyName> [-linkedTo <linkedTo>] [-bucketTag <bucketTag>]
  
 #>
 <#
-    BUT 		: TODO:
+    BUT 		: Ce script est utilisé pour traiter les demandes pour le XaaS MySQL
 
-	DATE 	: TODO:
-    AUTEUR 	: TODO:
+	DATE 	: Janvier 2021
+    AUTEUR 	: Lucien Chaboudez
     
     REMARQUES : 
     - Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy via Set-ExecutionPolicy. 
@@ -52,13 +46,13 @@ param([string]$targetEnv,
 # TODO: si besoin
 
 # Inclusion des fichiers nécessaires (génériques)
-# TODO: Adapter la liste si besoin
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "SQLDB.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
@@ -74,7 +68,8 @@ param([string]$targetEnv,
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
-# TODO: Fichier de config XAAS
+$configMySQL = [ConfigReader]::New("config-xaas-mysql.json")
+
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
