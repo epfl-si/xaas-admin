@@ -25,14 +25,22 @@ rules:
   - endpoints
   - configmaps
   - bindings
-  verbs: ["*"]
+  verbs: ["create","delete","update","get","list","watch"]
 - apiGroups: [""]
   resources:
   - resourcequotas
   verbs: ["get","list"]
-- apiGroups: ["apps", "authorization.k8s.io","autoscaling", "batch","coordination.k8s.io", "discovery.k8s.io", "events.k8s.io", "extensions", "metrics.k8s.io", "monitoring.coreos.com", "pksapi.io", "policy", "projectcontour.io", "rbac.authorization.k8s.io", "vmware.com"]
+- apiGroups: ["apps", "authorization.k8s.io","autoscaling", "batch","coordination.k8s.io", "discovery.k8s.io", "events.k8s.io", "extensions", "metrics.k8s.io", "monitoring.coreos.com", "pksapi.io", "projectcontour.io"]
   resources: ["*"]
-  verbs: ["*"]
+  verbs: ["get","list","create","delete","watch","update","patch"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources:
+  - roles
+  - rolebindings
+  verbs: ["create","delete"]
+- apiGroups: ["vmware.com"]
+  resources: ["*"]
+  verbs: ["list"]
 - apiGroups: ["networking.k8s.io"]
   resources:
   - networkpolicies

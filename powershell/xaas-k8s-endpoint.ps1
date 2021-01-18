@@ -693,6 +693,11 @@ try
                                                    $_)
             }
 
+            $logHistory.addLine("Adding ClusterRoleBinding for Service Accounts...")
+            $tkgiKubectl.addClusterRoleBindingServiceAccounts($clusterName, 
+                                                              $nameGeneratorK8s.getClusterRoleName($clusterName), 
+                                                              $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $true))
+
 
             # -----------
             # ---- Harbor

@@ -218,13 +218,27 @@ class NameGeneratorK8s: NameGeneratorBase
       -------------------------------------------------------------------------------------
       BUT : Renvoie le nom d'un Cluster Role Binding pour un cluster
 
-      IN  : $clusterName   -> Nom du cluster
+      IN  : $clusterName         -> Nom du cluster
+      IN  : $forServiceAccount   -> (optionnel) pour dire si on veut le nom pour les
+                                    service accounts
 
       RET : Le nom du Cluster Role Binding
    #>
    [string] getClusterRoleBindingName([string]$clusterName)
    {
-      return "clrobi-{0}" -f $clusterName
+      return $this.getClusterRoleBindingName($clusterName, $false)
+   }
+   [string] getClusterRoleBindingName([string]$clusterName, [bool]$forServiceAccounts)
+   {
+      if($forServiceAccounts)
+      {
+         $middle = "-svcacc"
+      }
+      else
+      {
+         $middle = ""
+      }
+      return "clrobi{0}-{1}" -f $middle, $clusterName
    }
 
    <# -------------------------------------------------------------------------------------

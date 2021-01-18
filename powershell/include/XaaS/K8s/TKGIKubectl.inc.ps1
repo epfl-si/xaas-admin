@@ -574,11 +574,12 @@ class TKGIKubectl
 
     <#
 	-------------------------------------------------------------------------------------
-		BUT : Ajoute un Role dans un cluster
+		BUT : Ajoute un RoleBinding dans un cluster
 
-        IN  : $clusterName  -> Nom du cluster
-        IN  : $roleName     -> nom du Role 
-        IN  : $pspName      -> Nom du Pod Security Policy lié
+        IN  : $clusterName      -> Nom du cluster
+        IN  : $roleName         -> nom du Role 
+        IN  : $roleBindingName  -> Nom du Role Binding
+        IN  : $adGroupName      -> Nom du groupe AD auquel on donne les autorisations
     #>
     [void] addClusterRoleBinding([string]$clusterName, [string]$roleName, [string]$roleBindingName, [string]$adGroupName)
     {
@@ -589,6 +590,27 @@ class TKGIKubectl
         }
 
         $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding.yaml", $replace)
+
+        $this.exec($clusterName, $command) | Out-Null
+    }
+
+
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un RoleBinding dans un cluster, pour les comptes de service
+
+        IN  : $clusterName      -> Nom du cluster
+        IN  : $roleName         -> nom du Role 
+        IN  : $roleBindingName  -> Nom du Role Binding
+    #>
+    [void] addClusterRoleBindingServiceAccounts([string]$clusterName, [string]$roleName, [string]$roleBindingName)
+    {
+        $replace = @{
+            name = $roleBindingName
+            clusterRoleName = $roleName
+        }
+
+        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding-serviceAccounts.yaml", $replace)
 
         $this.exec($clusterName, $command) | Out-Null
     }
