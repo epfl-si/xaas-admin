@@ -718,11 +718,11 @@ try
 
             Write-Warning "Add Harbor group access"
             # FIXME: A résoudre lorsqu'on pourra avoir des "nested groups"
-            # $logHistory.addLine("Adding AD groups for Harbor Project access...")
-            # $accessGroupList | ForEach-Object {
-            #     $logHistory.addLine(("Add group '{0}' in Harbor Project (may already be present)" -f $_))
-            #     $harbor.addProjectMember($harborProject, $_, [HarborProjectRole]::Master)
-            # }
+            $logHistory.addLine("Adding AD groups for Harbor Project access...")
+            $accessGroupList | ForEach-Object {
+                $logHistory.addLine(("Add group '{0}' in Harbor Project (may already be present)" -f $_))
+                $harbor.addProjectMember($harborProject, $_, [HarborProjectRole]::Master)
+            }
             
             
             $logHistory.addLine(("Adding temporary robot in Harbor Project '{0}'" -f $harborProjectName))
