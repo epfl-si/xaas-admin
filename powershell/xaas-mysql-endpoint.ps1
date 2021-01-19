@@ -39,11 +39,8 @@ param([string]$targetEnv,
       [string]$targetTenant, 
       [string]$action, 
       [string]$bgId,
-      [string]$bucketTag,
       [switch]$status)
 
-# Chargement du module PowerShell
-# TODO: si besoin
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -63,7 +60,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 
 # Chargement des fichiers propres à XaaS TODO: inclure les fichiers spécifiques
-
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "MySQL", "NameGeneratorMySQL.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
@@ -151,8 +148,7 @@ try
     $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    # TODO: Adapter la ligne suivante
-    #$logHistory = [LogHistory]::new('xaas-s3', (Join-Path $PSScriptRoot "logs"), 30)
+    $logHistory = [LogHistory]::new('xaas-mysql', (Join-Path $PSScriptRoot "logs"), 30)
     
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
@@ -176,18 +172,18 @@ try
     $targetEnv = $targetEnv.ToLower()
     $targetTenant = $targetTenant.ToLower()
 
-    # TODO: Ajouter ici la création des éléments d'accès au backend. Voir Exemple
-    # $scality = [ScalityAPI]::new($configXaaSS3.getConfigValue(@($targetEnv, "server")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "credentialProfile")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "webConsoleUser")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "webConsolePassword")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, "isScality")))
+    # Pour accéder à la base de données
+	$mysql = [SQLDB]::new([DBType]::MySQL, 
+                    $configMySQL.getConfigValue(@($targetEnv, "host")),
+                    $configMySQL.getConfigValue(@($targetEnv, "user")),
+                    $configMySQL.getConfigValue(@($targetEnv, "password")),
+                    $configMySQL.getConfigValue(@($targetEnv, "port")))
 
     # Si on doit activer le Debug,
     if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
     {
         # Activation du debug
-        $scality.activateDebug($logHistory)    
+        $mysql.activateDebug($logHistory)    
     }
     
 

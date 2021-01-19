@@ -1,11 +1,20 @@
 {
     "dev": {
-      
+        "host":"",
+        "user":"",
+        "password":"",
+        "port":""
     },
     "test": {
-      
+        "host":"",
+        "user":"",
+        "password":"",
+        "port":""
     },
     "prod": {
-      
+        "host":"",
+        "user":"",
+        "password":"",
+        "port":""      
     }
 }

@@ -25,6 +25,7 @@ enum DBType
 class SQLDB
 {
     hidden [string]$connectionName
+    hidden [LogHistory] $logHistory
 
     <#
 		-------------------------------------------------------------------------------------
@@ -97,6 +98,44 @@ class SQLDB
         Invoke-expression $cmd
     }
 
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Activation du logging "debug" des requêtes faites sur le système distant.
+
+		IN  : $logHistory	-> Objet de la classe LogHistory qui va permettre de faire le logging.
+	#>
+	[void] activateDebug([LogHistory]$logHistory)
+	{
+		$this.logHistory = $logHistory
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute une ligne au debug si celui-ci est activé
+
+		IN  : $line	-> La ligne à ajouter
+	#>
+	[void] debugLog([string]$line)
+	{
+		if($null -ne $this.logHistory)
+		{
+			$funcName = ""
+
+			ForEach($call in (Get-PSCallStack))
+			{
+				if(@("debugLog") -notcontains $call.FunctionName)
+				{
+					$funcName = $call.FunctionName
+					break
+				}
+			}
+			
+			$this.logHistory.addDebug(("{0}::{1}(): {2}" -f $this.GetType().Name, $funcName, $line))
+		}
+    }
+    
     
     <#
 		-------------------------------------------------------------------------------------
@@ -119,6 +158,7 @@ class SQLDB
 	#>
     [PSCustomObject] execute([string]$query)
     {
+        $this.debugLog(("Executing SQL query:`n{0}" -f $query))
 
         # Si on a demandé à récupérer des données, 
         if($query -like "SELECT*" )
@@ -132,7 +172,6 @@ class SQLDB
                 $row = @{}
                 For($i=0 ; $i -lt $queryResult.columns.count; $i++)
                 {
-#                    $row[$queryResult.columns[$i].ToString()] = $_[$i]
                     $row.add($queryResult.columns[$i].columnName, $_[$i])
                 }
                 $result += $row
@@ -146,5 +185,15 @@ class SQLDB
 
         return $result
 
+    }
+
+    [void] createDB([string]$dbName)
+    {
+        # TODO:
+    }
+
+    [void] deleteDB([string]$dbName)
+    {
+        # TODO:
     }
 }
