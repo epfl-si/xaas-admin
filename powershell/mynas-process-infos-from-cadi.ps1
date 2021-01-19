@@ -96,10 +96,10 @@ try
    # Création de l'objet pour faire les requêtes dans CADI
    $mysql_cadi = [SQLDB]::new([DBType]::MySQL, `
                               $configMyNAS.getConfigValue(@("cadi", "host")),
-                              $configMyNAS.getConfigValue(@("cadi", "db")),
                               $configMyNAS.getConfigValue(@("cadi", "user")),
                               $configMyNAS.getConfigValue(@("cadi", "password")),
-                              $configMyNAS.getConfigValue(@("cadi", "port")))
+                              $configMyNAS.getConfigValue(@("cadi", "port")),
+                              $configMyNAS.getConfigValue(@("cadi", "db")))
 
    # Création du dossier si n'existe pas
    if(!(Test-path $global:FILES_TO_PUSH_FOLDER))

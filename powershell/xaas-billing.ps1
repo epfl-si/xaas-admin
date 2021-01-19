@@ -264,10 +264,10 @@ try
     # Pour accéder à la base de données
 	$sqldb = [SQLDB]::new([DBType]::MSSQL,
                         $configVra.getConfigValue(@($targetEnv, "db", "host")),
-                        $configVra.getConfigValue(@($targetEnv, "db", "dbName")),
                         $configVra.getConfigValue(@($targetEnv, "db", "user")),
                         $configVra.getConfigValue(@($targetEnv, "db", "password")),
-                        $configVra.getConfigValue(@($targetEnv, "db", "port")))
+                        $configVra.getConfigValue(@($targetEnv, "db", "port")),
+                        $configVra.getConfigValue(@($targetEnv, "db", "dbName")))
 
     $vraTenantList = @{}
 

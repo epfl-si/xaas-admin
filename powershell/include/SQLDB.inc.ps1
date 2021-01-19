@@ -12,12 +12,6 @@
    Cette classe a besoin du module https://www.powershellgallery.com/packages/SimplySql/1.6.2 
 
 
-   ----------
-   HISTORIQUE DES VERSIONS
-   0.1 - Version de base
-   0.2 - On n'utilise plus "mysql.exe" car il posait problème depuis les machines dans le subnet 10.x.x.x
-   0.3 - Extension pour supporter MSSQL
-
 #>
 # Importation du module pour faire le boulot
 Import-Module SimplySQL
@@ -38,14 +32,39 @@ class SQLDB
 
         IN  : $dbType           -> Type de base de données, MSSQL ou MySQL
         IN  : $server           -> adresse IP ou nom IP du serveur
-        IN  : $db               -> Nom de la base de données à laquelle se connecter
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
         IN  : $port             -> No de port à utiliser. Sera ignoré pour une DB MSSQL donc on peut passer $null
+        IN  : $db               -> (optionel) Nom de la base de données à laquelle se connecter
 
 		RET : Instance de l'objet
-	#>
-    SQLDB([DBType]$dbType, [string]$server, [string]$db, [string]$username, [string]$password, [int]$port)
+    #>
+    SQLDB([DBType]$dbType, [string]$server, [string]$username, [string]$password, [int]$port)
+    {
+        # Vu qu'on a 2 constructeurs avec 2 listes de paramètres, on est obligé de passer par une fonction 
+        # "externe" pour faire l'initialisation, on ne peut pas appeler un constructeur depuis un autre.
+        # Solution trouvée ici: https://stackoverflow.com/questions/44413206/constructor-chaining-in-powershell-call-other-constructors-in-the-same-class
+        $this.init($dbType, $server, $username, $password, $port, "")
+    }
+    SQLDB([DBType]$dbType, [string]$server, [string]$username, [string]$password, [int]$port, [string]$db)
+    {
+        $this.init($dbType, $server, $username, $password, $port, $db)
+    }
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Fonction qui fait office de constructeur de classe.
+
+        IN  : $dbType           -> Type de base de données, MSSQL ou MySQL
+        IN  : $server           -> adresse IP ou nom IP du serveur
+        IN  : $username         -> Nom d'utilisateur
+        IN  : $password         -> Mot de passe
+        IN  : $port             -> No de port à utiliser. Sera ignoré pour une DB MSSQL donc on peut passer $null
+        IN  : $db               -> Nom de la base de données à laquelle se connecter
+
+		RET : Instance de l'objet
+    #>
+    hidden [void] init([DBType]$dbType, [string]$server, [string]$username, [string]$password, [int]$port, [string]$db)
     {
         # Définition d'un nom de connexion pour pouvoir l'identifier et la fermer correctement dans le cas
         # où on aurait plusieurs instances de l'objet en même temps.
@@ -60,14 +79,22 @@ class SQLDB
         {
             MySQL
             {
-                Open-MySQLConnection -server $server  -database $db  -port $port -credential $credObject -ConnectionName $this.connectionName
+                $cmd = 'Open-MySQLConnection -server $server -port $port -credential $credObject -ConnectionName $this.connectionName'
             }
 
             MSSQL
             {
-                Open-SqlConnection -Server $server -Database $db -Credential $credObject -ConnectionName $this.connectionName 
+                $cmd = 'Open-SqlConnection -Server $server -Credential $credObject -ConnectionName $this.connectionName'
             }
         }
+
+        # Si on doit se connecter à une DB en particulier,
+        if($db != "")
+        {
+            $cmd = '{0} {1}' -f $cmd, '-Database $db'
+        }
+
+        Invoke-expression $cmd
     }
 
     

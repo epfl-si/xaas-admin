@@ -666,10 +666,10 @@ try
 	# Pour accéder à la base de données
 	$sqldb = [SQLDB]::new([DBType]::MSSQL, 
 							$configVra.getConfigValue(@($targetEnv, "db", "host")),
-							$configVra.getConfigValue(@($targetEnv, "db", "dbName")),
 							$configVra.getConfigValue(@($targetEnv, "db", "user")), 
 							$configVra.getConfigValue(@($targetEnv, "db", "password")),
-							$configVra.getConfigValue(@($targetEnv, "db", "port")))
+							$configVra.getConfigValue(@($targetEnv, "db", "port")),
+							$configVra.getConfigValue(@($targetEnv, "db", "dbName")))
 
 	Import-Module ActiveDirectory
 
@@ -1333,10 +1333,10 @@ try
 			# Pour accéder à la base de données
 			$mysqlGrants = [SQLDB]::new([DBType]::MySQL, 
 										$configGrants.getConfigValue(@($targetEnv, "host")),
-										$configGrants.getConfigValue(@($targetEnv, "dbName")),
 										$configGrants.getConfigValue(@($targetEnv, "user")),
 										$configGrants.getConfigValue(@($targetEnv, "password")),
-										$configGrants.getConfigValue(@($targetEnv, "port")))
+										$configGrants.getConfigValue(@($targetEnv, "port")),
+										$configGrants.getConfigValue(@($targetEnv, "dbName")))
 
 			$projectList = $mysqlGrants.execute("SELECT * FROM v_gdb_iaas WHERE subsides_start_date <= DATE(NOW()) AND subsides_end_date > DATE(NOW())")
 			# Décommenter la ligne suivante et éditer l'ID pour simuler la disparition d'un projet
