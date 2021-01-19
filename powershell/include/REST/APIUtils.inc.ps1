@@ -16,10 +16,15 @@ class APIUtils
 	# Pour compter le nombre d'appels aux fonctions de la classe
 	hidden [Counters] $funcCalls
 
-	# Pour avoir un cache local pour certaines fonctions, ceci afin d'éviter de faire milliards d'appels aux APIs
-	# Certains éléments ne changent en effet pas via le script donc sont en "read only" en quelque sorte. Pour 
-	# ceux-ci, on peut se permettre d'avoir un cache local pour aller plus vite.
+	<# Pour avoir un cache local pour certaines fonctions, ceci afin d'éviter de faire milliards d'appels aux APIs
+		Certains éléments ne changent en effet pas via le script donc sont en "read only" en quelque sorte. Pour 
+		ceux-ci, on peut se permettre d'avoir un cache local pour aller plus vite. #>
 	hidden [Array] $cache
+
+	<# Objet de la classe LogHistory dans le cas où on voudrait faire du logging "verbose" de ce qui se passe.
+		Il faudra utiliser la fonction 'activateDebug()' pour activer ce logging en passant l'objet de la 
+		classe LogHistory #>
+	hidden [LogHistory] $logHistory
 
     <#
 	-------------------------------------------------------------------------------------
@@ -29,6 +34,8 @@ class APIUtils
     {
 		$this.funcCalls = [Counters]::new()
 		$this.cache = @()
+
+		$this.logHistory = $null
 	}
 
 	
@@ -133,7 +140,7 @@ class APIUtils
 	{
 		return $this.funcCalls.getDisplay($title)
 	}
-
+	
 
 	<#
 		-------------------------------------------------------------------------------------
@@ -167,7 +174,7 @@ class APIUtils
 		}
 
 		# Chargement du code JSON
-		$json = (Get-Content -Path $filepath) -join "`n"
+		$json = ((Get-Content -Path $filepath -raw) -replace '(?m)\s*//.*?$' -replace '(?ms)/\*.*?\*/')
 
 		# S'il y a des valeurs à remplacer
 		if($null -ne $valToReplace)
@@ -207,6 +214,44 @@ class APIUtils
 		catch
 		{
 			Throw ("Error converting JSON from file ({0})" -f $filepath)
+		}
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Activation du logging "debug" des requêtes faites sur le système distant.
+
+		IN  : $logHistory	-> Objet de la classe LogHistory qui va permettre de faire le logging.
+	#>
+	[void] activateDebug([LogHistory]$logHistory)
+	{
+		$this.logHistory = $logHistory
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute une ligne au debug si celui-ci est activé
+
+		IN  : $line	-> La ligne à ajouter
+	#>
+	[void] debugLog([string]$line)
+	{
+		if($null -ne $this.logHistory)
+		{
+			$funcName = ""
+
+			ForEach($call in (Get-PSCallStack))
+			{
+				if(@("callAPI", "debugLog") -notcontains $call.FunctionName)
+				{
+					$funcName = $call.FunctionName
+					break
+				}
+			}
+			
+			$this.logHistory.addDebug(("{0}::{1}(): {2}" -f $this.GetType().Name, $funcName, $line))
 		}
 	}
     

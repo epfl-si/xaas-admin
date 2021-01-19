@@ -1,0 +1,50 @@
+{
+    
+    "dev": {
+        "masterTemplatesFolder": "", 
+        "masterTemplatesTag": "",
+        "TemplatesTargets": {
+            "INJ" : {
+        "replicaCluster": "",
+        "replicaDSName": "",
+        "replicaTemplatesFolder": "",
+        "replicaTemplatesSuffix": ""
+            }
+        }
+    },
+
+    
+    "test": {
+        "masterTemplatesFolder": "public",
+        "masterTemplatesTag": "IaaSTmplRep",
+        "TemplatesTargets": {
+            "INJ" : {
+        "replicaCluster": "clstr-test-INJ",
+        "replicaDSName": "VSIT-SIO-IN-VMH01-TEMPLATE",
+        "replicaTemplatesFolder": "template-INJ",
+        "replicaTemplatesSuffix": "-INJ"
+            }
+        }
+    },
+
+    
+    "prod": {
+        "masterTemplatesFolder": "public",
+        "masterTemplatesTag": "IaaSTmplRep",
+        "TemplatesTargets": {
+            "INJ" : {
+        "replicaCluster": "clstr-prod-INJ-01",
+        "replicaDSName": "VSISSP-SIO-IN-SO02-TEMPLATE",
+        "replicaTemplatesFolder": "template-INJ",
+        "replicaTemplatesSuffix": "-INJ"
+            },
+            "VSI" : {
+                "replicaCluster": "clstr-VSI-01",
+                "replicaDSName": "vsanDatastoreVSI",
+                "replicaTemplatesFolder": "template-VSI-SC-01",
+                "replicaTemplatesSuffix": "-VSI-SC-01"
+            }
+                
+        }
+    }
+}

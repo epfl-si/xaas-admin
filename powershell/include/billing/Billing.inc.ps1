@@ -23,8 +23,6 @@ class Billing
 {
     hidden [SQLDB] $db
     hidden [string] $targetEnv
-    hidden [PSObject] $serviceList
-    hidden [EPFLLDAP] $ldap
     hidden [PSObject] $serviceBillingInfos
     hidden [Hashtable] $vraTenantList
     hidden [string] $vRODynamicTypeName 
@@ -38,8 +36,6 @@ class Billing
                                         Chaque objet a pour clef le nom du tenant et comme "contenu" le 
                                         nécessaire pour interroger le tenant
         IN  : $db                   -> Objet de la classe SQLDB permettant d'accéder aux données.
-        IN  : $ldap                 -> Connexion au LDAP pour récupérer les infos sur les unités
-        IN  : $serviceList          -> Objet avec la liste de services (chargé depuis le fichier JSON itservices.json)
         IN  : $serviceBillingInfos  -> Objet avec les informations de facturation pour le service 
                                         Ces informations se trouvent dans le fichier JSON "service.json" qui sont 
                                         dans le dossier data/billing/<service>/service.json
@@ -48,12 +44,10 @@ class Billing
 
 		RET : Instance de l'objet
 	#>
-    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv, [string]$vRODynamicTypeName)
+    Billing([Hashtable]$vraTenantList, [SQLDB]$db, [PSObject]$serviceBillingInfos, [string]$targetEnv, [string]$vRODynamicTypeName)
     {
         $this.vraTenantList = $vraTenantList
         $this.db = $db
-        $this.ldap = $ldap
-        $this.serviceList = $serviceList
         $this.serviceBillingInfos = $serviceBillingInfos
         $this.targetEnv = $targetEnv
         $this.vRODynamicTypeName = $vRODynamicTypeName
@@ -198,7 +192,7 @@ class Billing
         IN  : $priceLevel       -> le nom du niveau à appliquer de la grille de prix
 
         RET : ID de l'entité
-                $null si pas ajouté car trop quantité de zéro
+                0 si pas ajouté car trop quantité de zéro
     #>
     hidden [int] addItem([int]$parentEntityId, [string]$type, [string]$name, [string]$desc, [int]$month, [int]$year, [double]$quantity, [string]$unit, [string]$priceLevel)
     {
@@ -207,7 +201,7 @@ class Billing
         # ensuite manuellement la valeur "quantity".
         if($quantity -eq 0)
         {
-           return $null
+           return 0
         }
 
         $item = $this.getItem($name, $month, $year)
@@ -226,48 +220,6 @@ class Billing
         $this.db.execute($request) | Out-Null
 
         return [int]($this.getItem($name, $month, $year)).itemId
-    }
-
-
-    <#
-		-------------------------------------------------------------------------------------
-        BUT : Renvoie la description d'une EntityElement donné
-        
-        IN  : $entityType    -> Type de l'entité
-        IN  : $entityElement -> élément. Soit no d'unité ou no de service IT, etc...
-
-        RET : Description
-    #>
-    hidden [string] getEntityElementDesc([BillingEntityType]$entityType, [string]$entityElement)
-    {
-        switch($entityType)
-        {
-            Unit
-            { 
-                # Dans ce cas, $entityElement contient le no d'unité
-                $unitInfos = $this.ldap.getUnitInfos($entityElement)
-
-                if($null -eq $unitInfos)
-                {
-                    Throw ("No information found for Unit ID '{0}' in LDAP" -f $entityElement)
-                }
-                return $unitInfos.ou[0]
-            }
-
-            Service 
-            {
-                # Dans ce cas, $entityElement contient l'identifiant du service (ex: SVC007)
-                $serviceInfos = $this.serviceList.getServiceInfos($this.targetEnv, $entityElement)
-
-                if($null -eq $serviceInfos)
-                {
-                    Throw ("No information found for Service ID '{0}' in JSON file" -f $entityElement)
-                }
-                return $serviceInfos.longName
-            }
-
-        }
-        Throw ("Entity type '{0}' not handled" -f $entityType.toString())
     }
 
 
@@ -398,8 +350,9 @@ class Billing
     #>
     hidden [int] initAndGetEntityId([BillingEntityType]$entityType, [string]$targetTenant, [string]$bgId, [string]$itemName)
     {
-        # Recherche du BG avec son ID unique
-        $bg = $this.vraTenantList.$targetTenant.getBGByCustomId($bgId)
+        # Recherche du BG avec son ID unique. 
+        # NOTE: On utilise le cache pour faire cette action car on est dans un script qui ne modifie pas la liste des BG
+        $bg = $this.vraTenantList.$targetTenant.getBGByCustomId($bgId, $true)
 
         # Si le BG n'est pas trouvé dans vRA, c'est qu'il a été supprimé
         if($null -eq $bg)
@@ -423,7 +376,7 @@ class Billing
         {
             # Ajout de l'entité à la base de données (si pas déjà présente)
             $entityId = $this.addEntity($entityType, `
-                                        ("{0} {1}" -f $bgId, $this.getEntityElementDesc($entityType, $bgId)), `
+                                        ("{0} {1}" -f $bgId, (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME)), `
                                         (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
         }
         
@@ -505,8 +458,15 @@ class Billing
 
         IN  : $month    -> Le no du mois pour lequel extraire les infos
         IN  : $year     -> L'année pour laquelle extraire les infos
+
+        RET : Tableau avec:
+                0 -> le nombre d'éléments ajoutés pour être facturés
+                1 -> le nombre d'éléments non facturable (ex si dans ITServices)
+                2 -> le nombre d'éléments avec une quantité de 0
+                3 -> le nombre d'éléments ne pouvant pas être facturés car données par correctes
+                4 -> le nombre d'éléments pour lesquels on n'a pas assez d'informations pour les facturer
     #>
-    [void] extractData([int]$month, [int]$year)
+    [Array] extractData([int]$month, [int]$year)
     {
         <# 
         Cette fonction devra être implémentée par les classes enfants de celle-ci. Elle sera en charge d'extraire mensuellement
@@ -528,10 +488,10 @@ class Billing
 
         IN  : $itemInfos  -> Objet représentant l'item     
         
-        RET : le type d'entité
+        RET : le type d'entité (du type énuméré [BillingEntityType])
                 $null si pas supporté
     #>
-    hidden [PSObject] getEntityType([PSObject]$itemInfos)
+    hidden [BillingEntityType] getEntityType([PSObject]$itemInfos)
     {
         <# 
         Bien que pas appelée directement depuis "l'extérieur", cette fonction devra être implémentée pour être utilisée au sein de la fonction

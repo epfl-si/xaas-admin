@@ -165,7 +165,6 @@ class NameGeneratorBase
                 
                 # le nom du BG est au format <tenantShort>_<faculty>_<unit>
                 $withDetails = @{
-                    financeCenter = ''
                     facultyName = $bgDetails.faculty
                     facultyID = ''
                     unitName = $bgDetails.unit
@@ -190,7 +189,6 @@ class NameGeneratorBase
                 # le nom du BG est au format <tenantShort>_<projectId>
                 $withDetails = @{
                     projectId = $bgDetails.projectId
-                    financeCenter = ''
                     projectAcronym = ''
                 }
             }
@@ -209,12 +207,15 @@ class NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : initialise les détails nécessaires pour utiliser les fonctions ci-dessous.
                 On devra ensuite passer par la fonction 'getDetails' pour récupérer une des valeurs.
+                Les informations passées ici ne sont QUE celles qui sont utilisées pour la génération 
+                des noms. Pour les autres fonctions comme la génération de descriptions textuelles, 
+                là, on admettra que des informations complémentaires peuvent être passées directement
+                à la fonction qui génère la description.
 
         IN  : $details          -> Dictionnaire avec les détails nécessaire. Le contenu varie en fonction du tenant 
                                     passé lors de l'instanciation de l'objet.
 
                                     EPFL:
-                                        financeCenter    -> no du centre financier de l'unité
                                         facultyName      -> Le nom de la faculté du Business Group
                                         facultyID        -> ID de la faculté du Business Group
                                         unitName         -> Nom de l'unité
@@ -227,7 +228,6 @@ class NameGeneratorBase
                                     
                                     Research:
                                         projectId       -> Id du projet
-                                        financeCenter   -> No du centre financier du projet
                                         projectAcronym  -> Acronyme du projet
     #>
     [void] initDetails([System.Collections.IDictionary]$details)
@@ -237,7 +237,7 @@ class NameGeneratorBase
         {
             $global:VRA_TENANT__EPFL 
             {
-                $keysToCheck = @('financeCenter', 'facultyName', 'facultyID', 'unitName', 'unitID')
+                $keysToCheck = @('facultyName', 'facultyID', 'unitName', 'unitID')
             }
 
             $global:VRA_TENANT__ITSERVICES
@@ -247,7 +247,7 @@ class NameGeneratorBase
 
             $global:VRA_TENANT__RESEARCH
             {
-                $keysToCheck = @('projectId', 'financeCenter', 'projectAcronym')
+                $keysToCheck = @('projectId', 'projectAcronym')
             }
 
             # Tenant pas géré
@@ -286,7 +286,7 @@ class NameGeneratorBase
 
         RET : La valeur du détail
     #>
-    hidden [String] getDetail([string]$name)
+    hidden [PSObject] getDetail([string]$name)
     {
         if(!$this.details.ContainsKey($name))
         {

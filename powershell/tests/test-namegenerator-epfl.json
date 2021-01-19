@@ -9,33 +9,17 @@
                         "facultyID": "12635",
                         "unitName": "IDEV-ING",
                         "unitID": "13031",
-                        "financeCenter": "1907"
+                        "financeCenter": "1907",
+                        "deniedVRASvc": [
+                            {
+                                "svc": "MyVM (Public)",
+                                "items": []
+                            }
+                        ]
                     }
                 ],
                 "expected": null
             }
-        ]
-    },
-    {
-        "name": "getADGroupNameRegEx",
-        "tests": [
-            {
-                "params": ["CSP_SUBTENANT_MANAGER"],
-                "expected": "^vra_t_adm_epfl$"
-            },
-            {
-                "params": ["CSP_SUPPORT"],
-                "expected": "^vra_t_sup_\\d+$"
-            },
-            {
-                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "^vra_t_\\d+_\\d+$"
-            },
-            {
-                "params": ["CSP_CONSUMER"],
-                "expected": "^vra_t_\\d+_\\d+$"
-            }
-
         ]
     },
     {
@@ -107,11 +91,19 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "ENT-R;IDEV-ING;1907"
+                "expected": "{\"faculty\":\"ENT-R\",\"unit\":\"IDEV-ING\"}"
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "ENT-R;IDEV-ING;1907"
+                "expected": "{\"faculty\":\"ENT-R\",\"unit\":\"IDEV-ING\"}"
+            },
+            {
+                "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", { "deniedVRASvc": [{"svc":"MyVM (Public)","items":[]}], "financeCenter":"1907"}],
+                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"
+            },
+            {
+                "params": ["CSP_CONSUMER", { "deniedVRASvc": [{"svc":"MyVM (Public)","items":[]}], "financeCenter":"1907"}],
+                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"
             }
         ]
     },
@@ -349,7 +341,7 @@
             }
         ]
     },
-
+    
     {
         "name": "getADGroupsOUDN",
         "tests":[
@@ -360,7 +352,16 @@
             {
                 "params": [false],
                 "expected": "OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            },
+            {
+                "params": [true, "[ADSubOUType]::Approval"],
+                "expected": "OU=approval,OU=EPFL,OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
+            },
+            {
+                "params": [false, "[ADSubOUType]::Approval"],
+                "expected": "OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch"
             }
+            
         ]
     },
 
@@ -418,8 +419,12 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["ENT-R;IDEV-ING;1907"],
-                "expected": ["ENT-R", "IDEV-ING", "1907"]
+                "params": ["{\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"],
+                "expected": {
+                    "faculty":  "ENT-R",
+                    "financeCenter":  "1907",
+                    "unit":  "IDEV-ING"
+                }
             }
         ]
     },

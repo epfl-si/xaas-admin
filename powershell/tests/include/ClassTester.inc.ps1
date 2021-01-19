@@ -155,7 +155,17 @@ class ClassTester
 
                 "String"
                 {
-                    $formattedParam = ("'{0}'" -f $param)
+                    # On regarde si c'est un type énuméré
+                    if([Regex]::matches($param, '\[.*?\]::.*?').Success)
+                    {
+                        # On peut le prendre tel quel et il sera interprété
+                        $formattedParam = $param
+                    }
+                    else # C'est un simple string
+                    {
+                        $formattedParam = ("'{0}'" -f $param)
+                    }
+                    
                 }
 
                 "Int32"
@@ -261,6 +271,13 @@ class ClassTester
         {
             $allOK = $this.identicalArrays($returnedValue, $testInfos.expected)
         }
+        # C'est un Objet custom
+        elseif($returnedValue.getType().Name -eq "PSCustomObject")
+        {
+            # FIXME: On compare le JSON des objets car pas trouvé comment faire autrement rapidement
+            # On pourrait utiliser Compare-Object mais pas trouvé coment bien le faire fonctionner... 
+            $allOK = ($testInfos.expected | ConvertTo-Json) -eq ($returnedValue | ConvertTo-Json)
+        }
         # String
         elseif($returnedValue.getType().Name -eq "String")
         {
@@ -282,14 +299,17 @@ class ClassTester
         # Affichage du résultat
         if($allOK)
         {
-            $msg = "[{0}] (returned) {1} == {2} (expected)" -f $testNo, ($returnedValue | Convertto-json), ($testInfos.expected | convertto-json)
-            Write-Host -ForegroundColor:DarkGreen $msg
+            $operator = "=="
+            $fgColor = "DarkGreen"
         }
         else
         {
-            $msg = "[{0}] (returned) {1} != {2} (expected)" -f $testNo, ($returnedValue | Convertto-json), ($testInfos.expected | convertto-json)
-            Write-Host -ForegroundColor:Red $msg
+            $operator = "!="
+            $fgColor = "Red"
         }
+
+        $msg = "[{0}] (returned {1}) {2} {3} {4} (expected {5})" -f $testNo, $returnedValue.GetType().Name, ($returnedValue | Convertto-json), $operator, ($testInfos.expected | convertto-json), $testInfos.expected.GetType().Name
+        Write-Host $msg -ForegroundColor $fgColor 
     
         return $allOK
     }

@@ -103,6 +103,14 @@ function handleNotifications
 					$mailSubject = "Info - {0} user(s) quota(s) updated" -f $uniqueNotifications.count
 					$templateName = "quota-updated-users"
             }
+
+            # Utilisateurs non trouvés dans AD
+            'usersNotInAD'
+            {
+					$valToReplace.userList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Warning - Quota update - {0} user(s) not found in AD" -f $uniqueNotifications.count
+					$templateName = "quota-update-users-not-in-ad"
+            }
      
 
 				default
@@ -136,7 +144,7 @@ try
    $logHistory = [LogHistory]::new('mynas-process-quota-update', (Join-Path $PSScriptRoot "logs"), 30)
     
    # Objet pour pouvoir envoyer des mails de notification
-   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
+   $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})
 
    <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -148,12 +156,21 @@ try
    #>
    $notifications = @{
       quotaUpdatedUser = @()
+      usersNotInAD = @()
    }
 
+   # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+	$counters = [Counters]::new()
+
+	# Tous les Tenants
+   $counters.add('nbQuotaUpdated', '# quota updated')
+   $counters.add('nbQuotaOK', '# quota OK')
+   $counters.add('nbUsersNotFound', '# User not found in AD')
+
    # Création de l'objet pour se connecter aux clusters NetApp
-   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue("nas", "serverList"), `
-                              $configMyNAS.getConfigValue("nas", "user"), `
-                              $configMyNAS.getConfigValue("nas", "password"))
+   $netapp = [NetAppAPI]::new($configMyNAS.getConfigValue(@("nas", "serverList")),
+                              $configMyNAS.getConfigValue(@("nas", "user")),
+                              $configMyNAS.getConfigValue(@("nas", "password")))
 
    # le format des lignes renvoyées est le suivant :
    # <volumeName>,<usernameShort>,<vServerName>,<Sciper>,<softQuotaKB>,<hardQuotaKB>
@@ -181,6 +198,25 @@ try
    foreach($updateInfos in $quotaUpdateList)
    {
       
+      # On commence par regarder si l'utilisateur existe dans AD
+      try
+      {
+         Get-ADUser $updateInfos.username | Out-Null
+      }
+      catch
+      {
+         # Si l'utilisateur n'existe pas, c'est qu'il a dû y avoir une erreur dans la gestion des données (venant de CADI probablement) 
+         $logHistory.addWarningAndDisplay(("User {0} doesn't exists in ActiveDirectory, skipping it" -f $updateInfos.username))
+
+         # On initialise la requête comme ayant été traitée pour pas que l'on retombe sur cet utilisateur à la prochaine exécution du script.
+         setQuotaUpdateDone -userSciper $updateInfos.sciper
+
+         $notifications.usersNotInAD += $updateInfos.username
+
+         $counters.inc('nbUsersNotFound')
+         continue
+      }
+
       # Génréation des informations 
       $usernameAndDomain="INTRANET\"+$updateInfos.username
       
@@ -220,14 +256,18 @@ try
          # Ajout de l'info au message qu'on aura dans le mail 
          $notifications.quotaUpdatedUser += ("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>" -f $updateInfos.username, $currentQuota, ([Math]::Floor($updateInfos.hardKB/1024)))
          
+         $counters.inc('nbQuotaUpdated')
       }
       else # Le quota est correct
       {
-         $logHistory.addLineAndDisplay(( "-> Quota is correct ({0} MB), no change needed" -f $currentQuota ))
+         $logHistory.addLineAndDisplay(( "-> Quota is correct ({0} MB), no change needed" -f $currentQuota.space.hard_limit ))
+         $counters.inc('nbQuotaOK')
       }
 
    }# FIN BOUCLE de parcours des quotas à modifier
 
+   $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
+   
    # Gestion des erreurs s'il y en a
    handleNotifications -notifications $notifications
 

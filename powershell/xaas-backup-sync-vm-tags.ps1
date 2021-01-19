@@ -111,7 +111,7 @@ try
 		targetEnv = $targetEnv
 		targetTenant = $targetTenant
 	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
 												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
     # -------------------------------------------------------------------------------------------
@@ -122,16 +122,16 @@ try
     <# Connexion à l'API Rest de vSphere. On a besoin de cette connxion aussi (en plus de celle du dessus) parce que les opérations sur les tags ne fonctionnent
     pas via les CMDLet Get-TagAssignement et autre...  #>
     $logHistory.addLineAndDisplay("Connecting to vSphere...")
-    $vsphereApi = [vSphereAPI]::new($configXaaSBackup.getConfigValue($targetEnv, "vSphere", "server"), 
-                                    $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "user"), 
-                                    $configXaaSBackup.getConfigValue($targetEnv, "vSphere", "password"))
+    $vsphereApi = [vSphereAPI]::new($configXaaSBackup.getConfigValue(@($targetEnv, "vSphere", "server")),
+                                    $configXaaSBackup.getConfigValue(@($targetEnv, "vSphere", "user")),
+                                    $configXaaSBackup.getConfigValue(@($targetEnv, "vSphere", "password")))
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
-	$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
 						 $targetTenant, 
-						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-						 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
     if($importFromvSphere)                         
     {

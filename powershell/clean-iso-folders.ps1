@@ -124,7 +124,7 @@ try
 		targetEnv = $targetEnv
 		targetTenant = $targetTenant
 	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, 
 												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
@@ -156,10 +156,10 @@ try
 		# Si on n'a pas encore de connexion à vRA, là, ça serait bien d'en ouvrir une histoire pouvoir continuer.
 		if($null -eq $vra)
 		{
-			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+			$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
 								$targetTenant, 
-								$configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-								$configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+								$configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
+								$configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 		}	
 
 		# Si on n'a pas encore de connexin à vCenter, c'est aussi maintenant qu'on va l'établir. Enfin, on pourrait faire ça plus tard dans le code mais vu qu'on vient
@@ -173,10 +173,10 @@ try
 			# bidon sinon c'est affiché à l'écran.
 			Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
 
-			$credSecurePwd = $configVSphere.getConfigValue($targetEnv, "password") | ConvertTo-SecureString -AsPlainText -Force
-			$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $configVSphere.getConfigValue($targetEnv, "user"), $credSecurePwd	
+			$credSecurePwd = $configVSphere.getConfigValue(@($targetEnv, "password")) | ConvertTo-SecureString -AsPlainText -Force
+			$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $configVSphere.getConfigValue(@($targetEnv, "user")), $credSecurePwd	
 
-			$vCenter = Connect-VIServer -Server $configVSphere.getConfigValue($targetEnv, "server") -Credential $credObject
+			$vCenter = Connect-VIServer -Server $configVSphere.getConfigValue(@($targetEnv, "server")) -Credential $credObject
 		}
 		
 		# Recherche des infos du BG

@@ -58,6 +58,12 @@ enum TableauRoles
 	AdminEPFL
 }
 
+# Types de sources pour les Business Group
+enum ADGroupCreateSourceType {
+	Admin
+	User
+}
+
 <#
 -------------------------------------------------------------------------------------
 	BUT : Regarde si un groupe Active Directory existe et si ce n'est pas le cas, il 
@@ -83,16 +89,17 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 	$groupDesc = $groupDesc -replace '–', '-'
 
 	# On regarde si le groupe à ajouter dans le nouveau groupe existe
-	if((ADGroupExists -groupName $groupMemberGroup) -eq $false)
+	if($null -eq (getADGroup -groupName $groupMemberGroup))
 	{
 		$logHistory.addWarningAndDisplay(("Inner group '{0}' doesn't exists, skipping AD group '{1}' creation!" -f $groupMemberGroup, $groupName))
 		return $false
 	}
 
-	$alreadyExists = ADGroupExists -groupName $groupName
+	# Recherche du groupe qu'on doit créer
+	$adGroup = getADGroup -groupName $groupName
 
 	# Si le groupe n'existe pas encore 
-	if($alreadyExists -eq $false)
+	if($null -eq $adGroup)
 	{
 		if(-not $simulation)
 		{
@@ -106,24 +113,35 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 	else
 	{
 		$logHistory.addLineAndDisplay(("--> AD group '{0}' already exists" -f $groupName))
+		
+		if(-not $SIMULATION_MODE)
+		{
+			# Mise à jour de la description du groupe dans le cas où ça aurait changé
+			if($adGroup.Description -ne $groupDesc)
+			{
+				$logHistory.addLineAndDisplay(("--> Updating AD group '{0}' description because it changed" -f $groupName))
+				Set-ADGroup $groupName -Description $groupDesc -Confirm:$false
+				$counters.inc('ADGroupsDescriptionUpdated')
+			}
+			
+		}
 	}
 
 	# Si on arrive ici, c'est que le groupe à mettre dans le nouveau groupe AD existe
 
 	if(-not $simulation)
 	{
-			# Si le groupe vient d'être CREE
-			# OU
-			# qu'il existe déjà et qu'on a le droit de mettre à jour son contenu,
-			if( ($alreadyExists -eq $false) -or ($alreadyExists -and $updateExistingContent))
-			{
-				$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
-				# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
-				Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
-				# Et on remet les bons membres
-				Add-ADGroupMember $groupName -Members $groupMemberGroup
-			}
-
+		# Si le groupe vient d'être CREE
+		# OU
+		# qu'il existe déjà et qu'on a le droit de mettre à jour son contenu,
+		if( ($null -eq $adGroup) -or (($null -ne $ADGroup) -and $updateExistingContent))
+		{
+			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
+			# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
+			Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
+			# Et on remet les bons membres
+			Add-ADGroupMember $groupName -Members $groupMemberGroup
+		}
 			
 	}
 	
@@ -444,6 +462,148 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [string]$name, [str
 }
 
 
+<#
+-------------------------------------------------------------------------------------
+	BUT : Détermine quel est le centre financier à utiliser pour une unité. Ceci
+			peut être un numéro de centre financier existant ou alors une adresse
+			mail à laquelle les informations vont être envoyées.
+			Si on n'a pas pu déterminer le centre financier avec les directives
+			définies dans le fichier JSON ($billToMailList), on essaie de trouver 
+			l'unité de niveau 4 (car on est probablement sur une unité de niveau 3)
+			afin de récupérer le centre financier de celle-ci.
+
+	IN  : $unit					-> Objet représentant l'unité que l'on est en train de 
+									traiter
+	IN  : $unitList				-> Liste des unités, afin de pouvoir potentiellement chercher
+									une unité de niveau 4 pour un centre (niveau 3) afin 
+									de pouvoir faire de la facturation
+	IN  : $billToMailList		-> Tableau avec les informations sur les directives
+									de facturation définies dans un fichier JSON.
+	IN  : $sourceType			-> Type de source pour les unités (User ou admin)
+	IN  : $geUnitMappingList	-> Objet avec les informations sur le mapping d'unité de gestion.
+									Le contenu provient du fichier 'data/billing/ge-unit-mapping.json'
+
+	RET : Le centre financier à utiliser pour l'unité
+#>
+function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Array]$billToMailList, [ADGroupCreateSourceType]$sourceType, [PSCustomObject]$geUnitMappingList)
+{
+	# Si on est dans la source d'unités "admin" 
+	if($sourceType -eq [ADGroupCreateSourceType]::Admin)
+	{
+		# On retourne l'adresse mail entrée pour la facturation
+		return $unit.billingMail
+	}
+	
+
+	# 1. Si on doit utiliser une adresse mail pour la facturation au lieu du centre financier
+	$financeCenter = $null
+	ForEach($billToMail in $billToMailList)
+	{
+		# Parcours des OU de l'entrées courante
+		ForEach($LDAPOU in $billToMail.ldapOuList)
+		{
+			# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturation
+			if($unit.path -match ("{0}$" -f $LDAPOU))
+			{
+				# Si on a une adresse mail hardcodée de donnée,
+				if($null -ne $billToMail.billingMail)
+				{
+					$financeCenter = $billToMail.billingMail
+				}
+				# On doit utiliser une fonction pour récupérer l'adresse mail.
+				elseif($null -ne $billToMail.billingMailFunc)
+				{
+					Invoke-Expression ('$financeCenter = {0} -unitInfos $unit' -f $billToMail.billingMailFunc)
+					
+				}
+				else # Valeurs dans le fichiers JSON incorrectes
+				{
+					Throw ("Incorrect value combination in 'billing to mail' JSON file for OU '{0}'" -f $LDAPOU)
+				}
+
+				$logHistory.addLineAndDisplay(("--> Using email ({0}) for finance center..." -f $financeCenter))
+				
+				break
+			}
+		}
+		# SI on a trouvé une adresse mail pour la facturation
+		if($null -ne $financeCenter)
+		{
+			# On peut sortir de la boucle
+			break
+		}
+	}# FIN BOUCLE de parcours des possibilité de facturation par mail
+
+
+	# Si on n'a pas encore de centre financier de défini (donc pas d'adresse mail )
+	if($null -eq $financeCenter)
+	{
+		# Si c'est une unité de niveau 3 (centre), on doit chercher l'unité de niveau 4 qui fait office de "gestion"
+		if($unit.level -eq 3)
+		{
+			$logHistory.addLineAndDisplay("--> Level 3 unit (Center), looking for level 4 'GE' unit for finance center..." )
+
+			# Noms d'unité à rechercher. On cherche de plusieurs manières parce qu'ils ont été incapables de nommer ça d'une façon cohérente...
+			$geUnitNameList = @( ("{0}-GE" -f $unit.name)
+								("{0}-GE" -f [Regex]::match($unit.name, '[A-Za-z]+-(.*)').groups[1].value) )
+
+			# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
+			$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
+
+			# Suppression des valeurs vides (oui, il peut y en avoir on dirait... )
+			$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" -and $null -ne $_ }
+			$financeCenter = $null
+
+			# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
+			ForEach($geUnitName in $geUnitNameList)
+			{
+				$logHistory.addLineAndDisplay(("---> Looking for '{0}' unit..." -f $geUnitName))
+				$geUnit = $unitList | Where-Object { $_.name -eq $geUnitName }
+
+				if($null -ne $geUnit)
+				{
+					$logHistory.addLineAndDisplay("---> Unit found, getting finance center")
+					$financeCenter = $geUnit.accountingnumber
+					break
+				}
+			}
+
+			# Si on n'a rien trouvé... 
+			if($null -eq $financeCenter)
+			{
+				$logHistory.addLineAndDisplay("--> 'GE' unit not found... using 'normal' finance center")
+				$financeCenter = $unit.accountingnumber
+				$counters.inc('level3GEUnitNotFound')
+				# Ajout du nom de l'unité niveau 3 pour notifier par mail que pas trouvée
+				$notifications.level3GEUnitNotFound += $unit.name
+			}
+		}
+		else # Ce n'est pas une unité de niveau 3 (centre)
+		{
+			$financeCenter = $unit.accountingnumber
+		}
+
+	}# FIN SI on n'a pas encore de centre financier
+
+	return $financeCenter
+
+}
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Renvoie l'adresse mail à utiliser pour la facturation d'une unité dont 
+			les infos sont passées en paramètre
+
+	IN  : $unitInfos	-> Objet avec les informations de l'unité (vient de LDAP,
+							renvoyé par la fonction getFacultyUnitList() )
+
+	RET : L'adresse mail
+#>
+function getSIUnitBillingMail([PSObject]$unitInfos)
+{
+	return "personnel.{0}@epfl.ch" -f $unitInfos.name.toLower()
+}
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -494,22 +654,22 @@ try
 		targetEnv = $targetEnv
 		targetTenant = $targetTenant
 	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
 												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
 	# Pour s'interfacer avec l'application Groups
-	$groupsApp = [GroupsAPI]::new($configGroups.getConfigValue($targetEnv, "server"),`
-								  $configGroups.getConfigValue($targetEnv, "appName"),`
-								   $configGroups.getConfigValue($targetEnv, "callerSciper"),`
-								   $configGroups.getConfigValue($targetEnv, "password"))
+	$groupsApp = [GroupsAPI]::new($configGroups.getConfigValue(@($targetEnv, "server")),
+								  $configGroups.getConfigValue(@($targetEnv, "appName")),
+								   $configGroups.getConfigValue(@($targetEnv, "callerSciper")),
+								   $configGroups.getConfigValue(@($targetEnv, "password")))
 	
 	# Pour accéder à la base de données
-	$sqldb = [SQLDB]::new([DBType]::MSSQL, `
-							$configVra.getConfigValue($targetEnv, "db", "host"), `
-							$configVra.getConfigValue($targetEnv, "db", "dbName"), `
-							$configVra.getConfigValue($targetEnv, "db", "user"), `
-							$configVra.getConfigValue($targetEnv, "db", "password"), `
-							$configVra.getConfigValue($targetEnv, "db", "port"))
+	$sqldb = [SQLDB]::new([DBType]::MSSQL, 
+							$configVra.getConfigValue(@($targetEnv, "db", "host")),
+							$configVra.getConfigValue(@($targetEnv, "db", "dbName")),
+							$configVra.getConfigValue(@($targetEnv, "db", "user")), 
+							$configVra.getConfigValue(@($targetEnv, "db", "password")),
+							$configVra.getConfigValue(@($targetEnv, "db", "port")))
 
 	Import-Module ActiveDirectory
 
@@ -534,11 +694,11 @@ try
 
 	# Tous les Tenants
 	$counters.add('ADGroupsCreated', '# AD Groups created')
+	$counters.add('ADGroupsDescriptionUpdated', '# AD Group descriptions updated')
 	$counters.add('ADGroupsExists', '# AD Groups already existing')
 	$counters.add('ADGroupsRemoved', '# AD Groups removed')
-	$counters.add('ADGroupsContentModified', '# AD Groups modified')
-	$counters.add('ADGroupsMembersAdded', '# AD Group members added')
-	$counters.add('ADGroupsMembersRemoved', '# AD Group members removed')
+	$counters.add('ADGroupsContentUpdated', '# AD Groups updated')
+	$counters.add('ADGroupsContentOK', '# AD Groups OK')
 	$counters.add('ADMembersNotFound', '# AD members not found')
 	$counters.add('groupsGroupsCreated', '# Groups groups created')
 	$counters.add('membersAddedTovRAUsers', '# Users added to vraUsers table (Tableau)')
@@ -556,6 +716,9 @@ try
 	$notifications.level3GEUnitNotFound = @()
 	$notifications.missingADGroups = @()
 
+	# Chargement des informations sur les unités qu'il faut ajouter manuellement à une faculté donnée
+	$adminBGFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "admin-bg.json"))
+	$adminBGList = loadFromCommentedJSON -jsonFile $adminBGFile
 
 	switch($targetTenant)
 	{
@@ -573,6 +736,7 @@ try
 			$counters.add('epfl.facSkipped', '# Faculty skipped')
 			$counters.add('epfl.facIgnored', '# Faculty ignored (because of filter)')
 			$counters.add('epfl.LDAPUnitsProcessed', '# LDAP Units processed')
+			$counters.add('epfl.ManualUnitsProcessed', '# Manual Units processed')
 			$counters.add('epfl.LDAPUnitsEmpty', '# LDAP Units empty')
 
 			# Ajout du nécessaire pour gérer les notifications pour ce Tenant
@@ -587,12 +751,18 @@ try
 			$exitFacLoop = $false
 
 			# Chargement des informations sur le mapping des facultés
-			$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "ge-unit-mapping.json"))
-			$geUnitMappingList = (Get-Content -Path $geUnitMappingFile -raw) | ConvertFrom-Json
+			# FIXME: Voir si c'est toujours pertinent après avoir mergé la PR https://github.com/epfl-si/xaas-admin/pull/109
+			$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "billing", "ge-unit-mapping.json"))
+			$geUnitMappingList = loadFromCommentedJSON -jsonFile $geUnitMappingFile
 
 			# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
-			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "bill-to-mail.json"))
-			$billToMailList = (Get-Content -Path $billToMailFile -raw) | ConvertFrom-Json
+			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "billing", "bill-to-mail.json"))
+			$billToMailList = loadFromCommentedJSON -jsonFile $billToMailFile
+			
+			# Chargement des informations sur les unités qui ont potentiellement des services vRA "non autorisés"
+			$deniedVRASvcListFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "epfl-deny-vra-services.json"))
+			$deniedVRASvcList = loadFromCommentedJSON -jsonFile $deniedVRASvcListFile
+			
 
 			# Parcours des facultés trouvées
 			ForEach($faculty in $facultyList)
@@ -611,8 +781,7 @@ try
 				$nameGenerator.initDetails(@{facultyName = $faculty['name']
 											facultyID = $faculty['uniqueidentifier']
 											unitName = ''
-											unitID = ''
-											financeCenter = ''})
+											unitID = ''})
 				
 				# --------------------------------- APPROVE
 
@@ -635,7 +804,7 @@ try
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						if($notifications.missingEPFLADGroups -notcontains $approveGroupNameGroups)
 						{
@@ -681,7 +850,7 @@ try
 
 
 				if((createADGroupWithContent -groupName $supportGroupNameAD -groupDesc $supportGroupDescAD -groupMemberGroup $supportGroupNameGroups `
-					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
+					-OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::Support) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 					$notifications.missingEPFLADGroups += $supportGroupNameGroups
@@ -696,232 +865,223 @@ try
 				# --------------------------------- UNITÉS
 				# ----------------------------------------------------------------------------------
 				# Recherche des unités pour la facultés
-				$unitList = $ldap.getFacultyUnitList($faculty.name, $EPFL_FAC_UNIT_NB_LEVEL) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et modifier pour limiter à une unité donnée
-
-				$unitNo = 1
-				# Parcours des unités de la faculté
-				ForEach($unit in $unitList)
+				$unitList = @{}
+				$unitList.add([ADGroupCreateSourceType]::User, $ldap.getFacultyUnitList($faculty.name, $EPFL_FAC_UNIT_NB_LEVEL)) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et adapter pour limiter à une unité donnée
+					
+				# On regarde si on a des unités à ajouter en tant que BG "admin" à la faculté courante. 
+				$manualUnitsFacInfos = $adminBGList.$targetTenant | Where-Object { $_.faculty -eq $faculty.name }
+				if(($null -ne $manualUnitsFacInfos) -and ($manualUnitsFacInfos.manualUnits.count -gt 0))
 				{
-					$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.Count, $faculty.name, $unit.name))
+					$logHistory.addLineAndDisplay(("Adding {0} 'admin units' to faculty {1} unit list" -f $manualUnitsFacInfos.manualUnits.count, $faculty.name))
+					$unitList.add([ADGroupCreateSourceType]::Admin, @($manualUnitsFacInfos.manualUnits))
+				}
 
-					# Si on doit utiliser une adresse mail pour la facturation au lieu du centre financier
-					$financeCenter = $null
-					ForEach($billToMail in $billToMailList)
+				
+
+				# Parcours des types de sources
+				Foreach($sourceType in $unitList.keys)
+				{
+					$logHistory.addLineAndDisplay(("Processing '{0}' units ({1} units found)..." -f $sourceType.toString(), $unitList.$sourceType.count))
+				
+					$unitNo = 1
+
+					# Parcours des unités de la faculté
+					ForEach($unit in $unitList.$sourceType)
 					{
-						# Si l'unité courante se trouve sous l'arbo pour laquelle il faut utiliser une adresse mail pour la facturation
-						if($unit.path -match ("{0}$" -f $billToMail.ldapOU))
+						$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.$sourceType.Count, $faculty.name, $unit.name))
+
+						# Recherche du centre financier à utiliser
+						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList.$sourceType -billToMailList $billToMailList `
+										-sourceType $sourceType -geUnitMappingList $geUnitMappingList
+
+						$vRAServicesToDeny = @()
+						# On ne gère les "deny" de service/items de catalogue uniquement si on est dans une source pour les utilisateurs
+						if($sourceType -eq [ADGroupCreateSourceType]::User)
 						{
-							$logHistory.addLineAndDisplay(("--> Using email ({0}) for finance center..." -f $billToMail.billingMail))
-							$financeCenter = $billToMail.billingMail
-							break
-						}
-					}
-
-
-					# Si on n'a pas encore de centre financier de défini (donc pas d'adresse mail )
-					if($null -eq $financeCenter)
-					{
-						# Si c'est une unité de niveau 3 (centre), on doit chercher l'unité de niveau 4 qui fait office de "gestion"
-						if($unit.level -eq 3)
-						{
-							$logHistory.addLineAndDisplay("--> Level 3 unit (Center), looking for level 4 'GE' unit for finance center..." )
-
-							# Noms d'unité à rechercher. On cherche de plusieurs manières parce qu'ils ont été incapables de nommer ça d'une façon cohérente...
-							$geUnitNameList = @( ("{0}-GE" -f $unit.name)
-												("{0}-GE" -f [Regex]::match($unit.name, '[A-Za-z]+-(.*)').groups[1].value) )
-
-							# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
-							$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
-
-							# Suppression des valeurs vides (oui, il peut y en avoir on dirait... )
-							$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" }
-							$financeCenter = $null
-
-							# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
-							ForEach($geUnitName in $geUnitNameList)
+							$hasApproval = $true
+							# Parcours des OU pour lequelles on veut empêcher l'accès à certains services vRA
+							ForEach($denyInfos in $deniedVRASvcList)
 							{
-								$logHistory.addLineAndDisplay(("---> Looking for '{0}' unit..." -f $geUnitName))
-								$geUnit = $unitList | Where-Object { $_.name -eq $geUnitName }
-
-								if($null -ne $geUnit)
+								# Si l'unité courante est dans l'arborescence où il faut empêcher l'accès à certains services
+								if($unit.path -match ("{0}$" -f $denyInfos.ldapOU))
 								{
-									$logHistory.addLineAndDisplay("---> Unit found, getting finance center")
-									$financeCenter = $geUnit.accountingnumber
+									# Mise à jour de la liste des services "non" autorisés et on sort
+									$vRAServicesToDeny = $denyInfos.deniedVRAServiceList
 									break
 								}
 							}
 
-							# Si on n'a rien trouvé... 
-							if($null -eq $financeCenter)
+							$logHistory.addLineAndDisplay(("--> Normal unit, taking users from LDAP"))
+							# Recherche des membres de l'unité
+							$ldapMemberList = $ldap.getUnitMembers($unit.uniqueidentifier)
+
+							# On commence par filtrer les comptes pour savoir s'ils existent tous
+							$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
+
+						}
+						else # C'est une unité "admin"
+						{
+							# Les membres à mettre dans le groupe sont définis par le contenu du groupe AD donné dans le JSON
+							$logHistory.addLineAndDisplay(("--> Manual unit, taking users from group defined in JSON file ({0})" -f $unit.contentGroup))
+							$ldapMemberList = Get-ADGroupMember $unit.contentGroup -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
+
+							# Pas d'approbation pour les unités "Admin"
+							$hasApproval = $false
+						}
+						
+
+						# Initialisation des détails pour le générateur de noms
+						$nameGenerator.initDetails(@{facultyName = $faculty.name
+												facultyID = $faculty.uniqueidentifier
+												unitName = $unit.name
+												unitID = $unit.uniqueidentifier})
+
+						# Création du nom du groupe AD et de la description
+						$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+						$additionalDetails = @{
+							deniedVRASvc = $vRAServicesToDeny
+							financeCenter = $financeCenter
+							hasApproval = $hasApproval
+						}
+						$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
+
+						try
+						{
+							# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
+							Get-ADGroup -Identity $adGroupName | Out-Null
+
+							$adGroupExists = $true
+							$counters.inc('ADGroupsExists')
+							$logHistory.addLineAndDisplay(("--> Group exists ({0}) " -f $adGroupName))
+
+							if(-not $SIMULATION_MODE)
 							{
-								$logHistory.addLineAndDisplay("--> 'GE' unit not found... using 'normal' finance center")
-								$financeCenter = $unit.accountingnumber
-								$counters.inc('level3GEUnitNotFound')
-								# Ajout du nom de l'unité niveau 3 pour notifier par mail que pas trouvée
-								$notifications.level3GEUnitNotFound += $unit.name
+								# Mise à jour de la description du groupe dans le cas où ça aurait changé
+								Set-ADGroup $adGroupName -Description $adGroupDesc -Confirm:$false
 							}
+
+							# Listing des usernames des utilisateurs présents dans le groupe
+							$adMemberList = @(Get-ADGroupMember $adGroupName | ForEach-Object {$_.SamAccountName})
+
 						}
-						else # Ce n'est pas une unité de niveau 3 (centre)
+						catch # Le groupe n'existe pas.
 						{
-							$financeCenter = $unit.accountingnumber
-						}
-
-					}# FIN SI on n'a pas encore de centre financier
-
-					# Recherche des membres de l'unité
-					$ldapMemberList = $ldap.getUnitMembers($unit.uniqueidentifier)
+							Write-Debug ("--> Group doesn't exists ({0}) " -f $adGroupName)
+							# Si l'unité courante a des membres
+							if($ldapMemberList.Count -gt 0)
+							{
+								$logHistory.addLineAndDisplay(("--> Creating group ({0}) " -f $adGroupName))
 					
-					# Initialisation des détails pour le générateur de noms
-					$nameGenerator.initDetails(@{facultyName = $faculty.name
-											facultyID = $faculty.uniqueidentifier
-											unitName = $unit.name
-											unitID = $unit.uniqueidentifier
-											financeCenter = $financeCenter})
+								if(-not $SIMULATION_MODE)
+								{
+									# Création du groupe
+									New-ADGroup -Name $adGroupName -Description $adGroupDesc -GroupScope DomainLocal -Path $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User)
+								}
 
-					# On commence par filtrer les comptes pour savoir s'ils existent tous
-					$ldapMemberList = removeInexistingADAccounts -accounts $ldapMemberList
+								$counters.inc('ADGroupsCreated')
 
+								$adGroupExists = $true
+								# le groupe est vide.
+								$adMemberList = @()
+							}
+							else # Pas de membres donc on ne créé pas le groupe
+							{
+								$logHistory.addLineAndDisplay(("--> No members in unit '{0}', skipping group creation " -f $unit.name))
+								$counters.inc('epfl.LDAPUnitsEmpty')
+								$adGroupExists = $false
+							}
 
-					# Création du nom du groupe AD et de la description
-					$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
-					$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
+						}# FIN CATCH le groupe n'existe pas
 
-					# Pour définir si un groupe AD a été créé lors de l'itération courante
-					$newADGroupCreated = $false
-
-					try
-					{
-						# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
-						Get-ADGroup -Identity $adGroupName | Out-Null
-
-						$adGroupExists = $true
-						$counters.inc('ADGroupsExists')
-						$logHistory.addLineAndDisplay(("--> Group exists ({0}) " -f $adGroupName))
-
-						if(-not $SIMULATION_MODE)
+						# Si le groupe AD existe
+						if($adGroupExists)
 						{
-							# Mise à jour de la description du groupe dans le cas où ça aurait changé
-							Set-ADGroup $adGroupName -Description $adGroupDesc -Confirm:$false
-						}
+							# On compare les 2 listes et on récupère les informations de différence
+							$comparisonResult = (Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList)
 
-						# Listing des usernames des utilisateurs présents dans le groupe
-						$adMemberList = Get-ADGroupMember $adGroupName | ForEach-Object {$_.SamAccountName}
+							# Si les membres présents dans le groupe AD ne sont pas les mêmes que ceux qui devraient y être
+							if($null -ne $comparisonResult)
+							{
+								$toRemove = @($comparisonResult | Where-Object { $_.SideIndicator -eq "=>" } | Select-Object -ExpandProperty InputObject)
+								# On commence par supprimer les membres qui ne doivent pas être dans le groupe, s'il y en a
+								if($toRemove.count -gt 0)
+								{
+									$logHistory.addLineAndDisplay(("--> Removing {0} member(s) in group '{1}'..." -f $toRemove.count, $adGroupName))
+									if(-not $SIMULATION_MODE)
+									{
+										Remove-ADGroupMember $adGroupName -Members $toRemove -confirm:$false
+									}
+								}
+								
+								$toAdd = @($comparisonResult | Where-Object { $_.SideIndicator -eq "<=" } | Select-Object -ExpandProperty InputObject)
+								# Ajout des membres qui manquent
+								if($toAdd.count -gt 0)
+								{
+									$logHistory.addLineAndDisplay(("--> Adding {0} member(s) in group '{1}'..." -f $toAdd.count, $adGroupName))
+									if(-not $SIMULATION_MODE)
+									{
+										Add-ADGroupMember $adGroupName -Members $toAdd
+									}
 
-					}
-					catch # Le groupe n'existe pas.
-					{
-						Write-Debug ("--> Group doesn't exists ({0}) " -f $adGroupName)
+									$counters.inc('ADGroupsContentUpdated')
+								}
+
+								# Si le groupe ne doit contenir aucun membre, et donc que l'unité est vide
+								if($ldapMemberList.count -eq 0)
+								{
+									$logHistory.addLineAndDisplay(("--> AD group '{0}' is empty, removing it..." -f $adGroupName))
+									if(-not $SIMULATION_MODE)
+									{
+										# Comme on a vidé le groupe juste avant s'il contenait des membres et que là on n'a rien à ajouter dedans,
+										# on peut supprimer le groupe
+										Remove-ADGroup $adGroupName -Confirm:$false
+									}
+
+									$counters.inc('ADGroupsRemoved')
+								}
+								
+							}
+							else # Le contenu du groupe AD est à jour
+							{
+								$logHistory.addLineAndDisplay(("--> AD Group '{0}' is up-to-date" -f $adGroupName))
+								$counters.inc('ADGroupsContentOK')
+							}
+
+							# On enregistre le nom du groupe AD traité
+							$doneADGroupList += $adGroupName
+
+						} # FIN SI le groupe AD existe
+
+						###### Roles pour Tableau --> Utilisateurs dans les Business Groups
 						# Si l'unité courante a des membres
 						if($ldapMemberList.Count -gt 0)
 						{
-							$logHistory.addLineAndDisplay(("--> Creating group ({0}) " -f $adGroupName))
-				
-							if(-not $SIMULATION_MODE)
-							{
-								# Création du groupe
-								New-ADGroup -Name $adGroupName -Description $adGroupDesc -GroupScope DomainLocal -Path $nameGenerator.getADGroupsOUDN($true)
-							}
-							
-							$newADGroupCreated = $true;
-
-							$counters.inc('ADGroupsCreated')
-
-							$adGroupExists = $true
-							# le groupe est vide.
-							$adMemberList = @()
+							$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
+							updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
 						}
-						else # Pas de membres donc on ne créé pas le groupe
+
+						# Mise à jour des compteurs
+						if($sourceType -eq [ADGroupCreateSourceType]::User)
 						{
-							$logHistory.addLineAndDisplay(("--> No members in unit '{0}', skipping group creation " -f $unit.name))
-							$counters.inc('epfl.LDAPUnitsEmpty')
-							$adGroupExists = $false
+							$counters.inc('epfl.LDAPUnitsProcessed')
 						}
-					}# FIN CATCH le groupe n'existe pas
-
-					# Si le groupe AD existe
-					if($adGroupExists)
-					{
-						# S'il n'y a aucun membre dans le groupe AD,
-						if($null -eq $adMemberList)
+						else
 						{
-							$toAdd = $ldapMemberList
-							$toRemove = @()
+							$counters.inc('epfl.ManualUnitsProcessed')
 						}
-						else # Il y a des membres dans le groupe AD
+						
+						$unitNo += 1
+
+						# Pour faire des tests
+						if($TEST_MODE -and ($counters.get('epfl.LDAPUnitsProcessed') -ge $EPFL_TEST_NB_UNITS_MAX))
 						{
-							# Définition des membres à ajouter/supprimer du groupe AD
-							$toAdd = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '<=' } | ForEach-Object {$_.InputObject}
-							$toRemove = Compare-Object -ReferenceObject $ldapMemberList -DifferenceObject $adMemberList  | Where-Object {$_.SideIndicator -eq '=>' }  | ForEach-Object {$_.InputObject}
+							$exitFacLoop = $true
+							break
 						}
 
-						# Ajout des nouveaux membres s'il y en a
-						if($toAdd.Count -gt 0)
-						{
-							$logHistory.addLineAndDisplay(("--> Adding {0} members in group {1} " -f $toAdd.Count, $adGroupName))
-							if(-not $SIMULATION_MODE)
-							{
-								Add-ADGroupMember $adGroupName -Members $toAdd
-							}
+					}# FIN BOUCLE de parcours des unités de la faculté
 
-							$counters.inc('ADGroupsMembersAdded')
-						}
-						else # Il n'y a aucun membre à ajouter dans le groupe 
-						{
-							# Si on vient de créer le groupe AD
-							if($newADGroupCreated)
-							{
-								if(-not $SIMULATION_MODE)
-								{
-									# On peut le supprimer car il est de toute façon vide... Et ça ne sert à rien qu'un BG soit créé pour celui-ci du coup
-									Remove-ADGroup $adGroupName -Confirm:$false
-								}
-							}
-
-						}
-						# Suppression des "vieux" membres s'il y en a
-						if($toRemove.Count -gt 0)
-						{
-							$logHistory.addLineAndDisplay(("--> Removing {0} members from group {1} " -f $toRemove.Count, $adGroupName))
-							if(-not $SIMULATION_MODE)
-							{
-								Remove-ADGroupMember $adGroupName -Members $toRemove -Confirm:$false
-							}
-
-							$counters.inc('ADGroupsMembersRemoved')
-						}
-
-						if(($toRemove.Count -gt 0) -or ($toAdd.Count -gt 0))
-						{
-							$counters.inc('ADGroupsContentModified')
-						}
-
-						# On enregistre le nom du groupe AD traité
-						$doneADGroupList += $adGroupName
-
-					} # FIN SI le groupe AD existe
-
-					###### Roles pour Tableau --> Utilisateurs dans les Business Groups
-					# Si l'unité courante a des membres
-					if($ldapMemberList.Count -gt 0)
-					{
-						$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
-						updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
-					}
-
-
-					$counters.inc('epfl.LDAPUnitsProcessed')
-					$unitNo += 1
-
-					# Pour faire des tests
-					if($TEST_MODE -and ($counters.get('epfl.LDAPUnitsProcessed') -ge $EPFL_TEST_NB_UNITS_MAX))
-					{
-						$exitFacLoop = $true
-						break
-					}
-
-
-				}# FIN BOUCLE de parcours des unités de la faculté
-
+				} # FIN BOUCLE de parcours des types unités (automatiques ou manuelles)
 
 				###### Roles pour Tableau --> Admin de faculté
 				# Recherche du nom du groupe AD d'approbation pour la faculté
@@ -935,7 +1095,6 @@ try
 					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
 					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower()) -targetTenant $targetTenant
 				}
-
 
 				if($exitFacLoop)
 				{
@@ -964,7 +1123,7 @@ try
 				updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
 			}
 			
-		}
+		}# FIN SI Tenant EPFL
 
 		# -------------------------------------------------------------------------------------------------------------------------------------
 		# -------------------------------------------------------------------------------------------------------------------------------------
@@ -985,148 +1144,175 @@ try
 
 			$notifications.missingITSADGroups = @()
 			
-			# On prend la liste correspondant à l'environnement sur lequel on se trouve
-			$servicesList = $itServices.getServiceList($targetEnv) 
-	
-			$serviceNo = 1 
-			# Parcours des services renvoyés par Django
-			ForEach($service in $servicesList)
-			{
-	
-				$logHistory.addLineAndDisplay(("-> [{0}/{1}] Service {2}..." -f $serviceNo, $servicesList.Count, $service.shortName))
-	
-				$counters.inc('its.serviceProcessed')
-	
-				# Initialisation des détails pour le générateur de noms
-				$nameGenerator.initDetails(@{serviceShortName = $service.shortName
-											serviceName = $service.longName
-											snowServiceId = $service.snowId})
-	
-				$serviceNo += 1
+			$servicesList = @{}
 
-				if($service.serviceManagerSciper -ne "")
+			# On prend la liste correspondant à l'environnement sur lequel on se trouve
+			$servicesList.add([ADGroupCreateSourceType]::User, $itServices.getServiceList($targetEnv))
+			
+			# Ajout des services à ajouter en tant que "Admin"
+			$logHistory.addLineAndDisplay(("Adding {0} 'admin services'" -f $adminBGList.$targetTenant.count))
+			$servicesList.add([ADGroupCreateSourceType]::Admin, @($adminBGList.$targetTenant))
+			
+
+			# Parcours des types de sources
+			Foreach($sourceType in $servicesList.keys)
+			{
+
+				$logHistory.addLineAndDisplay(("Processing '{0}' services ({1} found)..." -f $sourceType.toString(), $servicesList.$sourceType.count))
+				$serviceNo = 1 
+				# Parcours des services 
+				ForEach($service in $servicesList.$sourceType)
 				{
-					$groupsContentAndAdmin = @($service.serviceManagerSciper)
-				}
-				else
-				{
+		
+					$logHistory.addLineAndDisplay(("-> [{0}/{1}] Service {2}..." -f $serviceNo, $servicesList.$sourceType.Count, $service.shortName))
+		
+					$counters.inc('its.serviceProcessed')
+		
 					$groupsContentAndAdmin = @()
-				}
-	
-				# --------------------------------- APPROVE
-				$allGroupsOK = $true
-				# Génération des noms des X groupes dont on va avoir besoin pour approuver les NOUVELLES demandes pour le service. 
-				$level = 0
-				while($true)
-				{
-					$level += 1
-					# Recherche des informations pour le level courant.
-					$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
-	
-					# Si vide, c'est qu'on a atteint le niveau max pour les level
-					if($null -eq $approveGroupInfos)
+
+					if($service.serviceManagerSciper -ne "")
 					{
-						break
+						$groupsContentAndAdmin = @($service.serviceManagerSciper)
 					}
-	
-					$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
-					$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
+
+					# Service de type "User"
+					if($sourceType -eq [ADGroupCreateSourceType]::User)
+					{
+						$deniedVRAServiceList = $service.deniedVRAServiceList
+						$hasApproval = $true
+					}
+					else # Service de type "Admin"
+					{
+						# Aucun service restreint
+						$deniedVRAServiceList = @()
+						$hasApproval = $false
+					}
+
+					# Initialisation des détails pour le générateur de noms
+					$nameGenerator.initDetails(@{serviceShortName = $service.shortName
+												serviceName = $service.longName
+												snowServiceId = $service.snowId})
+		
+					$serviceNo += 1
+
+					# --------------------------------- APPROVE
+					$allGroupsOK = $true
+					# Génération des noms des X groupes dont on va avoir besoin pour approuver les NOUVELLES demandes pour le service. 
+					$level = 0
+					while($true)
+					{
+						$level += 1
+						# Recherche des informations pour le level courant.
+						$approveGroupInfos = $nameGenerator.getApproveADGroupName($level, $false)
+		
+						# Si vide, c'est qu'on a atteint le niveau max pour les level
+						if($null -eq $approveGroupInfos)
+						{
+							break
+						}
+		
+						$approveGroupDescAD = $nameGenerator.getApproveADGroupDesc($level)
+						$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
+
+						# Création des groupes + gestion des groupes prérequis 
+						if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+							-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+						{
+							# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
+							if($notifications.missingITSADGroups -notcontains $approveGroupNameGroups)
+							{
+								$notifications.missingITSADGroups += $approveGroupNameGroups
+							}
+								
+							$allGroupsOK = $false
+						}
+		
+					} # FIN BOUCLE de création des groupes pour les différents level d'approbation 
+					
+					# Si on n'a pas pu créer tous les groupes, on passe au service suivant 
+					if($allGroupsOK -eq $false)
+					{
+						$counters.inc('its.serviceSkipped')
+						continue
+					}
+		
+					# --------------------------------- ROLES
+		
+					# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
+					# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
+					# sera le même
+					$admSupGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
+					$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
+					$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
+		
+					# Création des groupes + gestion des groupes prérequis 
+					if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
+						-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
+					{
+						# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
+						$notifications.missingITSADGroups += $admSupGroupNameGroups
+						continue
+					}
+					# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+					$doneADGroupList += $admSupGroupNameAD
+		
+					# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
+					# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
+					# sera le même
+					$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+					$additionalDetails = @{
+						deniedVRASvc = $deniedVRAServiceList
+						hasApproval = $hasApproval
+					}
+					$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
+					$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
+		
+					# Récupération des infos du groupe dans Groups
+					$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
+					$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
+					
+
+					# Création du groupe dans Groups s'il n'existe pas
+					$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
+																		-memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin
 
 					# Création des groupes + gestion des groupes prérequis 
-					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+					if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
+						-OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
-						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
-						if($notifications.missingITSADGroups -notcontains $approveGroupNameGroups)
+						# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
+						if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
 						{
-							$notifications.missingITSADGroups += $approveGroupNameGroups
+							$notifications.missingADGroups += $userSharedGroupNameGroupsAD
 						}
-							
-						$allGroupsOK = $false
 					}
-	
-				} # FIN BOUCLE de création des groupes pour les différents level d'approbation 
-				
-				# Si on n'a pas pu créer tous les groupes, on passe au service suivant 
-				if($allGroupsOK -eq $false)
-				{
-					$counters.inc('its.serviceSkipped')
-					continue
-				}
-	
-				# --------------------------------- ROLES
-	
-				# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
-				# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
-				# sera le même
-				$admSupGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
-				$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
-				$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
-	
-				# Création des groupes + gestion des groupes prérequis 
-				if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
-				{
-					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					$notifications.missingITSADGroups += $admSupGroupNameGroups
-					continue
-				}
-				# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-				$doneADGroupList += $admSupGroupNameAD
-	
-	
-	
-				# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
-				# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
-				# sera le même
-				$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
-				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
-				$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
-	
-				# Récupération des infos du groupe dans Groups
-				$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
-				$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
-				
-
-				# Création du groupe dans Groups s'il n'existe pas
-				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
-																	 -memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin
-
-				# Création des groupes + gestion des groupes prérequis 
-				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
-				{
-					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
+					else
 					{
-						$notifications.missingADGroups += $userSharedGroupNameGroupsAD
+						# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
+						$doneADGroupList += $userSharedGroupNameAD
 					}
-				}
-				else
-				{
-					# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-					$doneADGroupList += $userSharedGroupNameAD
-				}
 
-				# ###### Roles pour Tableau --> Utilisateurs dans les Business Groups
-				# if(($groupsUsernameList = Get-ADGroupMember $userSharedGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
-				# {
-				# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $groupsUsernameList.Count, [TableauRoles]::User.ToString() ))
-				# 	updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
-				# }
-				
-				# # ###### Roles pour Tableau --> Admin du service
-				# # Recherche de la liste des membres
-				# if(($adminMembers = Get-ADGroupMember $admSupGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).Count -gt 0)
-				# {
-				# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
-				# 	updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
-				# }
-				
+					# ###### Roles pour Tableau --> Utilisateurs dans les Business Groups
+					# if(($groupsUsernameList = Get-ADGroupMember $userSharedGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
+					# {
+					# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $groupsUsernameList.Count, [TableauRoles]::User.ToString() ))
+					# 	updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+					# }
+					
+					# # ###### Roles pour Tableau --> Admin du service
+					# # Recherche de la liste des membres
+					# if(($adminMembers = Get-ADGroupMember $admSupGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).Count -gt 0)
+					# {
+					# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
+					# 	updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
+					# }
+					
+		
+				}# FIN BOUCLE de parcours des services renvoyés
+
+			}# FIN BOUCLE de parcours des types d sources pour la création des services
 	
-			}# FIN BOUCLE de parcours des services renvoyés
-	
-		}
+		}# FIN SI Tenant ITServices
 
 		# -------------------------------------------------------------------------------------------------------------------------------------
 		# -------------------------------------------------------------------------------------------------------------------------------------
@@ -1145,12 +1331,12 @@ try
 			$counters.add('rsrch.projectSkipped', '# Projects skipped')
 
 			# Pour accéder à la base de données
-			$mysqlGrants = [SQLDB]::new([DBType]::MySQL, `
-										$configGrants.getConfigValue($targetEnv, "host"), `
-										$configGrants.getConfigValue($targetEnv, "dbName"), `
-										$configGrants.getConfigValue($targetEnv, "user"), `
-										$configGrants.getConfigValue($targetEnv, "password"), `
-										$configGrants.getConfigValue($targetEnv, "port"))
+			$mysqlGrants = [SQLDB]::new([DBType]::MySQL, 
+										$configGrants.getConfigValue(@($targetEnv, "host")),
+										$configGrants.getConfigValue(@($targetEnv, "dbName")),
+										$configGrants.getConfigValue(@($targetEnv, "user")),
+										$configGrants.getConfigValue(@($targetEnv, "password")),
+										$configGrants.getConfigValue(@($targetEnv, "port")))
 
 			$projectList = $mysqlGrants.execute("SELECT * FROM v_gdb_iaas WHERE subsides_start_date <= DATE(NOW()) AND subsides_end_date > DATE(NOW())")
 			# Décommenter la ligne suivante et éditer l'ID pour simuler la disparition d'un projet
@@ -1167,7 +1353,6 @@ try
 	
 				# Initialisation des détails pour le générateur de noms
 				$nameGenerator.initDetails(@{projectId = $project.id
-											financeCenter = $project.labo_no
 											projectAcronym = $project.acronym})
 	
 				$projectNo += 1
@@ -1215,7 +1400,7 @@ try
 					
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroupsAD `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
 						if($notifications.missingADGroups -notcontains $approveGroupNameGroupsAD)
@@ -1264,7 +1449,11 @@ try
 				# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
 				# sera le même
 				$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
-				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER")
+				$additionalDetails = @{
+					financeCenter = $project.labo_no
+					hasApproval = $true
+				}
+				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
 				$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
 	
 				# Récupération des infos du groupe dans Groups
@@ -1278,7 +1467,7 @@ try
 				$roleSharedGroupOk = $true
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
@@ -1317,9 +1506,8 @@ try
 	# ----------------------------------------------------------------------------------------------------------------------
 
 	# Parcours des groupes AD qui sont dans l'OU de l'environnement donné. On ne prend que les groupes qui sont utilisés pour 
-	# donner des droits d'accès aux unités. Afin de faire ceci, on fait un filtre avec une expression régulière
-	Get-ADGroup  -Filter ("Name -like '*'") -SearchBase $nameGenerator.getADGroupsOUDN($true) -Properties Description | 
-	Where-Object {$_.Name -match $nameGenerator.getADGroupNameRegEx("CSP_CONSUMER")} | 
+	# donner des droits d'accès aux unités.
+	Get-ADGroup  -Filter ("Name -like '*'") -SearchBase $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -Properties Description | 
 	ForEach-Object {
 
 		# Si le groupe n'est pas dans ceux créés à partir de la source de données, c'est que l'élément n'existe plus. On supprime donc le groupe AD pour que 
@@ -1359,12 +1547,12 @@ try
 				$logHistory.addLineAndDisplay(("--> Removing rights for '{0}' role in vraUsers table for AD group {1}" -f [TableauRoles]::User.ToString(), $_.name))
 
 				# Extraction des informations
-				$facultyName, $unitName, $financeCenter = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+				$descInfos = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
 				# Initialisation des détails pour le générateur de noms
-				$nameGenerator.initDetails(@{facultyName = $facultyName
+				$nameGenerator.initDetails(@{facultyName = $descInfos.faculty
 											facultyID = ''
-											unitName = $unitName
+											unitName = $descInfos.unit
 											unitID = ''
 											financeCenter = ''})
 
@@ -1396,10 +1584,10 @@ try
 		Start-Sleep -Seconds $sleepDurationSec
 		try {
 			# Création d'une connexion au serveur
-			$vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+			$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
 								 $targetTenant, 
-								 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-								 $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+								 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+								 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 		}
 		catch {
 			Write-Error "Error connecting to vRA API !"

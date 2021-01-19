@@ -421,7 +421,7 @@ try
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
-    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:NAS_MAIL_TEMPLATE_FOLDER, `
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:NAS_MAIL_TEMPLATE_FOLDER, `
                                                 $global:NAS_MAIL_SUBJECT_PREFIX , $valToReplace)
 
     # Contrôle que l'utilisateur pour exécuter le script soit correct
@@ -444,12 +444,10 @@ try
     $counters.add('vServerVirtualDirCreated', '# vServer virtual dir created')
     $counters.add('vServerVirtualDirDeleted', '# vServer virtual dir deleted')
     
-    # $counters.add('VMNotInvSphere', '# VM not in vSphere')
-
     # Création de l'objet pour se connecter aux clusters NetApp
-    $netapp = [NetAppAPI]::new($configNAS.getConfigValue($targetEnv, "serverList"), `
-                                $configNAS.getConfigValue($targetEnv, "user"), `
-                                $configNAS.getConfigValue($targetEnv, "password"))
+    $netapp = [NetAppAPI]::new($configNAS.getConfigValue(@($targetEnv, "serverList")),
+                                $configNAS.getConfigValue(@($targetEnv, "user")),
+                                $configNAS.getConfigValue(@($targetEnv, "password")))
 
             
     # Objet pour pouvoir envoyer des mails de notification

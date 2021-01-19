@@ -69,15 +69,15 @@ class NameGeneratorNAS: NameGeneratorBase
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe pour un volume de type Applicatif
 
-      IN  : $faculty          -> Nom de la faculté
+      IN  : $svcId            -> ID du service ITServices
       IN  : $desiredVolName   -> nom de volume désiré
 	#>
-   [void] setApplicativeDetails([string]$faculty, [string]$desiredVolName)
+   [void] setApplicativeDetails([string]$svcId, [string]$desiredVolName)
    {
       $this.type = [NASStorageType]::Applicative
 
       $this.details = @{
-         faculty = $faculty.toLower()
+         svcId = $svcId.toLower()
          desiredVolName = $desiredVolName.toLower()
       }
    }
@@ -94,7 +94,7 @@ class NameGeneratorNAS: NameGeneratorBase
 	#>
    [string] getVolName([int]$volNumber, [bool]$isNFSVolume)
    {
-      $volName = ("{0}_{1}_{2}_{3}_files" -f $this.details.faculty, $this.details.unitName, $this.details.unitId, $volNumber)
+      $volName = ("u{0}_{1}_{2}_{3}_files" -f $this.details.unitId, $this.details.faculty, $this.details.unitName, $volNumber)
 
       if($isNFSVolume)
       {
@@ -113,7 +113,7 @@ class NameGeneratorNAS: NameGeneratorBase
 	#>
    [string] getVolName()
    {
-      return ("{0}_{1}_app" -f $this.details.faculty, $this.details.desiredVolName)
+      return ("{0}_{1}_app" -f $this.details.svcId, $this.details.desiredVolName)
    }
 
 
@@ -176,7 +176,7 @@ class NameGeneratorNAS: NameGeneratorBase
 	#>
    [string] getCollaborativeVolDetailedRegex([bool]$isNFS)
    {
-      $regex = ("{0}_[a-z]+_{1}_[0-9]_files" -f $this.details.faculty, $this.details.unitId)
+      $regex = ("u{0}_{1}_[a-z]+_[0-9]_files" -f $this.details.unitId, $this.details.faculty)
 
       if($isNFS)
       {

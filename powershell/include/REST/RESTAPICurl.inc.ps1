@@ -161,10 +161,13 @@ class RESTAPICurl: RESTAPI
 
 			$curlArgs += ' --data "@{0}"' -f $tmpFile
 		}
+		
 
 		# Ajout des arguments 
 		# Explication sur le @'...'@ ici : https://stackoverflow.com/questions/18116186/escaping-quotes-and-double-quotes
 		$this.curl.StartInfo.Arguments = "{0} {1} `"{2}`"" -f ( $this.getCurlHeaders() ), $curlArgs, ($uri -replace " ","%20")
+
+		$this.debugLog(("{0}`nBody:`n{1}" -f $this.curl.StartInfo.Arguments, $body))
 
 		$result = $null
 
@@ -172,6 +175,7 @@ class RESTAPICurl: RESTAPI
 		$nbCurlAttempts = 2
 		for($currentAttemptNo=1; $currentAttemptNo -le $nbCurlAttempts; $currentAttemptNo++)
 		{
+			$this.debugLog("CURL attempt: $($currentAttemptNo)")
 			$this.curl.Start() | Out-Null
 
 			$output = $this.curl.StandardOutput.ReadToEnd()

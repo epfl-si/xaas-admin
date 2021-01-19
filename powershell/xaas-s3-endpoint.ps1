@@ -260,19 +260,26 @@ try
     $targetTenant = $targetTenant.ToLower()
 
     # Création de l'objet pour communiquer avec Scality
-    $scality = [ScalityAPI]::new($configXaaSS3.getConfigValue($targetEnv, "server"), 
-                                 $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "credentialProfile"), 
-                                 $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "webConsoleUser"), 
-                                 $configXaaSS3.getConfigValue($targetEnv, $targetTenant, "webConsolePassword"),
-                                 $configXaaSS3.getConfigValue($targetEnv, "isScality"))
+    $scality = [ScalityAPI]::new($configXaaSS3.getConfigValue(@($targetEnv, "server")),
+                                 $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "credentialProfile")),
+                                 $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "webConsoleUser")),
+                                 $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "webConsolePassword")),
+                                 $configXaaSS3.getConfigValue(@($targetEnv, "isScality")))
 
+    # Si on doit activer le Debug,
+    if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
+    {
+        # Activation du debug
+        $scality.activateDebug($logHistory)    
+    }
+    
 
     # Objet pour pouvoir envoyer des mails de notification
 	$valToReplace = @{
 		targetEnv = $targetEnv
 		targetTenant = $targetTenant
 	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
 												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
 
@@ -297,7 +304,7 @@ try
             $nameGeneratorS3 = [NameGeneratorS3]::new($unitOrSvcID,  $friendlyName)
 
             $bucketInfos.bucketName = $nameGeneratorS3.getBucketName()
-            $bucketInfos.serverName = $configXaaSS3.getConfigValue($targetEnv, "server")
+            $bucketInfos.serverName = $configXaaSS3.getConfigValue(@($targetEnv, "server"))
 
             $logHistory.addLine("Creating bucket {0}..." -f $bucketInfos.bucketName)
 

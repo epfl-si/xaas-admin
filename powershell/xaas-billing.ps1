@@ -47,8 +47,6 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SQLDB.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "ITServices.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
@@ -244,22 +242,11 @@ try
 	$valToReplace = @{
 		targetEnv = $targetEnv
 	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue("mail", "admin"), $global:MAIL_TEMPLATE_FOLDER, `
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
 												($global:VRA_MAIL_SUBJECT_PREFIX_NO_TENANT -f $targetEnv), $valToReplace)
 
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
-    $counters.add('entityProcessed', '# Entity processed')
-    $counters.add('billDone', '# Entity Bill done')
-    $counters.add('billSkippedToLow', '# Entity bill skipped (amount to low)')
-    $counters.add('billSkippedNothing', '# Entity bill bill skipped (nothing to bill)')
-    $counters.add('billCanceled', '# Bill canceled')
-    $counters.add('billSentToCopernic', '# Bill sent to Copernic')
-    $counters.add('billCopernicError', '# Bill not sent to Copernic because of an error')
-    $counters.add('PDFGenerated', '# PDF generated')
-    $counters.add('PDFOldCleaned', '# Old PDF cleaned')
-    $counters.add('billSentByEmail', '# Bill send by email')
-    $counters.add('billIncorrectFinanceCenter', '# incorrect finance center')
     
     <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -270,19 +257,17 @@ try
 	(cette liste sera accédée en variable globale même si c'est pas propre XD)
 	#>
     $notifications=@{
-        copernicBillError = @()
         incorrectFinanceCenter = @()
+        copernicBillNotSent = @()
     }
 
     # Pour accéder à la base de données
-	$sqldb = [SQLDB]::new([DBType]::MSSQL, `
-                        $configVra.getConfigValue($targetEnv, "db", "host"), `
-                        $configVra.getConfigValue($targetEnv, "db", "dbName"), `
-                        $configVra.getConfigValue($targetEnv, "db", "user"), `
-                        $configVra.getConfigValue($targetEnv, "db", "password"), `
-                        $configVra.getConfigValue($targetEnv, "db", "port"))
-
-    $ldap = [EPFLLDAP]::new()
+	$sqldb = [SQLDB]::new([DBType]::MSSQL,
+                        $configVra.getConfigValue(@($targetEnv, "db", "host")),
+                        $configVra.getConfigValue(@($targetEnv, "db", "dbName")),
+                        $configVra.getConfigValue(@($targetEnv, "db", "user")),
+                        $configVra.getConfigValue(@($targetEnv, "db", "password")),
+                        $configVra.getConfigValue(@($targetEnv, "db", "port")))
 
     $vraTenantList = @{}
 
@@ -291,19 +276,12 @@ try
     {
         # Création d'une connexion au serveur vRA pour accéder à ses API REST
         $logHistory.addLineAndDisplay(("Connecting to vRA tenant {0}...") -f $tenant)
-        $vraTenantList.$tenant = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+        $vraTenantList.$tenant = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
                                             $tenant, 
-                                            $configVra.getConfigValue($targetEnv, "infra", $tenant, "user"), 
-                                            $configVra.getConfigValue($targetEnv, "infra", $tenant, "password"))
+                                            $configVra.getConfigValue(@($targetEnv, "infra", $tenant, "user")),
+                                            $configVra.getConfigValue(@($targetEnv, "infra", $tenant, "password")))
     }
 
-    
-
-    # Objet pour lire les informations sur le services IT
-    $itServices = [ITServices]::new()
-
-    # On prend la liste correspondant à l'environnement sur lequel on se trouve
-    $itServicesList = $itServices.getServiceList($targetEnv)
 
     # Fichier JSON contenant les détails du service que l'on veut facturer    
     $serviceBillingInfosFile = ([IO.Path]::Combine("$PSScriptRoot", "data", "billing", $service.ToLower(), "service.json"))
@@ -314,18 +292,18 @@ try
     }
 
     # Chargement des informations (On spécifie UTF8 sinon les caractères spéciaux ne sont pas bien interprétés)
-    $serviceBillingInfos = Get-Content -Path $serviceBillingInfosFile -Encoding:UTF8 | ConvertFrom-Json
+    $serviceBillingInfos = loadFromCommentedJSON -jsonFile $serviceBillingInfosFile
 
 
     # Création de l'objet pour faire les opérations pour le service donné. On le créée d'une manière dynamique en utilisant la bonne classe
     # en fonction du type de service à facturer
-    $expression = '$billingObject = [{0}]::new($vraTenantList, $sqldb, $ldap, $itServicesList, $serviceBillingInfos, $targetEnv)' -f $serviceBillingInfos.billingClassName
+    $expression = '$billingObject = [{0}]::new($vraTenantList, $sqldb, $serviceBillingInfos, $targetEnv)' -f $serviceBillingInfos.billingClassName
     Invoke-expression $expression
 
     # Pour accéder à Copernic
-    $copernic = [CopernicAPI]::new($configBilling.getConfigValue($targetEnv, "copernic", "server"), `
-                                   $configBilling.getConfigValue($targetEnv, "copernic", "username"), `
-                                   $configBilling.getConfigValue($targetEnv, "copernic", "password"))
+    $copernic = [CopernicAPI]::new($configBilling.getConfigValue(@($targetEnv, "copernic", "server")),
+                                   $configBilling.getConfigValue(@($targetEnv, "copernic", "username")),
+                                   $configBilling.getConfigValue(@($targetEnv, "copernic", "password")))
 
     # En fonction de l'action demandée
     switch($action)
@@ -334,14 +312,47 @@ try
         ##             GENERATION DES DONNEES DE FACTURATION                  ##
         $global:ACTION_EXTRACT_DATA
         {
+            # Ajout des différents compteurs
+            $counters.add('itemEligibleToBeBilled', '# Items eligible to be billed')
+            $counters.add('itemNonBillable', '# Items non billable (ITServices)')
+            $counters.add('itemsZeroQte', '# Items with zero quantity')
+            $counters.add('itemsNonBillableIncorrectData' , '# Items non billable because incorrect data')
+            $counters.add('itemsNonBillableNotEnoughData' , '# Items non billable not enough data')
+
             $logHistory.addLineAndDisplay("Action => Data extraction")
 
             $month = [int](Get-Date -Format "MM")
             $year = [int](Get-Date -Format "yyyy")
 
             # Extraction des données pour les mettre dans la table où tout est formaté la même chose
-            $billingObject.extractData($month, $year)
+            # On enregistre aussi le nombre d'éléments qui peuvent être facturés
+            $itemEligibleToBeBilled, $itemNonBillable, $itemsZeroQte, $itemsNonBillableIncorrectData, $itemsNonBillableNotEnoughData  =  $billingObject.extractData($month, $year)
 
+            $counters.set('itemEligibleToBeBilled',$itemEligibleToBeBilled)
+            $counters.set('itemNonBillable', $itemNonBillable)
+            $counters.set('itemsZeroQte', $itemsZeroQte)
+            $counters.set('itemsNonBillableIncorrectData', $itemsNonBillableIncorrectData)
+            $counters.set('itemsNonBillableNotEnoughData', $itemsNonBillableNotEnoughData)
+
+        }
+
+        ########################################################################
+        ##                   GENERATION DES FACTURES                          ##
+        $global:ACTION_BILLING
+        {
+            # Ajout des différents compteurs
+            $counters.add('entityProcessed', '# Entity processed')
+            $counters.add('billCanceled', '# Bill canceled')
+            $counters.add('billDone', '# Entity Bill done')
+            $counters.add('billSkippedToLow', '# Entity bill skipped (amount to low)')
+            $counters.add('billSkippedNothing', '# Entity bill bill skipped (nothing to bill)')
+            $counters.add('billSentToCopernic', '# Bill sent to Copernic')
+            $counters.add('billCopernicError', '# Bill not sent to Copernic because of an error')
+            $counters.add('PDFGenerated', '# PDF generated')
+            $counters.add('PDFOldCleaned', '# Old PDF cleaned')
+            $counters.add('billSentByEmail', '# Bill send by email')
+            $counters.add('billIncorrectFinanceCenter', '# incorrect finance center')
+            
 
             # SI on doit reset une facture pour l'émettre à nouveau
             if($redoBill -ne "")
@@ -350,12 +361,7 @@ try
                 $billingObject.cancelBill($redoBill)
                 $counters.inc('billCanceled')
             }
-        }
 
-        ########################################################################
-        ##                   GENERATION DES FACTURES                          ##
-        $global:ACTION_BILLING
-        {
             $logHistory.addLineAndDisplay("Action => Bill generation")
             # Templates pour la génération de factures
             $billingTemplate = Get-content -path $global:XAAS_BILLING_ROOT_DOCUMENT_TEMPLATE -Encoding UTF8

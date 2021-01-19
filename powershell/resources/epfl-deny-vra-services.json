@@ -1,0 +1,21 @@
+[
+    {
+        // Les unités qui sont sous cette arborescence sont concernées
+        "ldapOU": "OU=SI,O=EPFL,C=CH",
+        "deniedVRAServiceList": [
+            {
+                "svc": "NAS (Public)",
+                // si on laisse la liste vide, ça aura pour effet de ne pas mettre l'entièreté du service vRA à disposition
+                "items": ["NAS applicative volume"]
+            },
+            {
+                "svc": "VM (Public)",
+                "items": []
+            },
+            {
+                "svc": "Kubernetes (Public)",
+                "items": []
+            }
+        ]
+    }
+]
