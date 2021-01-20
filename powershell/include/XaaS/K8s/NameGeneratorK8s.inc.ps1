@@ -306,5 +306,40 @@ class NameGeneratorK8s: NameGeneratorBase
       }
    }
 
+   <# -------------------------------------------------------------------------------------
+      ----------------------------------- NSX ------------------------------------------
+      ------------------------------------------------------------------------------------- #>
 
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom NSGroup de l'environnement dans lequel il faudra ajouter le NSGroup du cluster
+
+      IN  : $deploymentTag -> Tag de déploiement que l'on met sur le cluster, à savoir prod/test/dev
+
+      RET : Nom du NSGroup racine
+   #>
+   [string] getEnvSecurityGroupName([string]$deploymentTag)
+   {
+      return "sg.k8s.{0}" -f $deploymentTag.toLower()
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie le nom et la description du NSGroup à créer dans NSX pour un cluster
+
+      IN  : $clusterName	-> Nom du cluster
+
+      RET : Tableau avec :
+            - nom du NSGroup
+            - description du NSGroup
+   #>
+   [Array] getSecurityGroupNameAndDesc([string]$clusterName)
+   {
+      return @(
+         ("sg.k8s.{0}.{1}" -f $this.env.toLower(), $clusterName)
+         ("Tenant: {0}" -f $this.tenant)
+      )
+   }
 }

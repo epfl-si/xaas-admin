@@ -1149,7 +1149,7 @@ function createNSGroupIfNotExists
 {
 	param([NSXAPI]$nsx, [string]$nsxNSGroupName, [string]$nsxNSGroupDesc, [string]$nsxSecurityTag)
 
-	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName)
+	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName, $global:NSX_VM_MEMBER_TYPE)
 
 	# Si le NSGroup n'existe pas,
 	if($null -eq $nsGroup)

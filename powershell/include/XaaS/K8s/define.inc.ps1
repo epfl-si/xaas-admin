@@ -26,10 +26,5 @@ $global:PSP_PRIVILEGED = $false
 $global:PSP_ALLOW_PRIVILEGE_ESCALATION = $false
 $global:RESOURCE_QUOTA_LB_AND_NODEPORTS = 0
 
-$global:NAMESPACE_TO_PRESERVE_LIST = @(
-   "kube-node-lease"
-   "kube-public"
-   "kube-system"
-   "nsx-system"
-   "pks-system"
-)
+# NSX
+$global:NSX_LOGICAL_SWITCH_MEMBER_TYPE = "LogicalSwitch"

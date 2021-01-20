@@ -127,6 +127,7 @@ class PKSAPI: RESTAPICurl
 	#>
 	hidden [void] waitForClusterAction([string]$clusterName)
 	{	
+		$startDate = Get-Date
 		$cluster = $null
 		do
 		{
@@ -134,6 +135,9 @@ class PKSAPI: RESTAPICurl
 			$this.debugLog(("Checking if cluster action is done on {0}..." -f $clusterName))
 			$cluster = $this.getCluster($clusterName)
 		} while (($null -ne $cluster) -and ($cluster.last_action_state -eq "in progress"))
+
+		$endDate = Get-Date
+		$this.debugLog(("Job duration: {0}" -f ((New-TimeSpan -start $startDate -end $endDate).toString())))
 
 		# Si ça ne s'est pas terminé correctement
 		if(($null -ne $cluster) -and ($cluster.last_action_state -ne "succeeded"))

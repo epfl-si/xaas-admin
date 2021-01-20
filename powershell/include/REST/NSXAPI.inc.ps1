@@ -84,14 +84,17 @@ class NSXAPI: RESTAPICurl
 
             On fait ensuite une nouvelle requête avec l'ID pour récupérer uniquement le NSGroup mais cette fois-ci avec les références.
 
-		IN  : $name     -> Nom du NS Group recherché
+        IN  : $name         -> Nom du NS Group recherché
+        IN  : $memberType   -> Ce à quoi s'applique le NSGroup:
+                                VirtualMachine
+                                LogicalSwitch
 
 		RET : Le NS group 
     #>
-    [PSObject] getNSGroupByName([string]$name)
+    [PSObject] getNSGroupByName([string]$name, [string]$memberType)
     {
         # Note: On filtre exprès avec 'member_types=VirtualMachine' car sinon tous les NSGroup attendus ne sont pas renvoyés... 
-        $uri = "https://{0}/api/v1/ns-groups/?populate_references=false&member_types=VirtualMachine" -f $this.server
+        $uri = "https://{0}/api/v1/ns-groups/?populate_references=false&member_types={1}" -f $this.server, $memberType
 
         $id =  ($this.callAPI($uri, "Get", $null).results | Where-Object {$_.display_name -eq $name}).id
      
@@ -135,9 +138,97 @@ class NSXAPI: RESTAPICurl
         $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
-        return $this.getNSGroupByName($name)
+        return $this.getNSGroupByName($name, "VirtualMachine")
     }
 
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Crée un NS Group pour un cluster K8s donné
+
+		IN  : $name	        -> Le nom du groupe
+		IN  : $description	-> La description
+		IN  : $clusterUUID  -> UUID du cluster K8s
+
+		RET : Le NS group créé
+	#>
+    [PSObject] addNSGroupK8sCluster([string]$name, [string]$desc, [string] $clusterUUID)
+    {
+		$uri = "https://{0}/api/v1/ns-groups" -f $this.server
+
+		# Valeur à mettre pour la configuration du NS Group
+		$replace = @{name = $name
+					description = $desc
+					clusterUUID = $clusterUUID}
+
+        $body = $this.createObjectFromJSON("nsx-nsgroup-xaas-k8s-cluster.json", $replace)
+        
+		# Création du NS Group
+        $this.callAPI($uri, "Post", $body) | Out-Null
+        
+        # Retour du NS Group en le cherchant par son nom
+        return $this.getNSGroupByName($name, "LogicalSwitch")
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute un membre de type NSGroup à un NSGroup existant
+
+		IN  : $nsGroup          -> Objet représentant le NSGroup auquel ajouter le membre
+		IN  : $nsGroupToAdd     -> Objet représentant le NSGroup à ajouter
+
+		RET : Le NS group modifié
+	#>
+    [PSObject] addNSGroupMemberNSGroup([PSObject]$nsGroup, [PSObject]$nsGroupToAdd)
+    {
+        # Si le membre n'est pas encore présent
+        if($null -eq ($nsGroup.members | Where-Object { $_.value -eq $nsGroupToAdd.id}))
+        {
+            $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $nsGroup.id
+
+            # Valeur à mettre pour ajouter le membre
+            $replace = @{nsGroupId = $nsGroupToAdd.id }
+
+            $newMember = $this.createObjectFromJSON("nsx-nsgroup-member-nsgroup.json", $replace)
+
+            $nsGroup.members += $newMember
+
+            $this.callAPI($uri, "PUT", $nsGroup) | Out-Null
+        }
+
+        return $nsGroup
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute un membre de type NSGroup à un NSGroup existant
+
+		IN  : $nsGroup          -> Objet représentant le NSGroup auquel ajouter le membre
+		IN  : $nsGroupToAdd     -> Objet représentant le NSGroup à ajouter
+
+		RET : Le NS group modifié
+	#>
+    [PSObject] removeNSGroupMemberFromNSGroup([PSObject]$nsGroup, [PSObject]$nsGroupToRemove)
+    {
+        # On génère la liste des membres en enlevant celui qu'on doit enlever
+        # On met @() pour être sûr d'avoir une liste et pas un $null dans le cas où ça serait
+        # le dernier NSGroup membre que l'on voudrait supprimer
+        $newMembers = @(($nsGroup.members | Where-Object { $_.value -ne $nsGroupToRemove.id}))
+
+        # Si le NSGroup à supprimer était bien présent dans la liste,
+        if($newMembers.count -ne $nsGroup.Members.count)
+        {
+            $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $nsGroup.id
+
+            $nsGroup.members = $newMembers
+
+            $this.callAPI($uri, "PUT", $nsGroup) | Out-Null
+        }
+
+        return $nsGroup
+    }
 
     <#
 		-------------------------------------------------------------------------------------

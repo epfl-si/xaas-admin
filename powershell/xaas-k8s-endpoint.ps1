@@ -1,19 +1,19 @@
 <#
 USAGES:
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgId <bgId> -plan <plan> -netProfile <netProfile>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgId <bgId> -clusterName <clusterName> [-clusterUUID <clusterUUID>]
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgId <bgId> -plan <plan> -netProfile <netProfile> -deploymentTag prod|test|dev
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgId <bgId> -clusterName <clusterName> -deploymentTag prod|test|dev [-clusterUUID <clusterUUID>]
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getClusterInfos -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action setNbWorkers -clusterName <clusterName> -nbWorkers <nbWorkers>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNbWorkers -clusterName <clusterName>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addNamespace -bgId <bgId> -clusterName <clusterName> -namespace <namespace>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNamespaceList -clusterName <clusterName>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNamespace -clusterName <clusterName> -namespace <namespace>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNamespaceResources -clusterName <clusterName> -namespace <namespace>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addLB -clusterName <clusterName> -namespace <namespace>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNBLB -clusterName <clusterName> -namespace <namespace>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delLB -clusterName <clusterName> -namespace <namespace>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action extendNamespaceStorage -clusterName <clusterName> -namespace <namespace> -extSizeGB <extSizeGB>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addRobot -bgId <bgId> -clusterName <clusterName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addNS -bgId <bgId> -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNSList -clusterName <clusterName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNS -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNSResources -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addNSLB -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNSNbLB -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNSLB -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action extendNSStorage -clusterName <clusterName> -namespace <namespace> -extSizeGB <extSizeGB>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addHarborRobot -bgId <bgId> -clusterName <clusterName>
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -53,6 +53,7 @@ param([string]$targetEnv,
       [string]$plan,
       [int]$nbWorkers,
       [string]$netProfile,
+      [string]$deploymentTag,
       [string]$clusterName,
       [string]$clusterUUID,
       [string]$namespace,
@@ -97,20 +98,20 @@ $configNSX = [ConfigReader]::New("config-nsx.json")
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
 # Liste des actions possibles
-$ACTION_CREATE                      = "create"
-$ACTION_DELETE                      = "delete"
-$ACTION_GET_CLUSTER_INFOS           = "getClusterInfos"
-$ACTION_GET_NB_WORKERS              = "getNbWorkers"
-$ACTION_SET_NB_WORKERS              = "setNbWorkers"
-$ACTION_ADD_NAMESPACE               = "addNamespace"
-$ACTION_GET_NAMESPACE_LIST          = "getNamespaceList"
-$ACTION_DELETE_NAMESPACE            = "delNamespace"
-$ACTION_ADD_LOAD_BALANCER           = "addLB"
-$ACTION_GET_NB_LOAD_BALANCER        = "getNBLB"
-$ACTION_DELETE_LOAD_BALANCER        = "delLB"
-$ACTION_EXTEND_NAMESPACE_STORAGE    = "extendNamespaceStorage"
-$ACTION_GET_NAMESPACE_RESOURCES     = "getNamespaceResources"
-$ACTION_ADD_ROBOT                   = "addRobot"
+$ACTION_CREATE                          = "create"
+$ACTION_DELETE                          = "delete"
+$ACTION_GET_CLUSTER_INFOS               = "getClusterInfos"
+$ACTION_GET_NB_WORKERS                  = "getNbWorkers"
+$ACTION_SET_NB_WORKERS                  = "setNbWorkers"
+$ACTION_ADD_NAMESPACE                   = "addNS"
+$ACTION_GET_NAMESPACE_LIST              = "getNSList"
+$ACTION_DELETE_NAMESPACE                = "delNS"
+$ACTION_ADD_NAMESPACE_LOAD_BALANCER     = "addNSLB"
+$ACTION_GET_NAMESPACE_NB_LOAD_BALANCER  = "getNSNbLB"
+$ACTION_DELETE_NAMESPACE_LOAD_BALANCER  = "delNSLB"
+$ACTION_EXTEND_NAMESPACE_STORAGE        = "extendNSStorage"
+$ACTION_GET_NAMESPACE_RESOURCES         = "getNSResources"
+$ACTION_ADD_HARBOR_ROBOT                = "addHarborRobot"
 
 $ROBOT_NB_DAYS_LIFETIME         = 7
 
@@ -168,8 +169,9 @@ function getNextClusterName([PKSAPI]$pks, [NameGeneratorK8s]$nameGeneratorK8s)
                                 pour un cluster déjà effacé mais que le reste n'a pas pu être traité.)
     IN  : $ipPoolName       -> Nom du pool IP dans NSX
     IN  : $targetTenant     -> Tenant cible
+    IN  : $envNSGroup       -> Objet représentant le NSGroup NSX qui contient le NSGroup du cluster
 #>
-function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGeneratorK8s]$nameGeneratorK8s, [HarborAPI]$harbor, [string]$clusterName, [string]$clusterUUID, [string]$ipPoolName, [string]$targetTenant)
+function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGeneratorK8s]$nameGeneratorK8s, [HarborAPI]$harbor, [string]$clusterName, [string]$clusterUUID, [string]$ipPoolName, [string]$targetTenant, [PSObject]$envNSGroup)
 {
     # Le nom du cluster peut être encore vide dans le cas où une erreur surviendrait avait que le nom soit initialisé. 
     # Dans ce cas, on ne fait rien
@@ -198,6 +200,27 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     {
         $logHistory.addLine(("Cluster '{0}' doesn't exists" -f $clusterName))
     }
+
+    # -----------
+    # ---- NSX
+    $nsGroupName, $nsGroupDesc = $nameGeneratorK8s.getSecurityGroupNameAndDesc($clusterName)
+    $logHistory.addLine("Some cleaning in NSX...")
+
+    $nsGroup = $nsx.getNSGroupByName($nsGroupName, $global:NSX_LOGICAL_SWITCH_MEMBER_TYPE)
+    # Si le NSGroup existe
+    if($null -ne $nsGroup)
+    {
+        $logHistory.addLine(("Removing NSX NSGroup '{0}' from NSGroup '{1}'" -f $nsGroupName, $envNSGroup.display_name))        
+        $envNSGroup = $nsx.removeNSGroupMemberFromNSGroup($envNSGroup, $nsGroup)
+        $logHistory.addLine(("Deleting NSX NSGroup '{0}'" -f $nsGroupName))
+        $nsx.deleteNSGroup($nsGroup)
+    }
+    else
+    {
+        $logHistory.addLine(("NSX NSGroup '{0}' already deleted" -f $nsGroupName))
+    }
+
+    
 
     # -----------
     # ---- Réseau
@@ -575,6 +598,23 @@ try
     # On efface le cache DNS pour ne pas avoir de surprise par la suite
     Clear-DnsClientCache
 
+
+    # Precheck pour plusieurs actions
+    if(@($ACTION_CREATE, $ACTION_DELETE) -contains $action)
+    {
+        $envNSGroupName = $nameGeneratorK8s.getEnvSecurityGroupName($deploymentTag)
+        $logHistory.addLine(("Looking for environement NSX NSGroup '{0}'" -f $envNSGroupName))
+        $envNSGroup = $nsx.getNSGroupByName($envNSGroupName, $global:NSX_LOGICAL_SWITCH_MEMBER_TYPE)
+
+        if($null -eq $envNSGroup)
+        {
+            $output.error = "NSX NSGroup '{0}' not found" -f $envNSGroupName
+            # Pour faire en sorte de ne pas entrer dans le "switch" et directement aller sur l'affichage du JSON de résultat
+            $action = ""
+        }
+    }
+        
+
     # -------------------------------------------------------------------------
     # En fonction de l'action demandée
     switch ($action)
@@ -590,6 +630,11 @@ try
             # Pour dire si on peut effectuer du cleaning dans le cas d'une erreur
             $cleaningCanBeDoneIfError = $true
             
+            # ------------------
+            # ---- Precheck
+            # On fait quelques contrôles avant de commencer à faire quoi que ce soit, histoire de ne pas commencer à perdre du temps
+            # à créer le cluster alors qu'il manque quelque chose après coup pour finaliser l'opération
+
             # Extraction des plans disponibles
             $allowedPlans = $resourceQuotaLimits.nbWorkers | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name
 
@@ -730,6 +775,16 @@ try
             $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($ROBOT_NB_DAYS_LIFETIME)
             $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $robotInfos.expireAt)
 
+
+            # -----------
+            # ---- NSX
+
+            $nsGroupName, $nsGroupDesc = $nameGeneratorK8s.getSecurityGroupNameAndDesc($clusterName)
+            $logHistory.addLine(("Creating NSX NSGroup '{0}'" -f $nsGroupName))
+            $nsGroup = $nsx.addNSGroupK8sCluster($nsGroupName, $nsGroupDesc, $cluster.uuid)
+            $logHistory.addLine(("Adding NSGroup '{0}' to environement NSGroup '{1}'" -f $nsGroupName, $envNSGroupName))
+            $envNSGroup = $nsx.addNSGroupMemberNSGroup($envNSGroup, $nsGroup)
+
             # Résultat
             $output.results += @{
                 name = $clusterName
@@ -751,7 +806,7 @@ try
         $ACTION_DELETE
         {
             deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName -clusterUUID $clusterUUID `
-                        -harbor $harbor -ipPoolName $configK8s.getConfigValue(@($targetEnv, "nsx", "ipPoolName")) -targetTenant $targetTenant
+                        -harbor $harbor -ipPoolName $configK8s.getConfigValue(@($targetEnv, "nsx", "ipPoolName")) -targetTenant $targetTenant -envNSGroup $envNSGroup
         }
 
 
@@ -959,7 +1014,7 @@ try
         #>
 
         # -- Nouveau Load Balancer
-        $ACTION_ADD_LOAD_BALANCER
+        $ACTION_ADD_NAMESPACE_LOAD_BALANCER
         {
             # Récupération du resourceQuota du namespace du cluster
             $resourceQuota = getClusterNamespaceResourceQuota -clusterName $clusterName -namespace $namespace -tkgiKubectl $tkgiKubectl -logHistory $logHistory
@@ -994,7 +1049,7 @@ try
 
 
         # -- Nombre de Load Balancers
-        $ACTION_GET_NB_LOAD_BALANCER
+        $ACTION_GET_NAMESPACE_NB_LOAD_BALANCER
         {
             # Récupération du resourceQuota du namespace du cluster
             $resourceQuota = getClusterNamespaceResourceQuota -clusterName $clusterName -namespace $namespace -tkgiKubectl $tkgiKubectl -logHistory $logHistory
@@ -1008,7 +1063,7 @@ try
 
 
         # -- Effacement d'un Load Balancer
-        $ACTION_DELETE_LOAD_BALANCER
+        $ACTION_DELETE_NAMESPACE_LOAD_BALANCER
         {
             # Récupération du resourceQuota du namespace du cluster
             $resourceQuota = getClusterNamespaceResourceQuota -clusterName $clusterName -namespace $namespace -tkgiKubectl $tkgiKubectl -logHistory $logHistory
@@ -1084,7 +1139,7 @@ try
         #>
 
         # -- Nouveau robot
-        $ACTION_ADD_ROBOT
+        $ACTION_ADD_HARBOR_ROBOT
         {
 
             $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
@@ -1104,6 +1159,11 @@ try
                 token = $robot.token
                 validityDays = $ROBOT_NB_DAYS_LIFETIME
             }
+        }
+
+        default
+        {
+
         }
     }
 
@@ -1127,8 +1187,8 @@ catch
     {
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating cluster '{0}', deleting it so everything is clean:`n{1}`nStack Trace:`n{2}" -f $clusterName, $errorMessage, $errorTrace))
-        deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -harbor $harbor `
-                -clusterName $clusterName -clusterUUID "" -ipPoolName $configK8s.getConfigValue(@($targetEnv, "nsx", "ipPoolName")) -targetTenant $targetTenant
+        deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -harbor $harbor  -clusterName $clusterName `
+                    -clusterUUID "" -ipPoolName $configK8s.getConfigValue(@($targetEnv, "nsx", "ipPoolName")) -targetTenant $targetTenant -envNSGroup $envNSGroup
     }
 
     # Reset des infos s'il y en avait, ajout de l'erreur et affichage
