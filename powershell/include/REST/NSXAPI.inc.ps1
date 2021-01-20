@@ -112,7 +112,7 @@ class NSXAPI: RESTAPICurl
     
     <#
 		-------------------------------------------------------------------------------------
-		BUT : Crée un NS Group
+		BUT : Crée un NS Group pour des machines virtuelles
 
 		IN  : $name	        -> Le nom du groupe
 		IN  : $description	-> La description
@@ -120,7 +120,7 @@ class NSXAPI: RESTAPICurl
 
 		RET : Le NS group créé
 	#>
-    [PSObject] addNSGroup([string]$name, [string]$desc, [string] $tag)
+    [PSObject] addNSGroupVirtualMachine([string]$name, [string]$desc, [string] $tag)
     {
 		$uri = "https://{0}/api/v1/ns-groups" -f $this.server
 
@@ -129,7 +129,7 @@ class NSXAPI: RESTAPICurl
 					description = $desc
 					tag = $tag}
 
-        $body = $this.createObjectFromJSON("nsx-nsgroup.json", $replace)
+        $body = $this.createObjectFromJSON("nsx-nsgroup-virtual-machine.json", $replace)
         
 		# Création du NS Group
         $this.callAPI($uri, "Post", $body) | Out-Null

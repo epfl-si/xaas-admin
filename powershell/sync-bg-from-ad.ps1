@@ -1157,7 +1157,7 @@ function createNSGroupIfNotExists
 		$logHistory.addLineAndDisplay(("-> Creating NSX NS Group '{0}'... " -f $nsxNSGroupName))
 
 		# Création de celui-ci
-		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag)
+		$nsGroup = $nsx.addNSGroupVirtualMachine($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag)
 
 		$counters.inc('NSXNSGroupCreated')
 	}
