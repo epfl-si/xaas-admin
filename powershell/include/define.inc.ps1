@@ -78,7 +78,7 @@ $global:VRA_BG_STATUS__GHOST = "ghost"
 # Valeurs possibles pour la gestion des Réservations du Business Group
 $global:VRA_BG_RES_MANAGE__AUTO  = "auto"
 $global:VRA_BG_RES_MANAGE__MAN   = "man"
-
+ 
 # Pour filtrer et ne prendre que les groupes AD modifiés durant les X derniers jours pour la création des éléments dans vRA
 $global:AD_GROUP_MODIFIED_LAST_X_DAYS = 2
 

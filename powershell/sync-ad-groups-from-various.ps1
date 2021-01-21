@@ -91,7 +91,7 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 	# On regarde si le groupe à ajouter dans le nouveau groupe existe
 	if($null -eq (getADGroup -groupName $groupMemberGroup))
 	{
-		$logHistory.addWarningAndDisplay(("Inner group '{0}' doesn't exists, skipping AD group '{1}' creation!" -f $groupMemberGroup, $groupName))
+		$logHistory.addWarningAndDisplay(("Inner group '{0}' has been created but still not available in AD (wait for sync), skipping AD group '{1}' creation for now!" -f $groupMemberGroup, $groupName))
 		return $false
 	}
 
