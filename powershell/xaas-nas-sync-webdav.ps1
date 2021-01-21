@@ -1,6 +1,6 @@
 <#
 USAGES:
-    xaas-nas-sync-webdav.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research 
+    xaas-nas-sync-webdav.ps1 -targetEnv prod|test|dev
 #>
 <#
     BUT 		: Script lancé par une tâche planifiée, afin de créer le nécessaire sur la passerelle WebDAV
@@ -9,8 +9,6 @@ USAGES:
 	DATE 	: Octobre 2020
     AUTEUR 	: Lucien Chaboudez
     
-    VERSION : 1.01
-
     REMARQUES : 
     - Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy via Set-ExecutionPolicy. 
         Normalement, si on met la valeur "Unrestricted", cela suffit à correctement faire tourner le script. 
@@ -18,10 +16,8 @@ USAGES:
         soit demandé d'utiliser "Unblock-File" pour permettre l'exécution. Ceci ne fonctionne pas ! A la 
         place il faut à nouveau passer par la commande Set-ExecutionPolicy mais mettre la valeur "ByPass" 
         en paramètre.
-    
 #>
-param([string]$targetEnv, 
-      [string]$targetTenant)
+param([string]$targetEnv)
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -418,7 +414,7 @@ function handleNotifications
 try
 {
     
-    $logName = 'xaas-nas-sync-webdav-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
+    $logName = 'xaas-nas-sync-webdav-{0}' -f $targetEnv.ToLower()
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
 
@@ -448,14 +444,6 @@ try
     $counters.add('vServerVirtualDirCreated', '# vServer virtual dir created')
     $counters.add('vServerVirtualDirDeleted', '# vServer virtual dir deleted')
     
-    # $counters.add('VMNotInvSphere', '# VM not in vSphere')
-
-    # Création d'une connexion au serveur vRA pour accéder à ses API REST
-	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
-                        $targetTenant, 
-                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
-                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
-
     # Création de l'objet pour se connecter aux clusters NetApp
     $netapp = [NetAppAPI]::new($configNAS.getConfigValue(@($targetEnv, "serverList")),
                                 $configNAS.getConfigValue(@($targetEnv, "user")),
@@ -465,9 +453,8 @@ try
     # Objet pour pouvoir envoyer des mails de notification
 	$valToReplace = @{
 		targetEnv = $targetEnv
-		targetTenant = $targetTenant
+		targetTenant = "all"
 	}
-	
                                                 
     <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -490,88 +477,107 @@ try
     Import-Module WebAdministration
 
 
-    # Récupération des informations sur les FS qui doivent être accédés en WebDav 
-    $webdavShareList = [Array](getWebDAVShareList -vra $vra -netapp $netapp)
+    $tenantToProcess = @(
+        $global:VRA_TENANT__EPFL
+        $global:VRA_TENANT__ITSERVICES
+    )
 
     # # Liste pour les vServer+shares traités (renvoyés par le Web Service)
     $vServerDoneList = @{}
 
-
-    # Parcours des lignes renvoyées par le Web Service
-    foreach($webdavInfos in $webdavShareList)
+    # Parcours des tenants depuis lesquels il faut récupérer la liste des shares WebDAV à créer
+    ForEach($targetTenant in $tenantToProcess)
     {
-        $logHistory.addlineAndDisplay(("Processing share '{0}' on '{1}' server..." -f $webdavInfos.share, $webdavInfos.vserver))
+        # Création d'une connexion au serveur vRA pour accéder à ses API REST
+        $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
+                                $targetTenant, 
+                                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+                                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
-        # Si on n'a pas encore traité ce vServer, 
-        if($vServerDoneList.Keys -notcontains $webdavInfos.vserver)
+        # Récupération des informations sur les FS qui doivent être accédés en WebDav 
+        $webdavShareList = [Array](getWebDAVShareList -vra $vra -netapp $netapp)
+
+        # Parcours des lignes renvoyées par le Web Service
+        foreach($webdavInfos in $webdavShareList)
         {
-            # Mise à jour du vServer
-            updateVServerVirtualDirectory -netapp $netapp -vServerName $webdavInfos.vserver -exists $true
-            
-            $vServerDoneList.($webdavInfos.vserver) = @()
-        }# FIN SI on n'a pas encore traité le vServer 
-        
-        # Mise à jour du share 
-        updateShareVirtuaDirectory -netapp $netapp -vServerName $webdavInfos.vserver -shareName $webdavInfos.share -exists $true
-        
-        # Ajout du share dans la liste 
-        $vServerDoneList.($webdavInfos.vserver) += $webdavInfos.share
+            $logHistory.addlineAndDisplay(("Processing share '{0}' on '{1}' server..." -f $webdavInfos.share, $webdavInfos.vserver))
 
-    }# FIN BOUCLE de parcours des lignes renvoyées
+            # Si on n'a pas encore traité ce vServer, 
+            if($vServerDoneList.Keys -notcontains $webdavInfos.vserver)
+            {
+                # Mise à jour du vServer
+                updateVServerVirtualDirectory -netapp $netapp -vServerName $webdavInfos.vserver -exists $true
+
+                $vServerDoneList.($webdavInfos.vserver) = @()
+            }# FIN SI on n'a pas encore traité le vServer 
+
+            # Mise à jour du share 
+            updateShareVirtuaDirectory -netapp $netapp -vServerName $webdavInfos.vserver -shareName $webdavInfos.share -exists $true
+
+            # Ajout du share dans la liste 
+            $vServerDoneList.($webdavInfos.vserver) += $webdavInfos.share
+
+        }# FIN BOUCLE de parcours des lignes renvoyées
+
+        # On peut se déconnecter du tenant courant
+        $vra.disconnect()
+    }
+    
 
 
     # -------------------------------------------
     # Maintenant que l'on a traité les shares qui existent, on doit supprimer ceux qui n'existent plus.
 
-    # Recherche de la liste des "Virtual directory" qui existent dans la config WebDav
-    $existingVirtualDirList = Get-WebVirtualDirectory -Site $global:WEBDAV_SITE_NAME 
+    # TODO: Décommenter la partie ci-dessous lorsque la migration NAS sera terminée
+    # # Recherche de la liste des "Virtual directory" qui existent dans la config WebDav
+    # $existingVirtualDirList = Get-WebVirtualDirectory -Site $global:WEBDAV_SITE_NAME 
 
-    # parcours de la liste
-    foreach($existingVirtualDirInfos in $existingVirtualDirList)
-    {
-        $logHistory.addlineAndDisplay(("Processing virtual directory '{0}'..." -f $existingVirtualDirInfos.path))
-        # Le path est au format /<vServer>[/shareName]
+    # # parcours de la liste
+    # foreach($existingVirtualDirInfos in $existingVirtualDirList)
+    # {
+    #     $logHistory.addlineAndDisplay(("Processing virtual directory '{0}'..." -f $existingVirtualDirInfos.path))
+    #     # Le path est au format /<vServer>[/shareName]
         
-        # Extraction des infos 
-        $null, $vServerName, $shareName = $existingVirtualDirInfos.path.split('/')
+    #     # Extraction des infos 
+    #     $null, $vServerName, $shareName = $existingVirtualDirInfos.path.split('/')
         
-        # Si c'est un Virtual Directory qui représente un share
-        if($null -ne $shareName)
-        {
-            # Si le vServer ne devrait pas exister, 
-            if($vServerDoneList.Keys -notcontains $vServerName)
-            {
-                $logHistory.addLineAndDisplay(("> Virtual directory for server '{0}' shouldn't exists, deleting it..." -f $vServerName))
-                # On le supprime
-                updateVServerVirtualDirectory -netapp $netapp -vServerName $vServerName -exists $false
+    #     # Si c'est un Virtual Directory qui représente un share
+    #     if($null -ne $shareName)
+    #     {
+    #         # Si le vServer ne devrait pas exister, 
+    #         if($vServerDoneList.Keys -notcontains $vServerName)
+    #         {
+    #             $logHistory.addLineAndDisplay(("> Virtual directory for server '{0}' shouldn't exists, deleting it..." -f $vServerName))
+    #             # On le supprime
+    #             updateVServerVirtualDirectory -netapp $netapp -vServerName $vServerName -exists $false
                 
-            }
-            # Le vServer doit exister,
-            else
-            {
-                # Si le share ne doit pas exister, 
-                if($vServerDoneList.$vServerName -notcontains $shareName)
-                {
-                    $logHistory.addLineAndDisplay(("> Virtual directory for share '{0}' on server '{1}' shouldn't exists, deleting it..." -f $shareName, $vServerName))
-                    updateShareVirtuaDirectory -netapp $netapp -vServerName $vServerName -shareName $shareName -exists $false
+    #         }
+    #         # Le vServer doit exister,
+    #         else
+    #         {
+    #             # Si le share ne doit pas exister, 
+    #             if($vServerDoneList.$vServerName -notcontains $shareName)
+    #             {
+    #                 $logHistory.addLineAndDisplay(("> Virtual directory for share '{0}' on server '{1}' shouldn't exists, deleting it..." -f $shareName, $vServerName))
+    #                 updateShareVirtuaDirectory -netapp $netapp -vServerName $vServerName -shareName $shareName -exists $false
                   
-                }
-            }# FIN Si le vServer doit exister
+    #             }
+    #         }# FIN Si le vServer doit exister
             
-        }
-        else # C'est un vServer qui est représenté
-        {
-            # Si le vServer ne devrait pas exister, 
-            if($vServerDoneList.Keys -notcontains $vServerName)
-            {
-                $logHistory.addLineAndDisplay(("> Virtual directory for server '{0}' shouldn't exists, deleting it..." -f $vServerName))
-                # On le supprime
-                updateVServerVirtualDirectory -netapp $netapp -vServerName $vServerName -exists $false
+    #     }
+    #     else # C'est un vServer qui est représenté
+    #     {
+    #         # Si le vServer ne devrait pas exister, 
+    #         if($vServerDoneList.Keys -notcontains $vServerName)
+    #         {
+    #             $logHistory.addLineAndDisplay(("> Virtual directory for server '{0}' shouldn't exists, deleting it..." -f $vServerName))
+    #             # On le supprime
+    #             updateVServerVirtualDirectory -netapp $netapp -vServerName $vServerName -exists $false
               
-            }
-        }# FIN SI c'est un vServer qui est représenté
+    #         }
+    #     }# FIN SI c'est un vServer qui est représenté
     
-    }# FIN BOUCLE de parcours de la liste des dossiers existants.
+    # }# FIN BOUCLE de parcours de la liste des dossiers existants.
 
     # Affichage des compteurs
     $logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))

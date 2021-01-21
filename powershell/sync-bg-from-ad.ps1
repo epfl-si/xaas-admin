@@ -566,7 +566,8 @@ function createOrUpdateBGEnt
 <#
 -------------------------------------------------------------------------------------
 	BUT : Ajoute les Services "Public" à un Entitlement de Business Group s'il n'y
-			sont pas déjà.
+			sont pas déjà. Tous les services "Private" ne sont pas touchés, ils restent 
+			présents s'il y en avait.
 			Pour le moment, on ne fait que préparer l'objet pour ensuite réellement le
 			mettre à jour via vRAAPI::updateEnt(). On fait la mise à jour (update) en une
 			seule fois car faire en plusieurs fois, une par élément à mettre à jour (action,
@@ -587,12 +588,13 @@ function createOrUpdateBGEnt
 											sont présents dans la liste
 	IN  : $mandatoryItems	-> Tableau avec la liste des items de catalogue à ajouter obligatoirement
 								à la liste des "Entitled items"	
+	IN  : $bgName			-> Le nom du BG auquel l'entitlement est lié	
 	
 	RET : Objet Entitlement mis à jour
 #>
 function prepareAddMissingBGEntPublicServices
 {
-	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices, [Array]$mandatoryItems)
+	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices, [Array]$mandatoryItems, [string]$bgName)
 
 
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
@@ -612,8 +614,10 @@ function prepareAddMissingBGEntPublicServices
 
 		# Parcours et ajout
 		$mandatoryItems | ForEach-Object {
+
 			$catalogItem = $vra.getCatalogItem($_.name)
 
+			# Elément de catalogue pas trouvé dans vRA
 			if($null -eq $catalogItem)
 			{
 				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not found!" -f $_.name))
@@ -621,20 +625,31 @@ function prepareAddMissingBGEntPublicServices
 			}
 			else # L'élément de catalogue existe
 			{
-				$logHistory.addLineAndDisplay(("--> Adding catalog item '{0}'..." -f $_.name))
+				# On regarde si on peut bien ajouter l'élément de catalogue pour le BG courant
+				if(($_.onlyForBG.count -eq 0) -or `
+					(($_.onlyForBG.count -gt 0) -and ($_.onlyForBG -contains $bgName)))
+				{
+					$logHistory.addLineAndDisplay(("--> Adding catalog item '{0}'..." -f $_.name))
 
-				# Définition de la potentielle approval policy à mettre
-				if($_.hasApproval)
-				{
-					$itemApprovalPolicy = $approvalPolicy
+					# Définition de la potentielle approval policy à mettre
+					if($_.hasApproval)
+					{
+						$itemApprovalPolicy = $approvalPolicy
+					}
+					else
+					{
+						$itemApprovalPolicy = $null
+					}
+					
+					$ent = $vra.prepareAddEntCatalogItem($ent, $catalogItem, $itemApprovalPolicy)
+
 				}
-				else
+				else # L'élément de catalogue n'est pas autorisé pour le BG courant
 				{
-					$itemApprovalPolicy = $null
+					$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not allowed for BG '{1}'" -f $_.name, $bgName))
 				}
 				
-				$ent = $vra.prepareAddEntCatalogItem($ent, $catalogItem, $itemApprovalPolicy)
-			}
+			}# FIN SI l'élément de catalogue existe
 			
 		}# FIN BOUCLE de parcours des éléments de catalogue obligatoires
 
@@ -1714,7 +1729,8 @@ try
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
-		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
+		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc `
+				-mandatoryItems $mandatoryEntItemsList -bgName $bgName
 
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus

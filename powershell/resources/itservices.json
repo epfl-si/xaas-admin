@@ -96,6 +96,13 @@
                     "items": ["NAS collaborative volume"]
                 }
             ]
+        },
+        {
+            "longName":  "Exploitation LINUX",
+            "shortName":  "lnx",
+            "snowId":  "SVC1215",
+            "serviceManagerSciper": "287589",
+            "deniedVRAServiceList": []
         }
         
     ],
