@@ -489,10 +489,10 @@ try
     ForEach($targetTenant in $tenantToProcess)
     {
         # Création d'une connexion au serveur vRA pour accéder à ses API REST
-        $vra = [vRAAPI]::new($configVra.getConfigValue($targetEnv, "infra", "server"), 
+        $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
                                 $targetTenant, 
-                                $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "user"), 
-                                $configVra.getConfigValue($targetEnv, "infra", $targetTenant, "password"))
+                                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+                                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
         # Récupération des informations sur les FS qui doivent être accédés en WebDav 
         $webdavShareList = [Array](getWebDAVShareList -vra $vra -netapp $netapp)
