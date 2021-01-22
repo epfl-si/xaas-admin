@@ -615,19 +615,19 @@ function prepareAddMissingBGEntPublicServices
 		# Parcours et ajout
 		$mandatoryItems | ForEach-Object {
 
-			$catalogItem = $vra.getCatalogItem($_.name)
+			# On regarde si on peut bien ajouter l'élément de catalogue pour le BG courant
+			if(($_.onlyForBG.count -eq 0) -or `
+				(($_.onlyForBG.count -gt 0) -and ($_.onlyForBG -contains $bgName)))
+			{
+				$catalogItem = $vra.getCatalogItem($_.name)
 
-			# Elément de catalogue pas trouvé dans vRA
-			if($null -eq $catalogItem)
-			{
-				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not found!" -f $_.name))
-				$notifications.mandatoryItemsNotFound += $_.name
-			}
-			else # L'élément de catalogue existe
-			{
-				# On regarde si on peut bien ajouter l'élément de catalogue pour le BG courant
-				if(($_.onlyForBG.count -eq 0) -or `
-					(($_.onlyForBG.count -gt 0) -and ($_.onlyForBG -contains $bgName)))
+				# Elément de catalogue pas trouvé dans vRA
+				if($null -eq $catalogItem)
+				{
+					$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not found!" -f $_.name))
+					$notifications.mandatoryItemsNotFound += $_.name
+				}
+				else # L'élément de catalogue existe
 				{
 					$logHistory.addLineAndDisplay(("--> Adding catalog item '{0}'..." -f $_.name))
 
@@ -642,14 +642,13 @@ function prepareAddMissingBGEntPublicServices
 					}
 					
 					$ent = $vra.prepareAddEntCatalogItem($ent, $catalogItem, $itemApprovalPolicy)
+				}
 
-				}
-				else # L'élément de catalogue n'est pas autorisé pour le BG courant
-				{
-					$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not allowed for BG '{1}'" -f $_.name, $bgName))
-				}
-				
-			}# FIN SI l'élément de catalogue existe
+			}
+			else # L'élément de catalogue n'est pas autorisé pour le BG courant
+			{
+				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not allowed for BG '{1}'" -f $_.name, $bgName))
+			}
 			
 		}# FIN BOUCLE de parcours des éléments de catalogue obligatoires
 
