@@ -39,7 +39,6 @@ USAGES:
  DATE	  : 15.07.2016
 ----------------------------------------------------------------------------------- #>
 
-
 # En paramètre, il faut passer le sciper de l'utilisateur dont on veut trouver les fichiers/dossiers
 param([string]$sciperList)
 
@@ -53,9 +52,6 @@ param([string]$sciperList)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "func.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "MyNAS", "NameGeneratorMyNAS.inc.ps1"))
 
-
-
-# --------------------------------------------------------------------------------
 
 <#
 	-------------------------------------------------------------------------------------
@@ -89,11 +85,10 @@ function searchUserSID([string]$sciper)
 $nameGeneratorMyNAS = [NameGeneratorMyNAS]::new()
 
 # Si on a plus d'un sciper, 
-$sciperArray = $sciperList.split(":")
 $sidArray = @()
 $serverPath = $null
 # Parcours des Sciper passés
-foreach($sciper in $sciperArray)
+foreach($sciper in $sciperList.split(":"))
 {
    # Si on n'a pas encore initialisé le chemin 
    if($null -eq $serverPath)
@@ -140,7 +135,7 @@ $processStartInfo.Arguments = (' /C fileacl.exe {0} /OWNER /FILES /RAW /SUB | fi
 # Récupération de l'heure de départ
 $startTime = Get-Date
 
-Write-Host "Searching files (this can take a looong time)... " -NoNewline
+Write-Host "Searching files (this can take a looong time! coffee?)... " -NoNewline
 $fileSearchProcess = [System.Diagnostics.Process]::Start($processStartInfo)
 $fileList = $fileSearchProcess.StandardOutput.ReadToEnd()
  
@@ -180,10 +175,3 @@ else # Aucun fichier trouvé
 {
    Write-Host ("No folder/file found for user with SCIPER {0}" -f $sciper)
 }
-
-
-
-
-
-
-
