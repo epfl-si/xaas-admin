@@ -21,6 +21,7 @@ $global:MAIL_TEMPLATE_FOLDER        = ([IO.Path]::Combine($global:RESOURCES_FOLD
 $global:JSON_TEMPLATE_FOLDER        = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "json-templates"))
 $global:JSON_2ND_DAY_ACTIONS_FOLDER = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "2nd-day-actions"))
 $global:ERROR_FOLDER                = ([IO.Path]::Combine("$PSScriptRoot", "..", "errors"))
+$global:RESULTS_FOLDER              = ([IO.Path]::Combine("$PSScriptRoot", "..", "results"))
 
 
 $global:ENV_FILE = ([IO.Path]::Combine("$PSScriptRoot", "..", "..", ".env"))
