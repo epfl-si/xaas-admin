@@ -93,6 +93,11 @@ class SQLDB
     [PSCustomObject] execute([string]$query)
     {
 
+        if($query.Trim() -eq "")
+        {
+            Throw "Empty query provided"
+        }
+
         # Si on a demandé à récupérer des données, 
         if($query -like "SELECT*" )
         {

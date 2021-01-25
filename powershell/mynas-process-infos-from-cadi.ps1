@@ -186,14 +186,11 @@ try
    $userStatusToQuota = @{"1" = 25600  # collaborateurs
                         "2" = 5120}  # hôtes
 
-   # Requête dont on va se service pour construire la requête de recherche pour les utilisateur d'un statut donné
-   $baseSearchRequest = "SELECT Personnes.sciper, username FROM Accreds INNER JOIN Personnes ON Accreds.sciper = Personnes.sciper WHERE (statut = '{0}') AND (ordre = '1') AND (Accreds.stockindiv = 'y')  AND (Accreds.comptead = 'y')  AND (Accreds.datedeb <= CURDATE())"
-
    # Parcours des statuts
    ForEach($userStatus in $userStatusToQuota.Keys)
    {  
       # Construction de la requête 
-      $request = $baseSearchRequest -f $userStatus
+      $request = "SELECT Personnes.sciper, username FROM Accreds INNER JOIN Personnes ON Accreds.sciper = Personnes.sciper WHERE (statut = '{0}') AND (ordre = '1') AND (Accreds.stockindiv = 'y')  AND (Accreds.comptead = 'y')  AND (Accreds.datedeb <= CURDATE())" -f $userStatus
       
       $users = $mysql_cadi.execute($request)
       
