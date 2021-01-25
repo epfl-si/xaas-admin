@@ -99,7 +99,7 @@ function handleNotifications
 				# Erreurs de renommage des dossiers utilisateurs
 				'quotaUpdatedUser'
 				{
-					$valToReplace.updateList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.updateList = ($uniqueNotifications -join "")
 					$mailSubject = "Info - {0} user(s) quota(s) updated" -f $uniqueNotifications.count
 					$templateName = "quota-updated-users"
             }
