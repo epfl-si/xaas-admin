@@ -25,3 +25,8 @@ Juste pour le fun :rofl: pour ajouter des quotes aléatoires à la fin des mails
 Afin de pouvoir continuer à gérer les VM importées depuis MyVM sans pouvoir avoir la possibilité de demander une nouvelle VM de ce type, on doit ajouter des éléments du catalogue
 non pas dans le service "VM (Public)" mais directement dans les "Entitled items" qui sont dans chaque "Entitlement". 
 On liste donc ici ces éléments de catalogue à ajouter dans tous les cas, en définissant s'ils ont besoin d'avoir une approval policy ou pas.
+
+### new-items-approval.json
+Au début, chaque tenant disposait d'une manière de faire différente pour les approbations des nouvelles demandes. Ce fichier a donc été créé comme "aiguillage" pour indiquer au code PowerShell
+quel autre fichier JSON il fallait utiliser pour créer les approval policies (et leur différents niveaux) via des appels REST. Maintenant, on a la même manière de faire pour tous les tenants mais
+il a été choisi de conserver le code qui gérait de manière séparée car on ne sait jamais pour le futur.

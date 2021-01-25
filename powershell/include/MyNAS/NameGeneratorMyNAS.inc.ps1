@@ -45,6 +45,20 @@ class NameGeneratorMyNAS
 
     <#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie le chemin d'accès UNC du serveur hébergeant le sciper passé
+
+        IN  : $sciper       -> No sciper pour lequel on veut le chemin jusqu'au serveur
+
+        RET : UNC
+	#>
+    [string] getServerUNCPath([string]$sciper)
+    {
+        return ("\\files{0}.epfl.ch\data\" -f $this.getServerNo($sciper))
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie le numéro du serveur pour un utilisateur
 
         IN  : $sciper   -> No sciper de l'utilisateur
