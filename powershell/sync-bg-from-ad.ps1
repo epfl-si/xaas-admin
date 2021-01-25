@@ -60,8 +60,6 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$r
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "JSONUtils.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "NewItems.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
@@ -615,19 +613,19 @@ function prepareAddMissingBGEntPublicServices
 		# Parcours et ajout
 		$mandatoryItems | ForEach-Object {
 
-			$catalogItem = $vra.getCatalogItem($_.name)
+			# On regarde si on peut bien ajouter l'élément de catalogue pour le BG courant
+			if(($_.onlyForBG.count -eq 0) -or `
+				(($_.onlyForBG.count -gt 0) -and ($_.onlyForBG -contains $bgName)))
+			{
+				$catalogItem = $vra.getCatalogItem($_.name)
 
-			# Elément de catalogue pas trouvé dans vRA
-			if($null -eq $catalogItem)
-			{
-				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not found!" -f $_.name))
-				$notifications.mandatoryItemsNotFound += $_.name
-			}
-			else # L'élément de catalogue existe
-			{
-				# On regarde si on peut bien ajouter l'élément de catalogue pour le BG courant
-				if(($_.onlyForBG.count -eq 0) -or `
-					(($_.onlyForBG.count -gt 0) -and ($_.onlyForBG -contains $bgName)))
+				# Elément de catalogue pas trouvé dans vRA
+				if($null -eq $catalogItem)
+				{
+					$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not found!" -f $_.name))
+					$notifications.mandatoryItemsNotFound += $_.name
+				}
+				else # L'élément de catalogue existe
 				{
 					$logHistory.addLineAndDisplay(("--> Adding catalog item '{0}'..." -f $_.name))
 
@@ -642,14 +640,13 @@ function prepareAddMissingBGEntPublicServices
 					}
 					
 					$ent = $vra.prepareAddEntCatalogItem($ent, $catalogItem, $itemApprovalPolicy)
+				}
 
-				}
-				else # L'élément de catalogue n'est pas autorisé pour le BG courant
-				{
-					$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not allowed for BG '{1}'" -f $_.name, $bgName))
-				}
-				
-			}# FIN SI l'élément de catalogue existe
+			}
+			else # L'élément de catalogue n'est pas autorisé pour le BG courant
+			{
+				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not allowed for BG '{1}'" -f $_.name, $bgName))
+			}
 			
 		}# FIN BOUCLE de parcours des éléments de catalogue obligatoires
 
@@ -1429,7 +1426,8 @@ try
 	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -Properties Description,whenChanged 
 
 	# Création de l'objet pour récupérer les informations sur les approval policies à créer pour les demandes de nouveaux éléments
-	$newItems = [NewItems]::new("vra-new-items.json")
+	$newItemsApprovalFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "new-items-approval.json"))
+	$newItemsApprovalList = loadFromCommentedJSON -jsonFile $newItemsApprovalFile
 
 	# Création de l'objet pour gérer les 2nd day actions
 	$secondDayActions = [SecondDayActions]::new()
@@ -1604,10 +1602,7 @@ try
 
 		# Vu qu'il y aura des quotas pour les demandes sur le tenant EPFL, on utilise une policy du type "Event Subscription", ceci afin d'appeler un Workflow défini
 		# qui se chargera de contrôler le quota.
-		$itemReqApprovalPolicyJSON = $newItems.getApprovalPolicyJSON($targetTenant)
-		# -> Pour créer les différents niveaux (si besoin) pour l'approbation 
-		$itemReqApprovalLevelJSON = $newItems.getApprovalLevelJSON($targetTenant)
-
+		$newItemApprovalInfos = $newItemsApprovalList | Where-Object { $_.tenant -eq $targetTenant}
 		
 		# -- NSX --
 		# Nom et description du NSGroup
@@ -1685,8 +1680,8 @@ try
 			# --------------------------------- Approval policies
 			# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
 			$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
-										-approvalLevelJSON $itemReqApprovalLevelJSON -approverGroupAtDomainList $approverGroupAtDomainList  `
-										-approvalPolicyJSON $itemReqApprovalPolicyJSON `
+										-approvalLevelJSON $newItemApprovalInfos.approvalLevelJSON -approverGroupAtDomainList $approverGroupAtDomainList  `
+										-approvalPolicyJSON $newItemApprovalInfos.approvalPolicyJSON `
 										-additionnalReplace @{} -processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
 
 			# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
