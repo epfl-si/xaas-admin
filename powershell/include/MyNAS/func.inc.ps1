@@ -22,20 +22,22 @@
 function checkEnvironment
 {
 
-   $pscpFile = ([IO.Path]::Combine($global:BINARY_FOLDER, "pscp.exe"))
-   
-   if(!(Test-Path $global:MYNAS_SSH_KEY))
+   $filesToCheck = @(
+      $global:MYNAS_SSH_KEY,
+      ([IO.Path]::Combine($global:BINARY_FOLDER, "pscp.exe")),
+      ([IO.Path]::Combine($global:BINARY_FOLDER, "fileacl.exe"))
+   )
+
+
+   ForEach($file in $filesToCheck)
    {
-      Write-Host "Error! file $global:MYNAS_SSH_KEY doesn't exists" -ForegroundColor Red
-      exit 1
+      # Test de la présence du fichier
+      if(!(Test-Path $file))
+      {
+         Throw "Error! file '$file' not found"
+      }
    }
    
-   # Test de la présence du fichier "EXE" pour envoyer les fichiers par SSH
-   if(!(Test-Path $pscpFile))
-   {
-      Write-Host "Error! file '$pscpFile' not found" -ForegroundColor Red
-      exit 1
-   }
    
 }
 
