@@ -16,6 +16,10 @@
         "level4GeUnit": "EXTS-GE"
     },
     {
+        "level3Center": "E-DOC",
+        "level4GeUnit": "EDOC-GE"
+    },
+    {
         "level3Center": "ENAC-SG",
         "level4GeUnit": "ENAC-GE"
     },
@@ -38,6 +42,10 @@
     {
         "level3Center": "E-VP",
         "level4GeUnit": "VPE"
+    },
+    {
+        "level3Center": "HBP",
+        "level4GeUnit": "HBP-PCO"
     },
     {
         "level3Center": "IC-SG",
@@ -70,6 +78,10 @@
     {
         "level3Center": "R-VP",
         "level4GeUnit": "VPR"
+    },
+    {
+        "level3Center": "SB-SG",
+        "level4GeUnit": "SB-GE"
     },
     {
         "level3Center": "STI-SG",
