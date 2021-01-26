@@ -1,13 +1,5 @@
 [
     {
-        "level3Center": "SI-VP",
-        "level4GeUnit": "VPSI"
-    },
-    {
-        "level3Center": "RH-RH",
-        "level4GeUnit": "RH-G"
-    },
-    {
         "level3Center": "CDM-SG",
         "level4GeUnit": "CDM-GE"
     },
@@ -72,10 +64,6 @@
         "level4GeUnit": "PTEC-GE"
     },
     {
-        "level3Center": "RHO-VP",
-        "level4GeUnit": "VPRHO"
-    },
-    {
         "level3Center": "R-VP",
         "level4GeUnit": "VPR"
     },
@@ -90,5 +78,31 @@
     {
         "level3Center": "SV-SG",
         "level4GeUnit": "SV-GE"
+    },
+    /* A supprimer mi-février 2021 environ */
+    {
+        "level3Center": "SI-VP",
+        "level4GeUnit": "VPSI"
+    },
+    {
+        "level3Center": "RH-RH",
+        "level4GeUnit": "RH-G"
+    },
+    {
+        "level3Center": "RHO-VP",
+        "level4GeUnit": "VPRHO"
+    },
+    /* Nouveaux noms depuis début février 2021 */
+    {
+        "level3Center": "DSI",
+        "level4GeUnit": "DSI-GE"
+    },
+    {
+        "level3Center": "RH",
+        "level4GeUnit": "RRH"
+    },
+    {
+        "level3Center": "DVPO",
+        "level4GeUnit": "EM-GE"
     }
 ]
