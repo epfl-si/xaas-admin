@@ -604,21 +604,6 @@ function getSIUnitBillingMail([PSObject]$unitInfos)
 	return "personnel.{0}@epfl.ch" -f $unitInfos.name.toLower()
 }
 
-<#
--------------------------------------------------------------------------------------
-	BUT : Renvoie l'adresse mail à utiliser pour la facturation d'une unité dont 
-			les infos sont passées en paramètre
-
-	IN  : $unitInfos	-> Objet avec les informations de l'unité (vient de LDAP,
-							renvoyé par la fonction getFacultyUnitList() )
-
-	RET : L'adresse mail
-#>
-function getVPOUnitBillingMail([PSObject]$unitInfos)
-{
-	return "personnel.{0}@epfl.ch" -f $unitInfos.name.toLower()
-}
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
