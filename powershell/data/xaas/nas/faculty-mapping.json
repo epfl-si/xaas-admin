@@ -1,7 +1,7 @@
 [
     {
         // Nom des facultés telles qu'existant maintenant dans LDAP
-        "fromFacList": [ "SI", "E"],
+        "fromFacList": [ "SI", "E", "DSI"],
         // Nom de la faculté utilisé (par le passé) pour créer le(s) SVM de faculté
         "toFac": "VPSI" 
     },
