@@ -99,7 +99,7 @@ function handleNotifications
 				# Erreurs de renommage des dossiers utilisateurs
 				'quotaUpdatedUser'
 				{
-					$valToReplace.updateList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.updateList = ($uniqueNotifications -join "")
 					$mailSubject = "Info - {0} user(s) quota(s) updated" -f $uniqueNotifications.count
 					$templateName = "quota-updated-users"
             }
@@ -254,7 +254,7 @@ try
          setQuotaUpdateDone -userSciper $updateInfos.sciper
             
          # Ajout de l'info au message qu'on aura dans le mail 
-         $notifications.quotaUpdatedUser += ("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>" -f $updateInfos.username, $currentQuota, ([Math]::Floor($updateInfos.hardKB/1024)))
+         $notifications.quotaUpdatedUser += ("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>" -f $updateInfos.username, $currentQuotaMB, ([Math]::Floor($updateInfos.hardKB/1024)))
          
          $counters.inc('nbQuotaUpdated')
       }
