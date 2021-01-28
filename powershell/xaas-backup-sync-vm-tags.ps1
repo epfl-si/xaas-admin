@@ -114,9 +114,6 @@ try
 
     # -------------------------------------------------------------------------------------------
 
-    # Ajout d'informations dans le log
-    $logHistory.addLine("Script executed with following parameters: `n{0}" -f ($PsBoundParameters | ConvertTo-Json))
-
     <# Connexion à l'API Rest de vSphere. On a besoin de cette connxion aussi (en plus de celle du dessus) parce que les opérations sur les tags ne fonctionnent
     pas via les CMDLet Get-TagAssignement et autre...  #>
     $logHistory.addLineAndDisplay("Connecting to vSphere...")
