@@ -160,6 +160,11 @@ class SQLDB
     {
         $this.debugLog(("Executing SQL query:`n{0}" -f $query))
 
+        if($query.Trim() -eq "")
+        {
+            Throw "Empty query provided"
+        }
+
         # Si on a demandé à récupérer des données, 
         if($query -like "SELECT*" )
         {
