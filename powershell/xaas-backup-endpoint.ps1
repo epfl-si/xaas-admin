@@ -215,6 +215,7 @@ try
             # S'il y a un tag de backup 
             if($null -ne $tag)
             {
+                $logHistory.addLine(("Removing existing tag ({0}) on VM {1}" -f $tag.name, $vmName))
                 # On supprime le tag
                 $vsphereApi.detachVMTag($vmName, $tag.name)
             }
@@ -222,6 +223,8 @@ try
             # Si on doit ajouter un tag
             if(($backupTag -ne ""))
             {
+                $logHistory.addLine(("Adding new tag ({0}) on VM {1}" -f $backupTag, $vmName))
+
                 $vsphereApi.attachVMTag($vmName, $backupTag)       
 
                 $output.results += $backupTag

@@ -6,9 +6,18 @@
         "billingMail": "associations@epfl.ch",
         "billingMailFunc": null
     },
+    /* A supprimer mi février 2021 */
     {
         "ldapOUList": [
             "OU=SI,O=EPFL,C=CH"
+        ],
+        "billingMail": null,
+        "billingMailFunc": "getSIUnitBillingMail"
+    },
+    /* Valable à partir de février 2021 */
+    {
+        "ldapOUList": [
+            "OU=VPO-SI,O=EPFL,C=CH"
         ],
         "billingMail": null,
         "billingMailFunc": "getSIUnitBillingMail"
