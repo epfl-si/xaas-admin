@@ -250,32 +250,6 @@ class HarborAPI: RESTAPICurl
 		return $id
 	}
 	
-	
-	<#
-		-------------------------------------------------------------------------------------
-		BUT : Renvoie l'ID d'un groupe LDAP défini dans Harbor. C'est l'ID que Harbor a donné 
-				au groupe en interne...
-
-		IN  : $groupLDAPDN			-> DN LDAP jusqu'au groupe
-
-		RET : ID du groupe dans Harbor
-				0 si pas trouvé
-	
-		https://vsissp-harbor-t.epfl.ch/#/Products/get_usergroups
-	#>
-	hidden [int] getLDAPGroupId([string]$groupLDAPDN)
-	{
-		$uri = "https://{0}/api/v2.0/usergroups" -f $this.server
-			
-		$group = ($this.callAPI($uri, "GET", $null) | Where-Object { $_.group_name.toLower() -eq $groupLDAPDN.toLower()})
-
-		if($null -eq $group)
-		{
-			return 0
-		}
-		return $group.id
-	}
-
 
 	<#
 		-------------------------------------------------------------------------------------
@@ -326,27 +300,31 @@ class HarborAPI: RESTAPICurl
 		# Si c'est un groupe qu'on ajoute, 
 		if($null -ne $groupDN)
 		{
-			# Recherche de l'ID du groupe dans Harbor car même si on lui file le DN de LDAP, faut aussi lui filer
+			# Recherche du groupe dans Harbor car même si on lui file le DN de LDAP pour ajouter un nouveau groupe, faut aussi lui filer
 			# l'ID du groupe en interne... stupide mais bref... ça a été codé avec les pieds Harbor on dirait..
-			$groupId = $this.getLDAPGroupId($groupDN)
+			$harborGroup = $this.getUserGroup($groupDN)
 
-			if($groupId -eq 0)
+			# Si le groupe n'a pas été trouvé, on tente de l'ajouter
+			if($null -eq $harborGroup)
 			{
-				Throw ("No information found in Harbor for group '{0}' ({1})" -f $userOrGroupName, $groupDN)
+				# Ajout du groupe manquant, afin que l'on puisse l'utiliser pour donner des droits d'accès
+				$harborGroup = $this.addUserGroup($groupDN)
 			}
+			else # Le groupe existe dans Harbor
+			{
+				# Si le groupe est déjà présent dans la liste
+				if($null -ne ($memberList | Where-Object { $_.entity_type -eq "g" -and $_.entity_id -eq $harborGroup.id }) )
+				{
+					# Pas besoin d'aller plus loin
+					return
+				}
+			} # FIN SI le groupe existe dans Harbor
 
-			# Si le groupe est déjà présent dans la liste
-			if($null -ne ($memberList | Where-Object { $_.entity_type -eq "g" -and $_.entity_id -eq $groupId }) )
-			{
-				# Pas besoin d'aller plus loin
-				return
-			}
-			
 			$replace = @{
 				roleId = @($this.getRoleID($role), $true)
 				groupName = $userOrGroupName
 				LDAPDN = $groupDN.toLower()
-				groupId = @($groupId, $true)
+				groupId = @($harborGroup.id, $true)
 			}
 
 			$body = $this.createObjectFromJSON("xaas-k8s-add-harbor-project-member-group.json", $replace)
@@ -478,4 +456,69 @@ class HarborAPI: RESTAPICurl
 		$this.callAPI($uri, "DELETE", $null)
 	}
 
+
+	<#
+        =====================================================================================
+											USER GROUPS
+        =====================================================================================
+	#>
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des groupes utilisateurs
+
+		RET : La liste
+
+		https://vsissp-harbor-t.epfl.ch/#/Products/get_usergroups
+	#>
+	[Array] getUserGroupList()
+	{
+		$uri = "https://{0}/api/v2.0/usergroups" -f $this.server
+			
+		return $this.callAPI($uri, "GET", $null)
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie un groupe utilisateur
+
+		IN  : $groupLDAPDN	-> DN LDAP du groupe que l'on désire.
+
+		RET : Le groupe
+				$null si pas trouvé	
+
+		https://vsissp-harbor-t.epfl.ch/#/Products/get_usergroups
+	#>
+	[PSObject] getUserGroup([string]$groupLDAPDN)
+	{
+		return ($this.getUserGroupList() | Where-Object { $_.group_name.toLower() -eq $groupLDAPDN.toLower()})
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute un groupe LDAP
+
+		IN  : $groupLDAPDN	-> DN LDAP du groupe que l'on désire ajouter
+
+		RET : Le groupe ajouté
+
+		https://vsissp-harbor-t.epfl.ch/#/Products/post_usergroups
+	#>
+	[PSObject] addUserGroup([string]$groupLDAPDN)
+	{
+		$uri = "https://{0}/api/v2.0/usergroups" -f $this.server
+			
+		$replace = @{
+			groupLDAPDN = $groupLDAPDN
+		}
+
+		$body = $this.createObjectFromJSON("xaas-k8s-add-harbor-usergroup.json", $replace)
+
+		$this.callAPI($uri, "POST", $body)  | Out-Null
+
+		# Retour du groupe ajouté
+		return $this.getUserGroup($groupLDAPDN)
+	}
 }
