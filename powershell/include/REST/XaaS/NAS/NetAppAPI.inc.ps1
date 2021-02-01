@@ -40,7 +40,6 @@ enum NetAppProtocol
 class NetAppAPI: RESTAPICurl
 {
     hidden [string] $extraArgs
-    hidden [string] $password
     hidden [Array] $serverList
     hidden [String] $foundOnServer
     hidden [Hashtable] $objectToServerMapping
