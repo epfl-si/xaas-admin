@@ -67,6 +67,22 @@ class InfobloxWAPI: RESTAPICurl
     #>
     hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
     {
+        # Si la requête doit retourner quelque chose
+        if($method -eq "get")
+        {
+            if($uri -contains "?")
+            {
+                $concatChar = "&"
+            }
+            else
+            {
+                $concatChar = "?"
+            }
+            # On ajoute le nécessaire pour que le résultat soit renvoyé sous forme d'objet JSON
+            $uri = "{0}{1}_return_as_object=1" -f $uri, $concatChar
+        }
+        
+
         # Appel de la fonction parente en ajouter les arguments supplémentaires
         $result = ([RESTAPICurl]$this).callAPI($uri, $method, $body, $this.extraArgs)
 
@@ -77,7 +93,7 @@ class InfobloxWAPI: RESTAPICurl
             $this.extraArgs = '-b "{0}"' -f $this.cookieFile
         }
 
-        return $result
+        return $result.result
     }
 
 
