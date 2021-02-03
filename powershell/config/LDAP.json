@@ -11,6 +11,8 @@
                     /* Anciennement RHO */
                     "VPO", 
                     "VPO-RH", 
+                    "VPO-SE",
+                    "VPO-DC",
                     /* Anciennement ENT-R et ENT-E */
                     "VPA-AVP-CP",
                     /* Anciennement E */ 
