@@ -37,6 +37,15 @@ enum NetAppProtocol
     nfs3
 }
 
+# Types de métriques qu'on veut récupérer
+enum NetAppMetricType
+{
+    read
+    write
+    total
+    other
+}
+
 class NetAppAPI: RESTAPICurl
 {
     hidden [string] $extraArgs
@@ -609,6 +618,62 @@ class NetAppAPI: RESTAPICurl
         $uri = "/api/storage/volumes/{0}?fields=space.snapshot.used,space.snapshot.reserve_percent,files.maximum,files.used" -f $vol.uuid
 
         return $this.callAPI($uri, "GET", $null, "", $true)
+    }
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne des informations sur les métriques d'un volume
+        
+        IN  : $vol   -> Objet représentant le volume
+
+        RET : Tableau associatif avec en clef les noms des métriques désirées (voir au début de
+                la fonction) et en valeur la moyenne sur la dernière semaine.
+
+        NOTE : L'appel à cette fonction ne retourne que les champs spécifiquement passés en paramètre.
+                Ce n'est donc pas comme si on pouvait juste "ajouter" des champs à ceux renvoyés par
+                défaut par l'appel retournant les détails d'un volume.
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_metrics_collection_get
+	#>
+    [PSObject] getVolumeMetrics([PSObject]$vol, [NetAppMetricType]$metricType)
+    {
+        $result = @{}
+
+        # Liste des métriques qu'on veut retourner 
+        $metricList = @(
+            "throughput",
+            "iops",
+            "latency"
+        )
+        $metricWithTypeList = @()
+        # Parcours des métriques 
+        $metricList | ForEach-Object { 
+            # Création du nom de la métrique, avec le type (total, read, ...)
+            $metricWithTypeList += ("{0}.{1}" -f $_, $metricType.toString()) 
+            # Ajout d'une donnée membre au résultat qui sera renvoyé
+            $result | Add-Member -NotePropertyName $_ -NotePropertyValue 0
+        }
+        $uri = "/api/storage/volumes/{0}/metrics?fields={1}&interval=1w" -f $vol.uuid, ($metricWithTypeList -join ",")
+        
+        $stats = $this.callAPI($uri, "GET", $null, "records", $true)
+        
+        # Addition des valeurs pour chaque compteur
+        $stats | ForEach-Object{
+            ForEach($metric in $metricList)
+            {
+                $result.$metric += $_.$metric.($metricType.toString())
+            }
+        }
+
+        # Maintenant qu'on a additionné toutes les valeurs, on peut faire la moyenne
+        ForEach($metric in $metricList)
+        {
+            $result.$metric = $result.$metric / $stats.count
+        }
+        # Retour d'un tableau associatif avec les infos.
+        return $result
+
     }
 
 
