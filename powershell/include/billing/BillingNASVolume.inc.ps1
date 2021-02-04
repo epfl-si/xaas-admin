@@ -28,8 +28,6 @@ class BillingNASVolume: Billing
                                         Chaque objet a pour clef le nom du tenant et comme "contenu" le 
                                         nécessaire pour interroger le tenant
         IN  : $db                   -> Objet de la classe SQLDB permettant d'accéder aux données.
-        IN  : $ldap                 -> Connexion au LDAP pour récupérer les infos sur les unités
-        IN  : $serviceList          -> Objet avec la liste de services (chargé depuis le fichier JSON itservices.json)
         IN  : $serviceBillingInfos  -> Objet avec les informations de facturation pour le service 
                                         Ces informations se trouvent dans le fichier JSON "service.json" qui sont 
                                         dans le dossier data/billing/<service>/service.json
@@ -37,8 +35,8 @@ class BillingNASVolume: Billing
 
 		RET : Instance de l'objet
 	#>
-    BillingNASVolume([Hashtable]$vraTenantList, [SQLDB]$db, [EPFLLDAP]$ldap, [PSObject]$serviceList, [PSObject]$serviceBillingInfos, [string]$targetEnv) : `
-                    base($vraTenantList, $db, $ldap, $serviceList, $serviceBillingInfos, $targetEnv, "NAS_Volume")
+    BillingNASVolume([Hashtable]$vraTenantList, [SQLDB]$db, [PSObject]$serviceBillingInfos, [string]$targetEnv) : `
+                    base($vraTenantList, $db, $serviceBillingInfos, $targetEnv, "NAS_Volume")
     {
     }
 
