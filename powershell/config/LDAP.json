@@ -5,11 +5,27 @@
             {
                 "rootDN": "o=epfl,c=ch",
                 "nbLevelsForSearch": 3,
-                "limitToFaculties": [ "SV", "SI", "P", "STI", "ENAC", "IC", "SB", "CDM", "CDH", "E", "ENT-E", "R", "RHO", "ENT-R", "ENT-P" ]
+                "limitToFaculties": [ "SV", "SI", "P", "STI", "ENAC", "IC", "SB", "CDM", "CDH", "E", "ENT-E", "R", "RHO", "ENT-R", "ENT-P", 
+                    /* Anciennement SI */    
+                    "VPO-SI", 
+                    /* Anciennement RHO */
+                    "VPO", 
+                    "VPO-RH", 
+                    "VPO-SE",
+                    "VPO-DC",
+                    /* Anciennement ENT-R et ENT-E */
+                    "VPA-AVP-CP",
+                    /* Anciennement E */ 
+                    "VPA-AVP-E", 
+                    "VPA-AVP-PGE",
+                    /* Anciennement R */
+                    "VPA",
+                    "VPA-AVP-R"                    
+                ]
             },
             {
                 "rootDN": "o=ehe,c=ch",
-                "nbLevelsForSearch": 2,
+                "nbLevelsForSearch": 3,
                 "limitToFaculties": [ ]
             }
         ]

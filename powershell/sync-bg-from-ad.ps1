@@ -366,7 +366,7 @@ function createOrUpdateBG
 		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER) -ne $financeCenter)
 		{
 			# Mise à jour
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
+			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
 		}
 
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
@@ -383,7 +383,7 @@ function createOrUpdateBG
 		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME) -ne $nameGenerator.getBillingEntityName())
 		{
 			# Mise à jour
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
+			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
 		}
 
 		# ==========================================================================================
@@ -399,6 +399,7 @@ function createOrUpdateBG
 			# S'il y a eu changement de nom,
 			if($bg.name -ne $bgName)
 			{
+				$logHistory.addLineAndDisplay(("-> Renaming BG '{0}' to '{1}'" -f $bg.name, $bgName))
 				# Recherche du nom actuel du dossier où se trouvent les ISO du BG
 				$bgISOFolderCurrent = $nameGenerator.getNASPrivateISOPath($bg.name)
 				# Recherche du nouveau nom du dossier où devront se trouver les ISO
@@ -431,6 +432,8 @@ function createOrUpdateBG
 				
 				# Mise à jour de la custom property qui contient le nom du BG
 				$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $bgName})
+
+				$counters.inc('BGRenamed')
 				
 			}# Fin s'il y a eu changement de nom 
 
@@ -440,6 +443,13 @@ function createOrUpdateBG
 			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
 
 			$counters.inc('BGUpdated')
+
+			# Si le BG était en Ghost, 
+			if(!(isBGAlive -bg $bg))
+			{
+				# on compte juste la chose
+				$counters.inc('BGResurrected')
+			}
 		}
 
 	}
@@ -1345,6 +1355,8 @@ try
 	$counters.add('BGNotRenamed', '# Business Group not renamed')
 	$counters.add('BGResumeSkipped', '# Business Group skipped because of resume')
 	$counters.add('BGGhost',	'# Business Group set as "ghost"')
+	$counters.add('BGRenamed',	'# Business Group renamed')
+	$counters.add('BGResurrected', '# Business Group set alive again')
 	# Entitlements
 	$counters.add('EntCreated', '# Entitlements created')
 	$counters.add('EntUpdated', '# Entitlements updated')
@@ -1451,7 +1463,7 @@ try
 
 	# Calcul de la date dans le passé jusqu'à laquelle on peut prendre les groupes modifiés.
 	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
-
+	
 	# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
 	$capacityAlertMails = @($configGlobal.getConfigValue(@("mail", "capacityAlert")))
 

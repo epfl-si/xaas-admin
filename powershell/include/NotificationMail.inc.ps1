@@ -153,7 +153,7 @@ class NotificationMail
         Remove-Item $tmpMailFile -Force
 
         Send-MailMessage -From ("noreply+{0}" -f $this.sendToAddress) -To $this.sendToAddress -Subject $mailSubject `
-                        -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding Unicode
+                        -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8
     }
 
 
