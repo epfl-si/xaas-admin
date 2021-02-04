@@ -331,7 +331,7 @@ class Billing
         }
         
         Send-MailMessage -From "noreply+vra.billing.bot@epfl.ch" -To $toMail -Subject $mailSubject `
-                        -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding Unicode -Attachments $PDFBillFile    
+                        -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8 -Attachments $PDFBillFile    
     }
 
 
