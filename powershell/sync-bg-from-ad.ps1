@@ -379,13 +379,6 @@ function createOrUpdateBG
 		# }
 
 
-		# Si le nom de l'entité de facturation a changé (ce qui peut arriver), on la met à jour
-		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME) -ne $nameGenerator.getBillingEntityName())
-		{
-			# Mise à jour
-			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
-		}
-
 		# ==========================================================================================
 
 		# Si le nom du BG est incorrect, (par exemple si le nom de l'unité ou celle de la faculté a changé)
@@ -395,6 +388,7 @@ function createOrUpdateBG
 		# Si le BG est désactivé
 		if(($bg.name -ne $bgName) -or ($bg.description -ne $bgDesc) -or (!(isBGAlive -bg $bg)))
 		{
+			$logHistory.addLineAndDisplay(("-> BG '{0}' has changed" -f $bg.name))
 
 			# S'il y a eu changement de nom,
 			if($bg.name -ne $bgName)
@@ -1463,7 +1457,7 @@ try
 
 	# Calcul de la date dans le passé jusqu'à laquelle on peut prendre les groupes modifiés.
 	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
-	
+
 	# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
 	$capacityAlertMails = @($configGlobal.getConfigValue(@("mail", "capacityAlert")))
 
