@@ -894,12 +894,7 @@ try
             }
             
             # Liste des SVM pour la faculté (avec la bonne nommenclature)
-            $svmList = $netapp.getSVMList() | Where-Object { $_.name -match ('^{0}[0-9].*' -f $targetFaculty)} | Select-Object -ExpandProperty name
-            
-            if($svmList.GetType() -ne "Array")
-            {
-                $svmList = @($svmList)
-            }
+            $svmList = @($netapp.getSVMList() | Where-Object { $_.name -match ('^{0}[0-9].*' -f $targetFaculty)} | Select-Object -ExpandProperty name)
 
             # Si on a une liste hard-codée de SVM pour la faculté
             if(objectPropertyExists -obj $facultyToSVM.$targetEnv -propertyName $faculty)
