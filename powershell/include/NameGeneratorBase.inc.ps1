@@ -259,18 +259,30 @@ class NameGeneratorBase
 
         # Contrôle que toutes les infos sont là.
         $missingKeys = @()
+        $emptyKeys = @()
         Foreach($key in $keysToCheck)
         {
             if(! $details.ContainsKey($key))
             {
                 $missingKeys += $key
             }
+            elseif(($details.$key).Trim() -eq "")
+            {
+                $emptyKeys += $key
+            }
+            
         }
 
         # Si des infos sont manquantes...
         if($missingKeys.Count -gt 0)
         {
             Throw ("Following keys are missing: {0}" -f ($missingKeys -join ', '))
+        }
+
+        # Si des infos sont vides...
+        if($emptyKeys.Count -gt 0)
+        {
+            Throw ("Following keys have empty values: {0}" -f ($emptyKeys -join ', '))
         }
 
         $this.details = $details
