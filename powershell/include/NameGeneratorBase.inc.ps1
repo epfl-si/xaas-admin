@@ -70,7 +70,7 @@ class NameGeneratorBase
                 .faculty
                 .unit
             ITServices
-                .serviceShortName
+                .snowServiceId
             Research
                 .projectId
     #>
@@ -100,16 +100,16 @@ class NameGeneratorBase
 
             $global:VRA_TENANT__ITSERVICES
             {
-                # Le nom du BG est au format: its_<serviceShortName>
-                $dummy, $serviceShortName = [regex]::Match($bgName, '^its_([a-z0-9]+)').Groups | Select-Object -ExpandProperty value
+                # Le nom du BG est au format: its_<svcId>
+                $dummy, $svcId = [regex]::Match($bgName, '^its_([a-z0-9]+)').Groups | Select-Object -ExpandProperty value
 
-                if($null -eq $serviceShortName)
+                if($null -eq $svcId)
                 {
                     Throw ("Wrong BG name given ({0}) for {1} Tenant" -f $bgName, $this.tenant)
                 }
 
                 $result = @{
-                    serviceShortName = $serviceShortName
+                    snowServiceId = $svcId
                 }
             }
 
@@ -177,9 +177,9 @@ class NameGeneratorBase
             { 
                 # le nom du BG est au format <tenantShort>_<serviceShort>
                 $withDetails = @{
-                    serviceShortName = $bgDetails.serviceShortName
+                    serviceShortName = ''
                     serviceName = ''
-                    snowServiceId = ''
+                    snowServiceId = $bgDetails.snowServiceId
                 }
             }
 
@@ -259,30 +259,18 @@ class NameGeneratorBase
 
         # Contrôle que toutes les infos sont là.
         $missingKeys = @()
-        $emptyKeys = @()
         Foreach($key in $keysToCheck)
         {
             if(! $details.ContainsKey($key))
             {
                 $missingKeys += $key
-            }
-            elseif(($details.$key).Trim() -eq "")
-            {
-                $emptyKeys += $key
-            }
-            
+            }     
         }
 
         # Si des infos sont manquantes...
         if($missingKeys.Count -gt 0)
         {
             Throw ("Following keys are missing: {0}" -f ($missingKeys -join ', '))
-        }
-
-        # Si des infos sont vides...
-        if($emptyKeys.Count -gt 0)
-        {
-            Throw ("Following keys have empty values: {0}" -f ($emptyKeys -join ', '))
         }
 
         $this.details = $details
@@ -303,6 +291,10 @@ class NameGeneratorBase
         if(!$this.details.ContainsKey($name))
         {
             Throw ("Asked detail ({0}) doesn't exists in list" -f $name)
+        }
+        elseif($this.details.$name -eq "")
+        {
+            Throw ("Asked detail ({0}) has empty value" -f $name)
         }
 
         return $this.details.$name
