@@ -1509,9 +1509,9 @@ try
 
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
-			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
 			$descInfos  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
+			$serviceShortName = $descInfos.svcShortName
 			$serviceLongName = $descInfos.svcName
 			$snowServiceId = $descInfos.svcId
 			$deniedVRASvc = $descInfos.deniedVRASvc
