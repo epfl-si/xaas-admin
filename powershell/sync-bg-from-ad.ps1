@@ -400,6 +400,23 @@ function createOrUpdateBG
 			if($bg.name -ne $bgName)
 			{
 				$logHistory.addLineAndDisplay(("-> Renaming BG '{0}' to '{1}'" -f $bg.name, $bgName))
+
+				<# On commence par regarder s'il n'y aurait pas par hasard déjà un BG avec le nouveau nom.
+				 Ceci peut arriver si on supprime une unité/service IT et qu'on change le nom d'un autre en
+				 même temps pour reprendre le nom de ce qui a été supprimé. Etant donné que les BG passent
+				 en "ghost" sans être renommé dans le cas où ils doivent être supprimés, il y a toujours 
+				 conflit de noms
+				#>
+				if($null -ne $vra.getBG($bgName)) 
+				{
+					$logHistory.addWarningAndDisplay(("-> Impossible to rename BG '{0}' to '{1}'. A BG with the new name already exists" -f $bg.name, $bgName))
+					$notifications.bgNameDuplicate += ("{0} &gt; {1}", $bg.name, $bgName)
+					$counters.inc('BGNotRenamed')
+
+					# On sort et on renvoie $null pour qu'on n'aille pas plus loin dans le traitement de ce BG pour le moment.
+					return $null
+				}
+				
 				# Recherche du nom actuel du dossier où se trouvent les ISO du BG
 				$bgISOFolderCurrent = $nameGenerator.getNASPrivateISOPath($bg.name)
 				# Recherche du nouveau nom du dossier où devront se trouver les ISO
@@ -434,7 +451,7 @@ function createOrUpdateBG
 				$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $bgName})
 
 				$counters.inc('BGRenamed')
-				
+
 			}# Fin s'il y a eu changement de nom 
 
 			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating BG '{0}' to '{1}'" -f $bg.name, $bgName))
@@ -1086,6 +1103,15 @@ function handleNotifications
 					$templateName = "day2-actions-not-found"
 				}
 
+				# ---------------------------------------
+				# Pas possible de renommer un BG car le nouveau nom existe déjà
+				'bgNameDuplicate'
+				{
+					$valToReplace.bgRenameList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - BG cannot be renamed because of duplicate"
+					$templateName = "bg-rename-duplicate"
+				}
+
 				default
 				{
 					# Passage à l'itération suivante de la boucle
@@ -1397,6 +1423,7 @@ try
 	$notifications=@{bgWithoutCustomPropStatus = @()
 					bgWithoutCustomPropType = @()
 					bgSetAsGhost = @()
+					bgNameDuplicate = @()
 					emptyADGroups = @()
 					adGroupsNotFound = @()
 					ISOFolderNotRenamed = @()
