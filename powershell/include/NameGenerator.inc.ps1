@@ -215,7 +215,7 @@ class NameGenerator: NameGeneratorBase
                         $role -eq "CSP_CONSUMER")
                 {
                     # vra_<envShort>_<serviceShort>
-                    $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('serviceShortName'))
+                    $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('snowServiceId').toLower())
 
                     # Groupe AD
                     if($type -eq $this.GROUP_TYPE_AD)
@@ -224,6 +224,7 @@ class NameGenerator: NameGeneratorBase
                         # On utilise uniquement le nom du service et pas une chaine de caractères avec d'autres trucs en plus comme ça, celui-ci peut être ensuite
                         # réutilisé pour d'autres choses dans la création des éléments dans vRA
                         $descStruct = @{
+                            svcShortName = $this.getDetail('serviceShortName').toLower()
                             svcId = $this.getDetail('snowServiceId').ToUpper()
                             svcName = $this.getDetail('serviceName')
                         }
