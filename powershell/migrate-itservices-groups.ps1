@@ -37,8 +37,7 @@ $groupsApp = [GroupsAPI]::new($configGroups.getConfigValue(@($targetEnv, "server
 
 # Création de l'objet qui permettra de générer les noms des groupes AD et "groups" ainsi que d'autre choses...
 $nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
-           
-$nameGenerator.getEnvShortName()
+
 
 # Objet pour lire les informations sur le services IT
 $itServices = [ITServices]::new()
