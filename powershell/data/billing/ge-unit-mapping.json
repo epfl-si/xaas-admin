@@ -1,19 +1,15 @@
 [
     {
-        "level3Center": "SI-VP",
-        "level4GeUnit": "VPSI"
-    },
-    {
-        "level3Center": "RH-RH",
-        "level4GeUnit": "RH-G"
-    },
-    {
         "level3Center": "CDM-SG",
         "level4GeUnit": "CDM-GE"
     },
     {
         "level3Center": "E-FC",
         "level4GeUnit": "EXTS-GE"
+    },
+    {
+        "level3Center": "E-DOC",
+        "level4GeUnit": "EDOC-GE"
     },
     {
         "level3Center": "ENAC-SG",
@@ -40,6 +36,10 @@
         "level4GeUnit": "VPE"
     },
     {
+        "level3Center": "HBP",
+        "level4GeUnit": "HBP-PCO"
+    },
+    {
         "level3Center": "IC-SG",
         "level4GeUnit": "IC-GE"
     },
@@ -64,12 +64,12 @@
         "level4GeUnit": "PTEC-GE"
     },
     {
-        "level3Center": "RHO-VP",
-        "level4GeUnit": "VPRHO"
-    },
-    {
         "level3Center": "R-VP",
         "level4GeUnit": "VPR"
+    },
+    {
+        "level3Center": "SB-SG",
+        "level4GeUnit": "SB-GE"
     },
     {
         "level3Center": "STI-SG",
@@ -78,5 +78,49 @@
     {
         "level3Center": "SV-SG",
         "level4GeUnit": "SV-GE"
+    },
+    /* A supprimer mi-février 2021 environ */
+    {
+        "level3Center": "SI-VP",
+        "level4GeUnit": "VPSI"
+    },
+    {
+        "level3Center": "RH-RH",
+        "level4GeUnit": "RH-G"
+    },
+    {
+        "level3Center": "RHO-VP",
+        "level4GeUnit": "VPRHO"
+    },
+    /* Nouveaux noms depuis début février 2021 */
+    {
+        "level3Center": "DSI",
+        "level4GeUnit": "DSI-GE"
+    },
+    {
+        "level3Center": "RH",
+        "level4GeUnit": "RRH"
+    },
+    {
+        "level3Center": "DVPO",
+        "level4GeUnit": "EM-GE"
+    },
+    {
+        "level3Center": "AVP-CP-AVP",
+        "level4GeUnit": "AVP-CP-GE"
+    },
+    {
+        "level3Center": "AVP-E-AVP",
+        "level4GeUnit": "VPA-AVP-E-GE"
+    },
+    {
+        "level3Center": "AVP-PGE-AVP",
+        "level4GeUnit": "AVP-PGE-GE"
+    },
+    {
+        "level3Center": "AVP-R-AVP",
+        "level4GeUnit": "AVP-R-GE"
     }
+
+    
 ]
