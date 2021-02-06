@@ -890,7 +890,7 @@ try
 					# Parcours des unités de la faculté
 					ForEach($unit in $unitList.$sourceType)
 					{
-						$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3}..." -f $unitNo, $unitList.$sourceType.Count, $faculty.name, $unit.name))
+						$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3} ({4})..." -f $unitNo, $unitList.$sourceType.Count, $faculty.name, $unit.name, $unit.uniqueidentifier))
 
 						# Recherche du centre financier à utiliser
 						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList.$sourceType -billToMailList $billToMailList `

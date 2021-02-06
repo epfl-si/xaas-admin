@@ -10,6 +10,7 @@
                     "VPO-SI", 
                     /* Anciennement RHO */
                     "VPO", 
+                    "VPO-A",
                     "VPO-RH", 
                     "VPO-SE",
                     "VPO-DC",
@@ -18,9 +19,12 @@
                     /* Anciennement E */ 
                     "VPA-AVP-E", 
                     "VPA-AVP-PGE",
+                    "VPA-AVP-SAO",
                     /* Anciennement R */
                     "VPA",
-                    "VPA-AVP-R"                    
+                    "VPA-AVP-R",
+                    /* Anciennement P */
+                    "I"
                 ]
             },
             {
