@@ -408,6 +408,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 	BUT : Créé un groupe dans Groups (s'il n'existe pas)
 
 	IN  : $groupsApp			-> Objet permettant d'accéder à l'API des groups
+	IN  : $ldap					-> Objet permettant d'accéder au LDAP EPFL
 	IN  : $name					-> Nom du groupe
 	IN  : $desc					-> Description du groupe
 	IN  : $memberSciperList		-> Tableau avec la liste des scipers des membres du groupe
@@ -415,7 +416,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 
 	RET : Le groupe
 #>
-function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList)
+function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList)
 {
 	# Recherche du groupe pour voir s'il existe
 	$group = $groupsApp.getGroupByName($name, $true)
@@ -440,12 +441,19 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [string]$name, [str
 			$groupsApp.addMembers($group.id, $memberSciperList)
 		}
 		
-		# Ajout des admins
-		if($adminSciperList.count -gt 0)
+		# Nom du groupe admin à ajouter 
+		$ldapAdminGroup = $ldap.getGroupInfos($global:VRA_GROUPS_ADMIN_GROUP)
+		if($null -eq $ldapAdminGroup)
 		{
-			$logHistory.addLineAndDisplay(("--> Adding {0} admins..." -f $adminSciperList.count))
-			$groupsApp.addAdmins($group.id, $adminSciperList)
+			Throw ("Admin group '{0'}' missing" -f $global:VRA_GROUPS_ADMIN_GROUP)
 		}
+
+		# Ajout de l'ID du groupe à ajouter comme "admin"
+		$adminSciperList += $ldapAdminGroup.uniqueidentifier
+
+		# Ajout des admins
+		$logHistory.addLineAndDisplay(("--> Adding {0} admins..." -f $adminSciperList.count))
+		$groupsApp.addAdmins($group.id, $adminSciperList)
 		
 		# Suppression du membre ajouté par défaut (celui du "caller", ajouté automatiquement à la création)
 		$groupsApp.removeMember($group.id, $groupsApp.getCallerSciper())
@@ -1271,9 +1279,10 @@ try
 					$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
 					$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
 					
+					#$adminSciperList = 
 
 					# Création du groupe dans Groups s'il n'existe pas
-					$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
+					$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
 																		-memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin
 
 					# Création des groupes + gestion des groupes prérequis 
@@ -1394,7 +1403,7 @@ try
 						$approveGroupDescGroups = $nameGenerator.getApproveGroupsGroupDesc($level)
 
 						# Création du groupe dans Groups s'il n'existe pas
-						$approveGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $approveGroupNameGroups -desc $approveGroupDescGroups `
+						$approveGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $approveGroupNameGroups -desc $approveGroupDescGroups `
 																			-memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper)
 					}
 					
@@ -1461,7 +1470,7 @@ try
 				$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
 				
 				# Création du groupe dans Groups s'il n'existe pas
-				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
+				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
 																	 -memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper)
 
 				$roleSharedGroupOk = $true
