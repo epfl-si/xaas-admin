@@ -679,6 +679,9 @@ try
 							$configVra.getConfigValue(@($targetEnv, "db", "password")),
 							$configVra.getConfigValue(@($targetEnv, "db", "port")))
 
+	# Pour faire les recherches dans LDAP
+	$ldap = [EPFLLDAP]::new()
+								
 	Import-Module ActiveDirectory
 
 	if($SIMULATION_MODE)
@@ -749,9 +752,6 @@ try
 
 			# Ajout du nécessaire pour gérer les notifications pour ce Tenant
 			$notifications.missingEPFLADGroups = @()
-
-			# Pour faire les recherches dans LDAP
-			$ldap = [EPFLLDAP]::new()
 
 			# Recherche de toutes les facultés
 			$facultyList = $ldap.getLDAPFacultyList() #  | Where-Object { $_['name'] -eq "ASSOCIATIONS" } # Décommenter et modifier pour limiter à une faculté donnée
