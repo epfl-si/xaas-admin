@@ -199,7 +199,7 @@ class NetAppAPI: RESTAPICurl
             else # Il y a plusieurs serveurs à interroger 
             {
                 # Si c'était une requête GET et qu'on a un nom pour la propriété où chercher le résultat
-                if(($method.ToLower() -eq "get"))
+                if(($method -eq "get"))
                 {
                     # Si la property existe
                     if(($getPropertyName -ne "") -and ([bool]($res.PSobject.Properties.name -eq $getPropertyName)))
