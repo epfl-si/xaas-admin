@@ -360,7 +360,7 @@ function createOrUpdateBG
 	{
 
 		$logHistory.addLineAndDisplay(("-> BG '{0}' already exists" -f $bg.Name))
-		
+
 		$counters.inc('BGExisting')
 		# ==========================================================================================
 
@@ -412,7 +412,7 @@ function createOrUpdateBG
 				if($null -ne $vra.getBG($bgName)) 
 				{
 					$logHistory.addWarningAndDisplay(("-> Impossible to rename BG '{0}' to '{1}'. A BG with the new name already exists" -f $bg.name, $bgName))
-					$notifications.bgNameDuplicate += ("{0} &gt; {1}", $bg.name, $bgName)
+					$notifications.bgNameDuplicate += ("{0} &gt;&gt; {1}" -f $bg.name, $bgName)
 					$counters.inc('BGNotRenamed')
 
 					# On sort et on renvoie $null pour qu'on n'aille pas plus loin dans le traitement de ce BG pour le moment.
@@ -1450,7 +1450,7 @@ try
 						 $configNSX.getConfigValue(@($targetEnv, "user")), 
 						 $configNSX.getConfigValue(@($targetEnv, "password")))
 
-	$doneBGList = @()
+	$doneElementList = @()
 
 	# Si on doit tenter de reprendre une exécution foirée ET qu'un fichier de progression existait, on charge son contenu
 	if($resume)
@@ -1459,8 +1459,8 @@ try
 		$progress = $resumeOnFail.load()
 		if($null -ne $progress)
 		{
-			$doneBGList = $progress
-			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed. Skipping to unprocessed (could take some time)..." -f $doneBGList.Count))
+			$doneElementList = $progress
+			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed. Skipping to unprocessed (could take some time)..." -f $doneElementList.Count))
 		}
 		else
 		{
@@ -1594,8 +1594,8 @@ try
 		# Nom du préfix de machine
 		$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
-		# Si on a déjà traité le BG
-		if($doneBGList -contains $bgName)
+		# Si on a déjà traité le groupe AD
+		if( ($doneElementList | Foreach-Object { $_.adGroup } ) -contains $_.name)
 		{
 			$counters.inc('BGResumeSkipped')
 			# passage au BG suivant
@@ -1674,7 +1674,10 @@ try
 			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
 			{
 				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
-				$doneBGList += $bgName
+				$doneElementList += @{
+					adGroup = $_.name
+					bgName = $bgName
+				}
 				$counters.inc('BGExisting')
 				return
 			}
@@ -1691,7 +1694,10 @@ try
 
 			# On enregistre quand même le nom du Business Group, même si on n'a pas pu continuer son traitement. Si on ne fait pas ça et qu'il existe déjà,
 			# il sera supprimé à la fin du script, chose qu'on ne désire pas.
-			$doneBGList += $bgName
+			$doneElementList += @{
+				adGroup = $_.name
+				bgName = $bgName
+			}
 
 			# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
 			return
@@ -1714,11 +1720,14 @@ try
 		$bg = createOrUpdateBG -vra $vra -bgEPFLID $bgEPFLID -tenantName $targetTenant -bgName $bgName -bgDesc $bgDesc `
 									-machinePrefixName $machinePrefixName -financeCenter $financeCenter -capacityAlertsEmail ($capacityAlertMails -join ",") 
 
-		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
+		# Si BG pas créé, on passe au s	uivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
 		if($null -eq $bg)
 		{
 			# On note quand même le BG comme pas traité
-			$doneBGList += $bgName
+			$doneElementList += @{
+				adGroup = $_.name
+				bgName = $bgName
+			}
 			# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
 			return
 		}
@@ -1843,9 +1852,12 @@ try
 		# Verrouillage de la section de firewall (si elle ne l'est pas encore)
 		$nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
 
-		$doneBGList += $bg.name
+		$doneElementList += @{
+			adGroup = $_.name
+			bgName = $bgName
+		}
 		# On sauvegarde l'avancement dans le cas où on arrêterait le script au milieu manuellement
-		$resumeOnFail.save($doneBGList)	
+		$resumeOnFail.save($doneElementList)	
 
 	}# Fin boucle de parcours des groupes AD pour l'environnement/tenant donnés
 
@@ -1868,7 +1880,7 @@ try
 			$notifications.bgWithoutCustomPropType += $_.name
 			$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Business Group '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, $_.name))
 		}
-		elseif($isBGOfType -and ($doneBGList -notcontains $_.name))
+		elseif($isBGOfType -and ( ($doneElementList | ForEach-Object {$_.bgName} ) -notcontains $_.name))
 		{
 			$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
 			setBGAsGhostIfNot -vra $vra -bg $_ | Out-Null
@@ -1926,8 +1938,8 @@ try
 catch # Dans le cas d'une erreur dans le script
 {
 	# Sauvegarde de la progression en cas d'erreur
-	$logHistory.addLineAndDisplay(("Saving progress for future resume ({0} BG processed)" -f $doneBGList.Count))
-	$resumeOnFail.save($doneBGList)	
+	$logHistory.addLineAndDisplay(("Saving progress for future resume ({0} BG processed)" -f $doneElementList.Count))
+	$resumeOnFail.save($doneElementList)	
 
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
