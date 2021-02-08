@@ -272,7 +272,9 @@ class EPFLLDAP
 	<#
 	-------------------------------------------------------------------------------------
 		BUT : Retourne les informations d'une unité
+
 		IN  : $unitUniqueIdentifier	-> Identifiant unique de l'unité (numérique)
+
 		RET : Objet avec les informations suivantes
 				- description
 				- uniqueidentifier
@@ -307,4 +309,44 @@ class EPFLLDAP
 		return $null
 
 	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Retourne les informations d'un groupe
+
+		IN  : $groupName	-> Nom du groupe
+
+		RET : Objet avec les informations suivantes
+				- description
+				- uniqueidentifier
+				- memberuid
+				- displayname
+				- member
+				- cn
+				- memberuniqueid
+				- adspath
+				- objectclass
+				- gidnumber
+	#>
+	[PSObject] getGroupInfos([string]$groupName)
+	{
+
+		# Parcours des informations que l'on a
+		ForEach($ldapInfos in $this.LDAPconfig.facultyUnits.locations)
+		{
+
+			# Recherche des groupes de manière récursive
+			$group = $this.LDAPSearch($this.LDAPconfig.facultyUnits.server, $ldapInfos.rootDN, "subtree", `
+									("(&(objectClass=EPFLGroupOfPersons)(cn={0}))" -f $groupName), @("*"))
+
+			if($group.count -eq 1)
+			{
+				return $group[0].Properties
+			}
+		}
+
+		return $null
+	}
+
 }
