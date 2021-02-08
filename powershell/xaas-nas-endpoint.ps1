@@ -774,7 +774,7 @@ try
             # 3. Politique de snapshot
 
             # Si volume collaboratif ET qu'il faut avoir les snapshots
-            if(( $volType -eq ([XaaSNASVolType]::col).ToString()) -and $snapPolicy -ne "")
+            if(( $volType -eq [XaaSNASVolType]::col) -and $snapPolicy -ne "")
             {
                 $snapPolicyObj = $netapp.getSnapshotPolicyByName($snapPolicy)
                 if($null -eq $snapPolicyObj)
