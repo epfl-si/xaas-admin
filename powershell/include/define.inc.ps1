@@ -44,6 +44,9 @@ $global:VRA_TENANT__EPFL         = "EPFL"
 $global:VRA_TENANT__ITSERVICES   = "ITServices"
 $global:VRA_TENANT__RESEARCH     = "Research"
 
+# Nom du groupe "groups" utilisé par les admins vRA. Sera utilisé principalement pour gérer les groupes dans "groups"
+$global:VRA_GROUPS_ADMIN_GROUP = "vsissp-prod-admins"
+
 # Nom des tenants que l'on devra traiter
 $global:TARGET_TENANT_LIST = @($global:VRA_TENANT__EPFL, $global:VRA_TENANT__ITSERVICES, $global:VRA_TENANT__RESEARCH<#, $global:VRA_TENANT__DEFAULT #>)
 
