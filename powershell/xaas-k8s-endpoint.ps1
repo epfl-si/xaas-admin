@@ -718,7 +718,7 @@ try
             # - Cluster Role
             $logHistory.addLine("Adding ClusterRole...")
             $tkgiKubectl.addClusterRole($clusterName, 
-                                        $nameGeneratorK8s.getClusterRoleName($clusterName))
+                                        $nameGeneratorK8s.getClusterRoleName())
 
             # - Cluster Role Binding
             $logHistory.addLine("Adding ClusterRoleBinding...")
@@ -727,7 +727,7 @@ try
                 $logHistory.addLine(("> For group '{0}'" -f $_))
                 
                 $tkgiKubectl.addClusterRoleBinding($clusterName, 
-                                                   $nameGeneratorK8s.getClusterRoleName($clusterName), 
+                                                   $nameGeneratorK8s.getClusterRoleName(), 
                                                    $nameGeneratorK8s.getClusterRoleBindingName($clusterName), 
                                                    $_)
             }
@@ -735,7 +735,7 @@ try
             # FIXME: A valider si effectivement ce n'est plus nécessaire. Mis en commentaire le 8.2.2021 suite à discussion avec MonSeigneur Haro
             # $logHistory.addLine("Adding ClusterRoleBinding for Service Accounts...")
             # $tkgiKubectl.addClusterRoleBindingServiceAccounts($clusterName, 
-            #                                                   $nameGeneratorK8s.getClusterRoleName($clusterName), 
+            #                                                   $nameGeneratorK8s.getClusterRoleName(), 
             #                                                   $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $true))
 
 
