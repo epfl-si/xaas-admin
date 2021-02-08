@@ -355,7 +355,7 @@ try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$logName = 'vra-clean-ghost-bg-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
-	$logHistory =[LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
+	$logHistory =[LogHistory]::new($logName, $global:LOGS_FOLDER, 30)
 
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
