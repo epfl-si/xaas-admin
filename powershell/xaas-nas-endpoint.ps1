@@ -161,12 +161,13 @@ function getNextColVolName([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorN
 
     IN  : $netapp           -> Objet de la classe NetAppAPI pour se connecter au NetApp
     IN  : $svmList          -> Liste des SVM parmi lesquelles choisir
+    IN  : $protocol         -> Nom du protocol qui a été demandé pour le volume
 
     RET : Objet représentant la SVM
 #>
-function chooseAppSVM([NetAppAPI]$netapp, [Array]$svmList)
+function chooseAppSVM([NetAppAPI]$netapp, [Array]$svmList, [NetAppProtocol]$protocol)
 {
-    $lessCharged = $null
+    $iops = $null
     $targetSVM = $null
     # Parcours des SVM
     ForEach($svmName in $svmList)
@@ -180,12 +181,13 @@ function chooseAppSVM([NetAppAPI]$netapp, [Array]$svmList)
             Throw ("Defined applicative SVM ({0}) not found. Please check 'data/xaas/nas/applicatives-svm.json' content")
         }
 
-        $aggr = $netapp.getAggregateById($svm.aggregates[0].uuid)
+        # Recherche des IOPS de la SVM
+        $svmIOPS = $netapp.getSVMMetrics($svm, $protocol, [NetAppMetricType]::total).iops
 
         # Si l'aggregat courant est moins utilisé
-        if( ($null -eq $lessCharged) -or ($aggr.space.block_storage.used -lt $lessCharged.space.block_storage.used))
+        if( ($null -eq $iops) -or ($svmIOPS -lt $iops))
         {
-            $lessCharged = $aggr
+            $iops = $svmIOPS
             $targetSVM = $svm
         }
     }
@@ -569,7 +571,7 @@ try
 
                     # Choix de la SVM
                     $logHistory.addLine("Choosing SVM for volume...")
-                    $svmObj = chooseAppSVM -netapp $netapp -svmList $appSVMList.($targetEnv.ToLower()).($access.ToLower())
+                    $svmObj = chooseAppSVM -netapp $netapp -svmList $appSVMList.($targetEnv.ToLower()).($access.ToLower()) -protocol ([NetAppProtocol]$access)
                     $logHistory.addLine( ("SVM will be '{0}'" -f $svmObj.name) )
 
                     # Pas d'espace réservé pour les snapshots

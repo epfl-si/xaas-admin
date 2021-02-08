@@ -250,6 +250,42 @@ class NetAppAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
+        BUT : Calcule la moyenne des métriques passées et retourne le résultat
+        
+        IN  : $stats        -> Tableau avec les statistiques pour lesquelles calculer la moyenne
+        IN  : $metricList   -> Tableau avec les noms des métriques qu'il faut calculer
+        IN  : $metricType   -> Le type de métrique que l'on veut. Voir en haut du fichier.
+
+        RET : Tableau associatif avec en clef les noms des métriques désirées
+	#>
+    hidden [psobject] calcMetricsAverage([Array]$stats, [Array]$metricList, [NetAppMetricType]$metricType)
+    {
+        $result = @{}
+
+        # Addition des valeurs pour chaque compteur
+        $stats | ForEach-Object{
+            ForEach($metric in $metricList)
+            {
+                $result.$metric += $_.$metric.($metricType.toString())
+            }
+        }
+
+        # Si on a des résultats
+        if($stats.count -gt 0)
+        {
+            # Maintenant qu'on a additionné toutes les valeurs, on peut faire la moyenne
+            ForEach($metric in $metricList)
+            {
+                $result.$metric = $result.$metric / $stats.count
+            }
+        }
+        # Retour d'un tableau associatif avec les infos.
+        return $result
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
         BUT : Attend qu'un job soit terminé
         
         IN  : $server       -> Le nom du serveur sur lequel tourne le job
@@ -413,6 +449,56 @@ class NetAppAPI: RESTAPICurl
     [string] getSVMClusterHost([PSObject]$svm)
     {
         return $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Retourne des informations sur les métriques d'une SVM
+        
+        IN  : $svm          -> Objet représentant la SVM
+        IN  : $protocol     -> Le nom du protocole pour lequel on veut les infos
+        IN  : $metricType   -> Le type de métrique que l'on veut. Voir en haut du fichier.
+
+        RET : Tableau associatif avec en clef les noms des métriques désirées (voir au début de
+                la fonction) et en valeur la moyenne sur la dernière semaine.
+
+        NOTE : L'appel à cette fonction ne retourne que les champs spécifiquement passés en paramètre.
+                Ce n'est donc pas comme si on pouvait juste "ajouter" des champs à ceux renvoyés par
+                défaut par l'appel retournant les détails d'une SVM.
+
+        https://nas-mcc-t.epfl.ch/docs/api/#/NAS/cifs_collection_performance_metrics_get
+
+	#>
+    [PSObject] getSVMMetrics([PSObject]$svm, [NetAppProtocol]$protocol, [NetAppMetricType]$metricType)
+    {
+        $protocolStr = $protocol.toString()
+        # On peut avoir "nfs3" et peut-être "nfs4" dans le futur donc on transforme pour avoir la bonne valeur pour l'URL après
+        if($protocolStr.StartsWith("nfs"))
+        {
+            $protocolStr = "nfs"
+        }
+        # Liste des métriques qu'on veut retourner 
+        $metricList = @(
+            "throughput",
+            "iops",
+            "latency"
+        )
+        $metricWithTypeList = @()
+        # Parcours des métriques 
+        $metricList | ForEach-Object { 
+            # Création du nom de la métrique, avec le type (total, read, ...)
+            $metricWithTypeList += ("{0}.{1}" -f $_, $metricType.toString()) 
+            # Ajout d'une donnée membre au résultat qui sera renvoyé
+            $result | Add-Member -NotePropertyName $_ -NotePropertyValue 0
+        }
+        $uri = "/api/protocols/{0}/services/{1}/metrics?fields={2}&interval=1w" -f $protocolStr, $svm.uuid, ($metricWithTypeList -join ",")
+        
+        $stats = $this.callAPI($uri, "GET", $null, "records", $true)
+        
+        # Calcul de la moyenne et retour
+        return $this.calcMetricsAverage($stats, $metricList, $metricType)
+
     }
 
     <#
@@ -656,6 +742,7 @@ class NetAppAPI: RESTAPICurl
         BUT : Retourne des informations sur les métriques d'un volume
         
         IN  : $vol   -> Objet représentant le volume
+        IN  : $metricType   -> Le type de métrique que l'on veut. Voir en haut du fichier.
 
         RET : Tableau associatif avec en clef les noms des métriques désirées (voir au début de
                 la fonction) et en valeur la moyenne sur la dernière semaine.
@@ -668,7 +755,6 @@ class NetAppAPI: RESTAPICurl
 	#>
     [PSObject] getVolumeMetrics([PSObject]$vol, [NetAppMetricType]$metricType)
     {
-        $result = @{}
 
         # Liste des métriques qu'on veut retourner 
         $metricList = @(
@@ -688,25 +774,8 @@ class NetAppAPI: RESTAPICurl
         
         $stats = $this.callAPI($uri, "GET", $null, "records", $true)
         
-        # Addition des valeurs pour chaque compteur
-        $stats | ForEach-Object{
-            ForEach($metric in $metricList)
-            {
-                $result.$metric += $_.$metric.($metricType.toString())
-            }
-        }
-
-        # Si on a des résultats
-        if($stats.count -gt 0)
-        {
-            # Maintenant qu'on a additionné toutes les valeurs, on peut faire la moyenne
-            ForEach($metric in $metricList)
-            {
-                $result.$metric = $result.$metric / $stats.count
-            }
-        }
-        # Retour d'un tableau associatif avec les infos.
-        return $result
+        # Calcul de la moyenne et retour
+        return $this.calcMetricsAverage($stats, $metricList, $metricType)
 
     }
 
