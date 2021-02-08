@@ -873,6 +873,7 @@ try
             # Récupération du nom de la faculté et de l'unité
             $details = $nameGeneratorNAS.getDetailsFromBGName($bg.name)
             $faculty = $details.faculty
+            $logHistory.addLine( ("Searching SVM for Faculty '{0}'" -f $faculty) )
 
             # Chargement des informations sur le mapping des facultés
             $facultyMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-mapping.json"))
@@ -889,9 +890,12 @@ try
                 if($facMapping.fromFacList -contains $faculty)
                 {
                     $targetFaculty = $facMapping.toFac
+
+                    $logHistory.addLine( ("Mapping found for Faculty '{0}'. We have to use '{1}' faculty" -f $faculty, $targetFaculty) )
                     break
                 }
             }
+
             
             # Liste des SVM pour la faculté (avec la bonne nommenclature)
             $svmList = @($netapp.getSVMList() | Where-Object { $_.name -match ('^{0}[0-9].*' -f $targetFaculty)} | Select-Object -ExpandProperty name)

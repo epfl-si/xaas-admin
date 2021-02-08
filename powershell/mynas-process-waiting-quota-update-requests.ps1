@@ -260,7 +260,7 @@ try
       }
       else # Le quota est correct
       {
-         $logHistory.addLineAndDisplay(( "-> Quota is correct ({0} MB), no change needed" -f $currentQuota.space.hard_limit ))
+         $logHistory.addLineAndDisplay(( "-> Quota is correct ({0} B), no change needed" -f $currentQuota.space.hard_limit ))
          $counters.inc('nbQuotaOK')
       }
 

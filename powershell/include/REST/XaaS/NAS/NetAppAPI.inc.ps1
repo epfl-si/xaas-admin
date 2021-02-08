@@ -158,13 +158,21 @@ class NetAppAPI: RESTAPICurl
         # Parcours des URL à interroger
         ForEach($currentUri in $uriList)
         {
-
+            
             # Appel de la fonction parente
             $res = ([RESTAPICurl]$this).callAPI($currentUri, $method, $body, $this.extraArgs)
 
             # Si on a un messgae d'erreur
             if([bool]($res.PSobject.Properties.name -match "error") -and ($res.error.messsage -ne ""))
             {
+                # Si on doit s'arrêter au premier résultat trouvé, c'est qu'à priori on ne sait pas sur quel serveur
+                # se trouve ce qu'on cherche. Donc, dans ce cas-là, c'est normal qu'on ait une erreur du type "entity not found"
+                # mais on doit l'ignorer et aller sur le prochain serveur
+                if($stopAtFirstGetResult)
+                {
+                    # Passage au prochain serveur
+                    continue
+                }
                 Throw $res.error.message
             }
 
@@ -492,12 +500,27 @@ class NetAppAPI: RESTAPICurl
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
         
+        IN  : $targetServer -> (optionnel) Nom du serveur sur lequel faire la requête.
+        
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_collection_get
 	#>
     hidden [Array] getVolumeListQuery([string]$queryParams)
     {
-        $uri = "/api/storage/volumes?max_records=9999"
+        return $this.getVolumeListQuery($queryParams, "")
+    }
 
+    hidden [Array] getVolumeListQuery([string]$queryParams, [string]$targetServer)
+    {
+        $uri = ""
+
+        # Si on doit aller sur un serveur donné
+        if($targetServer -ne "")
+        {
+            $uri = "https://{0}" -f $targetServer
+        }
+
+        $uri = "{0}/api/storage/volumes?max_records=9999" -f $uri
+ 
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
 		{
@@ -521,10 +544,17 @@ class NetAppAPI: RESTAPICurl
     <#
 		-------------------------------------------------------------------------------------
         BUT : Retourne la liste des volumes pour une SVM
+
+        IN  : $svm  -> Objet représentant la SVM
+
+        RET : Tableau avec la liste des volumes
 	#>
-    [Array] getSVMVolumes([PSObject]$svm)
+    [Array] getSVMVolumeList([PSObject]$svm)
     {
-        return $this.getVolumeListQuery("svm.name={0}" -f $svm.name)
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
+
+        return $this.getVolumeListQuery(("svm.name={0}" -f $svm.name), $targetServer)
     }
 
 
