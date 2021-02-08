@@ -7,7 +7,8 @@ metadata:
   # nom du role
   name: {{name}} 
 rules:
-- apiGroups: [""]
+- apiGroups:
+  - ""
   resources:
   - services
   - serviceaccounts
@@ -15,37 +16,78 @@ rules:
   - replicationcontrollers
   - podtemplates
   - pods
+  - pods/log
   - pods/exec
   - pods/cp
   - pods/portforward
-  - pods/log
   - persistentvolumeclaims
   - limitranges
   - events
   - endpoints
   - configmaps
   - bindings
-  verbs: ["create","delete","update","get","list","watch"]
-- apiGroups: [""]
+  verbs:
+  - create
+  - delete
+  - update
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
   resources:
   - resourcequotas
-  verbs: ["get","list"]
-- apiGroups: ["apps", "authorization.k8s.io","autoscaling", "batch","coordination.k8s.io", "discovery.k8s.io", "events.k8s.io", "extensions", "metrics.k8s.io", "monitoring.coreos.com", "pksapi.io", "projectcontour.io"]
-  resources: ["*"]
-  verbs: ["get","list","create","delete","watch","update","patch"]
-- apiGroups: ["rbac.authorization.k8s.io"]
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - apps
+  - authorization.k8s.io
+  - autoscaling
+  - batch
+  - coordination.k8s.io
+  - discovery.k8s.io
+  - events.k8s.io
+  - extensions
+  - metrics.k8s.io
+  - monitoring.coreos.com
+  - pksapi.io
+  - projectcontour.io
   resources:
-  - roles
+  - '*'
+  verbs:
+  - get
+  - list
+  - create
+  - delete
+  - watch
+  - update
+  - patch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
   - rolebindings
-  verbs: ["create","delete"]
-- apiGroups: ["vmware.com"]
-  resources: ["*"]
-  verbs: ["list"]
-- apiGroups: ["networking.k8s.io"]
+  - roles
+  verbs:
+  - create
+  - delete
+  - update
+  - patch
+- apiGroups:
+  - vmware.com
+  resources:
+  - '*'
+  verbs:
+  - list
+- apiGroups:
+  - networking.k8s.io
   resources:
   - networkpolicies
-  verbs: ["list"]
-- apiGroups: ["networking.k8s.io"]
+  verbs:
+  - list
+- apiGroups:
+  - networking.k8s.io
   resources:
   - ingresses
-  verbs: ["*"]
+  verbs:
+  - '*'

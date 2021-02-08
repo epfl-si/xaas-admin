@@ -362,7 +362,7 @@ function configureNamespaceElements([string]$clusterName, [string]$namespace, [s
     $logHistory.addLine("Adding Role...")
     $tkgiKubectl.addClusterNamespaceRole($clusterName,
                                         $namespace,
-                                        $nameGeneratorK8s.getRoleName($clusterName, $namespace))
+                                        $nameGeneratorK8s.getRoleName($namespace))
 
     # - RoleBinding
     $logHistory.addLine("Adding RoleBinding...")
@@ -372,7 +372,7 @@ function configureNamespaceElements([string]$clusterName, [string]$namespace, [s
         $logHistory.addLine(("> For group '{0}'" -f $_))
         $tkgiKubectl.addClusterNamespaceRoleBinding($clusterName, 
                                                     $namespace,
-                                                    $nameGeneratorK8s.getRoleName($clusterName, $namespace), 
+                                                    $nameGeneratorK8s.getRoleName($namespace), 
                                                     $nameGeneratorK8s.getRoleBindingName($clusterName, $namespace), 
                                                     $_)
     }
@@ -718,8 +718,7 @@ try
             # - Cluster Role
             $logHistory.addLine("Adding ClusterRole...")
             $tkgiKubectl.addClusterRole($clusterName, 
-                                        $nameGeneratorK8s.getClusterRoleName($clusterName),
-                                        $nameGeneratorK8s.getPodSecurityPolicyName($clusterName))
+                                        $nameGeneratorK8s.getClusterRoleName($clusterName))
 
             # - Cluster Role Binding
             $logHistory.addLine("Adding ClusterRoleBinding...")
