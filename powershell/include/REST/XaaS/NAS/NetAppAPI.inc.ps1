@@ -696,10 +696,14 @@ class NetAppAPI: RESTAPICurl
             }
         }
 
-        # Maintenant qu'on a additionné toutes les valeurs, on peut faire la moyenne
-        ForEach($metric in $metricList)
+        # Si on a des résultats
+        if($stats.count -gt 0)
         {
-            $result.$metric = $result.$metric / $stats.count
+            # Maintenant qu'on a additionné toutes les valeurs, on peut faire la moyenne
+            ForEach($metric in $metricList)
+            {
+                $result.$metric = $result.$metric / $stats.count
+            }
         }
         # Retour d'un tableau associatif avec les infos.
         return $result
