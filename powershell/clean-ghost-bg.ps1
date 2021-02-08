@@ -1,6 +1,6 @@
 <#
 USAGES:
-	clean-ghost-bg.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research
+	clean-ghost-bg.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research [-bgName <bgName>]
 #>
 <#
     BUT 		: Supprime les Business Groups qui sont en mode "ghost" s'ils sont vides.
@@ -9,6 +9,8 @@ USAGES:
                     1. Reservations
 					2. Entitlement
 					3. Business Group
+				
+					On peut aussi faire en sorte de spécifier manuellement quel BG on veut effacer.
 
 	DATE 		: Mars 2020
 	AUTEUR 	: Lucien Chaboudez
@@ -27,7 +29,7 @@ USAGES:
 				  Ceci ne fonctionne pas ! A la place il faut à nouveau passer par la
 				  commande Set-ExecutionPolicy mais mettre la valeur "ByPass" en paramètre.
 #>
-param ( [string]$targetEnv, [string]$targetTenant)
+param ( [string]$targetEnv, [string]$targetTenant, [string]$bgName)
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
@@ -419,7 +421,8 @@ try
 
 		# Si c'est un BG d'unité ou de service et s'il est déjà en Ghost
 		if((isBGOfType -bg $_ -typeList @($global:VRA_BG_TYPE__SERVICE, $global:VRA_BG_TYPE__UNIT, $global:VRA_BG_TYPE__PROJECT)) -and `
-			((getBGCustomPropValue -bg $_ -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS) -eq $global:VRA_BG_STATUS__GHOST))
+			((getBGCustomPropValue -bg $_ -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS) -eq $global:VRA_BG_STATUS__GHOST) -and `
+			($bgName -eq "" -or ($bgName -ne "" -and $bgName -eq $_.name)))
 		{
 			$logHistory.addLineAndDisplay(("-> Business Group '{0}' is Ghost, deleting..." -f $_.name))
 			$deleted = deleteBGAndComponentsIfPossible -vra $vra -groupsApp $groupsApp -nsx $nsx -bg $_ -targetTenant $targetTenant -nameGenerator $nameGenerator
