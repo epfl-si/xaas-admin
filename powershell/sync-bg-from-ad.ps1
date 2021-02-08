@@ -359,6 +359,8 @@ function createOrUpdateBG
 	else
 	{
 
+		$logHistory.addLineAndDisplay(("-> BG '{0}' already exists" -f $bg.Name))
+		
 		$counters.inc('BGExisting')
 		# ==========================================================================================
 
