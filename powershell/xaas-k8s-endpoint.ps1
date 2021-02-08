@@ -715,13 +715,6 @@ try
             configureNamespaceElements -clusterName $clusterName -namespace $global:DEFAULT_NAMESPACE -targetEnv $targetEnv `
                                        -adGroupList $accessGroupList -nameGeneratorK8s $nameGeneratorK8s -tkgiKubectl $tkgiKubectl -logHistory $logHistory
 
-            # - Pod Security Policy
-            $logHistory.addLine("Adding PodSecurityPolicy...")
-            $tkgiKubectl.addClusterPodSecurityPolicy($clusterName,
-                                                     $nameGeneratorK8s.getPodSecurityPolicyName($clusterName),
-                                                     $global:PSP_PRIVILEGED,
-                                                     $global:PSP_ALLOW_PRIVILEGE_ESCALATION)
-
             # - Cluster Role
             $logHistory.addLine("Adding ClusterRole...")
             $tkgiKubectl.addClusterRole($clusterName, 
@@ -740,10 +733,11 @@ try
                                                    $_)
             }
 
-            $logHistory.addLine("Adding ClusterRoleBinding for Service Accounts...")
-            $tkgiKubectl.addClusterRoleBindingServiceAccounts($clusterName, 
-                                                              $nameGeneratorK8s.getClusterRoleName($clusterName), 
-                                                              $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $true))
+            # FIXME: A valider si effectivement ce n'est plus nécessaire. Mis en commentaire le 8.2.2021 suite à discussion avec MonSeigneur Haro
+            # $logHistory.addLine("Adding ClusterRoleBinding for Service Accounts...")
+            # $tkgiKubectl.addClusterRoleBindingServiceAccounts($clusterName, 
+            #                                                   $nameGeneratorK8s.getClusterRoleName($clusterName), 
+            #                                                   $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $true))
 
 
             # -----------

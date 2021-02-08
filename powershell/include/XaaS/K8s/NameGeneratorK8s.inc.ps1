@@ -158,30 +158,15 @@ class NameGeneratorK8s: NameGeneratorBase
 
    <#
       -------------------------------------------------------------------------------------
-      BUT : Renvoie le nom d'un Pod Security Policy pour un cluster
-
-      IN  : $clusterName   -> Nom du cluster
-
-      RET : Le nom du Pod Security Policy
-   #>
-   [string] getPodSecurityPolicyName([string]$clusterName)
-   {
-      return "posepo-{0}" -f $clusterName
-   }
-
-
-   <#
-      -------------------------------------------------------------------------------------
       BUT : Renvoie le nom d'un Role pour un cluster et un namespace
 
-      IN  : $clusterName   -> Nom du cluster
       IN  : $namespace     -> Nom du namespace
 
       RET : Le nom du Role
    #>
-   [string] getRoleName([string]$clusterName, [string]$namespace)
+   [string] getRoleName([string]$namespace)
    {
-      return "ro-{0}-{1}" -f $clusterName, $namespace
+      return "ro-{0}-{1}" -f $this.getDetail('snowServiceId'), $namespace
    }
 
 
@@ -204,13 +189,11 @@ class NameGeneratorK8s: NameGeneratorBase
       -------------------------------------------------------------------------------------
       BUT : Renvoie le nom d'un Cluster Role pour un cluster
 
-      IN  : $clusterName   -> Nom du cluster
-
       RET : Le nom du Cluster Role
    #>
-   [string] getClusterRoleName([string]$clusterName)
+   [string] getClusterRoleName()
    {
-      return "clro-{0}" -f $clusterName
+      return "clro-{0}" -f $this.getDetail('snowServiceId')
    }
 
 

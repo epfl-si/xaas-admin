@@ -557,13 +557,11 @@ class TKGIKubectl
 
         IN  : $clusterName  -> Nom du cluster
         IN  : $roleName     -> nom du Role 
-        IN  : $pspName      -> Nom du Pod Security Policy lié
     #>
-    [void] addClusterRole([string]$clusterName, [string]$roleName, [string]$pspName)
+    [void] addClusterRole([string]$clusterName, [string]$roleName)
     {
         $replace = @{
             name = $roleName
-            pspName = $pspName
         }
 
         $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-clusterRole.yaml", $replace)
