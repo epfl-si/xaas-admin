@@ -543,7 +543,6 @@ try
 
     }
 
-    
 
     # -------------------------------------------------------------------------
     # En fonction de l'action demandée
@@ -561,7 +560,7 @@ try
             switch($volType)
             {
                 # ---- Volume Applicatif
-                ([XaaSNASVolType]::app).ToString()
+                app
                 {
                     $nameGeneratorNAS.setApplicativeDetails($bgId, $volName)
 
@@ -584,7 +583,7 @@ try
                 }
 
                 # ---- Volume Collaboratif
-                ([XaaSNASVolType]::col).ToString()
+                col
                 {
                     # Check des valeurs passées pour les snapshots
                     if( (($snapPercent -eq 0) -and ($snapPolicy -ne "")) -or ( ($snapPercent -ne 0) -and ($snapPolicy -eq "") ))
@@ -629,14 +628,14 @@ try
             }
 
             # En fonction du type d'accès qui a été demandé
-            switch($access.toLower())
+            switch($access)
             {
-                ([NetAppProtocol]::cifs).ToString()
+                cifs
                 {
                     $securityStyle = "ntfs"
                 }
 
-                ([NetAppProtocol]::nfs3).ToString()
+                nfs3
                 {
                     $securityStyle = "unix"
                 }
@@ -673,7 +672,7 @@ try
             switch($access)
             {
                 # ------------ CIFS
-                ([NetAppProtocol]::cifs).ToString()
+                cifs
                 {
                     $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $volName, $mountPoint))
                     $netapp.addCIFSShare($volName, $svmObj, $mountPoint)
@@ -685,7 +684,7 @@ try
                     switch($volType)
                     {
                         # ---- Volume Applicatif
-                        ([XaaSNASVolType]::app).ToString()
+                        app
                         {
                             # Ajout de l'export policy
                             $exportPol, $null = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
@@ -693,7 +692,7 @@ try
                         }
 
                         # ---- Volume Collaboratif
-                        ([XaaSNASVolType]::col).ToString()
+                        coll
                         {
                             $logHistory.addLine(("Checking if Export Policy '{0}' exists on SVM '{1}'..." -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name))
                             $exportPol = $netapp.getExportPolicyByName($svmObj, $global:EXPORT_POLICY_DENY_NFS_ON_CIFS)
@@ -760,7 +759,7 @@ try
 
 
                 # ------------ NFS
-                ([NetAppProtocol]::nfs3).ToString()
+                nfs3
                 {
                     # Ajout de l'export policy
                     $exportPol, $result = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
