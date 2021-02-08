@@ -507,7 +507,7 @@ try
     $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new('xaas-k8s', $global:LOGS_FOLDER, 30)
+    $logHistory = [LogHistory]::new(@('xaas', 'k8s', 'endpoint'), $global:LOGS_FOLDER, 30)
     
     # Objet pour pouvoir envoyer des mails de notification
     $valToReplace = @{

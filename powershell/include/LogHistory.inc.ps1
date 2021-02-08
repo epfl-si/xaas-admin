@@ -22,14 +22,15 @@ class LogHistory
               Le dossier créé portera le nom $logName et c'est dans celui-ci qu'on créera les fichiers logs,
               un par jour.
 
-        IN  : $logName          -> Nom du log
+        IN  : $logPath          -> Tableau avec le "chemin" jusqu'au log
         IN  : $rootFolderPath   -> Chemin jusqu'au dossier racine où mettre les logs.
         IN  : $nbDaysToKeep     -> Le nombre jours de profondeur que l'on veut garder
 	#>
-	LogHistory([string]$logName, [string]$rootFolderPath, [int]$nbDaysToKeep)
+	LogHistory([Array]$logPath, [string]$rootFolderPath, [int]$nbDaysToKeep)
 	{
         # On créé un dossier avec la date du jour pour le log
-        $this.logFolderPath = [IO.Path]::Combine($rootFolderPath, $logName, (Get-Date -format "yyyy-MM-dd"))
+        $cmd = '$this.logFolderPath = [IO.Path]::Combine($rootFolderPath, "{0}", (Get-Date -format "yyyy-MM-dd"))' -f ($logPath -join '","')
+        Invoke-Expression $cmd
         $this.logFilename = ("{0}.log" -f (Get-Date -Format "HH-mm-ss.fff"))
 
         # Si le dossier pour les logs n'existe pas encore,
