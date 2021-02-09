@@ -94,6 +94,7 @@ $ACTION_GET_RESTORE_STATUS = "getRestoreStatus"
 $ACTION_VM_HAS_RUNNING_SNAPSHOT = "VMHasSnap"
 
 $NBU_CATEGORY = "NBU"
+$BACKUP_POLICY_TYPE_FILTER = "VMware"
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
 
@@ -244,6 +245,8 @@ try
                 - Ceux qui ne sont pas encore expirés  #>
             $nbu.getVMBackupList($vmName) | Where-Object {
                 $_.attributes.backupStatus -eq 0 `
+                -and `
+                $_.attributes.policyType -eq $BACKUP_POLICY_TYPE_FILTER `
                 -and `
                 (Get-Date) -lt [DateTime]($_.attributes.expiration -replace "Z", "")} | ForEach-Object {
 
