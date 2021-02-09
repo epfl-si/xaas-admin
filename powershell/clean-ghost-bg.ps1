@@ -354,7 +354,7 @@ function handleNotifications
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-	$logPath = @('vra', 'clean-ghost-bg-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower())
+	$logPath = @('vra', ('clean-ghost-bg-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()))
 	$logHistory =[LogHistory]::new($logPath, $global:LOGS_FOLDER, 30)
 
 	# On contrôle le prototype d'appel du script
