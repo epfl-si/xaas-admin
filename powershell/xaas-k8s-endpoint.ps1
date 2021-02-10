@@ -945,7 +945,7 @@ try
             try
             {
                 $logHistory.addLine("Configuring namespace...")
-                configureNamespaceElements -clusterName $clusterName -namespace $global:DEFAULT_NAMESPACE -targetEnv $targetEnv `
+                configureNamespaceElements -clusterName $clusterName -namespace $namespace -targetEnv $targetEnv `
                                        -adGroupList $accessGroupList -nameGeneratorK8s $nameGeneratorK8s -tkgiKubectl $tkgiKubectl -logHistory $logHistory
             }
             catch
