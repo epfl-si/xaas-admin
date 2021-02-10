@@ -22,6 +22,7 @@
 class RESTAPI: APIUtils
 {
 	hidden [string]$server
+	hidden [string]$baseUrl
 	hidden [System.Collections.Hashtable]$headers
 	hidden [System.Object] $lastBody
 
@@ -35,6 +36,7 @@ class RESTAPI: APIUtils
     {
 		$this.server = $server
 		$this.headers = @{}
+		$this.baseUrl = "https://{0}" -f $this.server
     }
 
 

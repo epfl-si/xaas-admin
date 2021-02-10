@@ -1,0 +1,12 @@
+{
+    "property-content" : [ 
+        {
+            "statKey" : "{{propertyPath}}",
+            "timestamps" : [ "{{timestamp}}" ],
+            "values" : [ "{{value}}" ],
+            "others" : [ ],
+            "otherAttributes" : {
+            }
+        } 
+    ]
+}
