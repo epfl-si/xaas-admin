@@ -73,7 +73,7 @@ class RESTAPI: APIUtils
 		$this.debugLog(("Invoke-RestMethod: $($method) $($uri) `nBody:`n{0}" -f (ConvertTo-Json -InputObject $body -Depth 20)))
 
 		# Si la requête est de la lecture
-		if($method.ToLower() -eq "get")
+		if($method -eq "get")
 		{
 			# Si on a l'info dans le cache, on la retourne
 			$cached = $this.getFromCache($uri)

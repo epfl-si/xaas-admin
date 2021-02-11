@@ -161,12 +161,13 @@ function getNextColVolName([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorN
 
     IN  : $netapp           -> Objet de la classe NetAppAPI pour se connecter au NetApp
     IN  : $svmList          -> Liste des SVM parmi lesquelles choisir
+    IN  : $protocol         -> Nom du protocol qui a été demandé pour le volume
 
     RET : Objet représentant la SVM
 #>
-function chooseAppSVM([NetAppAPI]$netapp, [Array]$svmList)
+function chooseAppSVM([NetAppAPI]$netapp, [Array]$svmList, [NetAppProtocol]$protocol)
 {
-    $lessCharged = $null
+    $iops = $null
     $targetSVM = $null
     # Parcours des SVM
     ForEach($svmName in $svmList)
@@ -180,12 +181,13 @@ function chooseAppSVM([NetAppAPI]$netapp, [Array]$svmList)
             Throw ("Defined applicative SVM ({0}) not found. Please check 'data/xaas/nas/applicatives-svm.json' content")
         }
 
-        $aggr = $netapp.getAggregateById($svm.aggregates[0].uuid)
+        # Recherche des IOPS de la SVM
+        $svmIOPS = $netapp.getSVMMetrics($svm, $protocol, [NetAppMetricType]::total).iops
 
         # Si l'aggregat courant est moins utilisé
-        if( ($null -eq $lessCharged) -or ($aggr.space.block_storage.used -lt $lessCharged.space.block_storage.used))
+        if( ($null -eq $iops) -or ($svmIOPS -lt $iops))
         {
-            $lessCharged = $aggr
+            $iops = $svmIOPS
             $targetSVM = $svm
         }
     }
@@ -483,7 +485,7 @@ try
     $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new('xaas-nas', (Join-Path $PSScriptRoot "logs"), 30)
+    $logHistory = [LogHistory]::new(@('xaas','nas', 'endpoint'), $global:LOGS_FOLDER, 30)
     
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
@@ -541,7 +543,6 @@ try
 
     }
 
-    
 
     # -------------------------------------------------------------------------
     # En fonction de l'action demandée
@@ -559,7 +560,7 @@ try
             switch($volType)
             {
                 # ---- Volume Applicatif
-                ([XaaSNASVolType]::app).ToString()
+                app
                 {
                     $nameGeneratorNAS.setApplicativeDetails($bgId, $volName)
 
@@ -569,7 +570,7 @@ try
 
                     # Choix de la SVM
                     $logHistory.addLine("Choosing SVM for volume...")
-                    $svmObj = chooseAppSVM -netapp $netapp -svmList $appSVMList.($targetEnv.ToLower()).($access.ToLower())
+                    $svmObj = chooseAppSVM -netapp $netapp -svmList $appSVMList.($targetEnv.ToLower()).($access.ToLower()) -protocol ([NetAppProtocol]$access)
                     $logHistory.addLine( ("SVM will be '{0}'" -f $svmObj.name) )
 
                     # Pas d'espace réservé pour les snapshots
@@ -582,7 +583,7 @@ try
                 }
 
                 # ---- Volume Collaboratif
-                ([XaaSNASVolType]::col).ToString()
+                col
                 {
                     # Check des valeurs passées pour les snapshots
                     if( (($snapPercent -eq 0) -and ($snapPolicy -ne "")) -or ( ($snapPercent -ne 0) -and ($snapPolicy -eq "") ))
@@ -627,14 +628,14 @@ try
             }
 
             # En fonction du type d'accès qui a été demandé
-            switch($access.toLower())
+            switch($access)
             {
-                ([NetAppProtocol]::cifs).ToString()
+                cifs
                 {
                     $securityStyle = "ntfs"
                 }
 
-                ([NetAppProtocol]::nfs3).ToString()
+                nfs3
                 {
                     $securityStyle = "unix"
                 }
@@ -671,7 +672,7 @@ try
             switch($access)
             {
                 # ------------ CIFS
-                ([NetAppProtocol]::cifs).ToString()
+                cifs
                 {
                     $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $volName, $mountPoint))
                     $netapp.addCIFSShare($volName, $svmObj, $mountPoint)
@@ -683,7 +684,7 @@ try
                     switch($volType)
                     {
                         # ---- Volume Applicatif
-                        ([XaaSNASVolType]::app).ToString()
+                        app
                         {
                             # Ajout de l'export policy
                             $exportPol, $null = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
@@ -691,7 +692,7 @@ try
                         }
 
                         # ---- Volume Collaboratif
-                        ([XaaSNASVolType]::col).ToString()
+                        coll
                         {
                             $logHistory.addLine(("Checking if Export Policy '{0}' exists on SVM '{1}'..." -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name))
                             $exportPol = $netapp.getExportPolicyByName($svmObj, $global:EXPORT_POLICY_DENY_NFS_ON_CIFS)
@@ -758,7 +759,7 @@ try
 
 
                 # ------------ NFS
-                ([NetAppProtocol]::nfs3).ToString()
+                nfs3
                 {
                     # Ajout de l'export policy
                     $exportPol, $result = addNFSExportPolicy -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -svmObj $svmObj `
@@ -773,7 +774,7 @@ try
             # 3. Politique de snapshot
 
             # Si volume collaboratif ET qu'il faut avoir les snapshots
-            if(( $volType -eq ([XaaSNASVolType]::col).ToString()) -and $snapPolicy -ne "")
+            if(( $volType -eq [XaaSNASVolType]::col) -and $snapPolicy -ne "")
             {
                 $snapPolicyObj = $netapp.getSnapshotPolicyByName($snapPolicy)
                 if($null -eq $snapPolicyObj)
