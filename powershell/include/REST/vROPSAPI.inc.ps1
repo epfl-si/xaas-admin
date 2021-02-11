@@ -170,9 +170,9 @@ class vROPSAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
 	#>
 
-    [Array] getResourceProperties([PSObject]$resource)
+    [Array] getResourcePropertyList([PSObject]$resource)
     {
-        $uri = "{0}/resources/{0}/properties" -f $this.baseUrl, $resource.identifier
+        $uri = "{0}/resources/{1}/properties" -f $this.baseUrl, $resource.identifier
 
         return ($this.callAPI($uri, "GET", $null)).property
     }
@@ -191,7 +191,7 @@ class vROPSAPI: RESTAPICurl
 	#>
     [PSObject] addResourceProperty([PSObject]$resource, [string]$propertyPath, [string]$propertyValue)
     {
-        $uri = "{0}/resources/{0}/properties" -f $this.baseUrl, $resource.identifier
+        $uri = "{0}/resources/{1}/properties" -f $this.baseUrl, $resource.identifier
         # Valeur à mettre pour la configuration du BG
 		$replace = @{
             propertyPath = $propertyPath
