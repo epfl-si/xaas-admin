@@ -28,9 +28,14 @@ class LogHistory
 	#>
 	LogHistory([Array]$logPath, [string]$rootFolderPath, [int]$nbDaysToKeep)
 	{
-        # On créé un dossier avec la date du jour pour le log
-        $cmd = '$this.logFolderPath = [IO.Path]::Combine($rootFolderPath, "{0}", (Get-Date -format "yyyy-MM-dd"))' -f ($logPath -join '","')
+        # Dossier pour tous les fichiers du log
+        $allLogFolder = ""
+        $cmd = '$allLogFolder = [IO.Path]::Combine($rootFolderPath, "{0}")' -f ($logPath -join '","')
         Invoke-Expression $cmd
+
+        # On créé un dossier avec la date du jour pour le log
+        $this.logFolderPath = [IO.Path]::Combine($allLogFolder, (Get-Date -format "yyyy-MM-dd"))
+        
         $this.logFilename = ("{0}.log" -f (Get-Date -Format "HH-mm-ss.fff"))
 
         # Si le dossier pour les logs n'existe pas encore,
@@ -38,13 +43,11 @@ class LogHistory
         {
             New-Item -ItemType Directory -Force -Path $this.logFolderPath | Out-null
         }
-        else # Le dossier pour les logs existe déjà
-        {
-            # Suppression des "vieux logs"
-            Get-ChildItem $this.logFolderPath | `
-                Where-Object {$_.CreationTime -le (Get-Date).AddDays(-$nbDaysToKeep) } | Remove-Item -Force
-        }
-
+        
+        # Suppression des "vieux logs"
+        Get-ChildItem $allLogFolder -Directory | `
+            Where-Object {$_.CreationTime -le (Get-Date).AddDays(-$nbDaysToKeep) } | Remove-Item -Force -Recurse
+        
     }
 
 
