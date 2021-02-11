@@ -283,6 +283,8 @@ function createOrUpdateBG
 {
 	param([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$financeCenter, [string]$capacityAlertsEmail)
 
+	$logHistory.addLineAndDisplay(("-> Handling BG with custom ID {0}..." -f $bgEPFLID))
+	
 	# Recherche du BG par son no identifiant (no d'unité, no de service Snow, etc... ).
 	$bg = $vra.getBGByCustomId($bgEPFLID, $true)
 
