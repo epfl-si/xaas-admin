@@ -13,6 +13,9 @@
 
 
 #>
+
+$global:VROPS_RESOURCE_PROPERTY_BASE_PATH = "EPFL|"
+
 class vROPSAPI: RESTAPICurl
 {
     
@@ -156,7 +159,7 @@ class vROPSAPI: RESTAPICurl
 	#>
 	[PSObject] getResourceById([string]$resourceId)
 	{
-        $uri = "{0}/resources/{0}" -f $this.baseUrl, $resourceId
+        $uri = "{0}/resources/{1}" -f $this.baseUrl, $resourceId
 
         return $this.callAPI($uri, "GET", $null)
     }
@@ -170,12 +173,37 @@ class vROPSAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
 	#>
 
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des property pour une resource
+
+        IN  : $resource         -> Objet représentant la ressource
+
+		RET : Tableau avec la liste
+	#>
     [Array] getResourcePropertyList([PSObject]$resource)
     {
         $uri = "{0}/resources/{1}/properties" -f $this.baseUrl, $resource.identifier
 
         return ($this.callAPI($uri, "GET", $null)).property
     }
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Permet de savoir si une property existe sur une resource
+
+        IN  : $resource         -> Objet représentant la ressource
+        IN  : $propertyPath     -> Chemin jusqu'à la propriété, sous la forme:
+                                    <niveau1>[|<niveau2>[|<niveau3>...]]|<propertyName>
+									Ce chemin sera ajouté à la suite de $global:VROPS_RESOURCE_PROPERTY_BASE_PATH
+
+		RET : $true|$false
+	#>
+	[bool] resourcePropertyExists([PSObject]$resource, [string]$propertyPath)
+	{
+		return $null -ne ($this.getResourcePropertyList($resource) | Where-Object { $_.name -eq ("{0}{1}" -f $global:VROPS_RESOURCE_PROPERTY_BASE_PATH, $propertyPath) })
+	}
 
 
     <#
@@ -185,6 +213,7 @@ class vROPSAPI: RESTAPICurl
         IN  : $resource         -> Objet représentant la ressource
         IN  : $propertyPath     -> Chemin jusqu'à la propriété, sous la forme:
                                     <niveau1>[|<niveau2>[|<niveau3>...]]|<propertyName>
+									Ce chemin sera ajouté à la suite de $global:VROPS_RESOURCE_PROPERTY_BASE_PATH
         IN  : $propertyValue    -> Valeur de la propriété
 
         RET : Objet avec la ressource modifiée
@@ -194,8 +223,8 @@ class vROPSAPI: RESTAPICurl
         $uri = "{0}/resources/{1}/properties" -f $this.baseUrl, $resource.identifier
         # Valeur à mettre pour la configuration du BG
 		$replace = @{
-            propertyPath = $propertyPath
-            timestamp = getUnixTimestamp
+            propertyPath = ("{0}{1}" -f $global:VROPS_RESOURCE_PROPERTY_BASE_PATH, $propertyPath)
+            timestamp = @(((getUnixTimestamp) * 1000), $true)
             value = $propertyValue
         }
 
