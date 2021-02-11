@@ -53,8 +53,7 @@ class NetBackupAPI: RESTAPICurl
 	#>
 	NetBackupAPI([string] $server, [string] $user, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
-		$this.server = $server
-
+		
 		<# Le plus souvent, on utilise 'application/json' pour les 'Accept' et 'Content-Type' mais NetBackup semble vouloir faire
 			autrement... du coup, obligé de mettre ceci car sinon cela génère des erreurs. Et au final, c'est toujours du JSON... #>
 		$this.headers.Add('Accept', 'application/vnd.netbackup+json;version=2.0')

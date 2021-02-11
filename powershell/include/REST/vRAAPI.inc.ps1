@@ -42,7 +42,6 @@ class vRAAPI: RESTAPICurl
 	#>
 	vRAAPI([string] $server, [string] $tenant, [string] $userAtDomain, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
-		$this.server = $server
 		$this.tenant = $tenant
 
 		# Cache pour le mapping entre l'ID custom d'un BG et celui-ci

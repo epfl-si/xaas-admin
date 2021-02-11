@@ -27,7 +27,6 @@ class CopernicAPI: RESTAPICurl
 	#>
     CopernicAPI([string]$server, [string]$username, [string]$password): base($server)
     {
-        $this.server = $server
         $this.username = $username
         $this.password = $password
 
