@@ -53,7 +53,7 @@ class GroupsAPI: RESTAPICurl
     #>
     hidden [string] getBaseURI([string]$command)
     {
-        return ("https://{0}/cgi-bin/rwsgroups/{1}?app={2}&caller={3}" -f $this.server, $command, $this.appName, $this.callerSciper)
+        return ("{0}/cgi-bin/rwsgroups/{1}?app={2}&caller={3}" -f $this.baseUrl, $command, $this.appName, $this.callerSciper)
     }
 
 
