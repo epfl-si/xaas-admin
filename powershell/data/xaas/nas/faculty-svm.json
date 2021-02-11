@@ -6,7 +6,7 @@
     "test":
     {
         /* Valable à partir de février 2021 */
-        "VPO-SI": [
+        "VPOSI": [
             "nas-mcc-t-test"
         ]
     },
@@ -23,7 +23,7 @@
             "scxbbp"
         ],
         /* Valable à partir de février 2021 */
-        "VPO-SI": [
+        "VPOSI": [
             "scxdata",
             "scxlcdata",
             "svdbdata",
