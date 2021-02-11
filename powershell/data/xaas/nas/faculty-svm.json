@@ -9,8 +9,8 @@
         "SI": [
             "nas-mcc-t-test"
         ],
-        /* Valable à partir de février 2021 */
-        "VPO-SI": [
+        /* Valable à partir de février 2021. On enlève volontairement les "-" dans le nom de la faculté */
+        "VPOSI": [
             "nas-mcc-t-test"
         ]
     },
@@ -42,8 +42,8 @@
             "myssqlbackups",
             "scxcraft"
         ],
-        /* Valable à partir de février 2021 */
-        "VPO-SI": [
+        /* Valable à partir de février 2021. On enlève volontairement les "-" dans le nom de la faculté  */
+        "VPOSI": [
             "scxdata",
             "scxlcdata",
             "svdbdata",
