@@ -5,6 +5,12 @@ metadata:
   name: {{name}}
 rules:
 - apiGroups:
+  - bitnami.com
+  resources:
+  - sealedsecrets
+  verbs:
+  - '*'
+- apiGroups:
   - ""
   resources:
   - serviceaccounts
@@ -32,6 +38,8 @@ rules:
   - ""
   resources:
   - componentstatuses
+  - secrets
+  - events
   verbs:
   - '*'
 - apiGroups:
