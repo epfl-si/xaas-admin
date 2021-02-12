@@ -22,6 +22,7 @@ $global:K8S_DNS_ZONE_NAME = "xaas.epfl.ch"
 ### Valeurs par défaut pour les fichiers YAML
 # Voir aussi le fichier 'config/config-xaas-k8s.json' pour d'autres valeurs différentes via les environnements
 $global:DEFAULT_NAMESPACE = "default"
+$global:CONTOUR_NAMESPACE = "projectcontour"
 $global:PSP_PRIVILEGED = $false
 $global:PSP_ALLOW_PRIVILEGE_ESCALATION = $false
 $global:RESOURCE_QUOTA_LB_AND_NODEPORTS = 0

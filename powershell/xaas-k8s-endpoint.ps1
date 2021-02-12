@@ -1,6 +1,6 @@
 <#
 USAGES:
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgId <bgId> -plan <plan> -netProfile <netProfile> -deploymentTag prod|test|dev
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgId <bgId> -plan <plan> -deploymentTag prod|test|dev
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgId <bgId> -clusterName <clusterName> -deploymentTag prod|test|dev [-clusterUUID <clusterUUID>]
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getClusterInfos -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action setNbWorkers -clusterName <clusterName> -nbWorkers <nbWorkers>
@@ -52,7 +52,6 @@ param([string]$targetEnv,
       [string]$bgId,
       [string]$plan,
       [int]$nbWorkers,
-      [string]$netProfile,
       [string]$deploymentTag,
       [string]$clusterName,
       [string]$clusterUUID,
@@ -679,6 +678,7 @@ try
             $logHistory.addLine(("DNS hosnames will be '{0}' for main cluster and '{1}' for Ingress part" -f $dnsHostName, $dnsHostNameIngress))
 
             # Création du cluster
+            $netProfile = $nameGeneratorK8s.getNetProfileName($deploymentTag)
             $logHistory.addLine(("Creating cluster '{0}' with '{1}' plan and '{2}' network profile (this will take time, you can go to grab a coffee)..." -f $clusterName, $plan, $netProfile))
             $cluster = $pks.addCluster($clusterName, $plan, $netProfile, $dnsHostNameFull)
 
@@ -702,6 +702,16 @@ try
             $logHistory.addLine(("Adding DNS entries in {0} zone..." -f $global:K8S_DNS_ZONE_NAME))
             $EPFLDNS.registerDNSIP($dnsHostName, $ipMain, $global:K8S_DNS_ZONE_NAME)
             $EPFLDNS.registerDNSIP($dnsHostNameIngress, $ipIngress, $global:K8S_DNS_ZONE_NAME)
+
+            # ------------
+            # ---- Contour
+
+            # Ajout du nouveau namespace
+            $logHistory.addLine(("Adding namespace '{0}' to cluster '{1}'..." -f $global:CONTOUR_NAMESPACE, $clusterName))
+            $tkgiKubectl.addClusterNamespace($clusterName, $global:CONTOUR_NAMESPACE, $targetEnv)
+            $logHistory.addLine("Configuring Contour...")
+            $tkgiKubectl.configureContour($clusterName)
+
 
             # - Storage Class
             $logHistory.addLine("Adding StorageClass...")

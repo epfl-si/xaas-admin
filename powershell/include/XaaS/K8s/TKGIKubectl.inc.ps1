@@ -614,6 +614,30 @@ class TKGIKubectl
     }
 
 
+    <#
+	-------------------------------------------------------------------------------------
+		BUT : Effectue la configuration de la partie "Contour". Il s'agit de plusieurs commandes
+                qui sont passées à la suite.
+
+        IN  : $clusterName      -> Nom du cluster
+    #>
+    [void] configureContour([string]$clusterName)
+    {
+        # -- Première partie définie par l'EFPL
+
+        $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-podSecurityPolicy.yaml")) | Out-Null
+        $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-clusterRole.yaml")) | Out-Null
+        $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-serviceAccount.yaml")) | Out-Null
+        $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-roleBinding.yaml")) | Out-Null
+
+        <# -- Partie "officielle". Tirée du fichier https://projectcontour.io/quickstart/contour.yaml 
+        dans lequel on a commenté les lignes suivantes:
+        service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+        externalTrafficPolicy: Local #>
+        $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour.yaml")) | Out-Null
+    }
+
+
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Activation du logging "debug" des requêtes faites sur le système distant.
@@ -650,8 +674,5 @@ class TKGIKubectl
 			$this.logHistory.addDebug(("{0}::{1}(): {2}" -f $this.GetType().Name, $funcName, $line))
 		}
 	}
-
-
-
 
 }
