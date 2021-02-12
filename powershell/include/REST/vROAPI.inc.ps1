@@ -45,7 +45,7 @@ class vROAPI
 
 		$body = "username=administrator&password={0}&client_id={1}&domain={2}" -f $password, $cafeClientID, $this.tenant
 
-		$uri = "https://{0}/SAAS/t/{1}/auth/oauthtoken?grant_type=password" -f $this.server, $this.tenant
+		$uri = "https://{0}/SAAS/t/{1}/auth/oauthtoken?grant_type=password" -f $server, $this.tenant
 
 		# Pour autoriser les certificats self-signed
 		[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $True }

@@ -27,7 +27,6 @@ class CopernicAPI: RESTAPICurl
 	#>
     CopernicAPI([string]$server, [string]$username, [string]$password): base($server)
     {
-        $this.server = $server
         $this.username = $username
         $this.password = $password
 
@@ -137,7 +136,7 @@ class CopernicAPI: RESTAPICurl
         # Pour le debug
         #$body | ConvertTo-JSON -Depth 20 | Out-file "D:\IDEVING\IaaS\git\xaas-admin\powershell\billing\JSON.json"
 
-        $uri = "https://{0}/RESTAdapter/api/sd/facture" -f $this.server
+        $uri = "{0}/RESTAdapter/api/sd/facture" -f $this.baseUrl
 
         # Exécution de la requête et transformation en objet
         $callRes = $this.callAPI($uri, "Post", $body) 
