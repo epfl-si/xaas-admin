@@ -44,6 +44,10 @@ $itServices = [ITServices]::new()
 
 $groupsManualRename = @()
 
+# ID du groupe vsissp-prod-admins à ajouter dans tous les groupes
+$adminSciper = "S19307"
+
+
 Foreach($service in $itServices.getServiceList($targetEnv))
 {
     $nameGenerator.initDetails(@{serviceShortName = $service.shortName
@@ -81,8 +85,40 @@ Foreach($service in $itServices.getServiceList($targetEnv))
 
     Write-Host (">> Renaming 'groups' Group {0} to {1}" -f $curName, $newName)
 
-    if($null -ne ($groupsApp.getGroupByName($curName)))
+    $group = $groupsApp.getGroupByName($curName)
+
+    if($null -ne $group)
     {
+        # Si le groupe vsissp-prod-admins n'est pas dans la liste des admins
+        if($null -eq ($groupsApp.listAdmins($group.id) | Where-Object { $_.id -eq $adminSciper}))
+        {
+            Write-Host (">>> 'vsissp-prod-admins' group is not in admin list")
+            $groupAddedInMembers = $false
+
+            # Si le groupe n'est pas encore dans les membres
+            if($null -eq ($groupsApp.listMembers($group.id) | Where-Object { $_.id -eq $adminSciper}))
+            {
+                $groupAddedInMembers = $true
+                Write-Host (">>>> Adding 'vsissp-prod-admins' group to members")
+                $groupsApp.addMember($group.id, $adminSciper)
+                
+            }
+
+            # Ajout en tant qu'Admin
+            Write-Host (">>>> Adding 'vsissp-prod-admins' group as admin")
+            $groupsApp.addAdmin($group.id, $adminSciper)
+
+            # Si on avait dû ajouté le groupe dans les membres
+            if($groupAddedInMembers)
+            {
+                # On l'enlève
+                Write-Host (">>>> Removing 'vsissp-prod-admins' group from members")
+                $groupsApp.removeMember($group.id, $adminSciper)
+            }
+        }
+
+        
+
         try
         {
             $newGroup = $groupsApp.renameGroup($curName, $newName)    
