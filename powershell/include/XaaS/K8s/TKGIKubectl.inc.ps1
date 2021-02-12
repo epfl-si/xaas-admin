@@ -347,7 +347,7 @@ class TKGIKubectl
         IN  : $valToReplace -> Tableau associatif avec les avec les valeurs à remplacer
                                 dans le fichier YAML que l'on charge.
     #>
-    hidden [string] genereateKubectlCmdWithYaml([string]$file)
+    hidden [string] generateKubectlCmdWithYaml([string]$file)
     {
         return $this.generateKubectlCmdWithYaml($file, @{})
     }
