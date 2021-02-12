@@ -1209,4 +1209,8 @@ catch
     $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
 }
 
-$vra.disconnect()
+if($null -ne $vra)
+{
+    $vra.disconnect()
+}
+
