@@ -264,7 +264,7 @@ class NameGeneratorBase
             if(! $details.ContainsKey($key))
             {
                 $missingKeys += $key
-            }     
+            }
         }
 
         # Si des infos sont manquantes...

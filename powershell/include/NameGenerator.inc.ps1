@@ -214,7 +214,7 @@ class NameGenerator: NameGeneratorBase
                 elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
                         $role -eq "CSP_CONSUMER")
                 {
-                    # vra_<envShort>_<serviceShort>
+                    # vra_<envShort>_<serviceId>
                     $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('snowServiceId').toLower())
 
                     # Groupe AD
