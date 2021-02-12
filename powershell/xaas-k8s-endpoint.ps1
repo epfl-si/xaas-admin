@@ -167,11 +167,10 @@ function getNextClusterName([PKSAPI]$pks, [NameGeneratorK8s]$nameGeneratorK8s)
     IN  : $clusterName      -> Nom du cluster à supprimer
     IN  : $clusterUUID      -> UUID du cluster (peut être $null, à passer si on veut "finaliser" la procédure d'effacement
                                 pour un cluster déjà effacé mais que le reste n'a pas pu être traité.)
-    IN  : $ipPoolName       -> Nom du pool IP dans NSX
     IN  : $targetTenant     -> Tenant cible
     IN  : $envNSGroup       -> Objet représentant le NSGroup NSX qui contient le NSGroup du cluster
 #>
-function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGeneratorK8s]$nameGeneratorK8s, [HarborAPI]$harbor, [string]$clusterName, [string]$clusterUUID, [string]$ipPoolName, [string]$targetTenant, [PSObject]$envNSGroup)
+function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGeneratorK8s]$nameGeneratorK8s, [HarborAPI]$harbor, [string]$clusterName, [string]$clusterUUID, [string]$targetTenant, [PSObject]$envNSGroup)
 {
     # Le nom du cluster peut être encore vide dans le cas où une erreur surviendrait avait que le nom soit initialisé. 
     # Dans ce cas, on ne fait rien
@@ -801,7 +800,7 @@ try
         $ACTION_DELETE
         {
             deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -clusterName $clusterName -clusterUUID $clusterUUID `
-                        -harbor $harbor -ipPoolName $configK8s.getConfigValue(@($targetEnv, "nsx", "ipPoolName")) -targetTenant $targetTenant -envNSGroup $envNSGroup
+                        -harbor $harbor -targetTenant $targetTenant -envNSGroup $envNSGroup
         }
 
 
@@ -1183,7 +1182,7 @@ catch
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating cluster '{0}', deleting it so everything is clean:`n{1}`nStack Trace:`n{2}" -f $clusterName, $errorMessage, $errorTrace))
         deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -harbor $harbor  -clusterName $clusterName `
-                    -clusterUUID "" -ipPoolName $configK8s.getConfigValue(@($targetEnv, "nsx", "ipPoolName")) -targetTenant $targetTenant -envNSGroup $envNSGroup
+                    -clusterUUID "" -targetTenant $targetTenant -envNSGroup $envNSGroup
     }
 
     # Reset des infos s'il y en avait, ajout de l'erreur et affichage

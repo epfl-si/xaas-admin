@@ -28,10 +28,6 @@
             "user": "",
             "password": ""
         },
-        "nsx":
-        {
-            "ipPoolName": ""
-        },
         "dns":
         {
             "server": "",
@@ -69,10 +65,6 @@
             "user": "",
             "password": ""
         },
-        "nsx":
-        {
-            "ipPoolName": ""
-        },
         "dns":
         {
             "server": "",
@@ -109,10 +101,6 @@
             "server": "",
             "user": "",
             "password": ""
-        },
-        "nsx":
-        {
-            "ipPoolName": ""
         },
         "dns":
         {
