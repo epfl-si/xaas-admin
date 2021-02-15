@@ -215,13 +215,13 @@ class NameGeneratorK8s: NameGeneratorBase
    {
       if($forServiceAccounts)
       {
-         $middle = "-svcacc"
+         $end = "-service"
       }
       else
       {
-         $middle = ""
+         $end = ""
       }
-      return "clrobi{0}-{1}" -f $middle, $clusterName
+      return "clrobi-{0}{1}" -f $clusterName, $end
    }
 
    <# -------------------------------------------------------------------------------------

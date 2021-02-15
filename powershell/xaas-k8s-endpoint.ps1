@@ -670,6 +670,13 @@ try
                 break
             }
 
+            # Si on a plus d'un groupe (ce qui ne devrait pas arriver), on met quand même un warning dans les logs, pour avoir l'info
+            if($accessGroupList.count -gt 1)
+            {
+                $logHistory.addWarning(("{0} groups found in ActiveDirectory group for '{1}' BG access. Only one group will be taken ({2}) for ClusterRoleBinding" -f $accessGroupList.count, $bg.name, $accessGroupList[0]))
+            }
+
+
             # Génération des noms pour le DNS
             $logHistory.addLine("Generating DNS hostnames...")
             $dnsHostName = $nameGeneratorK8s.getClusterDNSName($clusterName, [K8sDNSEntryType]::EntryMain)
@@ -703,15 +710,6 @@ try
             $EPFLDNS.registerDNSIP($dnsHostName, $ipMain, $global:K8S_DNS_ZONE_NAME)
             $EPFLDNS.registerDNSIP($dnsHostNameIngress, $ipIngress, $global:K8S_DNS_ZONE_NAME)
 
-            # ------------
-            # ---- Contour
-
-            # Ajout du nouveau namespace
-            $logHistory.addLine(("Adding namespace '{0}' to cluster '{1}'..." -f $global:CONTOUR_NAMESPACE, $clusterName))
-            $tkgiKubectl.addClusterNamespace($clusterName, $global:CONTOUR_NAMESPACE, $targetEnv)
-            $logHistory.addLine("Configuring Contour...")
-            $tkgiKubectl.configureContour($clusterName)
-
 
             # - Storage Class
             $logHistory.addLine("Adding StorageClass...")
@@ -732,14 +730,19 @@ try
             # - Cluster Role Binding
             $logHistory.addLine("Adding ClusterRoleBinding...")
             # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au BG dans vRA
-            $accessGroupList | ForEach-Object {
-                $logHistory.addLine(("> For group '{0}'" -f $_))
-                
-                $tkgiKubectl.addClusterRoleBinding($clusterName, 
+            $logHistory.addLine(("> For group '{0}'" -f $accessGroupList[0]))
+            
+            $tkgiKubectl.addClusterRoleBinding($clusterName, 
+                                                $nameGeneratorK8s.getClusterRoleName(), 
+                                                $nameGeneratorK8s.getClusterRoleBindingName($clusterName), 
+                                                ("oidc:{0}" -f $accessGroupList[0]))
+        
+
+            # Pour les services accounts
+            $tkgiKubectl.addClusterRoleBinding($clusterName, 
                                                    $nameGeneratorK8s.getClusterRoleName(), 
-                                                   $nameGeneratorK8s.getClusterRoleBindingName($clusterName), 
-                                                   $_)
-            }
+                                                   $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $true), 
+                                                   "system:serviceaccounts")
 
             # FIXME: A valider si effectivement ce n'est plus nécessaire. Mis en commentaire le 8.2.2021 suite à discussion avec MonSeigneur Haro
             # $logHistory.addLine("Adding ClusterRoleBinding for Service Accounts...")
@@ -747,6 +750,14 @@ try
             #                                                   $nameGeneratorK8s.getClusterRoleName(), 
             #                                                   $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $true))
 
+            # ------------
+            # ---- Contour
+
+            # Ajout du nouveau namespace
+            $logHistory.addLine(("Adding namespace '{0}' to cluster '{1}'..." -f $global:CONTOUR_NAMESPACE, $clusterName))
+            $tkgiKubectl.addClusterNamespace($clusterName, $global:CONTOUR_NAMESPACE, $targetEnv)
+            $logHistory.addLine("Configuring Contour...")
+            $tkgiKubectl.configureContour($clusterName)
 
             # -----------
             # ---- Harbor

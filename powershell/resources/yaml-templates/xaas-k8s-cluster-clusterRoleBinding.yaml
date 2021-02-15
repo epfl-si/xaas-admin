@@ -6,8 +6,10 @@ metadata:
   name: {{name}} 
 subjects:
 - kind: Group
-  # nom du group AD
-  name: oidc:{{groupName}} 
+  # Ce à quoi ça s'applique. Ex:
+  # oidc:<adGroupName>
+  # system:<serviceaccount>
+  name: {{groupName}} 
   apiGroup: rbac.authorization.k8s.io
 roleRef:
   kind: ClusterRole
