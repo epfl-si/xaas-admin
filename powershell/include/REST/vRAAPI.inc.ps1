@@ -17,11 +17,8 @@
 	Une description des fichiers JSON utilisés peut être trouvée sur Confluence.
 	https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976#Ressources-PRJ0011976-vRA
 
-   ----------
-   HISTORIQUE DES VERSIONS
-   0.1 - Version de base
-   0.2 - Ajout d'un cache pour certaines fonctions qui ne sont appelées sur des objets qui 
-		 restent en lecture seule (donc pas modifiés par le script)
+	https://code.vmware.com/apis/39/vrealize-automation?p=vrealize-automation
+
 
 #>
 class vRAAPI: RESTAPICurl
