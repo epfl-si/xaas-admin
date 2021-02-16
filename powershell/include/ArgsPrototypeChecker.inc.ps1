@@ -310,7 +310,7 @@ class ArgsPrototypeChecker
                     # OU 
                     # Si la valeur de l'appel correspond à une autorisée
                     if( (($null -eq $allowedValue) -and ($callArg.Values[0] -ne "")) -or 
-                        ($callArg.Values[0].toLower() -eq $allowedValue))
+                        ($callArg.Values[0] -eq $allowedValue))
                     {
                         # On supprime les erreurs précédemment ajoutées s'il y en avait
                         $this.errors = @()

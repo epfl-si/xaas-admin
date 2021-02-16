@@ -94,6 +94,7 @@ $ACTION_GET_RESTORE_STATUS = "getRestoreStatus"
 $ACTION_VM_HAS_RUNNING_SNAPSHOT = "VMHasSnap"
 
 $NBU_CATEGORY = "NBU"
+$BACKUP_POLICY_TYPE_FILTER = "VMware"
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
 
@@ -111,7 +112,7 @@ try
     $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new('xaas-backup', (Join-Path $PSScriptRoot "logs"), 30)
+    $logHistory = [LogHistory]::new(@('xaas','backup', 'endpoint'), $global:LOGS_FOLDER, 30)
 
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
@@ -244,6 +245,8 @@ try
                 - Ceux qui ne sont pas encore expirés  #>
             $nbu.getVMBackupList($vmName) | Where-Object {
                 $_.attributes.backupStatus -eq 0 `
+                -and `
+                $_.attributes.policyType -eq $BACKUP_POLICY_TYPE_FILTER `
                 -and `
                 (Get-Date) -lt [DateTime]($_.attributes.expiration -replace "Z", "")} | ForEach-Object {
 

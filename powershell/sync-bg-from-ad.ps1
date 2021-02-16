@@ -283,6 +283,8 @@ function createOrUpdateBG
 {
 	param([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$financeCenter, [string]$capacityAlertsEmail)
 
+	$logHistory.addLineAndDisplay(("-> Handling BG with custom ID {0}..." -f $bgEPFLID))
+	
 	# Recherche du BG par son no identifiant (no d'unité, no de service Snow, etc... ).
 	$bg = $vra.getBGByCustomId($bgEPFLID, $true)
 
@@ -359,6 +361,8 @@ function createOrUpdateBG
 	else
 	{
 
+		$logHistory.addLineAndDisplay(("-> BG '{0}' already exists" -f $bg.Name))
+
 		$counters.inc('BGExisting')
 		# ==========================================================================================
 
@@ -378,13 +382,13 @@ function createOrUpdateBG
 		# 	$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
 		# }
 
-
 		# Si le nom de l'entité de facturation a changé (ce qui peut arriver), on la met à jour
 		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME) -ne $nameGenerator.getBillingEntityName())
 		{
 			# Mise à jour
 			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
 		}
+
 
 		# ==========================================================================================
 
@@ -395,11 +399,29 @@ function createOrUpdateBG
 		# Si le BG est désactivé
 		if(($bg.name -ne $bgName) -or ($bg.description -ne $bgDesc) -or (!(isBGAlive -bg $bg)))
 		{
+			$logHistory.addLineAndDisplay(("-> BG '{0}' has changed" -f $bg.name))
 
 			# S'il y a eu changement de nom,
 			if($bg.name -ne $bgName)
 			{
 				$logHistory.addLineAndDisplay(("-> Renaming BG '{0}' to '{1}'" -f $bg.name, $bgName))
+
+				<# On commence par regarder s'il n'y aurait pas par hasard déjà un BG avec le nouveau nom.
+				 Ceci peut arriver si on supprime une unité/service IT et qu'on change le nom d'un autre en
+				 même temps pour reprendre le nom de ce qui a été supprimé. Etant donné que les BG passent
+				 en "ghost" sans être renommé dans le cas où ils doivent être supprimés, il y a toujours 
+				 conflit de noms
+				#>
+				if($null -ne $vra.getBG($bgName)) 
+				{
+					$logHistory.addWarningAndDisplay(("-> Impossible to rename BG '{0}' to '{1}'. A BG with the new name already exists" -f $bg.name, $bgName))
+					$notifications.bgNameDuplicate += ("{0} &gt;&gt; {1}" -f $bg.name, $bgName)
+					$counters.inc('BGNotRenamed')
+
+					# On sort et on renvoie $null pour qu'on n'aille pas plus loin dans le traitement de ce BG pour le moment.
+					return $null
+				}
+				
 				# Recherche du nom actuel du dossier où se trouvent les ISO du BG
 				$bgISOFolderCurrent = $nameGenerator.getNASPrivateISOPath($bg.name)
 				# Recherche du nouveau nom du dossier où devront se trouver les ISO
@@ -434,7 +456,7 @@ function createOrUpdateBG
 				$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $bgName})
 
 				$counters.inc('BGRenamed')
-				
+
 			}# Fin s'il y a eu changement de nom 
 
 			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating BG '{0}' to '{1}'" -f $bg.name, $bgName))
@@ -1086,6 +1108,15 @@ function handleNotifications
 					$templateName = "day2-actions-not-found"
 				}
 
+				# ---------------------------------------
+				# Pas possible de renommer un BG car le nouveau nom existe déjà
+				'bgNameDuplicate'
+				{
+					$valToReplace.bgRenameList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - BG cannot be renamed because of duplicate"
+					$templateName = "bg-rename-duplicate"
+				}
+
 				default
 				{
 					# Passage à l'itération suivante de la boucle
@@ -1315,8 +1346,8 @@ $global:existingADGroups = @()
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-	$logName = 'vra-sync-BG-from-AD-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()
-	$logHistory =[LogHistory]::new($logName, (Join-Path $PSScriptRoot "logs"), 30)
+	$logPath = @('vra', ('sync-BG-from-AD-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()))
+	$logHistory =[LogHistory]::new($logPath, $global:LOGS_FOLDER, 30)
 
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
@@ -1397,6 +1428,7 @@ try
 	$notifications=@{bgWithoutCustomPropStatus = @()
 					bgWithoutCustomPropType = @()
 					bgSetAsGhost = @()
+					bgNameDuplicate = @()
 					emptyADGroups = @()
 					adGroupsNotFound = @()
 					ISOFolderNotRenamed = @()
@@ -1421,7 +1453,7 @@ try
 						 $configNSX.getConfigValue(@($targetEnv, "user")), 
 						 $configNSX.getConfigValue(@($targetEnv, "password")))
 
-	$doneBGList = @()
+	$doneElementList = @()
 
 	# Si on doit tenter de reprendre une exécution foirée ET qu'un fichier de progression existait, on charge son contenu
 	if($resume)
@@ -1430,8 +1462,8 @@ try
 		$progress = $resumeOnFail.load()
 		if($null -ne $progress)
 		{
-			$doneBGList = $progress
-			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed. Skipping to unprocessed (could take some time)..." -f $doneBGList.Count))
+			$doneElementList = $progress
+			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed. Skipping to unprocessed (could take some time)..." -f $doneElementList.Count))
 		}
 		else
 		{
@@ -1463,7 +1495,7 @@ try
 
 	# Calcul de la date dans le passé jusqu'à laquelle on peut prendre les groupes modifiés.
 	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
-	
+
 	# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
 	$capacityAlertMails = @($configGlobal.getConfigValue(@("mail", "capacityAlert")))
 
@@ -1565,8 +1597,8 @@ try
 		# Nom du préfix de machine
 		$machinePrefixName = $nameGenerator.getVMMachinePrefix()
 
-		# Si on a déjà traité le BG
-		if($doneBGList -contains $bgName)
+		# Si on a déjà traité le groupe AD
+		if( ($doneElementList | Foreach-Object { $_.adGroup } ) -contains $_.name)
 		{
 			$counters.inc('BGResumeSkipped')
 			# passage au BG suivant
@@ -1645,7 +1677,10 @@ try
 			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
 			{
 				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
-				$doneBGList += $bgName
+				$doneElementList += @{
+					adGroup = $_.name
+					bgName = $bgName
+				}
 				$counters.inc('BGExisting')
 				return
 			}
@@ -1662,7 +1697,10 @@ try
 
 			# On enregistre quand même le nom du Business Group, même si on n'a pas pu continuer son traitement. Si on ne fait pas ça et qu'il existe déjà,
 			# il sera supprimé à la fin du script, chose qu'on ne désire pas.
-			$doneBGList += $bgName
+			$doneElementList += @{
+				adGroup = $_.name
+				bgName = $bgName
+			}
 
 			# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
 			return
@@ -1685,11 +1723,14 @@ try
 		$bg = createOrUpdateBG -vra $vra -bgEPFLID $bgEPFLID -tenantName $targetTenant -bgName $bgName -bgDesc $bgDesc `
 									-machinePrefixName $machinePrefixName -financeCenter $financeCenter -capacityAlertsEmail ($capacityAlertMails -join ",") 
 
-		# Si BG pas créé, on passe au suivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
+		# Si BG pas créé, on passe au s	uivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
 		if($null -eq $bg)
 		{
 			# On note quand même le BG comme pas traité
-			$doneBGList += $bgName
+			$doneElementList += @{
+				adGroup = $_.name
+				bgName = $bgName
+			}
 			# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
 			return
 		}
@@ -1814,9 +1855,12 @@ try
 		# Verrouillage de la section de firewall (si elle ne l'est pas encore)
 		$nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
 
-		$doneBGList += $bg.name
+		$doneElementList += @{
+			adGroup = $_.name
+			bgName = $bgName
+		}
 		# On sauvegarde l'avancement dans le cas où on arrêterait le script au milieu manuellement
-		$resumeOnFail.save($doneBGList)	
+		$resumeOnFail.save($doneElementList)	
 
 	}# Fin boucle de parcours des groupes AD pour l'environnement/tenant donnés
 
@@ -1839,7 +1883,7 @@ try
 			$notifications.bgWithoutCustomPropType += $_.name
 			$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Business Group '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, $_.name))
 		}
-		elseif($isBGOfType -and ($doneBGList -notcontains $_.name))
+		elseif($isBGOfType -and ( ($doneElementList | ForEach-Object {$_.bgName} ) -notcontains $_.name))
 		{
 			$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
 			setBGAsGhostIfNot -vra $vra -bg $_ | Out-Null
@@ -1897,8 +1941,8 @@ try
 catch # Dans le cas d'une erreur dans le script
 {
 	# Sauvegarde de la progression en cas d'erreur
-	$logHistory.addLineAndDisplay(("Saving progress for future resume ({0} BG processed)" -f $doneBGList.Count))
-	$resumeOnFail.save($doneBGList)	
+	$logHistory.addLineAndDisplay(("Saving progress for future resume ({0} BG processed)" -f $doneElementList.Count))
+	$resumeOnFail.save($doneElementList)	
 
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
