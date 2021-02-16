@@ -1,18 +1,6 @@
 {
     "epfl":
     [
-        /* Ne sera plus valable à partir de mi-février 2021 */
-        {
-            "faculty": "SI",
-            "manualUnits": [
-                {
-                    "name": "XAASADM",
-                    "uniqueidentifier": "00000",
-                    "billingMail": "vsissp-test-notification@groupes.epfl.ch", 
-                    "contentGroup": "vra_t_adm_epfl"
-                }
-            ]
-        },
         /* Valable à partir de février 2021 */
         {
             "faculty": "VPO-SI",
