@@ -5,11 +5,7 @@
     },
     "test":
     {
-        /* A supprimer mi-février 2021 */
-        "SI": [
-            "nas-mcc-t-test"
-        ],
-        /* Valable à partir de février 2021. On enlève volontairement les "-" dans le nom de la faculté */
+        /* Valable à partir de février 2021 */
         "VPOSI": [
             "nas-mcc-t-test"
         ]
@@ -26,23 +22,7 @@
             "scxcraft",
             "scxbbp"
         ],
-        /* A supprimer mi février 2021 */
-        "SI": [
-            "scxdata",
-            "scxlcdata",
-            "svdbdata",
-            "sdsdata",
-            "uc-nas1",
-            "olympe",
-            "ditscxvdi01",
-            "ditscxvdi02",
-            "ditti-nas",
-            "sicede",
-            "anubis",
-            "myssqlbackups",
-            "scxcraft"
-        ],
-        /* Valable à partir de février 2021. On enlève volontairement les "-" dans le nom de la faculté  */
+        /* Valable à partir de février 2021 */
         "VPOSI": [
             "scxdata",
             "scxlcdata",
