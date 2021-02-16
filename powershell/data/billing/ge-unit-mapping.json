@@ -79,19 +79,6 @@
         "level3Center": "SV-SG",
         "level4GeUnit": "SV-GE"
     },
-    /* A supprimer mi-février 2021 environ */
-    {
-        "level3Center": "SI-VP",
-        "level4GeUnit": "VPSI"
-    },
-    {
-        "level3Center": "RH-RH",
-        "level4GeUnit": "RH-G"
-    },
-    {
-        "level3Center": "RHO-VP",
-        "level4GeUnit": "VPRHO"
-    },
     /* Nouveaux noms depuis début février 2021 */
     {
         "level3Center": "DSI",
