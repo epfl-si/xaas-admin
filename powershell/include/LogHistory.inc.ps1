@@ -13,8 +13,9 @@
 #>
 class LogHistory
 {
-    hidden [string]$logFolderPath
-	hidden [string]$logFilename
+    hidden [string]$allLogsFolder
+    hidden [string]$logTodayFolderPath
+	hidden [string]$logTodayFilename
 
 	<#
 	-------------------------------------------------------------------------------------
@@ -29,26 +30,68 @@ class LogHistory
 	LogHistory([Array]$logPath, [string]$rootFolderPath, [int]$nbDaysToKeep)
 	{
         # Dossier pour tous les fichiers du log
-        $allLogFolder = ""
-        $cmd = '$allLogFolder = [IO.Path]::Combine($rootFolderPath, "{0}")' -f ($logPath -join '","')
+        $this.allLogsFolder = ""
+        $cmd = '$this.allLogsFolder = [IO.Path]::Combine($rootFolderPath, "{0}")' -f ($logPath -join '","')
         Invoke-Expression $cmd
 
         # On créé un dossier avec la date du jour pour le log
-        $this.logFolderPath = [IO.Path]::Combine($allLogFolder, (Get-Date -format "yyyy-MM-dd"))
+        $this.logTodayFolderPath = [IO.Path]::Combine($this.allLogsFolder, (Get-Date -format "yyyy-MM-dd"))
         
-        $this.logFilename = ("{0}.log" -f (Get-Date -Format "HH-mm-ss.fff"))
+        $this.logTodayFilename = ("{0}.log" -f (Get-Date -Format "HH-mm-ss.fff"))
 
         # Si le dossier pour les logs n'existe pas encore,
-        if(!(test-path $this.logFolderPath))
+        if(!(test-path $this.logTodayFolderPath))
         {
-            New-Item -ItemType Directory -Force -Path $this.logFolderPath | Out-null
+            New-Item -ItemType Directory -Force -Path $this.logTodayFolderPath | Out-null
         }
         
+        $this.concatLogFiles()
+
         # Suppression des "vieux logs"
-        Get-ChildItem $allLogFolder -Directory | `
+        Get-ChildItem $this.allLogsFolder -Directory | `
             Where-Object {$_.CreationTime -le (Get-Date).AddDays(-$nbDaysToKeep) } | Remove-Item -Force -Recurse
         
+    }
 
+
+    <#
+	-------------------------------------------------------------------------------------
+        BUT : Concatène les "vieux" fichiers logs pour en faire un seul par jour.
+	#>
+    hidden [void] concatLogFiles()
+    {
+
+        $today = (Get-Date -format "yyyy-MM-dd")
+    
+        # Parcours des dossiers pour le log du script courant. Il y a normalement un dossier par jour
+        # On skip le jour courant car il pourrait encore y avoir d'autres fichiers logs d'ajoutés dedans.
+        Get-ChildItem -Path $this.allLogsFolder -Recurse:$false -Directory | Where-Object { $_.Name -ne $today } | ForEach-Object {
+            
+            # Définition du nom du fichier dans lequel on va regrouper les logs
+            $mergeLogFile = (Join-path $this.allLogsFolder ("{0}.log" -f $_.Name))
+            
+            # Si le fichier dans lequel on veut regrouper n'existe pas, on le créé vide
+            if(!(Test-Path -Path $mergeLogFile))
+            {
+                New-Item -ItemType File -Path $mergeLogFile | Out-Null
+            }
+    
+            # Parcours des fichiers qui sont dans le dossier (ils sont parcourus par ordre alphabétique )
+            Get-ChildItem -Path $_.FullName -Recurse:$false -File | ForEach-Object {
+                
+                # Ajout du contenu du fichier LOG courant dans le "global"
+                Get-Content -Path $_.FullName | Add-Content -Path $mergeLogFile
+                
+                # Suppression du fichier log courant
+                Remove-Item $_.FullName -Force
+    
+            } # FIN BOUCLE de parcours des fichiers LOG pour une date donnée 
+    
+            # on peut maintenant supprimer le dossier de la date
+            Remove-Item $_.FullName -Force
+    
+        } # FIN BOUCLE de parcours des dossiers avec les dates d'exécution
+    
     }
 
 
@@ -61,7 +104,7 @@ class LogHistory
     [void] addLine([string]$line)
     {
         ("{0}: {1}" -f (Get-Date -format "yyyy-MM-dd HH:mm:ss"), $line) | `
-            Out-File -FilePath (Join-Path $this.logFolderPath $this.logFilename) -Append:$true 
+            Out-File -FilePath (Join-Path $this.logTodayFolderPath $this.logTodayFilename) -Append:$true 
     }
 
 

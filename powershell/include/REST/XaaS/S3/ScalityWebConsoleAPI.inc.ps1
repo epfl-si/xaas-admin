@@ -31,8 +31,7 @@ class ScalityWebConsoleAPI: RESTAPICurl
 	#>
 	ScalityWebConsoleAPI([string]$server, [string]$username, [string]$password) : base($server) # Ceci appelle le constructeur parent
 	{
-        $this.server = $server
-
+        
         $this.headers = @{}
 		$this.headers.Add('Accept', 'application/json')
         $this.headers.Add('Content-Type', 'application/json')
@@ -41,8 +40,10 @@ class ScalityWebConsoleAPI: RESTAPICurl
         # un fichier JSON dans les templates pour quelque chose de simple comme ça.
         $body = @{username = $username
                     password = $password}
+        
+        $this.baseUrl = "{0}/_/console" -f $this.baseUrl
 
-        $uri = "https://{0}/_/console/authenticate" -f $this.server
+        $uri = "{0}/authenticate" -f $this.baseUrl
 
         $result = $this.callAPI($uri, "Post",  $body)
         
@@ -84,7 +85,7 @@ class ScalityWebConsoleAPI: RESTAPICurl
     #>
     [PSObject]getPolicyContent([string]$policyArn, [string]$policyVersion)
     {
-        $uri = "https://{0}/_/console/iam/getpolicyversion" -f $this.server
+        $uri = "{0}/iam/getpolicyversion" -f $this.baseUrl
 
         $body = @{policyArn = $policyArn
                 policyVersion = $policyVersion}
@@ -150,7 +151,7 @@ class ScalityWebConsoleAPI: RESTAPICurl
     #>
     [PSObject]getBucketUsageInfos([string]$bucketName)
     {
-        $uri = "https://{0}/_/console/utapi/buckets" -f $this.server
+        $uri = "{0}/utapi/buckets" -f $this.baseUrl
 
         <# Documentation donnée pour l'appel à l'API dans le cas où on donnerait un "timeRange" incorrect:
         
