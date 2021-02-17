@@ -157,7 +157,7 @@ class NSXAPI: RESTAPICurl
 	#>
     [PSObject] addNSGroupK8sCluster([string]$name, [string]$desc, [string] $clusterUUID)
     {
-		$uri = "https://{0}/api/v1/ns-groups" -f $this.server
+		$uri = "{0}/ns-groups" -f $this.baseUrl
 
 		# Valeur à mettre pour la configuration du NS Group
 		$replace = @{name = $name
@@ -188,7 +188,7 @@ class NSXAPI: RESTAPICurl
         # Si le membre n'est pas encore présent
         if($null -eq ($nsGroup.members | Where-Object { $_.value -eq $nsGroupToAdd.id}))
         {
-            $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $nsGroup.id
+            $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $nsGroup.id
 
             # Valeur à mettre pour ajouter le membre
             $replace = @{nsGroupId = $nsGroupToAdd.id }
@@ -223,7 +223,7 @@ class NSXAPI: RESTAPICurl
         # Si le NSGroup à supprimer était bien présent dans la liste,
         if($newMembers.count -ne $nsGroup.Members.count)
         {
-            $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $nsGroup.id
+            $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $nsGroup.id
 
             $nsGroup.members = $newMembers
 
@@ -527,7 +527,7 @@ class NSXAPI: RESTAPICurl
     #>
     [Array] getIPPoolList()
     {
-        $uri = "https://{0}/api/v1/pools/ip-pools" -f $this.server
+        $uri = "{0}/pools/ip-pools" -f $this.baseUrl
 
         return $this.callAPI($uri, "GET", $null).results
     }
@@ -563,7 +563,7 @@ class NSXAPI: RESTAPICurl
     #>
     [PSObject] getIPPoolByID([string]$poolId)
     {
-        $uri = "https://{0}/api/v1/pools/ip-pools/{1}" -f $this.server, $poolId
+        $uri = "{0}/pools/ip-pools/{1}" -f $this.baseUrl, $poolId
 
         return $this.callAPI($uri, "GET", $null).results
     }
@@ -581,7 +581,7 @@ class NSXAPI: RESTAPICurl
     #>
     [string] allocateIPAddressInPool([string]$poolId)
     {
-        $uri = "https://{0}/api/v1/pools/ip-pools/{1}?action=ALLOCATE" -f $this.server, $poolId
+        $uri = "{0}/pools/ip-pools/{1}?action=ALLOCATE" -f $this.baseUrl, $poolId
 
          # Valeur à mettre pour la configuration des règles
          $replace = @{
@@ -610,7 +610,7 @@ class NSXAPI: RESTAPICurl
     #>
     [void] releaseIPAddressInPool([string]$poolId, [string]$ipAddress)
     {
-        $uri = "https://{0}/api/v1/pools/ip-pools/{1}?action=RELEASE" -f $this.server, $poolId
+        $uri = "{0}/pools/ip-pools/{1}?action=RELEASE" -f $this.baseUrl, $poolId
 
         # Valeur à mettre pour la configuration des règles
         $replace = @{
@@ -635,7 +635,7 @@ class NSXAPI: RESTAPICurl
     #>
     [Array] getPoolIPAllocatedAddressList([string]$poolId)
     {
-        $uri = "https://{0}/api/v1/pools/ip-pools/{1}/allocations" -f $this.server, $poolId
+        $uri = "{0}/pools/ip-pools/{1}/allocations" -f $this.baseUrl, $poolId
 
         return $this.callAPI($uri, "GET", $null).results | Select-Object -ExpandProperty allocation_id
     }
@@ -674,7 +674,7 @@ class NSXAPI: RESTAPICurl
     #>
     [Array] getLBServiceList()
     {
-        $uri = "https://{0}/api/v1/loadbalancer/services" -f $this.server
+        $uri = "{0}/loadbalancer/services" -f $this.baseUrl
 
         return $this.callAPI($uri, "GET", $null).results
     }
@@ -690,7 +690,7 @@ class NSXAPI: RESTAPICurl
     #>
     [void] deleteLBService([string]$serviceId)
     {
-        $uri = "https://{0}/api/v1/loadbalancer/services/{1}" -f $this.server, $serviceId
+        $uri = "{0}/loadbalancer/services/{1}" -f $this.baseUrl, $serviceId
 
         $this.callAPI($uri, "DELETE", $null) | Out-Null
     }
@@ -731,7 +731,7 @@ class NSXAPI: RESTAPICurl
     #>
     [PSObject] getLBVirtualServer([string]$virtualServerId)
     {
-        $uri = "https://{0}/api/v1/loadbalancer/virtual-servers/{1}" -f $this.server, $virtualServerId
+        $uri = "{0}/loadbalancer/virtual-servers/{1}" -f $this.baseUrl, $virtualServerId
 
         return $this.callAPI($uri, "GET", $null)
     }
@@ -747,7 +747,7 @@ class NSXAPI: RESTAPICurl
     #>
     [void] deleteLBVirtualServer([string]$virtualServerId)
     {
-        $uri = "https://{0}/api/v1/loadbalancer/virtual-servers/{1}/?delete_associated_rules=true" -f $this.server, $virtualServerId
+        $uri = "{0}/loadbalancer/virtual-servers/{1}/?delete_associated_rules=true" -f $this.baseUrl, $virtualServerId
 
         $this.callAPI($uri, "DELETE", $null) | Out-Null
     }
@@ -771,7 +771,7 @@ class NSXAPI: RESTAPICurl
     #>
     [Array] getLBAppProfileList()
     {
-        $uri = "https://{0}/api/v1/loadbalancer/application-profiles" -f $this.server
+        $uri = "{0}/loadbalancer/application-profiles" -f $this.baseUrl
 
         return $this.callAPI($uri, "GET", $null).results
     }
@@ -803,7 +803,7 @@ class NSXAPI: RESTAPICurl
     #>
     [void] deleteLBAppProfile([string]$appProfileId)
     {
-        $uri = "https://{0}/api/v1/loadbalancer/application-profiles/{1}" -f $this.server, $appProfileId
+        $uri = "{0}/loadbalancer/application-profiles/{1}" -f $this.baseUrl, $appProfileId
 
         $this.callAPI($uri, "DELETE", $null) | Out-Null
     }
