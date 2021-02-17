@@ -29,8 +29,7 @@ class vROPSAPI: RESTAPICurl
 	#>
 	vROPSAPI([string] $server, [string] $localUser, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
-		$this.server = $server
-
+		
 		$this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
 
