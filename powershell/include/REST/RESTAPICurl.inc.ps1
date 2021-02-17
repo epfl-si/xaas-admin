@@ -217,6 +217,7 @@ class RESTAPICurl: RESTAPI
 			if($this.curl.ExitCode -eq 0)
 			{
 				$this.debugLog("CURL attempt: $($currentAttemptNo) = SUCCESS")
+				$this.debugLog("CURL response: $($output)")
 				# On teste la récupération de ce qui a été retourné
 				try
 				{
