@@ -176,6 +176,32 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
+		BUT : Supprime les NSGroup incorrects qui sont dans la liste des membres. Cela peut parfois
+                arriver quand du nettoyage "forcé" est fait dans NSX.
+
+		IN  : $nsGroup          -> Objet représentant le NSGroup à nettoyer
+		
+		RET : Le NS group nettoyé
+	#>
+    hidden [PSObject] removeIncorrectNSGroupMembers([PSObject]$nsGroup)
+    {
+        $membersOK = @()
+        ForEach($member in $nsGroup.members)
+        {
+            # Si le groupe courant existe dans NSX
+            if($null -ne $this.getNSGroupById($member.value))
+            {
+                $membersOK += $member
+            }
+        }
+
+        $nsGroup.Members = $membersOK
+        return $nsGroup
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
 		BUT : Ajoute un membre de type NSGroup à un NSGroup existant
 
 		IN  : $nsGroup          -> Objet représentant le NSGroup auquel ajouter le membre
@@ -185,6 +211,10 @@ class NSXAPI: RESTAPICurl
 	#>
     [PSObject] addNSGroupMemberNSGroup([PSObject]$nsGroup, [PSObject]$nsGroupToAdd)
     {
+        # Nettoyage des potentiels NSGroup incorrects dans les membres. Si on ne le fait pas, on ne pourrait pas faire
+        # de PUT dessus, ça retournera une erreur dans le cas où des membres inexistant seraient contenus
+        $nsGroup = $this.removeIncorrectNSGroupMembers($nsGroup)
+
         # Si le membre n'est pas encore présent
         if($null -eq ($nsGroup.members | Where-Object { $_.value -eq $nsGroupToAdd.id}))
         {
@@ -197,7 +227,10 @@ class NSXAPI: RESTAPICurl
 
             $nsGroup.members += $newMember
 
-            $this.callAPI($uri, "PUT", $nsGroup) | Out-Null
+            if($null -eq ($this.callAPI($uri, "PUT", $nsGroup)))
+            {
+                Throw "Unexepected error, please see debug logs"
+            }
         }
 
         return $nsGroup
@@ -215,6 +248,10 @@ class NSXAPI: RESTAPICurl
 	#>
     [PSObject] removeNSGroupMemberFromNSGroup([PSObject]$nsGroup, [PSObject]$nsGroupToRemove)
     {
+        # Nettoyage des potentiels NSGroup incorrects dans les membres. Si on ne le fait pas, on ne pourrait pas faire
+        # de PUT dessus, ça retournera une erreur dans le cas où des membres inexistant seraient contenus
+        $nsGroup = $this.removeIncorrectNSGroupMembers($nsGroup)
+
         # On génère la liste des membres en enlevant celui qu'on doit enlever
         # On met @() pour être sûr d'avoir une liste et pas un $null dans le cas où ça serait
         # le dernier NSGroup membre que l'on voudrait supprimer
@@ -227,7 +264,10 @@ class NSXAPI: RESTAPICurl
 
             $nsGroup.members = $newMembers
 
-            $this.callAPI($uri, "PUT", $nsGroup) | Out-Null
+            if($null -eq ($this.callAPI($uri, "PUT", $nsGroup)))
+            {
+                Throw "Unexepected error, please see debug logs"
+            }
         }
 
         return $nsGroup
