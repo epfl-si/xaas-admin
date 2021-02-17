@@ -39,6 +39,9 @@ class NSXAPI: RESTAPICurl
 
         # Mise à jour des headers
         $this.headers.Add('Authorization', ("Remote {0}" -f $this.authInfos))
+
+        # Mise à jour de l'URL de base pour accéder à l'API
+        $this.baseUrl = "{0}/api/v1" -f $this.baseUrl
         
     }
 
@@ -61,7 +64,7 @@ class NSXAPI: RESTAPICurl
     #>
     [PSObject] getNSGroupById([string]$id)
     {
-        $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $id
+        $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $id
 
         $nsGroup = $this.callAPI($uri, "Get", $null)
 
@@ -94,7 +97,7 @@ class NSXAPI: RESTAPICurl
     [PSObject] getNSGroupByName([string]$name, [string]$memberType)
     {
         # Note: On filtre exprès avec 'member_types=VirtualMachine' car sinon tous les NSGroup attendus ne sont pas renvoyés... 
-        $uri = "https://{0}/api/v1/ns-groups/?populate_references=false&member_types={1}" -f $this.server, $memberType
+        $uri = "{0}/ns-groups/?populate_references=false&member_types={1}" -f $this.baseUrl, $memberType
 
         $id =  ($this.callAPI($uri, "Get", $null).results | Where-Object {$_.display_name -eq $name}).id
      
@@ -125,7 +128,7 @@ class NSXAPI: RESTAPICurl
 	#>
     [PSObject] addNSGroupVirtualMachine([string]$name, [string]$desc, [string] $tag)
     {
-		$uri = "https://{0}/api/v1/ns-groups" -f $this.server
+		$uri = "{0}/ns-groups" -f $this.baseUrl
 
 		# Valeur à mettre pour la configuration du NS Group
 		$replace = @{name = $name
@@ -238,7 +241,7 @@ class NSXAPI: RESTAPICurl
 	#>
     [void] deleteNSGroup([PSObject]$nsGroup)
     {
-        $uri = "https://{0}/api/v1/ns-groups/{1}" -f $this.server, $nsGroup.id
+        $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $nsGroup.id
 
         $this.callAPI($uri, "Delete", $null) | Out-Null
     }
@@ -285,7 +288,7 @@ class NSXAPI: RESTAPICurl
             $type = "LAYER3"
         }
 
-		$uri = "https://{0}/api/v1/firewall/sections?filter_type={1}&page_size=1000&search_invalid_references=false&type={2}" -f $this.server, $filterType, $type
+		$uri = "{0}/firewall/sections?filter_type={1}&page_size=1000&search_invalid_references=false&type={2}" -f $this.baseUrl, $filterType, $type
 
         # Récupération de la liste
 		$sectionList = $this.callAPI($uri, "GET", $null).results
@@ -325,7 +328,7 @@ class NSXAPI: RESTAPICurl
 	#>
     [psObject] getFirewallSectionById([string] $id)
     {
-        $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $id
+        $uri = "{0}/firewall/sections/{1}" -f $this.baseUrl, $id
 
         # Création du NSGroup
 		return $this.callAPI($uri, "GET", $null)
@@ -347,7 +350,7 @@ class NSXAPI: RESTAPICurl
     [PSObject] addFirewallSection([string]$name, [string]$desc, [string]$beforeId, [PSObject]$nsGroup)
     {
         
-        $uri = "https://{0}/api/v1/firewall/sections" -f $this.server
+        $uri = "{0}/firewall/sections" -f $this.baseUrl
         
         # Si on doit insérer avant un ID donné
         if($beforeId -ne "")
@@ -381,7 +384,7 @@ class NSXAPI: RESTAPICurl
     [void] updateFirewallSection([PSObject]$section)
     {
         
-        $uri = "https://{0}/api/v1/firewall/sections/{1}" -f $this.server, $section.id
+        $uri = "{0}/firewall/sections/{1}" -f $this.baseUrl, $section.id
         
 		# Création de la section de firewall
         $this.callAPI($uri, "PUT", $section) | Out-Null
@@ -398,7 +401,7 @@ class NSXAPI: RESTAPICurl
     [void] deleteFirewallSection([string]$id)
     {
         
-        $uri = "https://{0}/api/v1/firewall/sections/{1}?cascade=true" -f $this.server, $id
+        $uri = "{0}/firewall/sections/{1}?cascade=true" -f $this.baseUrl, $id
         
 		# Création de la section de firewall
         $this.callAPI($uri, "Delete", $null) | Out-Null
@@ -431,7 +434,7 @@ class NSXAPI: RESTAPICurl
         }
 
         # Ensuite on va la modifier en prenant soin de mettre le bon no de révision 
-        $uri = "https://{0}/api/v1/firewall/sections/{1}?action=lock" -f $this.server, $id
+        $uri = "{0}/firewall/sections/{1}?action=lock" -f $this.baseUrl, $id
 
 
         # Valeur à mettre pour la configuration de la section de firewall
@@ -463,7 +466,7 @@ class NSXAPI: RESTAPICurl
     #>
     [Array] getFirewallSectionRulesList([string]$firewallSectionId)
     {
-        $uri = "https://{0}/api/v1/firewall/sections/{1}/rules" -f $this.server, $firewallSectionId
+        $uri = "{0}/firewall/sections/{1}/rules" -f $this.baseUrl, $firewallSectionId
 
         return $this.callAPI($uri, "GET", $null).results
     }
@@ -485,7 +488,7 @@ class NSXAPI: RESTAPICurl
     #>
     [void] addFirewallSectionRules([string]$firewallSectionId, [Hashtable]$ruleIn, [Hashtable]$ruleComm, [Hashtable]$ruleOut, [hashtable]$ruleDeny, [PSObject]$nsGroup)
     {
-        $uri = "https://{0}/api/v1/firewall/sections/{1}/rules?action=create_multiple" -f $this.server, $firewallSectionId
+        $uri = "{0}/firewall/sections/{1}/rules?action=create_multiple" -f $this.baseUrl, $firewallSectionId
 
 		# Valeur à mettre pour la configuration des règles
         $replace = @{ruleNameIn             = $ruleIn.name
