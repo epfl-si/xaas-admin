@@ -157,7 +157,7 @@ class PKSAPI: RESTAPICurl
 	#>
 	hidden [Array] getClusterListQuery([string]$queryParams)
     {
-        $uri = "{0}}/clusters" -f $this.baseUrl
+        $uri = "{0}/clusters" -f $this.baseUrl
 
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
