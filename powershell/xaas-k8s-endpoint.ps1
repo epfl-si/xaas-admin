@@ -776,7 +776,6 @@ try
                 $logHistory.addLine(("Project '{0}' already exists in Harbor" -f $harborProjectName))
             }
 
-            Write-Warning "Add Harbor group access"
             # FIXME: A résoudre lorsqu'on pourra avoir des "nested groups"
             $logHistory.addLine("Adding AD groups for Harbor Project access...")
             $accessGroupList | ForEach-Object {
