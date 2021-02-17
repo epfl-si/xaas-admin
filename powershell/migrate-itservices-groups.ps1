@@ -92,32 +92,16 @@ Foreach($service in $itServices.getServiceList($targetEnv))
         # Si le groupe vsissp-prod-admins n'est pas dans la liste des admins
         if($null -eq ($groupsApp.listAdmins($group.id) | Where-Object { $_.id -eq $adminSciper}))
         {
-            Write-Host (">>> 'vsissp-prod-admins' group is not in admin list")
-            $groupAddedInMembers = $false
-
-            # Si le groupe n'est pas encore dans les membres
-            if($null -eq ($groupsApp.listMembers($group.id) | Where-Object { $_.id -eq $adminSciper}))
-            {
-                $groupAddedInMembers = $true
-                Write-Host (">>>> Adding 'vsissp-prod-admins' group to members")
-                $groupsApp.addMember($group.id, $adminSciper)
-                
-            }
-
             # Ajout en tant qu'Admin
             Write-Host (">>>> Adding 'vsissp-prod-admins' group as admin")
             $groupsApp.addAdmin($group.id, $adminSciper)
 
-            # Si on avait dû ajouté le groupe dans les membres
-            if($groupAddedInMembers)
-            {
-                # On l'enlève
-                Write-Host (">>>> Removing 'vsissp-prod-admins' group from members")
-                $groupsApp.removeMember($group.id, $adminSciper)
-            }
         }
+        else
+        {
+            Write-Host (">>> 'vsissp-prod-admins' already in admin list")
 
-        
+        }
 
         try
         {
