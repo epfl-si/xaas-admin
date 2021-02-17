@@ -43,6 +43,7 @@ $nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 $itServices = [ITServices]::new()
 
 $groupsManualRename = @()
+$groupsRenameOk = @()
 
 # ID du groupe vsissp-prod-admins à ajouter dans tous les groupes
 $adminSciper = "S19307"
@@ -106,6 +107,8 @@ Foreach($service in $itServices.getServiceList($targetEnv))
         try
         {
             $newGroup = $groupsApp.renameGroup($curName, $newName)    
+
+            $groupsRenameOk +=  ("{0} to {1}" -f $curName, $newName)
         }
         catch
         {
@@ -126,3 +129,7 @@ if($groupsManualRename.count -gt 0)
     Write-Host "Following groups have to be manually renamed in 'groups'"
     $groupsManualRename
 }
+
+Write-Host ""
+Write-Host "Groups successfully renamed:"
+$groupsRenameOk
