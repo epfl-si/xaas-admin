@@ -1307,8 +1307,8 @@ function createFirewallSectionIfNotExists
 	IN  : $nsx				-> Objet permettant d'accéder à l'API NSX
 	IN  : $nsxNSGroup		-> Objet représantant le NS Group
 	IN  : $nsxFWSection		-> Objet représantant la section de Firewall à laquelle ajouter les règles
-	IN  : $nsxFWRuleNames	-> Tableau avec les noms des règles
-
+	IN  : $nsxFWRuleNames	-> Tableau avec les noms des règles. Contient des tableaux associatifs,
+								un pour chaque règle, avec les infos de celle-ci
 #>
 function createFirewallSectionRulesIfNotExists
 {
