@@ -8,13 +8,6 @@
    AUTEUR : Lucien Chaboudez
    DATE   : Mai 2019
 
-
-   ----------
-   HISTORIQUE DES VERSIONS
-   0.1 - Version de base
-   0.2 - Ajout d'un filtre dans la récupération des NSGroups
-   0.3 - Ajout d'un cache pour certains éléments.
-
 #>
 class NSXAPI: RESTAPICurl
 {
@@ -138,6 +131,34 @@ class NSXAPI: RESTAPICurl
         
         # Retour du NS Group en le cherchant par son nom
         return $this.getNSGroupByName($name)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Met à jour un NS Group
+
+        IN  : $nsGroup      -> Objet réprésentant le NSGroup à mettre à jour
+		IN  : $nnewNameame  -> Le nouveau nom du groupe
+		IN  : $newDesc	    -> La nouvelle description description
+		IN  : $newTag	    -> Le nouveau nom du tag pour le membership
+
+		RET : Le NS group mis à jour
+	#>
+    [PSObject] updateNSGroup([PSObject]$nsGroup, [string]$newName, [string]$newDesc, [string]$newTag)
+    {
+        $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $nsGroup.id
+
+		# Valeur à mettre pour la configuration du NS Group
+		$nsGroup.display_name = $newName
+        $nsGroup.description = $newDesc
+        $nsGroup.membership_criteria[0].tag = $newTag
+
+        # Mise à jour du NS Group
+        $this.callAPI($uri, "PUT", $nsGroup) | Out-Null
+        
+        # Retour du NS Group en le cherchant par son nom
+        return $this.getNSGroupByName($newName)
     }
 
 
