@@ -41,7 +41,8 @@ class HarborAPI: RESTAPICurl
 	#>
 	HarborAPI([string] $server, [string] $user, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
-		$this.server = $server
+		
+		$this.baseUrl = "{0}/api/v2.0" -f $this.baseUrl
 
 		# Pour autoriser les certificats self-signed
 		[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $True }
@@ -124,7 +125,7 @@ class HarborAPI: RESTAPICurl
 		$nbPerPage = 100
 		do
 		{
-			$uri = "https://{0}/api/v2.0/projects?page_size={1}&page={2}" -f $this.server, $nbPerPage, $pageNo
+			$uri = "{0}/projects?page_size={1}&page={2}" -f $this.baseUrl, $nbPerPage, $pageNo
 
 			# Si un filtre a été passé, on l'ajoute
 			if($queryParams -ne "")
@@ -196,7 +197,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[PSObject] addProject([string]$name)
 	{
-		$uri = "https://{0}/api/v2.0/projects" -f $this.server
+		$uri = "{0}/projects" -f $this.baseUrl
 
 		$replace = @{
 			projectName = $name
@@ -219,7 +220,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[void] deleteProject([PSObject]$project)
 	{
-		$uri = "https://{0}/api/v2.0/projects/{1}" -f $this.server, $project.project_id
+		$uri = "{0}/projects/{1}" -f $this.baseUrl, $project.project_id
 			
 		$this.callAPI($uri, "DELETE", $null) | Out-Null
 	}
@@ -263,7 +264,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[Array] getProjectMemberList([PSObject]$project)
 	{
-		$uri = "https://{0}/api/v2.0/projects/{1}/members" -f $this.server, $project.project_id
+		$uri = "{0}/projects/{1}/members" -f $this.baseUrl, $project.project_id
 			
 		return $this.callAPI($uri, "GET", $null)
 	}
@@ -292,7 +293,7 @@ class HarborAPI: RESTAPICurl
 			$groupDN = $null	
 		}
 		
-		$uri = "https://{0}/api/v2.0/projects/{1}/members" -f $this.server, $project.project_id
+		$uri = "{0}/projects/{1}/members" -f $this.baseUrl, $project.project_id
 
 		# Recherche de la liste des membres du projet
 		$memberList = $this.getProjectMemberList($project)
@@ -355,7 +356,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[void] deleteProjectMember([PSObject]$project, [int]$memberId)
 	{
-		$uri = "https://{0}/api/v2.0/projects/{1}/members/{2}" -f $this.server, $project.project_id, $memberId
+		$uri = "{0}/projects/{1}/members/{2}" -f $this.baseUrl, $project.project_id, $memberId
 			
 		$this.callAPI($uri, "DELETE", $null) | Out-Null
 	}
@@ -379,7 +380,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[Array] getProjectRobotList([PSObject]$project)
 	{
-		$uri = "https://{0}/api/v2.0/projects/{1}/robots" -f $this.server, $project.project_id
+		$uri = "{0}/projects/{1}/robots" -f $this.baseUrl, $project.project_id
 			
 		return $this.callAPI($uri, "GET", $null)
 	}
@@ -402,7 +403,7 @@ class HarborAPI: RESTAPICurl
 	[PSObject] addTempProjectRobotAccount([PSObject]$project, [string]$robotName, [string]$robotDesc, [int]$expireAtUTime)
 	{
 		
-		$uri = "https://{0}/api/v2.0/projects/{1}/robots" -f $this.server, $project.project_id
+		$uri = "{0}/projects/{1}/robots" -f $this.baseUrl, $project.project_id
 
 		$replace = @{
 			name = $robotName
@@ -436,7 +437,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[Array] getProjectRepositoryList([PSObject]$project)
 	{
-		$uri = "https://{0}/api/v2.0/projects/{1}/repositories" -f $this.server, $project.name
+		$uri = "{0}/projects/{1}/repositories" -f $this.baseUrl, $project.name
 			
 		return $this.callAPI($uri, "GET", $null)
 	}
@@ -451,7 +452,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[void] deleteProjectRepository([PSObject]$project, [PSObject]$repository)
 	{
-		$uri = "https://{0}/api/v2.0/projects/{1}/repositories/{2}" -f $this.server, $project.name, $repository.name
+		$uri = "{0}/projects/{1}/repositories/{2}" -f $this.baseUrl, $project.name, $repository.name
 			
 		$this.callAPI($uri, "DELETE", $null)
 	}
@@ -473,7 +474,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[Array] getUserGroupList()
 	{
-		$uri = "https://{0}/api/v2.0/usergroups" -f $this.server
+		$uri = "{0}/usergroups" -f $this.baseUrl
 			
 		return $this.callAPI($uri, "GET", $null)
 	}
@@ -508,7 +509,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[PSObject] addUserGroup([string]$groupLDAPDN)
 	{
-		$uri = "https://{0}/api/v2.0/usergroups" -f $this.server
+		$uri = "{0}/usergroups" -f $this.baseUrl
 			
 		$replace = @{
 			groupLDAPDN = $groupLDAPDN

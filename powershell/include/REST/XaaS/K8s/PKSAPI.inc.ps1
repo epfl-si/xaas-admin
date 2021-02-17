@@ -37,7 +37,6 @@ class PKSAPI: RESTAPICurl
 	#>
 	PKSAPI([string] $server, [string] $user, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
-		$this.server = $server
 
 		# Pour autoriser les certificats self-signed
 		[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $True }
@@ -49,11 +48,12 @@ class PKSAPI: RESTAPICurl
 		$this.headers.Add('Content-Type', 'application/x-www-form-urlencoded;charset=utf-8')
 
 		$body = "grant_type=client_credentials"
-		$uri = "https://{0}:8443/oauth/token" -f $this.server
+		$uri = "https://{0}:8443/oauth/token" -f $server
 
 		# Récupération du token
 		$this.token = ($this.callAPI($uri, "POST", $body, ("-u {0}:{1}" -f $user, $password))).access_token
 
+		$this.baseUrl = "{0}:9021/v1" -f $this.baseUrl
 
 		# Mise à jour des headers
 		$this.headers.Add('Authorization', ("Bearer {0}" -f $this.token))
@@ -157,7 +157,7 @@ class PKSAPI: RESTAPICurl
 	#>
 	hidden [Array] getClusterListQuery([string]$queryParams)
     {
-        $uri = "https://{0}:9021/v1/clusters" -f $this.server
+        $uri = "{0}}/clusters" -f $this.baseUrl
 
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -193,7 +193,7 @@ class PKSAPI: RESTAPICurl
 	#>
 	[PSObject] getClusterDetails([string]$clusterName)
 	{
-		$uri = "https://{0}:9021/v1/clusterdetails/{1}" -f $this.server, [System.Net.WebUtility]::UrlEncode($clusterName)
+		$uri = "{0}/v1/clusterdetails/{1}" -f $this.baseUrl, [System.Net.WebUtility]::UrlEncode($clusterName)
 
 		return $this.callAPI($uri, "GET", $null)
 		
@@ -226,7 +226,7 @@ class PKSAPI: RESTAPICurl
 	#>
 	[PSObject] getCluster([string]$clusterName)
 	{
-		$uri = "https://{0}:9021/v1/clusters/{1}" -f $this.server, [System.Net.WebUtility]::UrlEncode($clusterName)
+		$uri = "{0}/clusters/{1}" -f $this.baseUrl, [System.Net.WebUtility]::UrlEncode($clusterName)
 
 		return $this.callAPI($uri, "GET", $null)
 	}
@@ -240,7 +240,7 @@ class PKSAPI: RESTAPICurl
 	#>
 	[void] deleteCluster([string]$clusterName)
 	{
-		$uri = "https://{0}:9021/v1/clusters/{1}" -f $this.server, [System.Net.WebUtility]::UrlEncode($clusterName)
+		$uri = "{0}/clusters/{1}" -f $this.baseUrl, [System.Net.WebUtility]::UrlEncode($clusterName)
 
 		$this.callAPI($uri, "DELETE", $null) | Out-Null
 
@@ -261,7 +261,7 @@ class PKSAPI: RESTAPICurl
 	#>
 	[PSObject] addCluster([string]$clusterName, [string]$planName, [string]$netProfileName, [string]$dnsHostName)
 	{
-		$uri = "https://{0}:9021/v1/clusters/" -f $this.server
+		$uri = "{0}/clusters/" -f $this.baseUrl
 
 		# Valeur à mettre pour la configuration du BG
 		$replace = @{
@@ -290,7 +290,7 @@ class PKSAPI: RESTAPICurl
 	#>
 	[void] updateCluster([string]$clusterName, [int]$nbWorkers)
 	{
-		$uri = "https://{0}:9021/v1/clusters/{1}" -f $this.server, [System.Net.WebUtility]::UrlEncode($clusterName)
+		$uri = "{0}/clusters/{1}" -f $this.baseUrl, [System.Net.WebUtility]::UrlEncode($clusterName)
 
 		# Valeur à mettre pour la configuration du BG
 		$replace = @{
@@ -317,7 +317,7 @@ class PKSAPI: RESTAPICurl
 	#>
 	[Array] getPlanList()
     {
-        $uri = "https://{0}:9021/v1/plans" -f $this.server
+        $uri = "{0}/plans" -f $this.baseUrl
         
         return $this.callAPI($uri, "GET", $null)
 	}
@@ -348,7 +348,7 @@ class PKSAPI: RESTAPICurl
 	#>
 	[Array] getNetworkProfileList()
     {
-        $uri = "https://{0}:9021/v1/network-profiles" -f $this.server
+        $uri = "{0}/network-profiles" -f $this.baseUrl
         
         return $this.callAPI($uri, "GET", $null)
 	}
@@ -365,7 +365,7 @@ class PKSAPI: RESTAPICurl
 	#>
 	[Array] getUsages()
     {
-        $uri = "https://{0}:9021/v1/usages" -f $this.server
+        $uri = "{0}/usages" -f $this.baseUrl
         
         return $this.callAPI($uri, "GET", $null)
 	}
