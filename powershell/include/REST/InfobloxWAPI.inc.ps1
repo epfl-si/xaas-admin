@@ -46,7 +46,7 @@ class InfobloxWAPI: RESTAPICurl
         $this.extraArgs = '-u {0}:{1} -c "{2}"' -f $username, $password, $this.cookieFile
 
         # Définition de l'URL de base pour constuire les appels
-        $this.baseUrl = "https://{0}/wapi/{1}" -f $this.server, $global:WAPI_VERSION
+        $this.baseUrl = "{0}/wapi/{1}" -f $this.baseUrl, $global:WAPI_VERSION
     }
 
 
