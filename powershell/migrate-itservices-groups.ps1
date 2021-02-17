@@ -48,8 +48,17 @@ $groupsRenameOk = @()
 # ID du groupe vsissp-prod-admins à ajouter dans tous les groupes
 $adminSciper = "S19307"
 
+$serviceList = $itServices.getServiceList($targetEnv)
+# Ajout du service ADMIN
+$serviceList += @{
+    longName = "XaaS Admins"
+    shortName = "xaasadm"
+    snowId = "SVC0000"
+    serviceManagerSciper = "287589"
+    deniedVRAServiceList = @()
+}
 
-Foreach($service in $itServices.getServiceList($targetEnv))
+Foreach($service in $serviceList)
 {
     $nameGenerator.initDetails(@{serviceShortName = $service.shortName
                                 serviceName = $service.longName
