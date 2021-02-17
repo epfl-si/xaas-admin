@@ -394,7 +394,7 @@ class NSXAPI: RESTAPICurl
 
 		RET : la section modifiée
     #>
-    [PSObject] lockUnlockFirewallSection([string]$id, [string]$action)
+    hidden [PSObject] lockUnlockFirewallSection([string]$id, [string]$action)
     {
         # on commence par récupérer les informations de la section
         $section = $this.getFirewallSectionById($id)
@@ -451,6 +451,7 @@ class NSXAPI: RESTAPICurl
         return $this.callAPI($uri, "GET", $null).results
     }
 
+
     <#
 		-------------------------------------------------------------------------------------
         BUT : Ajoute les règles dans une section de firewall
@@ -499,5 +500,25 @@ class NSXAPI: RESTAPICurl
     }
 
     
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Efface les règles de Firewall d'une section
+        
+        IN  : $firewallSectionId    -> ID de la section de firewall
+    #>
+    [void] deleteFirewallSectionRules([string]$firewallSectionId)
+    {
+        # Déverrouillage de la section au cas où, histoire de pas se chopper une exception
+        $this.unlockFirewallSection($firewallSectionId)
+
+        $ruleList = $this.getFirewallSectionRules($firewallSectionId)
+
+        ForEach($rule in $ruleList)
+        {
+            $uri = "{0}/firewall/sections/{1}/rules/{2}" -f $this.baseUrl, $firewallSectionId, $rule.id
+
+            $this.callAPI($uri, "DELETE", $null) | Out-Null
+        }
+    }
 
 }
