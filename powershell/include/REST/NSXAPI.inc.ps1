@@ -70,6 +70,7 @@ class NSXAPI: RESTAPICurl
         return $nsGroup
     }
 
+    
     <#
 		-------------------------------------------------------------------------------------
         BUT : Renvoie un NS Group donné par son nom
@@ -79,14 +80,17 @@ class NSXAPI: RESTAPICurl
 
             On fait ensuite une nouvelle requête avec l'ID pour récupérer uniquement le NSGroup mais cette fois-ci avec les références.
 
-		IN  : $name     -> Nom du NS Group recherché
+        IN  : $name         -> Nom du NS Group recherché
+        IN  : $memberType   -> Ce à quoi s'applique le NSGroup:
+                                VirtualMachine
+                                LogicalSwitch
 
 		RET : Le NS group 
     #>
-    [PSObject] getNSGroupByName([string]$name)
+    [PSObject] getNSGroupByName([string]$name, [string]$memberType)
     {
         # Note: On filtre exprès avec 'member_types=VirtualMachine' car sinon tous les NSGroup attendus ne sont pas renvoyés... 
-        $uri = "{0}/ns-groups/?populate_references=false&member_types=VirtualMachine" -f $this.baseUrl
+        $uri = "{0}/ns-groups/?populate_references=false&member_types={1}" -f $this.baseUrl, $memberType
 
         $id =  ($this.callAPI($uri, "Get", $null).results | Where-Object {$_.display_name -eq $name}).id
      
@@ -158,7 +162,7 @@ class NSXAPI: RESTAPICurl
         $this.callAPI($uri, "PUT", $nsGroup) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
-        return $this.getNSGroupByName($newName)
+        return $this.getNSGroupById($nsGroup.id)
     }
 
 
@@ -304,20 +308,33 @@ class NSXAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
         BUT : met à jour une section de firewall 
         
-        IN  : $section      -> Objet représentant la section
+        IN  : $section      -> Objet représentant la section à mettre à jour
+        IN  : $newName      -> Nouveau nom de la section
+        IN  : $newDesc      -> Nouvelle description
+        IN  : $nsGroup      -> Le NSGroup à associer à la section 
+                                ATTENTION!! Il est impératif que le NSGroup soit le même que celui
+                                            qui est déjà configuré dans la section!! Il y a juste 
+                                            son nom qui peut changer
 
         NOTE: Aucune idée s'il faut faire un "unlock" de la section avant de pouvoir modifier certains
                 détails. Dans tous les cas, le nom (display_name) peut être changé sans faire un
                 "unlock"
+
+        RET : Section mise à jour
     #>
-    [void] updateFirewallSection([PSObject]$section)
+    [PSObject] updateFirewallSection([PSObject]$section, [string]$newName, [string]$newDesc, [string]$nsGroup)
     {
         
         $uri = "{0}/firewall/sections/{1}" -f $this.baseUrl, $section.id
+
+        $section.display_name = $newName
+        $section.description = $newDesc
+        ($section.applied_tos | Where-Object { $_.target_id -eq $nsGroup.id}).target_display_name = $nsGroup.display_name
         
 		# Création de la section de firewall
         $this.callAPI($uri, "PUT", $section) | Out-Null
         
+        return $this.getFirewallSectionById($section.id)
     }
 
 
