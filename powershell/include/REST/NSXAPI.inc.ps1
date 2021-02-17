@@ -389,7 +389,7 @@ class NSXAPI: RESTAPICurl
 
         RET : Section mise à jour
     #>
-    [PSObject] updateFirewallSection([PSObject]$section, [string]$newName, [string]$newDesc, [string]$nsGroup)
+    [PSObject] updateFirewallSection([PSObject]$section, [string]$newName, [string]$newDesc, [PSObject]$nsGroup)
     {
         
         $uri = "{0}/firewall/sections/{1}" -f $this.baseUrl, $section.id
