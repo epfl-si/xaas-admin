@@ -350,12 +350,28 @@ function createOrUpdateBG
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME"] = $tenantName
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_NAME"] = $bgName
 		
+		# Vu qu'on a cherché le BG par son ID et qu'on n'a pas trouvé, on regarde quand même si un BG portant le nom de celui qu'on doit
+		# créer n'existe pas déjà (si si, ça se peut #facepalm)
+		$existingBg = $vra.getBG($bgName)
+		if($null -ne $existingBg)
+		{
+			$existingBgId = (getBGCustomPropValue -bg $existingBg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
+			$logHistory.addWarningAndDisplay(("-> Impossible to create new BG with name '{0}' (ID={1}) because another one already exists with this name (ID={2})" -f `
+												$bgName, $bgId, $existingBgId))
 
-		$logHistory.addLineAndDisplay("-> BG doesn't exists, creating...")
-		# Création du BG
-		$bg = $vra.addBG($bgName, $bgDesc, $capacityAlertsEmail, $machinePrefixId, $customProperties)
+			$notifications.bgNameAlreadyTaken += ("Existing BG {0} ,ID={1}. New BG ID={1}" -f $bgName, $existingBgId, $bgId)
 
-		$counters.inc('BGCreated')
+			$counters.inc('BGNotCreated')
+		}
+		else # Le Nom est libre, on peut aller de l'avant
+		{
+			$logHistory.addLineAndDisplay(("-> BG '{0}' (ID={1}) doesn't exists, creating..." -f $bgName, $bgId))
+			# Création du BG
+			$bg = $vra.addBG($bgName, $bgDesc, $capacityAlertsEmail, $machinePrefixId, $customProperties)
+
+			$counters.inc('BGCreated')
+		}
+		
 	}
 	# Si le BG existe,
 	else
@@ -1113,8 +1129,17 @@ function handleNotifications
 				'bgNameDuplicate'
 				{
 					$valToReplace.bgRenameList = ($uniqueNotifications -join "</li>`n<li>")
-					$mailSubject = "Error - BG cannot be renamed because of duplicate"
+					$mailSubject = "Error - BG cannot be renamed because of duplicate name"
 					$templateName = "bg-rename-duplicate"
+				}
+
+				# ---------------------------------------
+				# Pas possible de créer un BG car le nom existe déjà
+				'bgNameAlreadyTaken'
+				{
+					$valToReplace.bgCreateList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - BG cannot be created because of duplicate name"
+					$templateName = "bg-create-duplicate"
 				}
 
 				default
@@ -1380,6 +1405,7 @@ try
 	$counters = [Counters]::new()
 	$counters.add('ADGroups', '# AD group processed')
 	$counters.add('BGCreated', '# Business Group created')
+	$counters.add('BGNotCreated', '# Business Group NOT created')
 	$counters.add('BGUpdated', '# Business Group updated')
 	$counters.inc('BGExisting', '# Business Group already existing')
 	$counters.add('BGNotCreated', '# Business Group not created (because of an error)')

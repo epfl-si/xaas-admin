@@ -39,7 +39,6 @@ class vRAAPI: RESTAPICurl
 	#>
 	vRAAPI([string] $server, [string] $tenant, [string] $userAtDomain, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
-		$this.server = $server
 		$this.tenant = $tenant
 
 		# Cache pour le mapping entre l'ID custom d'un BG et celui-ci
@@ -54,7 +53,7 @@ class vRAAPI: RESTAPICurl
 
 		$body = $this.createObjectFromJSON("vra-user-credentials.json", $replace)
 
-		$uri = "https://{0}/identity/api/tokens" -f $this.server
+		$uri = "{0}/identity/api/tokens" -f $this.baseUrl
 
 		# Pour autoriser les certificats self-signed
 		[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $True }
@@ -104,7 +103,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[Void] disconnect()
 	{
-		$uri = "https://{0}/identity/api/tokens/{1}" -f $this.server, $this.token
+		$uri = "{0}/identity/api/tokens/{1}" -f $this.baseUrl, $this.token
 
 		$this.callAPI($uri, "Delete", $null)
 	}
@@ -132,7 +131,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getBGListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/?page=1&limit=9999" -f $this.server, $this.tenant
+		$uri = "{0}/identity/api/tenants/{1}/subtenants/?page=1&limit=9999" -f $this.baseUrl, $this.tenant
 
 		# Si on doit ajouter des paramètres
 		if($queryParams -ne "")
@@ -277,7 +276,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] addBG([string]$name, [string]$desc, [string]$capacityAlertsEmail, [string]$machinePrefixId, [System.Collections.Hashtable] $customProperties)
 	{
-		$uri = "https://{0}/identity/api/tenants/{1}/subtenants" -f $this.server, $this.tenant
+		$uri = "{0}/identity/api/tenants/{1}/subtenants" -f $this.baseUrl, $this.tenant
 
 		# Valeur à mettre pour la configuration du BG
 		$replace = @{name = $name
@@ -337,7 +336,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] updateBG([PSCustomObject] $bg, [string] $newName, [string] $newDesc, [string]$machinePrefixId, [System.Collections.IDictionary]$customProperties)
 	{
-		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.server, $this.tenant, $bg.id
+		$uri = "{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.baseUrl, $this.tenant, $bg.id
 
 		$updateNeeded = $false
 
@@ -434,7 +433,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] deleteBGCustomProperty([PSCustomObject]$bg, [string]$customPropertyName)
 	{
-		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.server, $this.tenant, $bg.id
+		$uri = "{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.baseUrl, $this.tenant, $bg.id
 
 		# Filtrage de la custom property à supprimer
 		$entries = $bg.extensionData.entries | Where-Object {$_.key -ne $customPropertyName}
@@ -464,7 +463,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[void] deleteBG($bgId)
 	{
-		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.server, $this.tenant, $bgId
+		$uri = "{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.baseUrl, $this.tenant, $bgId
 
 		# Mise à jour des informations
 		$this.callAPI($uri, "Delete", $null) | Out-Null
@@ -494,7 +493,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[Array] getBGRoleContent([string] $BGID, [string] $role)
 	{
-		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/principals/" -f $this.server, $this.tenant, $BGID, $role
+		$uri = "{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/principals/" -f $this.baseUrl, $this.tenant, $BGID, $role
 
 		# Récupération de la liste d'objets
 		$res = ($this.callAPI($uri, "Get", $null)).content
@@ -522,7 +521,7 @@ class vRAAPI: RESTAPICurl
 		# S'il y a du contenu pour le rôle
 		if(($this.getBGRoleContent($BGID, $role)).count -gt 0)
 		{
-			$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/" -f $this.server, $this.tenant, $BGID, $role
+			$uri = "{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/" -f $this.baseUrl, $this.tenant, $BGID, $role
 
 			# Suppression du contenu du rôle
 			$this.callAPI($uri, "Delete", $null) | Out-Null
@@ -551,7 +550,7 @@ class vRAAPI: RESTAPICurl
 		# Séparation des informations
 		$userOrGroup, $domain = $userOrGroupAtDomain.split('@')
 
-		$uri = "https://{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/principals" -f $this.server, $this.tenant, $BGID, $role
+		$uri = "{0}/identity/api/tenants/{1}/subtenants/{2}/roles/{3}/principals" -f $this.baseUrl, $this.tenant, $BGID, $role
 
 
 		# ******
@@ -606,7 +605,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getEntListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/catalog-service/api/entitlements/?page=1&limit=9999" -f $this.server
+		$uri = "{0}/catalog-service/api/entitlements/?page=1&limit=9999" -f $this.baseUrl
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -632,7 +631,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] getBGEnt([string]$BGID)
 	{
-		$uri = "https://{0}/catalog-service/api/entitlements/?page=1&limit=9999&`$filter=organization/subTenant/id eq '{1}'" -f $this.server, $BGID
+		$uri = "{0}/catalog-service/api/entitlements/?page=1&limit=9999&`$filter=organization/subTenant/id eq '{1}'" -f $this.baseUrl, $BGID
 
 		$ent = ($this.callAPI($uri, "Get", $null)).content
 
@@ -700,7 +699,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] addEnt([string]$name, [string]$desc, [string]$BGID, [string]$bgName)
 	{
-		$uri = "https://{0}/catalog-service/api/entitlements" -f $this.server
+		$uri = "{0}/catalog-service/api/entitlements" -f $this.baseUrl
 
 		# Valeur à mettre pour la configuration du BG
 		$replace = @{name = $name
@@ -740,7 +739,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] updateEnt([PSCustomObject] $ent, [string] $newName, [string] $newDesc, [bool]$activated)
 	{
-		$uri = "https://{0}/catalog-service/api/entitlements/{1}" -f $this.server, $ent.id
+		$uri = "{0}/catalog-service/api/entitlements/{1}" -f $this.baseUrl, $ent.id
 
 
 		# S'il faut mettre le nom à jour,
@@ -811,7 +810,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[void] deleteEnt([string]$entID)
 	{
-		$uri = "https://{0}/catalog-service/api/entitlements/{1}" -f $this.server, $entId
+		$uri = "{0}/catalog-service/api/entitlements/{1}" -f $this.baseUrl, $entId
 
 		$this.callAPI($uri, "Delete", $null) | Out-Null
 	}
@@ -836,7 +835,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getServiceListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/catalog-service/api/services/?page=1&limit=9999" -f $this.server
+		$uri = "{0}/catalog-service/api/services/?page=1&limit=9999" -f $this.baseUrl
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1092,7 +1091,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getResListQuery([string] $queryParams, [bool]$allowCache)
 	{
-		$uri = "https://{0}/reservation-service/api/reservations/?page=1&limit=9999" -f $this.server
+		$uri = "{0}/reservation-service/api/reservations/?page=1&limit=9999" -f $this.baseUrl
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1174,7 +1173,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] addResFromTemplate([PSCustomObject]$resTemplate, [string]$name, [string]$tenant, [string]$BGID)
 	{
-		$uri = "https://{0}/reservation-service/api/reservations" -f $this.server
+		$uri = "{0}/reservation-service/api/reservations" -f $this.baseUrl
 
 		# Mise à jour des champs pour pouvoir ajouter la nouvelle Reservation
 		$resTemplate.name = $name
@@ -1211,7 +1210,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[Array] updateRes([PSCustomObject]$res, [PSCustomObject]$resTemplate, [string]$name)
 	{
-		$uri = "https://{0}/reservation-service/api/reservations/{1}" -f $this.server, $res.id
+		$uri = "{0}/reservation-service/api/reservations/{1}" -f $this.baseUrl, $res.id
 
 		$updated = $false
 
@@ -1246,7 +1245,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[void] deleteRes([string]$resID)
 	{
-		$uri = "https://{0}/reservation-service/api/reservations/{1}" -f $this.server, $resID
+		$uri = "{0}/reservation-service/api/reservations/{1}" -f $this.baseUrl, $resID
 
 		$this.callAPI($uri, "Delete", $null) | Out-Null
 		
@@ -1272,7 +1271,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getActionListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/catalog-service/api/resourceOperations/?page=1&limit=9999" -f $this.server
+		$uri = "{0}/catalog-service/api/resourceOperations/?page=1&limit=9999" -f $this.baseUrl
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1357,7 +1356,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getPrincipalsListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/identity/api/authorization/tenants/{1}/principals/?page=1&limit=9999" -f $this.server, $this.tenant
+		$uri = "{0}/identity/api/authorization/tenants/{1}/principals/?page=1&limit=9999" -f $this.baseUrl, $this.tenant
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1433,7 +1432,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getMachinePrefixListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/?page=1&limit=9999" -f $this.server
+		$uri = "{0}/iaas-proxy-provider/api/machine-prefixes/?page=1&limit=9999" -f $this.baseUrl
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1483,7 +1482,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] addMachinePrefix([string] $name, [int] $numberOfDigits)
 	{
-		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/" -f $this.server
+		$uri = "{0}/iaas-proxy-provider/api/machine-prefixes/" -f $this.baseUrl
 
 		# Valeur à mettre pour la configuration du BG
 		$replace = @{
@@ -1510,7 +1509,7 @@ class vRAAPI: RESTAPICurl
 			sa documentation). Bref, c'est grâce à ce post d'un forum que la solution a été trouvée:
 			https://communities.vmware.com/thread/604831
 		#>
-		$uri = "https://{0}/iaas-proxy-provider/api/machine-prefixes/guid'{1}'" -f $this.server, $machinePrefix.id
+		$uri = "{0}/iaas-proxy-provider/api/machine-prefixes/guid'{1}'" -f $this.baseUrl, $machinePrefix.id
 
 		$this.callAPI($uri, "DELETE", $null) | Out-Null
 	}
@@ -1536,7 +1535,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getEntitledCatalogItemListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/catalog-service/api/consumer/entitledCatalogItems/?page=1&limit=5000" -f $this.server
+		$uri = "{0}/catalog-service/api/consumer/entitledCatalogItems/?page=1&limit=5000" -f $this.baseUrl
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1564,7 +1563,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getCatalogItemListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/catalog-service/api/catalogItems/?page=1&limit=5000" -f $this.server
+		$uri = "{0}/catalog-service/api/catalogItems/?page=1&limit=5000" -f $this.baseUrl
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1636,7 +1635,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getBGItemListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/catalog-service/api/consumer/resources/?page=1&limit=9999" -f $this.server
+		$uri = "{0}/catalog-service/api/consumer/resources/?page=1&limit=9999" -f $this.baseUrl
 
 		# Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1745,7 +1744,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[void] syncDirectory([string] $name)
 	{
-		$uri = "https://{0}/identity/api/tenants/{1}/directories/{2}/sync" -f $this.server, $this.tenant, $name
+		$uri = "{0}/identity/api/tenants/{1}/directories/{2}/sync" -f $this.baseUrl, $this.tenant, $name
 
 		$this.callAPI($uri, "Post", $null) | Out-Null
 	}
@@ -1771,7 +1770,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	hidden [Array] getApprovePolicyListQuery([string] $queryParams)
 	{
-		$uri = "https://{0}/approval-service/api/policies?page=1&limit=9999" -f $this.server
+		$uri = "{0}/approval-service/api/policies?page=1&limit=9999" -f $this.baseUrl
 
 		# Si on doit ajouter des paramètres
 		if($queryParams -ne "")
@@ -1838,7 +1837,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[psobject] addPreApprovalPolicy([string]$name, [string]$desc, [string]$approvalLevelJSON, [Array]$approverGroupAtDomainList, [string]$approvalPolicyJSON, [psobject]$additionnalReplace)
 	{
-		$uri = "https://{0}/approval-service/api/policies" -f $this.server
+		$uri = "{0}/approval-service/api/policies" -f $this.baseUrl
 
 		# Création des approval levels
 		$approvalLevels = @()
@@ -1894,7 +1893,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[psobject] setApprovalPolicyState([PSCustomObject]$approvalPolicy, [bool]$activated)
 	{
-		$uri = "https://{0}/approval-service/api/policies/{1}" -f $this.server, $approvalPolicy.id
+		$uri = "{0}/approval-service/api/policies/{1}" -f $this.baseUrl, $approvalPolicy.id
 
 		# Si la policy est par hasard en "DRAFT", on ne fait rien
 		if($approvalPolicy.state -eq "DRAFT")
@@ -1948,7 +1947,7 @@ class vRAAPI: RESTAPICurl
 		# On commence par la désactiver sinon on ne pourra pas la supprimer
 		$approvalPolicy = $this.setApprovalPolicyState($approvalPolicy, $false)
 
-		$uri = "https://{0}/approval-service/api/policies/{1}" -f $this.server, $approvalPolicy.id
+		$uri = "{0}/approval-service/api/policies/{1}" -f $this.baseUrl, $approvalPolicy.id
 
 		# Mise à jour des informations
 		$this.callAPI($uri, "Delete", $null) | Out-Null
@@ -1974,7 +1973,7 @@ class vRAAPI: RESTAPICurl
 	[Array] getResourceActionList([PSCustomObject]$forResource)
 	{
 		
-		$uri = "https://{0}/catalog-service/api/consumer/resources/{1}/actions" -f $this.server, $forResource.id
+		$uri = "{0}/catalog-service/api/consumer/resources/{1}/actions" -f $this.baseUrl, $forResource.id
 
 		# Retour de la liste
 		return $this.callAPI($uri, "Get", $null).content
@@ -2022,7 +2021,7 @@ class vRAAPI: RESTAPICurl
 		}
 
 		# URL de recherche du template pour l'action que l'on désire effectuer
-		$uri = "https://{0}/catalog-service/api/consumer/resources/{1}/actions/{2}/requests/template/" -f $this.server, $forResource.id, $actionInfos.id
+		$uri = "{0}/catalog-service/api/consumer/resources/{1}/actions/{2}/requests/template/" -f $this.baseUrl, $forResource.id, $actionInfos.id
 
 		return $this.callAPI($uri, "Get", $null)
 	}
@@ -2079,7 +2078,7 @@ class vRAAPI: RESTAPICurl
 		}
 
 
-		$uri = "https://{0}/catalog-service/api/consumer/resources/{1}/actions/{2}/requests" -f $this.server, $actionTemplate.resourceId, $actionTemplate.actionId
+		$uri = "{0}/catalog-service/api/consumer/resources/{1}/actions/{2}/requests" -f $this.baseUrl, $actionTemplate.resourceId, $actionTemplate.actionId
 
 		# Mise à jour de la description, bien qu'elle n'apparaîtra nulle part...
 		$actionTemplate.description = "Automatic Backup Tag Update"
