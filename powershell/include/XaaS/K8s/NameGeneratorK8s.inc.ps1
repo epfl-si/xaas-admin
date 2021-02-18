@@ -20,23 +20,56 @@ enum K8sDNSEntryType
 class NameGeneratorK8s: NameGeneratorBase
 {
    
+   hidden [string]$deploymentTag
    <#
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
 
-        IN  : $env      -> Environnement sur lequel on travaille
-                           $TARGET_ENV_DEV
-                           $TARGET_ENV_TEST
-                           $TARGET_ENV_PROD
-        IN  : $tenant   -> Tenant sur lequel on travaille
-                           $VRA_TENANT_DEFAULT
-                           $VRA_TENANT_EPFL
-                           $VRA_TENANT_ITSERVICES
-
+         IN  : $env           -> Infrastructure sur laquelle on travaille
+                                 $TARGET_ENV_DEV
+                                 $TARGET_ENV_TEST
+                                 $TARGET_ENV_PROD
+         IN  : $tenant        -> Tenant sur lequel on travaille
+                                 $VRA_TENANT_DEFAULT
+                                 $VRA_TENANT_EPFL
+                                 $VRA_TENANT_ITSERVICES
+         
 		RET : Instance de l'objet
 	#>
-   NameGeneratorK8s([string]$env, [string]$tenant): base($env, $tenant) 
-   { }
+   NameGeneratorK8s([string]$env, [string]$tenant, [string]$deploymentTag): base($env, $tenant) 
+   { 
+      $this.deploymentTag = ""
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Initialise le tag de déploiement
+
+      IN  : $deploymentTag -> Environnement du cluster, au niveau logique, pas au niveau 
+                              infrastructure
+                              prod|test|dev
+   #>
+   [void] initDeploymentTag([string]$deploymentTag)
+   {
+      $this.deploymentTag = $deploymentTag
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie la représentation courte du tag de déploiement
+
+      RET : Représentation courte du deploymentTag
+   #>
+   hidden [string] getDeploymentTagShortname()
+   {
+      if($this.deploymentTag -eq "")
+      {
+         Throw "deploymentTag not initialized"
+      }
+      return $this.deploymentTag[0].toLower()
+   }
 
 
    <# -------------------------------------------------------------------------------------
@@ -83,7 +116,7 @@ class NameGeneratorK8s: NameGeneratorBase
    #>
    [string] getClusterRegex()
    {
-      return ('{0}{1}k{2}([0-9]+)' -f $this.getTenantStartLetter(), $this.getClusterNameMiddle(), $this.getEnvShortName())
+      return ('{0}{1}k{2}([0-9]+)' -f $this.getTenantStartLetter(), $this.getClusterNameMiddle(), $this.getDeploymentTagShortname())
    }
 
    
@@ -101,7 +134,7 @@ class NameGeneratorK8s: NameGeneratorBase
       
       return ("{0}{1}k{2}{3}" -f $this.getTenantStartLetter(), ` # Lettre de début du tenant
                $this.getClusterNameMiddle(), `
-               $this.getEnvShortName(), `
+               $this.getDeploymentTagShortname(), `
                $numberStr)
    }
 
@@ -258,7 +291,7 @@ class NameGeneratorK8s: NameGeneratorBase
       
       return ("{0}{1}{2}" -f $this.getTenantShortName(), ` # Nom court du tenant
                $middle, `
-               $this.getEnvShortName())
+               $this.getDeploymentTagShortname())
    }
 
 
@@ -298,13 +331,11 @@ class NameGeneratorK8s: NameGeneratorBase
       -------------------------------------------------------------------------------------
       BUT : Renvoie le nom du networkProfile à utiliser
 
-      IN  : $deploymentTag -> Tag de déploiement que l'on met sur le cluster, à savoir prod/test/dev
-
       RET : Nom du network profile
    #>
-   [string] getNetProfileName([string]$deploymentTag)
+   [string] getNetProfileName()
    {
-      return "np-vra-{0}" -f $deploymentTag.ToLower()
+      return "np-vra-{0}" -f $this.deploymentTag.ToLower()
    }
 
 
@@ -317,13 +348,11 @@ class NameGeneratorK8s: NameGeneratorBase
       -------------------------------------------------------------------------------------
       BUT : Renvoie le nom NSGroup de l'environnement dans lequel il faudra ajouter le NSGroup du cluster
 
-      IN  : $deploymentTag -> Tag de déploiement que l'on met sur le cluster, à savoir prod/test/dev
-
       RET : Nom du NSGroup racine
    #>
-   [string] getEnvSecurityGroupName([string]$deploymentTag)
+   [string] getEnvSecurityGroupName()
    {
-      return "sg.k8s.{0}" -f $deploymentTag.toLower()
+      return "sg.k8s.{0}" -f $this.deploymentTag.toLower()
    }
 
 

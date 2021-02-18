@@ -13,7 +13,7 @@ USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNSNbLB -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNSLB -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action extendNSStorage -clusterName <clusterName> -namespace <namespace> -extSizeGB <extSizeGB>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addHarborRobot -bgId <bgId> -clusterName <clusterName>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addHarborRobot -bgId <bgId> -clusterName <clusterName> -deploymentTag prod|test|dev
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -602,7 +602,9 @@ try
     # Precheck pour plusieurs actions
     if(@($ACTION_CREATE, $ACTION_DELETE) -contains $action)
     {
-        $envNSGroupName = $nameGeneratorK8s.getEnvSecurityGroupName($deploymentTag)
+        $nameGeneratorK8s.initDeploymentTag($deploymentTag)
+
+        $envNSGroupName = $nameGeneratorK8s.getEnvSecurityGroupName()
         $logHistory.addLine(("Looking for environement NSX NSGroup '{0}'" -f $envNSGroupName))
         $envNSGroup = $nsx.getNSGroupByName($envNSGroupName, $global:NSX_LOGICAL_SWITCH_MEMBER_TYPE)
 
@@ -685,7 +687,7 @@ try
             $logHistory.addLine(("DNS hosnames will be '{0}' for main cluster and '{1}' for Ingress part" -f $dnsHostName, $dnsHostNameIngress))
 
             # Création du cluster
-            $netProfile = $nameGeneratorK8s.getNetProfileName($deploymentTag)
+            $netProfile = $nameGeneratorK8s.getNetProfileName()
             $logHistory.addLine(("Creating cluster '{0}' with '{1}' plan and '{2}' network profile (this will take time, you can go to grab a coffee)..." -f $clusterName, $plan, $netProfile))
             $cluster = $pks.addCluster($clusterName, $plan, $netProfile, $dnsHostNameFull)
 
@@ -1155,6 +1157,8 @@ try
         # -- Nouveau robot
         $ACTION_ADD_HARBOR_ROBOT
         {
+
+            $nameGeneratorK8s.initDeploymentTag($deploymentTag)
 
             $harborProjectName = $nameGeneratorK8s.getHarborProjectName()
             $logHistory.addLine(("Harbor project name is '{0}'" -f $harborProjectName))
