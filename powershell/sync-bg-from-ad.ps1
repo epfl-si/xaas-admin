@@ -1307,8 +1307,8 @@ function createFirewallSectionIfNotExists
 	IN  : $nsx				-> Objet permettant d'accéder à l'API NSX
 	IN  : $nsxNSGroup		-> Objet représantant le NS Group
 	IN  : $nsxFWSection		-> Objet représantant la section de Firewall à laquelle ajouter les règles
-	IN  : $nsxFWRuleNames	-> Tableau avec les noms des règles
-
+	IN  : $nsxFWRuleNames	-> Tableau avec les noms des règles. Contient des tableaux associatifs,
+								un pour chaque règle, avec les infos de celle-ci
 #>
 function createFirewallSectionRulesIfNotExists
 {
@@ -1567,9 +1567,9 @@ try
 
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
-			$serviceShortName = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
 			$descInfos  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
 
+			$serviceShortName = $descInfos.svcShortName
 			$serviceLongName = $descInfos.svcName
 			$snowServiceId = $descInfos.svcId
 			$deniedVRASvc = $descInfos.deniedVRASvc
