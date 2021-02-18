@@ -665,7 +665,7 @@ try
             # ---- Droits d'accès 
             # Ajout des droits d'accès mais uniquement pour le premier groupe de la liste, et on admet que c'est un nom de groupe et pas
             # d'utilisateur. 
-            $accessGroupList = getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant
+            $accessGroupList = @(getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant)
             if($null -eq $accessGroupList)
             {
                 $output.error = "Access group list not found"

@@ -52,7 +52,7 @@ class NameGeneratorK8s: NameGeneratorBase
    #>
    [void] initDeploymentTag([string]$deploymentTag)
    {
-      $this.deploymentTag = $deploymentTag
+      $this.deploymentTag = $deploymentTag.toLower()
    }
 
 
@@ -68,7 +68,7 @@ class NameGeneratorK8s: NameGeneratorBase
       {
          Throw "deploymentTag not initialized"
       }
-      return $this.deploymentTag[0].toLower()
+      return $this.deploymentTag[0]
    }
 
 
