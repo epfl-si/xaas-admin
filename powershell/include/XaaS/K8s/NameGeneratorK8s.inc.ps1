@@ -36,7 +36,7 @@ class NameGeneratorK8s: NameGeneratorBase
          
 		RET : Instance de l'objet
 	#>
-   NameGeneratorK8s([string]$env, [string]$tenant, [string]$deploymentTag): base($env, $tenant) 
+   NameGeneratorK8s([string]$env, [string]$tenant): base($env, $tenant) 
    { 
       $this.deploymentTag = ""
    }
