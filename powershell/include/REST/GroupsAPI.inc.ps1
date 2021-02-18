@@ -408,13 +408,13 @@ class GroupsAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Liste les admins d'un groupe
+        BUT : Renvoie les admins d'un groupe
 
         IN  : $groupId          -> ID du groupe
 
         RET : Tableau avec les admins
     #>
-    [Array] listAdmins([string]$groupId)
+    [Array] getAdminList([string]$groupId)
     {
         $uri = "{0}&id={1}" -f $this.getBaseURI('listAdmins'), $groupId
 

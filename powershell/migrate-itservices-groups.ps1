@@ -65,13 +65,16 @@ Foreach($service in $serviceList)
                                 snowServiceId = $service.snowId})
 
     Write-Host $service.longName
+    # Nom courant du groupe
     $curName = "{0}{1}_{2}" -f  [NameGenerator]::AD_GROUP_PREFIX, $nameGenerator.getEnvShortName(), $service.shortName
+    # Nouveau nom selon ce qui a été défini
     $newName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
 
     $additionalDetails = @{
         deniedVRASvc = $service.deniedVRAServiceList
-        hasApproval = $true
+        hasApproval = ($service.shortName -ne "xaasadm")
     }
+    
     $adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
 
     Write-Host (">> Renaming AD Group {0} to {1}" -f $curName, $newName)
@@ -100,7 +103,7 @@ Foreach($service in $serviceList)
     if($null -ne $group)
     {
         # Si le groupe vsissp-prod-admins n'est pas dans la liste des admins
-        if($null -eq ($groupsApp.listAdmins($group.id) | Where-Object { $_.id -eq $adminSciper}))
+        if($null -eq ($groupsApp.getAdminList($group.id) | Where-Object { $_.id -eq $adminSciper}))
         {
             # Ajout en tant qu'Admin
             Write-Host (">>>> Adding 'vsissp-prod-admins' group as admin")
@@ -117,7 +120,11 @@ Foreach($service in $serviceList)
         {
             $newGroup = $groupsApp.renameGroup($curName, $newName)    
 
-            $groupsRenameOk +=  ("{0} to {1}" -f $curName, $newName)
+            $groupsRenameOk += @{
+                oldName = $curName
+                newName = $newName
+                adminList = $groupsApp.getAdminList($group.id)
+            } 
         }
         catch
         {
@@ -141,4 +148,4 @@ if($groupsManualRename.count -gt 0)
 
 Write-Host ""
 Write-Host "Groups successfully renamed:"
-$groupsRenameOk
+Write-Host ($groupsRenameOk | ConvertTo-Json -Depth 20)
