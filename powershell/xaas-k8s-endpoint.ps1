@@ -720,8 +720,12 @@ try
                                                 $configK8s.getConfigValue(@($targetEnv, "pks", "storageClass", "provisioner")), 
                                                 $configK8s.getConfigValue(@($targetEnv, "pks", "storageClass", "parameters.datastore")))
             
+            # Namespace
+            $logHistory.addLine(("Adding namespace '{0}' to cluster '{1}'..." -f $global:K8S_NEW_NAMESPACE, $clusterName))
+            $tkgiKubectl.addClusterNamespace($clusterName, $global:K8S_NEW_NAMESPACE, $targetEnv)
+
             # Configuration du NameSpace par défaut
-            configureNamespaceElements -clusterName $clusterName -namespace $global:DEFAULT_NAMESPACE -targetEnv $targetEnv `
+            configureNamespaceElements -clusterName $clusterName -namespace $global:K8S_NEW_NAMESPACE -targetEnv $targetEnv `
                                        -adGroupList $accessGroupList -nameGeneratorK8s $nameGeneratorK8s -tkgiKubectl $tkgiKubectl -logHistory $logHistory
 
             # - Cluster Role

@@ -16,6 +16,8 @@ $global:CLUSTER_NAME_UNIT_PART_MAX_CHAR = 8
 
 $global:CLUSTER_NAME_SERVICE_NAME_PART_MAX_CHAR = 15
 
+$global:K8S_NEW_NAMESPACE = "app"
+
 # Nom de la zone DNS
 $global:K8S_DNS_ZONE_NAME = "xaas.epfl.ch"
 
