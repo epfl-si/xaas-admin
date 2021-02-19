@@ -249,16 +249,6 @@ try
 
 	} # FIN boucle de recherche des fichier ISO
 
-    # Si on avait effectivement ouvert une connexion à vRA, on la referme 
-    if($null -ne $vra)
-    {
-        $vra.disconnect()
-	}
-	# Si on avait ouvert une connexion à vCenter, on la referme 
-	if($null -ne $vcenter)
-	{
-		Disconnect-VIServer -Server $vCenter -Confirm:$false 
-	}
 
 	# Affichage des compteurs
 	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
@@ -266,15 +256,6 @@ try
 }
 catch # Dans le cas d'une erreur dans le script
 {
-	# Si on avait ouvert une connexion à vCenter, on la referme 
-	if($null -ne $vcenter)
-	{
-		Disconnect-VIServer -Server $vCenter -Confirm:$false 
-	}
-	if($null -ne $vra)
-    {
-        $vra.disconnect()
-	}
 
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
@@ -296,4 +277,15 @@ catch # Dans le cas d'une erreur dans le script
 	# Envoi d'un message d'erreur aux admins 
 	$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 	
+}
+
+
+# Si on avait ouvert une connexion à vCenter, on la referme 
+if($null -ne $vcenter)
+{
+	Disconnect-VIServer -Server $vCenter -Confirm:$false 
+}
+if($null -ne $vra)
+{
+	$vra.disconnect()
 }
