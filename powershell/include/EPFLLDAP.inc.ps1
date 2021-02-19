@@ -369,7 +369,7 @@ class EPFLLDAP
 			$person = $this.LDAPSearch($this.LDAPconfig.facultyUnits.server, $ldapInfos.rootDN, "subtree", `
 									("(&(objectClass=organizationalPerson)(uniqueidentifier={0}))" -f $sciper), @("*"))
 
-			if($person.count -eq 1)
+			if($person.count -gt 0)
 			{
 				return $person[0].Properties
 			}

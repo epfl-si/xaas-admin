@@ -45,7 +45,7 @@ $ldap = [EPFLLDAP]::new()
 $itServices = [ITServices]::new()
 
 $groupsManualRename = @()
-$groupsRenameOk = @{}
+$groupsRenameOk = @()
 
 # ID du groupe vsissp-prod-admins à ajouter dans tous les groupes
 $adminSciper = "S19307"
@@ -69,7 +69,7 @@ Foreach($service in $serviceList)
     Write-Host $service.longName
 
     $groupOwner = $ldap.getPersonInfos($service.serviceManagerSciper)
-    if($null -eq $groupOwner)
+    if($null -ne $groupOwner)
     {
         $ownerMail = $groupOwner.mail
     }
@@ -133,15 +133,12 @@ Foreach($service in $serviceList)
         {
             $newGroup = $groupsApp.renameGroup($curName, $newName)    
 
-            if($groupsRenameOk.keys -notcontains $ownerMail)
-            {
-                $groupsRenameOk.$ownerMail = @()
-            }
 
-            $groupsRenameOk.$ownerMail += @{
+            $groupsRenameOk += @{
                 oldName = $curName
                 newName = $newName
                 adminList = $groupsApp.getAdminList($group.id)
+                ownerMail = $ownerMail
             } 
         }
         catch
