@@ -9,6 +9,7 @@ param ( [string]$targetEnv)
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "LogHistory.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
@@ -38,12 +39,13 @@ $groupsApp = [GroupsAPI]::new($configGroups.getConfigValue(@($targetEnv, "server
 # Création de l'objet qui permettra de générer les noms des groupes AD et "groups" ainsi que d'autre choses...
 $nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
 
+$ldap = [EPFLLDAP]::new()
 
 # Objet pour lire les informations sur le services IT
 $itServices = [ITServices]::new()
 
 $groupsManualRename = @()
-$groupsRenameOk = @()
+$groupsRenameOk = @{}
 
 # ID du groupe vsissp-prod-admins à ajouter dans tous les groupes
 $adminSciper = "S19307"
@@ -65,6 +67,17 @@ Foreach($service in $serviceList)
                                 snowServiceId = $service.snowId})
 
     Write-Host $service.longName
+
+    $groupOwner = $ldap.getPersonInfos($service.serviceManagerSciper)
+    if($null -eq $groupOwner)
+    {
+        $ownerMail = $groupOwner.mail
+    }
+    else
+    {
+        $ownerMail = $service.serviceManagerSciper
+    }
+
     # Nom courant du groupe
     $curName = "{0}{1}_{2}" -f  [NameGenerator]::AD_GROUP_PREFIX, $nameGenerator.getEnvShortName(), $service.shortName
     # Nouveau nom selon ce qui a été défini
@@ -120,7 +133,12 @@ Foreach($service in $serviceList)
         {
             $newGroup = $groupsApp.renameGroup($curName, $newName)    
 
-            $groupsRenameOk += @{
+            if($groupsRenameOk.keys -notcontains $ownerMail)
+            {
+                $groupsRenameOk.$ownerMail = @()
+            }
+
+            $groupsRenameOk.$ownerMail += @{
                 oldName = $curName
                 newName = $newName
                 adminList = $groupsApp.getAdminList($group.id)
