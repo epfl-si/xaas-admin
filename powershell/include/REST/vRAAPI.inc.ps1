@@ -2088,6 +2088,42 @@ class vRAAPI: RESTAPICurl
 	}
 
 
+	<#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+									Approval Requests
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	#>
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des approval requests qui ont été faites jusqu'à présent.
+				Comme il peut y en avoir une tétra-floppée (terme hautement technique), on 
+				ne fait pas qu'une seule requête mais on utilise la fonction de pagination
+				fournie de base.
+
+		RET : Tableau avec la liste des requêtes
+	#>
+	[Array] getApprovalRequestList()
+	{
+		$list = @()
+		$pageNo = 1
+		$nbPages = 1
+		While($pageNo -le $nbPages)
+		{
+			$uri = "{0}/workitem-service/api/workitems?page={1}&limit=100" -f $this.baseUrl, $pageNo
+
+			$result = $this.callAPI($uri, "Get", $null)	
+			$list += $result.content
+			$nbPages = $result.metadata.totalPages
+
+			$pageNo++
+		}
+		
+		return $list
+	}
+	
 }
 
 
