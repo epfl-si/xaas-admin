@@ -413,12 +413,13 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 	IN  : $desc					-> Description du groupe
 	IN  : $memberSciperList		-> Tableau avec la liste des scipers des membres du groupe
 	IN  : $adminSciperList		-> Tableau avec la liste des scipers des admins du groupe
+	IN  : $simulation			-> $true|$false Pour dire si on est en train de faire tourner en mode "simulation"
 	IN  : $$allowAdminUpdate	-> Switch pour dire si on autorise à mettre à jour la
 									liste des administrateurs du groupe
 
 	RET : Le groupe
 #>
-function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList, [switch]$allowAdminUpdate)
+function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList, [bool]$simulation, [switch]$allowAdminUpdate)
 {
 	# Recherche du groupe pour voir s'il existe
 	$group = $groupsApp.getGroupByName($name, $true)
@@ -443,24 +444,36 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [s
 		$options = @{
 			maillist = '0'
 		}
-		$group = $groupsApp.addGroup($name, $desc, "", $options)
+		if(!$simulation)
+		{
+			$group = $groupsApp.addGroup($name, $desc, "", $options)
+		}
+		
 
 		# Ajout des membres
 		if($memberSciperList.count -gt 0)
 		{
 			$logHistory.addLineAndDisplay(("--> Adding {0} members..." -f $memberSciperList.count))
-			$groupsApp.addMembers($group.id, $memberSciperList)
+			if(!$simulation)
+			{
+				$groupsApp.addMembers($group.id, $memberSciperList)
+			}
 		}
 		
 		# Ajout des admins
 		$logHistory.addLineAndDisplay(("--> Adding {0} admins..." -f $adminSciperList.count))
-		$groupsApp.addAdmins($group.id, $adminSciperList)
-		
-		# Suppression du membre ajouté par défaut (celui du "caller", ajouté automatiquement à la création)
-		$groupsApp.removeMember($group.id, $groupsApp.getCallerSciper())
 
-		# Récupération du groupe
-		$group = $groupsApp.getGroupById($group.id)
+		if(!$simulation)
+		{
+			$groupsApp.addAdmins($group.id, $adminSciperList)
+		
+			# Suppression du membre ajouté par défaut (celui du "caller", ajouté automatiquement à la création)
+			$groupsApp.removeMember($group.id, $groupsApp.getCallerSciper())
+
+			# Récupération du groupe
+			$group = $groupsApp.getGroupById($group.id)
+		}
+		
 	}
 	else # le groupe exists
 	{
@@ -478,11 +491,17 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [s
 			{
 				$adminDiff | Where-Object { $_.sideIndicator -eq "=>" } | Select-Object -ExpandProperty InputObject | ForEach-Object{
 					$logHistory.addLineAndDisplay(("--> Removing incorrect admin {0}..." -f $_))
-					$groupsApp.removeAdmin($group.id, $_)
+					if(!$simulation)
+					{
+						$groupsApp.removeAdmin($group.id, $_)
+					}
 				}
 				$adminDiff | Where-Object { $_.sideIndicator -eq "<=" } | Select-Object -ExpandProperty InputObject | ForEach-Object{
 					$logHistory.addLineAndDisplay(("--> Adding missing admin {0}..." -f $_))
-					$groupsApp.addAdmin($group.id, $_)
+					if(!$simulation)
+					{
+						$groupsApp.addAdmin($group.id, $_)
+					}
 				}
 			}# Fin si la liste des admins n'est pas correcte
 		}# Fin SI on a le droit de mettre à jour la liste des admins 		
@@ -1308,7 +1327,8 @@ try
 
 					# Création du groupe dans Groups s'il n'existe pas
 					$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
-																		-memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin -allowAdminUpdate
+																		-memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin -allowAdminUpdate `
+																		-simulation $SIMULATION_MODE
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
@@ -1429,7 +1449,8 @@ try
 
 						# Création du groupe dans Groups s'il n'existe pas
 						$approveGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $approveGroupNameGroups -desc $approveGroupDescGroups `
-																			-memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper)
+																			-memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper) `
+																			-simulation $SIMULATION_MODE
 					}
 					
 					# Création des groupes + gestion des groupes prérequis 
@@ -1496,7 +1517,8 @@ try
 				
 				# Création du groupe dans Groups s'il n'existe pas
 				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
-																	 -memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper)
+																	 -memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper) `
+																	 -simulation $SIMULATION_MODE
 
 				$roleSharedGroupOk = $true
 				# Création des groupes + gestion des groupes prérequis 
