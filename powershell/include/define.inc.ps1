@@ -109,6 +109,7 @@ $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE  = "FORCE_ISO_FOLDER_ACL
 ## NSX
 # Nom de la section avant laquelle il faut créer les sections de Firewall vide
 $global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME = "Legacy VLAN"
+$global:NSX_VM_MEMBER_TYPE = "VirtualMachine"
 
 # Mail
 $global:VRA_MAIL_SUBJECT_PREFIX = "vRA Service [{0}->{1}]"
