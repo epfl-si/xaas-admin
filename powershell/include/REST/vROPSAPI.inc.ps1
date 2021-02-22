@@ -210,19 +210,19 @@ class vROPSAPI: RESTAPICurl
 		BUT : Ajoute une propriété à une ressource
 
         IN  : $resource         -> Objet représentant la ressource
-        IN  : $propertyPath     -> Chemin jusqu'à la propriété, sous la forme:
-                                    <niveau1>[|<niveau2>[|<niveau3>...]]|<propertyName>
+        IN  : $propertyPath     -> Chemin jusqu'à la propriété, sous la forme d'un tableau avec la liste
+									des dossiers jusqu'à la propriété à ajouter
 									Ce chemin sera ajouté à la suite de $global:VROPS_RESOURCE_PROPERTY_BASE_PATH
         IN  : $propertyValue    -> Valeur de la propriété
 
         RET : Objet avec la ressource modifiée
 	#>
-    [PSObject] addResourceProperty([PSObject]$resource, [string]$propertyPath, [string]$propertyValue)
+    [PSObject] addResourceProperty([PSObject]$resource, [Array]$propertyPath, [string]$propertyValue)
     {
         $uri = "{0}/resources/{1}/properties" -f $this.baseUrl, $resource.identifier
         # Valeur à mettre pour la configuration du BG
 		$replace = @{
-            propertyPath = ("{0}{1}" -f $global:VROPS_RESOURCE_PROPERTY_BASE_PATH, $propertyPath)
+            propertyPath = ("{0}{1}" -f $global:VROPS_RESOURCE_PROPERTY_BASE_PATH, ($propertyPath -join "|"))
             timestamp = @(((getUnixTimestamp) * 1000), $true)
             value = $propertyValue
         }
