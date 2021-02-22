@@ -38,7 +38,10 @@ class ITServices
 		if(($this.serviceList -eq $false) -or ($null -eq $this.serviceList))
 		{
 			Throw ("Error getting Services list in file '{0}'" -f $itServiceJSONFile)
-        }    
+        }   
+        
+        
+
     }
 
 
@@ -53,43 +56,20 @@ class ITServices
     [Array] getServiceList([string]$forTargetEnv)
     {
         # On contrôle que le shortname du service n'existe pas déjà pour l'environnement courant
-        $shortNamesList = @()
+        $svcIDList = @()
         Foreach($service in $this.serviceList.$forTargetEnv)
         {
-            if($shortNamesList -notcontains $service.shortName)
+            if($svcIDList -notcontains $service.snowId)
             {
-                $shortNamesList += $service.shortName
+                $svcIDList += $service.snowId
             }
             else
             {
-                Throw ("Duplicate ITServices shortname found ({0}) for '{1}' environment!" -f $service.shortName, $forTargetEnv)
+                Throw ("Duplicate ITServices snowId found ({0}) for '{1}' environment!" -f $service.snowId, $forTargetEnv)
             }
         }
 
         return $this.serviceList.$forTargetEnv
-    }
-
-
-    <#
-		-------------------------------------------------------------------------------------
-        BUT : Renvoie les détails d'un service donné par son ID
-        
-        IN  : $forTargetEnv    -> Nom de l'environnement pour lequel on veut la liste des services
-        IN  : $svcID            -> ID du service pour lequel on veut les infos.
-
-		RET : Objet avec les détails du service
-	#>
-    [PSObject] getServiceInfos([string]$forTargetEnv, [string]$svcID)
-    {
-        ForEach($service in $this.getServiceList($forTargetEnv))
-        {
-            if($service.snowId -eq $svcID)
-            {
-                return $service
-            }
-        }
-
-        return $null
     }
 
 }

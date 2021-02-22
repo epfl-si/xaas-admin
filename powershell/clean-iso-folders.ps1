@@ -144,13 +144,17 @@ try
 	
 	$logHistory.addLineAndDisplay(("Looking for ISO files in {0}..." -f $rootISOFolder))
 
+	$isoFileList = @(Get-ChildItem -Path $rootISOFolder -Recurse -Filter "*.iso" | Where-Object {$_.CreationTime -lt (Get-Date).addDays(-$global:PRIVATE_ISO_LIFETIME_DAYS)})
+
+	$logHistory.addLineAndDisplay(("{0} ISO file(s) found" -f $isoFileList.count))
+
     # Recherche des fichiers ISO qui ont été créés il y a plus de $global:PRIVATE_ISO_LIFETIME_DAYS jours
-    ForEach($isoFile in (Get-ChildItem -Path $rootISOFolder -Recurse -Filter "*.iso" | Where-Object {$_.CreationTime -lt (Get-Date).addDays(-$global:PRIVATE_ISO_LIFETIME_DAYS)}))
+    ForEach($isoFile in $isoFileList)
     {
 		# Recherche du nom du BG auquel l'ISO est associée 
 		$bgName = $nameGenerator.getNASPrivateISOPathBGName($isoFile.FullName)
 		
-		$logHistory.addLineAndDisplay(("ISO file found! {0} - BG: {1}" -f $isoFile.FullName, $bgName))
+		$logHistory.addLineAndDisplay(("ISO file {0} in BG {1} folder" -f $isoFile.FullName, $bgName))
 		$counters.inc('ISOFound')
 
 		# Si on n'a pas encore de connexion à vRA, là, ça serait bien d'en ouvrir une histoire pouvoir continuer.
@@ -245,16 +249,6 @@ try
 
 	} # FIN boucle de recherche des fichier ISO
 
-    # Si on avait effectivement ouvert une connexion à vRA, on la referme 
-    if($null -ne $vra)
-    {
-        $vra.disconnect()
-	}
-	# Si on avait ouvert une connexion à vCenter, on la referme 
-	if($null -ne $vcenter)
-	{
-		Disconnect-VIServer -Server $vCenter -Confirm:$false 
-	}
 
 	# Affichage des compteurs
 	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
@@ -262,15 +256,6 @@ try
 }
 catch # Dans le cas d'une erreur dans le script
 {
-	# Si on avait ouvert une connexion à vCenter, on la referme 
-	if($null -ne $vcenter)
-	{
-		Disconnect-VIServer -Server $vCenter -Confirm:$false 
-	}
-	if($null -ne $vra)
-    {
-        $vra.disconnect()
-	}
 
 	# Récupération des infos
 	$errorMessage = $_.Exception.Message
@@ -292,4 +277,15 @@ catch # Dans le cas d'une erreur dans le script
 	# Envoi d'un message d'erreur aux admins 
 	$notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
 	
+}
+
+
+# Si on avait ouvert une connexion à vCenter, on la referme 
+if($null -ne $vcenter)
+{
+	Disconnect-VIServer -Server $vCenter -Confirm:$false 
+}
+if($null -ne $vra)
+{
+	$vra.disconnect()
 }
