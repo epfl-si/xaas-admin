@@ -316,8 +316,8 @@
             "longName":  "SAP Finance",
             "shortName":  "sapf",
             "snowId":  "SVC0649",
-            "serviceManagerSciper": "318328",
-            "additionalGroupsAdminSciperList": [],
+            "serviceManagerSciper": "240207",
+            "additionalGroupsAdminSciperList": ["318328"],
             "deniedVRAServiceList": []
         },
         {
@@ -373,7 +373,7 @@
             "shortName":  "vdic",
             "snowId":  "SVC0116",
             "serviceManagerSciper": "287589",
-            "additionalGroupsAdminSciperList": [],
+            "additionalGroupsAdminSciperList": ["115218"],
             "deniedVRAServiceList": []
         },
         {
@@ -381,7 +381,7 @@
             "shortName":  "vdie",
             "snowId":  "SVC0019",
             "serviceManagerSciper": "287589",
-            "additionalGroupsAdminSciperList": [],
+            "additionalGroupsAdminSciperList": ["115218"],
             "deniedVRAServiceList": []
         },
         {
@@ -396,8 +396,8 @@
             "longName":  "Windows Operation",
             "shortName":  "winop",
             "snowId":  "SVC1168",
-            "serviceManagerSciper": "102753",
-            "additionalGroupsAdminSciperList": [],
+            "serviceManagerSciper": "173654",
+            "additionalGroupsAdminSciperList": ["102753"],
             "deniedVRAServiceList": []
         },
         {
@@ -533,7 +533,7 @@
             "shortName":  "cadi",
             "snowId":  "SVC0074",
             "serviceManagerSciper": "164486",
-            "additionalGroupsAdminSciperList": [],
+            "additionalGroupsAdminSciperList": ["147362"],
             "deniedVRAServiceList": []
         },
         {
@@ -733,7 +733,7 @@
             "shortName":  "archi",
             "snowId":  "SVC1203",
             "serviceManagerSciper": "173654",
-            "additionalGroupsAdminSciperList": [],
+            "additionalGroupsAdminSciperList": ["102753"],
             "deniedVRAServiceList": []
         },
         {
@@ -797,7 +797,7 @@
             "shortName":  "pur",
             "snowId":  "SVC0187",
             "serviceManagerSciper": "227203",
-            "additionalGroupsAdminSciperList": [],
+            "additionalGroupsAdminSciperList": ["227703"],
             "deniedVRAServiceList": []
         },
         {
@@ -901,7 +901,7 @@
             "shortName":  "exmyvm",
             "snowId":  "SVC1223",
             "serviceManagerSciper": "287589",
-            "additionalGroupsAdminSciperList": [],
+            "additionalGroupsAdminSciperList": ["102753"],
             "deniedVRAServiceList": []
         },
         {

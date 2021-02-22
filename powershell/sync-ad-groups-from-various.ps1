@@ -413,13 +413,24 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 	IN  : $desc					-> Description du groupe
 	IN  : $memberSciperList		-> Tableau avec la liste des scipers des membres du groupe
 	IN  : $adminSciperList		-> Tableau avec la liste des scipers des admins du groupe
+	IN  : $$allowAdminUpdate	-> Switch pour dire si on autorise à mettre à jour la
+									liste des administrateurs du groupe
 
 	RET : Le groupe
 #>
-function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList)
+function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList, [switch]$allowAdminUpdate)
 {
 	# Recherche du groupe pour voir s'il existe
 	$group = $groupsApp.getGroupByName($name, $true)
+
+	# Nom du groupe admin à ajouter 
+	$ldapAdminGroup = $ldap.getGroupInfos($global:VRA_GROUPS_ADMIN_GROUP)
+	if($null -eq $ldapAdminGroup)
+	{
+		Throw ("Admin group '{0'}' missing" -f $global:VRA_GROUPS_ADMIN_GROUP)
+	}
+	# Ajout de l'ID du groupe à ajouter comme "admin"
+	$adminSciperList += $ldapAdminGroup.uniqueidentifier
 
 	# Si le groupe n'existe pas, 
 	if($null -eq $group)
@@ -441,16 +452,6 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [s
 			$groupsApp.addMembers($group.id, $memberSciperList)
 		}
 		
-		# Nom du groupe admin à ajouter 
-		$ldapAdminGroup = $ldap.getGroupInfos($global:VRA_GROUPS_ADMIN_GROUP)
-		if($null -eq $ldapAdminGroup)
-		{
-			Throw ("Admin group '{0'}' missing" -f $global:VRA_GROUPS_ADMIN_GROUP)
-		}
-
-		# Ajout de l'ID du groupe à ajouter comme "admin"
-		$adminSciperList += $ldapAdminGroup.uniqueidentifier
-
 		# Ajout des admins
 		$logHistory.addLineAndDisplay(("--> Adding {0} admins..." -f $adminSciperList.count))
 		$groupsApp.addAdmins($group.id, $adminSciperList)
@@ -464,9 +465,29 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [s
 	else # le groupe exists
 	{
 		$logHistory.addLineAndDisplay(("--> Groups group '{0}' already exists" -f $name))
-		$logHistory.addLineAndDisplay("--> Updating admins if needed")
-		# TODO: Todo
-	}
+		
+		# Si on a le droit de mettre à jour la liste des admins
+		if($allowAdminUpdate)
+		{
+			# Liste actuelle des admins
+			$currentAdminList = @($groupsApp.getAdminList($group.id) | Select-Object -ExpandProperty id | Sort-Object)
+
+			# Si la liste est différente de ce qui devrait être présent,
+			$adminDiff = Compare-Object -ReferenceObject $adminSciperList -DifferenceObject $currentAdminList
+			if($null -ne $adminDiff)
+			{
+				$adminDiff | Where-Object { $_.sideIndicator -eq "=>" } | Select-Object -ExpandProperty InputObject | ForEach-Object{
+					$logHistory.addLineAndDisplay(("--> Removing incorrect admin {0}..." -f $_))
+					$groupsApp.removeAdmin($group.id, $_)
+				}
+				$adminDiff | Where-Object { $_.sideIndicator -eq "<=" } | Select-Object -ExpandProperty InputObject | ForEach-Object{
+					$logHistory.addLineAndDisplay(("--> Adding missing admin {0}..." -f $_))
+					$groupsApp.addAdmin($group.id, $_)
+				}
+			}# Fin si la liste des admins n'est pas correcte
+		}# Fin SI on a le droit de mettre à jour la liste des admins 		
+		
+	}# FIN SI le groupe existe
 
 	return $group
 }
@@ -1284,12 +1305,10 @@ try
 					# Récupération des infos du groupe dans Groups
 					$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
 					$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
-					
-					#$adminSciperList = 
 
 					# Création du groupe dans Groups s'il n'existe pas
 					$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
-																		-memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin
+																		-memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin -allowAdminUpdate
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
