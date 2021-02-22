@@ -4,7 +4,7 @@
     "membership_criteria": [
         {
             "resource_type": "NSGroupTagExpression",
-            "target_type": "VirtualMachine",
+            "target_type": "{{memberType}}",
             "tag": "{{tag}}"
 
         }
