@@ -146,7 +146,7 @@
             "longName":  "Confluence",
             "shortName":  "cnfl",
             "snowId":  "SVC0108",
-            "serviceManagerSciper": "182712",
+            "serviceManagerSciper": "179348",
             "deniedVRAServiceList": []
         },
         {
@@ -188,21 +188,21 @@
             "longName":  "Email at EPFL",
             "shortName":  "mail",
             "snowId":  "SVC0082",
-            "serviceManagerSciper": "182712",
+            "serviceManagerSciper": "179348",
             "deniedVRAServiceList": []
         },
         {
             "longName":  "Multimedia library",
             "shortName":  "Media",
             "snowId":  "SVC0067",
-            "serviceManagerSciper": "182712",
+            "serviceManagerSciper": "179348",
             "deniedVRAServiceList": []
         },
         {
             "longName":  "Mailing lists",
             "shortName":  "mlist",
             "snowId":  "SVC0004",
-            "serviceManagerSciper": "182712",
+            "serviceManagerSciper": "179348",
             "deniedVRAServiceList": []
         },
         {
@@ -245,13 +245,6 @@
             "shortName":  "prjcma",
             "snowId":  "PRJ0016078",
             "serviceManagerSciper": "276200",
-            "deniedVRAServiceList": []
-        },
-        {
-            "longName":  "Project Data Repository",
-            "shortName":  "prjdr",
-            "snowId":  "PRJ0011973",
-            "serviceManagerSciper": "173654",
             "deniedVRAServiceList": []
         },
         {
@@ -307,7 +300,7 @@
             "longName":  "SharePoint",
             "shortName":  "shrp",
             "snowId":  "SVC0128",
-            "serviceManagerSciper": "182712",
+            "serviceManagerSciper": "179348",
             "deniedVRAServiceList": []
         },
         {
