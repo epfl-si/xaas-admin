@@ -134,7 +134,7 @@ class NSXAPI: RESTAPICurl
         $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
-        return $this.getNSGroupByName($name)
+        return $this.getNSGroupByName($name, "VirtualMachine")
     }
 
 
