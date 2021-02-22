@@ -464,6 +464,8 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [s
 	else # le groupe exists
 	{
 		$logHistory.addLineAndDisplay(("--> Groups group '{0}' already exists" -f $name))
+		$logHistory.addLineAndDisplay("--> Updating admins if needed")
+		# TODO: Todo
 	}
 
 	return $group
@@ -1176,8 +1178,12 @@ try
 		
 					$counters.inc('its.serviceProcessed')
 		
-					$groupsContentAndAdmin = @()
+					# Liste des admins avec de potentiels "admin" additionnels
+					$groupsContentAndAdmin = $service.additionalAdminSciperList
 
+					<# S'il y a un service manager de défini (il se peut qu'il n'y en ait pas dans le cas où c'est une unité VPSI mais pour 
+						laquelle la création du BG n'a pas encore été autorisé par le chef de service)
+					#>
 					if($service.serviceManagerSciper -ne "")
 					{
 						$groupsContentAndAdmin = @($service.serviceManagerSciper)
