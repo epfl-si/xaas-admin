@@ -103,6 +103,13 @@
             "snowId":  "SVC1215",
             "serviceManagerSciper": "287589",
             "deniedVRAServiceList": []
+        },
+        {
+            "longName":  "Blogs & Wikis",
+            "shortName":  "blgwk",
+            "snowId":  "SVC0070",
+            "serviceManagerSciper": "243371",
+            "deniedVRAServiceList": []
         }
         
     ],
