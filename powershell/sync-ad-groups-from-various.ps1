@@ -234,6 +234,16 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 					$templateName = "level-4-ge-unit-not-found"
 				}
 
+				# Service manager manquants pour ITS
+				'missingServiceManagers'
+				{
+					$valToReplace.serviceManagerList = ($uniqueNotifications -join "</li>`n<li>")
+
+					$mailSubject = "Error - Service Manager not found for some services!"
+
+					$templateName = "service-managers-not-found"
+				}
+
 				default
 				{
 					# Passage à l'itération suivante de la boucle
@@ -1193,6 +1203,7 @@ try
 			$itServices = [ITServices]::new()
 
 			$notifications.missingITSADGroups = @()
+			$notifications.missingServiceManagers = @()
 			
 			$servicesList = @{}
 
@@ -1226,8 +1237,16 @@ try
 					#>
 					if($service.serviceManagerSciper -ne "")
 					{
-						$groupsContentAndAdmin = @($service.serviceManagerSciper)
-					}
+						$groupsContentAndAdmin += $service.serviceManagerSciper
+
+						# Si on n'a aucune information sur le service manager (genre il a quitté l'EPFL)
+						if($null -eq $ldap.getPersonInfos($service.serviceManagerSciper))
+						{
+							$notifications.missingServiceManagers += ("{0} ({1} - {2})" -f $service.serviceManagerSciper, $service.longName, $service.snowId)
+							
+							$logHistory.addWarningAndDisplay(("--> Service manager with sciper {0} doesn't exists anymore..." -f $service.serviceManagerSciper))
+						}
+					}# FIN SI on a un service manager pour le service
 
 					# Service de type "User"
 					if($sourceType -eq [ADGroupCreateSourceType]::User)
