@@ -8,13 +8,6 @@
    AUTEUR : Lucien Chaboudez
    DATE   : Mai 2019
 
-
-   ----------
-   HISTORIQUE DES VERSIONS
-   0.1 - Version de base
-   0.2 - Ajout d'un filtre dans la récupération des NSGroups
-   0.3 - Ajout d'un cache pour certains éléments.
-
 #>
 class NSXAPI: RESTAPICurl
 {
@@ -78,6 +71,7 @@ class NSXAPI: RESTAPICurl
         return $nsGroup
     }
 
+    
     <#
 		-------------------------------------------------------------------------------------
         BUT : Renvoie un NS Group donné par son nom
@@ -142,6 +136,34 @@ class NSXAPI: RESTAPICurl
         
         # Retour du NS Group en le cherchant par son nom
         return $this.getNSGroupByName($name, "VirtualMachine")
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Met à jour un NS Group
+
+        IN  : $nsGroup      -> Objet réprésentant le NSGroup à mettre à jour
+		IN  : $nnewNameame  -> Le nouveau nom du groupe
+		IN  : $newDesc	    -> La nouvelle description description
+		IN  : $newTag	    -> Le nouveau nom du tag pour le membership
+
+		RET : Le NS group mis à jour
+	#>
+    [PSObject] updateNSGroup([PSObject]$nsGroup, [string]$newName, [string]$newDesc, [string]$newTag)
+    {
+        $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $nsGroup.id
+
+		# Valeur à mettre pour la configuration du NS Group
+		$nsGroup.display_name = $newName
+        $nsGroup.description = $newDesc
+        $nsGroup.membership_criteria[0].tag = $newTag
+
+        # Mise à jour du NS Group
+        $this.callAPI($uri, "PUT", $nsGroup) | Out-Null
+        
+        # Retour du NS Group en le cherchant par son nom
+        return $this.getNSGroupById($nsGroup.id)
     }
 
 
@@ -464,13 +486,44 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Verrouille une section de firewall. Quitte si celle-ci est déjà verrouillée.
+        BUT : Verrouille une section de firewall.
         
         IN  : $id       -> ID de la section à verrouiller
 
 		RET : la section modifiée
     #>
     [PSObject] lockFirewallSection([string]$id)
+    {
+        return $this.lockUnlockFirewallSection($id, "lock")
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Déverrouille une section de firewall.
+        
+        IN  : $id       -> ID de la section à déverrouiller
+
+		RET : la section modifiée
+    #>
+    [PSObject] unlockFirewallSection([string]$id)
+    {
+        return $this.lockUnlockFirewallSection($id, "unlock")
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Verrouille ou déverrouille une section de firewall. Quitte si celle-ci est déjà verrouillée.
+        
+        IN  : $id       -> ID de la section à verrouiller ou déverrouiller
+        IN  : $action   -> Action à effectuer 
+                            "lock"
+                            "unlock"
+
+		RET : la section modifiée
+    #>
+    hidden [PSObject] lockUnlockFirewallSection([string]$id, [string]$action)
     {
         # on commence par récupérer les informations de la section
         $section = $this.getFirewallSectionById($id)
@@ -480,20 +533,23 @@ class NSXAPI: RESTAPICurl
             Throw ("Firewall section with ID {0} not found!" -f $id)
         }
 
-        # Si la section est déjà verrouillée, on la retourne tout simplement
-        if($section.locked)
+        # Si la section est déjà dans l'état où on veut la mettre, on la retourne tout simplement
+        if(($action -eq "lock" -and $section.locked) -or ($action -eq "unlock" -and !$section.locked))
         {
             return $section
         }
 
         # Ensuite on va la modifier en prenant soin de mettre le bon no de révision 
-        $uri = "{0}/firewall/sections/{1}?action=lock" -f $this.baseUrl, $id
+        $uri = "{0}/firewall/sections/{1}?action={2}" -f $this.baseUrl, $id, $action
 
 
         # Valeur à mettre pour la configuration de la section de firewall
-		$replace = @{sectionRevision = $section._revision}
+		$replace = @{
+            sectionRevision = $section._revision
+            comment = ("Section action: {0}" -f $action)
+        }
 
-        $body = $this.createObjectFromJSON("nsx-firewall-section-lock.json", $replace)
+        $body = $this.createObjectFromJSON("nsx-firewall-section-lock-unlock.json", $replace)
 
         # Verrouillage de la section
         return $this.callAPI($uri, "POST", $body)
@@ -524,6 +580,7 @@ class NSXAPI: RESTAPICurl
         return $this.callAPI($uri, "GET", $null).results
     }
 
+
     <#
 		-------------------------------------------------------------------------------------
         BUT : Ajoute les règles dans une section de firewall
@@ -538,27 +595,59 @@ class NSXAPI: RESTAPICurl
         Tableau associatif pour les règles :
         - name
         - tag
+
+        RET : La liste des règles pour la section donnée
     #>
-    [void] addFirewallSectionRules([string]$firewallSectionId, [Hashtable]$ruleIn, [Hashtable]$ruleComm, [Hashtable]$ruleOut, [hashtable]$ruleDeny, [PSObject]$nsGroup)
+    [Array] addFirewallSectionRules([string]$firewallSectionId, [Hashtable]$ruleIn, [Hashtable]$ruleComm, [Hashtable]$ruleOut, [hashtable]$ruleDeny, [PSObject]$nsGroup)
     {
         $uri = "{0}/firewall/sections/{1}/rules?action=create_multiple" -f $this.baseUrl, $firewallSectionId
 
 		# Valeur à mettre pour la configuration des règles
-        $replace = @{ruleNameIn             = $ruleIn.name
-                     ruleTagIn              = $ruleIn.tag
-                     ruleNameCommunication  = $ruleComm.name
-                     ruleTagCommunication   = $ruleComm.tag
-                     ruleNameOut            = $ruleOut.name
-                     ruleTagOut             = $ruleOut.tag
-                     ruleNameDeny           = $ruleDeny.name
-                     ruleTagDeny            = $ruleDeny.tag
-                     nsGroupName            = $nsGroup.display_name
-                     nsGroupId              = $nsGroup.id}
+        $replace = @{
+            # IN
+            ruleNameIn             = $ruleIn.name
+            ruleTagIn              = $ruleIn.tag
+            # Communication
+            ruleNameCommunication  = $ruleComm.name
+            ruleTagCommunication   = $ruleComm.tag
+            # Out
+            ruleNameOut            = $ruleOut.name
+            ruleTagOut             = $ruleOut.tag
+            # Deny
+            ruleNameDeny           = $ruleDeny.name
+            ruleTagDeny            = $ruleDeny.tag
+            # NSGroup
+            nsGroupName            = $nsGroup.display_name
+            nsGroupId              = $nsGroup.id}
 
         $body = $this.createObjectFromJSON("nsx-firewall-section-rules.json", $replace)
 
         # Création des règles
         $this.callAPI($uri, "Post", $body) | Out-Null
+
+        return $this.getFirewallSectionRules($firewallSectionId)
+    }
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Efface les règles de Firewall d'une section
+        
+        IN  : $firewallSectionId    -> ID de la section de firewall
+    #>
+    [void] deleteFirewallSectionRules([string]$firewallSectionId)
+    {
+        # Déverrouillage de la section au cas où, histoire de pas se chopper une exception
+        $this.unlockFirewallSection($firewallSectionId)
+
+        $ruleList = $this.getFirewallSectionRules($firewallSectionId)
+
+        ForEach($rule in $ruleList)
+        {
+            $uri = "{0}/firewall/sections/{1}/rules/{2}" -f $this.baseUrl, $firewallSectionId, $rule.id
+
+            $this.callAPI($uri, "DELETE", $null) | Out-Null
+        }
     }
 
 
