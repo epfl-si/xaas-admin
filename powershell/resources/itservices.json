@@ -6,7 +6,7 @@
             "shortName":  "Antivirus",
             "snowId":  "SVC0062",
             "serviceManagerSciper": "114096",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -14,7 +14,7 @@
             "shortName":  "MySQL",
             "snowId":  "SVC0020",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -22,7 +22,7 @@
             "shortName":  "vs",
             "snowId":  "SVC0080",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
 		{
@@ -30,7 +30,7 @@
             "shortName":  "grpguestst",
             "snowId":  "SVC0007",
             "serviceManagerSciper": "164486",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
 		{
@@ -38,7 +38,7 @@
             "shortName":  "wbhstt",
             "snowId":  "SVC0041",
             "serviceManagerSciper": "116080",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
 		{
@@ -46,7 +46,7 @@
             "shortName":  "presst",
             "snowId":  "SVC0046",
             "serviceManagerSciper": "116080",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -54,7 +54,7 @@
             "shortName":  "bkpt",
             "snowId":  "SVC0003",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -62,7 +62,7 @@
             "shortName":  "s3t",
             "snowId":  "SVC1057",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -70,7 +70,7 @@
             "shortName":  "Media",
             "snowId":  "SVC0067",
             "serviceManagerSciper": "182712",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
 		{
@@ -78,7 +78,7 @@
             "shortName":  "excalt",
             "snowId":  "SVC0088",
             "serviceManagerSciper": "263587",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
 		{
@@ -86,7 +86,7 @@
             "shortName":  "wnet",
             "snowId":  "SVC0101",
             "serviceManagerSciper": "270770",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -94,7 +94,7 @@
             "shortName":  "k8st",
             "snowId":  "SVC1219",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -114,7 +114,7 @@
             "shortName":  "lnx",
             "snowId":  "SVC1215",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -122,7 +122,7 @@
             "shortName":  "blgwk",
             "snowId":  "SVC0070",
             "serviceManagerSciper": "243371",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         }
         
@@ -133,7 +133,7 @@
             "shortName":  "Antivirus",
             "snowId":  "SVC0062",
             "serviceManagerSciper": "114096",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -141,7 +141,7 @@
             "shortName":  "aspam",
             "snowId":  "SVC0058",
             "serviceManagerSciper": "114096",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -149,7 +149,7 @@
             "shortName":  "audit",
             "snowId":  "SVC0091",
             "serviceManagerSciper": "114096",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -157,7 +157,7 @@
             "shortName":  "bkp",
             "snowId":  "SVC0003",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -165,7 +165,7 @@
             "shortName":  "cert",
             "snowId":  "SVC0011",
             "serviceManagerSciper": "114096",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -173,7 +173,7 @@
             "shortName":  "cnfl",
             "snowId":  "SVC0108",
             "serviceManagerSciper": "179348",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -181,7 +181,7 @@
             "shortName":  "CRI",
             "snowId":  "SVC0069",
             "serviceManagerSciper": "115218",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -189,7 +189,7 @@
             "shortName":  "diod",
             "snowId":  "SVC0040",
             "serviceManagerSciper": "114096",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -197,7 +197,7 @@
             "shortName":  "e2e",
             "snowId":  "SVC0345",
             "serviceManagerSciper": "173654",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -205,7 +205,7 @@
             "shortName":  "erpe",
             "snowId":  "SVC0642",
             "serviceManagerSciper": "240207",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -213,7 +213,7 @@
             "shortName":  "ldap",
             "snowId":  "SVC0052",
             "serviceManagerSciper": "164486",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -221,7 +221,7 @@
             "shortName":  "mail",
             "snowId":  "SVC0082",
             "serviceManagerSciper": "179348",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -229,7 +229,7 @@
             "shortName":  "Media",
             "snowId":  "SVC0067",
             "serviceManagerSciper": "179348",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -237,7 +237,7 @@
             "shortName":  "mlist",
             "snowId":  "SVC0004",
             "serviceManagerSciper": "179348",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -245,7 +245,7 @@
             "shortName":  "moodle",
             "snowId":  "SVC0060",
             "serviceManagerSciper": "310396",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -253,7 +253,7 @@
             "shortName":  "mssql",
             "snowId":  "SVC0021",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -261,7 +261,7 @@
             "shortName":  "MyNAS",
             "snowId":  "SVC0047",
             "serviceManagerSciper": "115218",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -269,7 +269,7 @@
             "shortName":  "MySQL",
             "snowId":  "SVC0020",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -277,7 +277,7 @@
             "shortName":  "NAS",
             "snowId":  "SVC0075",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -285,7 +285,7 @@
             "shortName":  "prjcma",
             "snowId":  "PRJ0016078",
             "serviceManagerSciper": "276200",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -293,7 +293,7 @@
             "shortName":  "S3",
             "snowId":  "SVC1057",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -301,7 +301,7 @@
             "shortName":  "safenet",
             "snowId":  "SVC0094",
             "serviceManagerSciper": "114096",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -309,7 +309,7 @@
             "shortName":  "sap",
             "snowId":  "SVC0196",
             "serviceManagerSciper": "310926",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -317,7 +317,7 @@
             "shortName":  "sapf",
             "snowId":  "SVC0649",
             "serviceManagerSciper": "318328",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -325,7 +325,7 @@
             "shortName":  "saph",
             "snowId":  "SVC0099",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -333,7 +333,7 @@
             "shortName":  "sapr",
             "snowId":  "SVC0651",
             "serviceManagerSciper": "113371",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -341,7 +341,7 @@
             "shortName":  "search",
             "snowId":  "SVC0012",
             "serviceManagerSciper": "116080",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -349,7 +349,7 @@
             "shortName":  "shrp",
             "snowId":  "SVC0128",
             "serviceManagerSciper": "179348",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -357,7 +357,7 @@
             "shortName":  "suphack",
             "snowId":  "SVC0015",
             "serviceManagerSciper": "114096",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -365,7 +365,7 @@
             "shortName":  "uc",
             "snowId":  "SVC0029",
             "serviceManagerSciper": "264019",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -373,7 +373,7 @@
             "shortName":  "vdic",
             "snowId":  "SVC0116",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -381,7 +381,7 @@
             "shortName":  "vdie",
             "snowId":  "SVC0019",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -389,7 +389,7 @@
             "shortName":  "vs",
             "snowId":  "SVC0080",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -397,7 +397,7 @@
             "shortName":  "winop",
             "snowId":  "SVC1168",
             "serviceManagerSciper": "102753",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -405,7 +405,7 @@
             "shortName":  "wnet",
             "snowId":  "SVC0101",
             "serviceManagerSciper": "270770",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -413,7 +413,7 @@
             "shortName":  "wproxy",
             "snowId":  "SVC0066",
             "serviceManagerSciper": "114096",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -421,7 +421,7 @@
             "shortName":  "isa",
             "snowId":  "SVC0034",
             "serviceManagerSciper": "310396",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -429,7 +429,7 @@
             "shortName":  "ora",
             "snowId":  "SVC0072",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -437,7 +437,7 @@
             "shortName":  "actu",
             "snowId":  "SVC0016",
             "serviceManagerSciper": "116080",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -445,7 +445,7 @@
             "shortName":  "plan",
             "snowId":  "SVC0028",
             "serviceManagerSciper": "116080",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -453,7 +453,7 @@
             "shortName":  "wbhst",
             "snowId":  "SVC0041",
             "serviceManagerSciper": "116080",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -461,7 +461,7 @@
             "shortName":  "pktcmp",
             "snowId":  "SVC0086",
             "serviceManagerSciper": "116080",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -469,7 +469,7 @@
             "shortName":  "memto",
             "snowId":  "SVC0095",
             "serviceManagerSciper": "116080",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -477,7 +477,7 @@
             "shortName":  "exheb",
             "snowId":  "SVC0166",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -485,7 +485,7 @@
             "shortName":  "mprnt",
             "snowId":  "SVC0056",
             "serviceManagerSciper": "115218",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -493,7 +493,7 @@
             "shortName":  "press",
             "snowId":  "SVC0046",
             "serviceManagerSciper": "116080",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -501,7 +501,7 @@
             "shortName":  "peopl",
             "snowId":  "SVC0033",
             "serviceManagerSciper": "116080",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -509,7 +509,7 @@
             "shortName":  "ad",
             "snowId":  "SVC0026",
             "serviceManagerSciper": "164486",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -517,7 +517,7 @@
             "shortName":  "accred",
             "snowId":  "SVC0055",
             "serviceManagerSciper": "164486",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -525,7 +525,7 @@
             "shortName":  "my",
             "snowId":  "SVC0024",
             "serviceManagerSciper": "164486",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -533,7 +533,7 @@
             "shortName":  "cadi",
             "snowId":  "SVC0074",
             "serviceManagerSciper": "164486",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -541,7 +541,7 @@
             "shortName":  "gaspar",
             "snowId":  "SVC0085",
             "serviceManagerSciper": "164486",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -549,7 +549,7 @@
             "shortName":  "tequila",
             "snowId":  "SVC0018",
             "serviceManagerSciper": "164486",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -725,7 +725,7 @@
             "shortName":  "inform",
             "snowId":  "SVC0092",
             "serviceManagerSciper": "243371",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -733,7 +733,7 @@
             "shortName":  "archi",
             "snowId":  "SVC1203",
             "serviceManagerSciper": "173654",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -741,7 +741,7 @@
             "shortName":  "camip",
             "snowId":  "SVC0117",
             "serviceManagerSciper": "161014",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -749,7 +749,7 @@
             "shortName":  "dchst",
             "snowId":  "SVC0051",
             "serviceManagerSciper": "264019",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -757,7 +757,7 @@
             "shortName":  "crm",
             "snowId":  "SVC0955",
             "serviceManagerSciper": "240207",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -765,7 +765,7 @@
             "shortName":  "softsup",
             "snowId":  "SVC0006",
             "serviceManagerSciper": "115218",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -773,7 +773,7 @@
             "shortName":  "svcdsk",
             "snowId":  "SVC0017",
             "serviceManagerSciper": "282746",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -781,7 +781,7 @@
             "shortName":  "psdn",
             "snowId":  "SVC0025",
             "serviceManagerSciper": "140997",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -789,7 +789,7 @@
             "shortName":  "sscsup",
             "snowId":  "SVC0043",
             "serviceManagerSciper": "115218",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -797,7 +797,7 @@
             "shortName":  "pur",
             "snowId":  "SVC0187",
             "serviceManagerSciper": "227203",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -805,7 +805,7 @@
             "shortName":  "snow",
             "snowId":  "SVC0048",
             "serviceManagerSciper": "282746",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -813,7 +813,7 @@
             "shortName":  "blgwk",
             "snowId":  "SVC0070",
             "serviceManagerSciper": "243371",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -821,7 +821,7 @@
             "shortName":  "dstlg",
             "snowId":  "SVC0084",
             "serviceManagerSciper": "192126",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -829,7 +829,7 @@
             "shortName":  "bi",
             "snowId":  "SVC0647",
             "serviceManagerSciper": "103364",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -837,7 +837,7 @@
             "shortName":  "infosc",
             "snowId":  "SVC0089",
             "serviceManagerSciper": "173654",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -845,7 +845,7 @@
             "shortName":  "xact",
             "snowId":  "SVC0723",
             "serviceManagerSciper": "104782",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
 		{
@@ -853,7 +853,7 @@
             "shortName":  "lhdadl",
             "snowId":  "SVC1172",
             "serviceManagerSciper": "243371",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
 		{
@@ -861,7 +861,7 @@
             "shortName":  "excal",
             "snowId":  "SVC0088",
             "serviceManagerSciper": "263587",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -869,7 +869,7 @@
             "shortName":  "prjalu",
             "snowId":  "PRJ0012176",
             "serviceManagerSciper": "296747",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -877,7 +877,7 @@
             "shortName":  "grants",
             "snowId":  "SVC0002",
             "serviceManagerSciper": "240207",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -885,7 +885,7 @@
             "shortName":  "k8s",
             "snowId":  "SVC1219",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -893,7 +893,7 @@
             "shortName":  "lnx",
             "snowId":  "SVC1215",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -901,7 +901,7 @@
             "shortName":  "exmyvm",
             "snowId":  "SVC1223",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -909,7 +909,7 @@
             "shortName":  "prjalumgmt",
             "snowId":  "PRJ0012151",
             "serviceManagerSciper": "296747",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -917,7 +917,7 @@
             "shortName":  "save",
             "snowId":  "SVC1307",
             "serviceManagerSciper": "124695",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -925,7 +925,7 @@
             "shortName":  "prjsam",
             "snowId":  "PRJ0011982",
             "serviceManagerSciper": "318457",
-            "additionalAdminSciperList": [],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         }
     ]

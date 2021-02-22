@@ -1179,7 +1179,7 @@ try
 					$counters.inc('its.serviceProcessed')
 		
 					# Liste des admins avec de potentiels "admin" additionnels
-					$groupsContentAndAdmin = $service.additionalAdminSciperList
+					$groupsContentAndAdmin = $service.additionalGroupsAdminSciperList
 
 					<# S'il y a un service manager de défini (il se peut qu'il n'y en ait pas dans le cas où c'est une unité VPSI mais pour 
 						laquelle la création du BG n'a pas encore été autorisé par le chef de service)

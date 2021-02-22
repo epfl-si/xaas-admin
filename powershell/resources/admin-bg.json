@@ -21,7 +21,7 @@
             "shortName":  "xaasadm",
             "snowId":  "SVC0000",
             "serviceManagerSciper": "287589",
-            "additionalAdminSciperList": []
+            "additionalGroupsAdminSciperList": []
         }
     ]
 }
