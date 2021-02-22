@@ -796,7 +796,7 @@
             "longName":  "Achats - Catalyse",
             "shortName":  "pur",
             "snowId":  "SVC0187",
-            "serviceManagerSciper": "227203",
+            "serviceManagerSciper": "155161",
             "additionalGroupsAdminSciperList": ["227703"],
             "deniedVRAServiceList": []
         },
@@ -828,7 +828,7 @@
             "longName":  "Business Intelligence",
             "shortName":  "bi",
             "snowId":  "SVC0647",
-            "serviceManagerSciper": "103364",
+            "serviceManagerSciper": "239786",
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
