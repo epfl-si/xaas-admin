@@ -1,0 +1,11 @@
+{
+    "config_settings": {
+        "se_in_provider_context": true,
+        "tenant_access_to_provider_se": false,
+        "tenant_vrf": false
+    },
+    "created_by": "admin",
+    "description": "{{description}}",
+    "local": true,
+    "name": "{{name}}"
+}
