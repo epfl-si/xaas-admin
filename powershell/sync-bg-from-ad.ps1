@@ -118,7 +118,7 @@ $configNSX = [ConfigReader]::New("config-nsx.json")
 function getFullElementNameFromJSON([string]$baseName, [string]$JSONFile, [string]$replaceString, [string]$fieldName)
 {
 	# Chemin complet jusqu'au fichier à charger
-	$filepath = (Join-Path $global:JSON_TEMPLATE_FOLDER $JSONFile)
+	$filepath = (Join-Path $global:VRA_JSON_TEMPLATE_FOLDER $JSONFile)
 
 	# Si le fichier n'existe pas
 	if(-not( Test-Path $filepath))
