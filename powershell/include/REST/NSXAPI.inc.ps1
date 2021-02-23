@@ -24,6 +24,9 @@ class NSXAPI: RESTAPICurl
 	#>
 	NSXAPI([string] $server, [string] $username, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
+        # Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
+		$this.setJSONSubPath(@( (Get-PSCallStack)[0].functionName) )
+        
         $this.headers.Add('Accept', 'application/json')
         $this.headers.Add('Content-Type', 'application/json')
         
@@ -116,17 +119,23 @@ class NSXAPI: RESTAPICurl
 		IN  : $name	        -> Le nom du groupe
 		IN  : $description	-> La description
 		IN  : $tag	        -> Le nom du tag pour le membership
+        IN  : $memberType   -> Ce à quoi s'applique le NSGroup:
+                                VirtualMachine
+                                LogicalSwitch
 
 		RET : Le NS group créé
 	#>
-    [PSObject] addNSGroup([string]$name, [string]$desc, [string] $tag)
+    [PSObject] addNSGroup([string]$name, [string]$desc, [string] $tag, [string]$memberType)
     {
 		$uri = "{0}/ns-groups" -f $this.baseUrl
 
 		# Valeur à mettre pour la configuration du NS Group
-		$replace = @{name = $name
-					description = $desc
-					tag = $tag}
+		$replace = @{
+            name = $name
+            description = $desc
+            tag = $tag
+            memberType = $memberType
+        }
 
         $body = $this.createObjectFromJSON("nsx-nsgroup.json", $replace)
         
@@ -134,7 +143,7 @@ class NSXAPI: RESTAPICurl
         $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
-        return $this.getNSGroupByName($name, "VirtualMachine")
+        return $this.getNSGroupByName($name, $memberType)
     }
 
 

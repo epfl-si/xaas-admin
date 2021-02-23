@@ -5,6 +5,7 @@ config-groups.json
 config-mynas.json
 config-nsx.json
 config-vra.json
+config-vrops.json
 config-vsphere.json
 config-xaas-avi-networks.json
 config-xaas-backup.json

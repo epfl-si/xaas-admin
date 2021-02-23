@@ -27,6 +27,9 @@ class CopernicAPI: RESTAPICurl
 	#>
     CopernicAPI([string]$server, [string]$username, [string]$password): base($server)
     {
+        # Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
+		$this.setJSONSubPath(@( (Get-PSCallStack)[0].functionName) )
+        
         $this.username = $username
         $this.password = $password
 
