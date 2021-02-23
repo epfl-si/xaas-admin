@@ -59,7 +59,7 @@ class ScalityAPI: APIUtils
 	{
         
         # Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
-		$this.setJSONSubPath(@("XaaS", (Get-PSCallStack)[0].functionName) )
+		$this.setJSONSubPath(@("XaaS", "S3") )
 
         $this.s3EndpointUrl = "https://{0}" -f $server
 
