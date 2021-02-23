@@ -692,7 +692,7 @@ try
                         }
 
                         # ---- Volume Collaboratif
-                        coll
+                        col
                         {
                             $logHistory.addLine(("Checking if Export Policy '{0}' exists on SVM '{1}'..." -f $global:EXPORT_POLICY_DENY_NFS_ON_CIFS, $svmObj.name))
                             $exportPol = $netapp.getExportPolicyByName($svmObj, $global:EXPORT_POLICY_DENY_NFS_ON_CIFS)
