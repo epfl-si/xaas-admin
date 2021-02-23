@@ -26,6 +26,10 @@ class APIUtils
 		classe LogHistory #>
 	hidden [LogHistory] $logHistory
 
+	# Particules de chemin à ajouter à la fin de $global:JSON_TEMPLATE_FOLDER pour atteindre le "vrai" chemin où
+	# se trouvent les JSON
+	hidden [Array]$jsonSubPath
+
     <#
 	-------------------------------------------------------------------------------------
         BUT : Créer une instance de l'objet
@@ -36,6 +40,20 @@ class APIUtils
 		$this.cache = @()
 
 		$this.logHistory = $null
+
+		$this.jsonSubPath = @()
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+        BUT : Initialise les particules de chemin à ajouter pour atteindre les fichiers JSON
+
+		IN  : $subPath	-> Tableau avec les niveaux à ajouter, un par dossier
+	#>
+	hidden [void] setJSONSubPath([Array]$subPath)
+	{
+		$this.jsonSubPath = $subPath
 	}
 
 	
@@ -164,9 +182,10 @@ class APIUtils
 	#>
 	hidden [Object] createObjectFromJSON([string] $file, [System.Collections.IDictionary] $valToReplace)
 	{
+		$filePath = ""
 		# Chemin complet jusqu'au fichier à charger
-		$filepath = (Join-Path $global:JSON_TEMPLATE_FOLDER $file)
-
+		Invoke-Expression ('$filepath = ([IO.Path]::Combine($global:JSON_TEMPLATE_FOLDER, "{0}"))' -f (@($this.jsonSubPath + $file) -join '","'))
+		
 		# Si le fichier n'existe pas
 		if(-not( Test-Path $filepath))
 		{
