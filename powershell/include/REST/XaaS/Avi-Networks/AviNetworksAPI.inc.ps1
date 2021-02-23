@@ -168,11 +168,11 @@ class AviNetworksAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
 		BUT : Efface un tenant
 
-        IN  : $id       -> ID du tenant
+        IN  : $tenant       -> Objet représentant le tenant à effacer
 	#>
-    [void] deleteTenant([string]$id)
+    [void] deleteTenant([PSObject]$tenant)
     {
-        $uri = "{0}/tenant/{1}" -f $this.baseUrl, $id
+        $uri = "{0}/tenant/{1}" -f $this.baseUrl, $tenant.uuid
 
         $this.callAPI($uri, "DELETE", $null) | Out-Null
     }
