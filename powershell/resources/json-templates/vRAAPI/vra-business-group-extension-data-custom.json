@@ -1,0 +1,35 @@
+{
+"key": "{{key}}",
+"value": {
+    "type": "complex",
+    "componentTypeId": null,
+    "componentId": null,
+    "classId": "iaas-custom-property",
+    "typeFilter": null,
+    "values": {
+        "entries": [
+            {
+                "key": "encrypted",
+                "value": {
+                    "type": "boolean",
+                    "value": false
+                }
+            },
+            {
+                "key": "value",
+                "value": {
+                    "type": "string",
+                    "value": "{{value}}"
+                }
+            },
+            {
+                "key": "prompt-user",
+                "value": {
+                    "type": "boolean",
+                    "value": false
+                }
+            }
+        ]
+    }
+}
+                    }
