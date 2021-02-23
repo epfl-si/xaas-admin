@@ -176,4 +176,40 @@ class AviNetworksAPI: RESTAPICurl
 
         $this.callAPI($uri, "DELETE", $null) | Out-Null
     }
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            		ROLES
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un role donné par son nom
+
+        IN  : $name       -> Nom du rôle
+
+		RET : Objet représentant le rôle
+				$null si pas trouvé
+	#>
+	[PSObject] getRoleByName([string]$name)
+	{
+		$uri = "{0}/role?name={1}" -f $this.baseUrl, $name
+
+		$res = $this.callAPI($uri, "GET", $null).results
+
+        if($res.count -eq 0)
+        {
+            return $null
+        }
+        return $res[0]
+	}
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            	SYSTEM CONFIGURATION
+       --------------------------------------------------------------------------------------------------------- #>
+
+	[Array] getTenantConfigurationList()
+	{
+		return @()
+	}
 }
