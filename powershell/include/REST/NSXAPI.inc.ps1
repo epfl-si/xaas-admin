@@ -24,6 +24,9 @@ class NSXAPI: RESTAPICurl
 	#>
 	NSXAPI([string] $server, [string] $username, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
+        # Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
+		$this.setJSONSubPath(@( (Get-PSCallStack)[0].functionName) )
+        
         $this.headers.Add('Accept', 'application/json')
         $this.headers.Add('Content-Type', 'application/json')
         
