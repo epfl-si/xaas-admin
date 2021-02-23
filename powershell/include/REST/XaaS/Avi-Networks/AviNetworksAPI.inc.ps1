@@ -35,6 +35,9 @@ class AviNetworksAPI: RESTAPICurl
 	#>
 	AviNetworksAPI([string] $server, [string] $username, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
+		# Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
+		$this.setJSONSubPath(@("XaaS", "Avi-Networks") )
+
 		$this.headers = @{}
 		$this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
@@ -295,7 +298,7 @@ class AviNetworksAPI: RESTAPICurl
 	[void] deleteAdminRule([PSObject]$rule)
 	{
 		$uri = "{0}/systemconfiguration" -f $this.baseUrl
-		
+
 		$replace = @{
 			index = $rule.index
 		}
