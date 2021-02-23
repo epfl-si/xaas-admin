@@ -117,7 +117,7 @@ class AviNetworksAPI: RESTAPICurl
 			description = $description
 		}
 
-		$body = $this.createObjectFromJSON("xaas-avi-networks-new-tenant.json", $replace)
+		$body = $this.createObjectFromJSON("xaas-avi-networks-tenant.json", $replace)
 
         return $this.callAPI($uri, "POST", $body) 
 
@@ -205,11 +205,103 @@ class AviNetworksAPI: RESTAPICurl
 	}
 
 	<# --------------------------------------------------------------------------------------------------------- 
-                                            	SYSTEM CONFIGURATION
+                                            	ADMIN AUTH CONFIGURATION
        --------------------------------------------------------------------------------------------------------- #>
 
-	[Array] getTenantConfigurationList()
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la configuration système de tout
+
+        RET : Objet avec la configuration système
+	#>
+	hidden [psobject] getSystemConfiguration()
 	{
-		return @()
+		$uri = "{0}/systemconfiguration" -f $this.baseUrl
+
+		return $this.callAPI($uri, "GET", $null)
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des règles d'authentification actuellement appliquées
+
+        RET : Tableau avec la liste de ce qui est appliqué
+	#>
+	[Array] getAdminAuthRuleList()
+	{
+		return $this.getSystemConfiguration().admin_auth_configuration.mapping_rules
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute une règle d'authentification pour un ou plusieurs tenants
+
+		IN  : $tenantList	-> Tableau avec la liste des objets représentant des tenants auxquels
+								appliquer une nouvelle règle
+		IN  : $role			-> Objet représentant le role à appliquer
+		IN  : $adGroup		-> Nom court du groupe AD contenant les utilisateurs qui vont avoir le rôle
+
+        RET : Tableau avec la liste des règles après ajout de la nouvelle
+	#>
+	[Array] addAdminAuthRule([Array]$tenantList, [PSObject]$role, [string]$adGroup)
+	{
+		$uri = "{0}/systemconfiguration" -f $this.baseUrl
+
+		$systemConfig = $this.getSystemConfiguration()
+
+		# Recherche du prochain index dispo
+		$usedIndexList = @($systemConfig.admin_auth_configuration.mapping_rules | Select-Object -ExpandProperty index | Sort-Object)
+
+		# Index de départ (aucune idée si on peut partir à 0 donc on part à 1)
+		$index = 1
+		# Recherche du premier index libre
+		While($usedIndexList -contains $index) {
+			$index++
+		}
+
+		$replace = @{
+			tenantRefList = @( ( @($tenantList | Select-Object -ExpandProperty url) | ConvertTo-Json), $true)
+			index = $index
+			roleRef = $role.url
+			adGroup = $adGroup
+			authProfileRef = $systemConfig.admin_auth_configuration.auth_profile_ref
+		}
+
+		$body = $this.createObjectFromJSON("xaas-avi-networks-new-systemconfiguration.json", $replace)
+
+		$this.callAPI($uri, "PATCH", $body) | Out-Null
+		
+		# Retour de la liste mise à jour
+		return $this.getAdminAuthRuleList()
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la règle qui est utilisée pour donner les droits au tenant passé
+
+		IN  : $forTenant	-> Objet représentant le tenant pour lequel on veut avoir la règle
+		
+        RET : Objet avec les détails de la règle
+	#>
+	[PSObject] getAdminAuthRule([PSObject]$forTenant)
+	{
+		return $this.getAdminAuthRuleList() | Where-Object { $_.tenant_refs -contains $forTenant.url}
+	}
+
+
+	[void] deleteAdminRule([PSObject]$rule)
+	{
+		$uri = "{0}/systemconfiguration" -f $this.baseUrl
+		
+		$replace = @{
+			index = $rule.index
+		}
+
+		$body = $this.createObjectFromJSON("xaas-avi-networks-delete-systemconfiguration.json", $replace)
+
+		$this.callAPI($uri, "PATCH", $body) | Out-Null
 	}
 }

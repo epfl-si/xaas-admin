@@ -1,0 +1,11 @@
+{
+    "delete": {
+        "admin_auth_configuration": {
+          "mapping_rules": [
+          {
+              "index": "{{index}}"
+          }
+          ]
+      }
+    }
+  }

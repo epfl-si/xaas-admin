@@ -1,0 +1,24 @@
+{
+    "add": {
+        "admin_auth_configuration": {
+          "mapping_rules": [
+          {
+              "assign_tenant": "ASSIGN_FROM_SELECT_LIST",
+              "assign_role": "ASSIGN_FROM_SELECT_LIST",
+              "tenant_refs":"{{tenantRefList}}",
+              "group_match": {
+              "criteria": "AUTH_MATCH_CONTAINS",
+              "groups": [
+                  "{{adGroup}}"
+              ]
+              },
+              "index": "{{index}}",
+              "role_refs": [
+              "{{roleRef}}"
+              ],
+              "auth_profile_ref": "{{authProfileRef}}"
+          }
+          ]
+      }
+    }
+  }
