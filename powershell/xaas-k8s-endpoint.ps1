@@ -520,7 +520,7 @@ try
                                         $configK8s.getConfigValue(@($targetEnv, "tkgi", "certificate")))
     
     # Chargement des informations sur le nombre de Workers pour les plans
-    $resourceQuotaLimitsFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "k8s", "resource-quota-limits.json"))
+    $resourceQuotaLimitsFile = ([IO.Path]::Combine($global:DATA_FOLDER, "XaaS", "K8s", "resource-quota-limits.json"))
     $resourceQuotaLimits = loadFromCommentedJSON -jsonFile $resourceQuotaLimitsFile                                        
 
     # Si on doit activer le Debug,

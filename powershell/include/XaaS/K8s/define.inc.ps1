@@ -5,7 +5,7 @@
    DATE   : Octobre 2020
 #>
 
-$global:K8S_CERT_FOLDER = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "k8s", "certificates"))
+$global:K8S_CERT_FOLDER = ([IO.Path]::Combine($global:DATA_FOLDER, "XaaS", "K8s", "certificates"))
 
 # Nombre de digit à utiliser pour coder le nom du cluster
 $global:CLUSTER_NAME_NB_DIGIT = 4
