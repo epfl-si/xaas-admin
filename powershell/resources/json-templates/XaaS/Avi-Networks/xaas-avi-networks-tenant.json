@@ -7,5 +7,8 @@
     "created_by": "admin",
     "description": "{{description}}",
     "local": true,
-    "name": "{{name}}"
+    "name": "{{name}}",
+    "suggested_object_labels": [
+        
+    ]
 }

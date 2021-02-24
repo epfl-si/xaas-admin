@@ -279,6 +279,12 @@ try
         $ACTION_CREATE {
             $deleteTenants = $true
 
+            # Labels à ajouter. On a fait le choix de reprendre ceux qui sont utilisés dans vRA car ils auront en fait
+            # la même valeur et seront mis à jour par un script de synchro
+            $initialLabels = @{}
+            $initialLabels.add($global:VRA_CUSTOM_PROP_EPFL_BG_ID, $bgId)
+            $initialLabels.add($global:VRA_CUSTOM_PROP_VRA_BG_STATUS, $global:VRA_BG_STATUS__ALIVE)
+
             # -- Création des Tenants AVI Networks si besoin
             $logHistory.addLine(("Creating tenant for BG '{0}'..." -f $bg.name))
             $tenantList = @()
@@ -288,10 +294,14 @@ try
                 $name, $desc = $nameGeneratorAviNetworks.getTenantNameAndDesc($bg.name, $_)
 
                 $tenant = $aviNetworks.getTenantByName($name)
+                # Si le tenant n'existe pas, on le créé
                 if($null -eq $tenant)
                 {
                     $logHistory.addLine(("> Tenant '{0}' doesn't exists, creating..." -f $name))
-                    $tenant = $aviNetworks.addTenant($name, $desc)
+                    $tenantLabels = $initialLabels.Clone()
+                    # Ajout du label spécifique pour le type de tenant
+		            $tenantLabels.add($global:XAAS_AVI_NETWORKS_TENANT_TYPE, $_.toString())
+                    $tenant = $aviNetworks.addTenant($name, $desc, $tenantLabels)
                 }
                 else
                 {

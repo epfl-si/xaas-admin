@@ -110,12 +110,13 @@ class AviNetworksAPI: RESTAPICurl
 
         IN  : $name         -> Nom du tenant
         IN  : $description  -> Description du tenant
+		IN  : $labels		-> Tableau associatif avec les labels à mettre au tenant
 
         RET : Objet représentant le tenant
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_tenant
 	#>
-    [PSObject] addTenant([string]$name, [string]$description)
+    [PSObject] addTenant([string]$name, [string]$description, [Hashtable]$labels)
     {
         $uri = "{0}/tenant" -f $this.baseUrl
 
@@ -125,6 +126,15 @@ class AviNetworksAPI: RESTAPICurl
 		}
 
 		$body = $this.createObjectFromJSON("xaas-avi-networks-tenant.json", $replace)
+
+		# Ajout des labels
+		$labels.Keys | ForEach-Object {
+			$replace = @{
+				key = $_
+				value = $labels.item($_)
+			}
+			$body.suggested_object_labels += $this.createObjectFromJSON("xaas-avi-networks-tenant-label.json", $replace)
+		}
 
         return $this.callAPI($uri, "POST", $body) 
 
@@ -149,6 +159,25 @@ class AviNetworksAPI: RESTAPICurl
         return $this.callAPI($uri, "GET", $null)
     }
 
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie les tenants (un par environnement) par leur ID "custom"
+
+        IN  : $customId       -> ID custom du tenant
+
+        RET : Tableau avec les objets représentant le tenant
+               $null si pas trouvé
+	#>
+    [Array] getTenantByCustomIdList([string]$customId)
+    {
+        return $this.getTenantList() | Where-Object { 
+			$_.suggested_object_labels | Where-Object { 
+				($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ($_.value -eq $customId )
+			} 
+		}
+    }
+	
 
     <#
 	-------------------------------------------------------------------------------------
