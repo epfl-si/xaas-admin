@@ -1,0 +1,4 @@
+Le fichier `api-version.json` contient en fait simplement le numéro de version de l'API de Avi-Networks pour chacune des infrastructures. 
+On doit en effet spécifier ce numéro lorsque l'on fait des requêtes REST sinon on n'a pas toutes les données...
+
+A chaque instanciation de la classe `AviNetworksAPI`, un check est fait pour récupérer le numéro de version le plus récent sur le serveur et le fichier `api-version.json` est mis à jour pour que ça soit la dernière version qui soit utilisée automatiquement lors de la prochaine exécution. On enregistre aussi la date du changement pour avoir une idée

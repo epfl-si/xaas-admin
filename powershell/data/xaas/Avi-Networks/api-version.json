@@ -1,0 +1,14 @@
+﻿{
+    "dev":  {
+                "version":  "20.1.4",
+                "dateChanged":  ""
+            },
+    "test":  {
+                 "version":  "20.1.4",
+                 "dateChanged":  "2021-02-24"
+             },
+    "prod":  {
+                 "version":  "20.1.4",
+                 "dateChanged":  ""
+             }
+}

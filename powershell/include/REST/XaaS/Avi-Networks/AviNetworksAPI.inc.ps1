@@ -22,26 +22,36 @@ $global:XAAS_AVI_NETWORK_API_VERSION = "20.1.4"
 class AviNetworksAPI: RESTAPICurl
 {
 	hidden [System.Collections.Hashtable]$headers
+	# Chemin jusqu'au fichier JSON où se trouvent les infos sur la version de l'API
+	hidden [string]$pathToAPIInfos
     
 
 	<#
 	-------------------------------------------------------------------------------------
 		BUT : Créer une instance de l'objet et ouvre une connexion au serveur
 
+		IN  : $targetEnv		-> Environnement sur lequel on est
 		IN  : $server			-> Nom DNS du serveur
 		IN  : $username	        -> Nom d'utilisateur
 		IN  : $password			-> Mot de passe
 
 	#>
-	AviNetworksAPI([string] $server, [string] $username, [string] $password) : base($server) # Ceci appelle le constructeur parent
+	AviNetworksAPI([string]$targetEnv, [string] $server, [string] $username, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
+		$this.pathToAPIInfos = ([IO.Path]::Combine($global:DATA_FOLDER, "XaaS", "Avi-Networks", "api-version.json"))
+
+		if(!(Test-Path $this.pathToAPIInfos))
+		{
+			Throw ("Missing config file ({0})" -f $this.pathToAPIInfos)
+		}
+
 		# Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
 		$this.setJSONSubPath(@("XaaS", "Avi-Networks") )
 
 		$this.headers = @{}
 		$this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
-        $this.headers.Add('X-Avi-Version', $global:XAAS_AVI_NETWORK_API_VERSION)
+        $this.headers.Add('X-Avi-Version', $this.getAPIVersion($targetEnv))
         $this.headers.Add('X-Avi-Tenant', 'admin')
 
 		$authInfos = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username, $password)))
@@ -56,8 +66,51 @@ class AviNetworksAPI: RESTAPICurl
 
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+		$this.updateAPIVersion($targetEnv)
     }    
 
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la version courante de l'API stockée dans le fichier JSON et ceci pour un 
+				environnement donné
+		
+		IN  : $targetEnv	-> Environnement pour lequel on veut la version de l'API
+
+		RET : No de version
+	#>
+	hidden [string] getAPIVersion([string]$targetEnv)
+	{
+		return (Get-Content -Path $this.pathToAPIInfos -Raw -Encoding:UTF8 | ConvertFrom-Json).$targetEnv.version
+	}
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Met à jour la version courante de l'API dans le fichier JSON (pour l'environnement donné)
+
+		IN  : $targetEnv	-> Environnement pour lequel on veut mettre à jour la version de l'API
+
+		https://vsissp-avi-ctrl-t.epfl.ch/api/image
+	#>
+	hidden [void] updateAPIVersion([string]$targetEnv)
+	{
+		$uri = "{0}/image" -f $this.baseUrl
+
+		$res = $this.callAPI($uri, "GET", $null)
+
+		$version = ($res.results | ForEach-Object { $_.controller_info.build.version } | Sort-Object -Descending)[0]
+
+		# Si la version a changé par rapport au fichier JSON
+		$versionInfos = (Get-Content -Path $this.pathToAPIInfos -Raw -Encoding:UTF8 | ConvertFrom-Json)
+		if($versionInfos.$targetEnv.version -ne $version)
+		{
+			$versionInfos.$targetEnv.version = $version
+			$versionInfos.$targetEnv.dateChanged = (Get-Date -Format "yyyy-MM-dd")
+
+			# Mise à jour dans le fichier
+			$versionInfos | ConvertTo-Json | Out-File $this.pathToAPIInfos -Encoding:utf8
+		}
+	}
 
     <#
 		-------------------------------------------------------------------------------------

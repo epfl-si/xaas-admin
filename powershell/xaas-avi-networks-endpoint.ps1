@@ -232,7 +232,8 @@ try
 										$configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
 										$configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))	
 
-    $aviNetworks = [AviNetworksAPI]::new($configAviNetworks.getConfigValue(@($targetEnv, "server")), 
+    $aviNetworks = [AviNetworksAPI]::new($targetEnv,
+                                        $configAviNetworks.getConfigValue(@($targetEnv, "server")), 
 										$configAviNetworks.getConfigValue(@($targetEnv, "user")), 
 										$configAviNetworks.getConfigValue(@($targetEnv, "password")))
 
