@@ -244,11 +244,12 @@ class AviNetworksAPI: RESTAPICurl
 		IN  : $tenantList	-> Tableau avec la liste des objets représentant des tenants auxquels
 								appliquer une nouvelle règle
 		IN  : $role			-> Objet représentant le role à appliquer
-		IN  : $adGroup		-> Nom court du groupe AD contenant les utilisateurs qui vont avoir le rôle
+		IN  : $adGroupList	-> Tableau avec les noms courts des groupe AD contenant les utilisateurs 
+								qui vont avoir le rôle
 
         RET : Tableau avec la liste des règles après ajout de la nouvelle
 	#>
-	[Array] addAdminAuthRule([Array]$tenantList, [PSObject]$role, [string]$adGroup)
+	[Array] addAdminAuthRule([Array]$tenantList, [PSObject]$role, [Array]$adGroupList)
 	{
 		$uri = "{0}/systemconfiguration" -f $this.baseUrl
 
@@ -268,7 +269,7 @@ class AviNetworksAPI: RESTAPICurl
 			tenantRefList = @( ( @($tenantList | Select-Object -ExpandProperty url) | ConvertTo-Json), $true)
 			index = $index
 			roleRef = $role.url
-			adGroup = $adGroup
+			adGroupList = @( ( $adGroupList | ConvertTo-Json), $true)
 			authProfileRef = $systemConfig.admin_auth_configuration.auth_profile_ref
 		}
 

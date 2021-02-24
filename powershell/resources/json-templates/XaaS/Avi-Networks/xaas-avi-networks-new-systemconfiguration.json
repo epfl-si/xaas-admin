@@ -2,22 +2,20 @@
     "add": {
         "admin_auth_configuration": {
           "mapping_rules": [
-          {
+            {
               "assign_tenant": "ASSIGN_FROM_SELECT_LIST",
               "assign_role": "ASSIGN_FROM_SELECT_LIST",
-              "tenant_refs":"{{tenantRefList}}",
+              "tenant_refs":"{{tenantRefList}}", // ça doit être au final une liste et pas un string
               "group_match": {
-              "criteria": "AUTH_MATCH_CONTAINS",
-              "groups": [
-                  "{{adGroup}}"
-              ]
+                "criteria": "AUTH_MATCH_CONTAINS",
+                "groups": "{{adGroupList}}" // ça doit être au final une liste et pas un string
               },
               "index": "{{index}}",
               "role_refs": [
               "{{roleRef}}"
               ],
               "auth_profile_ref": "{{authProfileRef}}"
-          }
+            }
           ]
       }
     }
