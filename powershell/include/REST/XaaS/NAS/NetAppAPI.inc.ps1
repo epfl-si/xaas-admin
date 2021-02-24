@@ -62,7 +62,7 @@ class NetAppAPI: RESTAPICurl
         IN  : $username             -> Nom d'utilisateur
         IN  : $password             -> Mot de passe
 	#>
-	NetAppAPI([Array]$serverList, [string]$username, [string]$password): base($server) 
+	NetAppAPI([Array]$serverList, [string]$username, [string]$password): base("") 
 	{
         # Mise à jour des headers
         $this.headers.Add('Accept', 'application/hal+json')
