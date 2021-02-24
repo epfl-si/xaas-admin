@@ -40,7 +40,7 @@ class NameGeneratorAviNetworks: NameGeneratorBase
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie le nom et la description d'un tenant pour un BG donné
 
-        IN  : $bgName       -> Nom du BusinessGroup
+        IN  : $bgName         -> Nom du BusinessGroup
         IN  : $tenantType   -> Type de tenant (voir en haut du présent fichier)
 
 		RET : Tableau avec

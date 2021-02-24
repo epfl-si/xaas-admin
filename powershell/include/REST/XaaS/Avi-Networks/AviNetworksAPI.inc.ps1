@@ -93,6 +93,8 @@ class AviNetworksAPI: RESTAPICurl
 		BUT : Renvoie la liste de tenants existants
 
         RET : Tableau avec la liste des tenants
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_tenant
 	#>
     [Array] getTenantList()
     {
@@ -110,6 +112,8 @@ class AviNetworksAPI: RESTAPICurl
         IN  : $description  -> Description du tenant
 
         RET : Objet représentant le tenant
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_tenant
 	#>
     [PSObject] addTenant([string]$name, [string]$description)
     {
@@ -135,6 +139,8 @@ class AviNetworksAPI: RESTAPICurl
 
         RET : Objet représentant le tenant
                 Exception si le tenant n'existe pas
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_tenant__uuid_
 	#>
     [PSObject] getTenantById([string]$id)
     {
@@ -152,6 +158,8 @@ class AviNetworksAPI: RESTAPICurl
 
         RET : Objet représentant le tenant
                 $null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_tenant
 	#>
     [PSObject] getTenantByName([string]$name)
     {
@@ -167,11 +175,38 @@ class AviNetworksAPI: RESTAPICurl
     }
 
 
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Met à jour le nom et la description d'un tenant.
+
+        IN  : $tenant 	-> Objet représentant le tenant
+		IN  : $newName	-> Nouveau nom
+		IN  : $newDesc	-> Nouvelle description
+
+		RET : Le tenant modifié
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/patch_tenant__uuid_
+	#>
+	[PSObject] updateTenant([PSObject]$tenant, [string]$newName, [string]$newDesc)
+	{
+		$uri = "{0}/tenant/{1}" -f $this.baseUrl, $tenant.uuid
+
+		$tenant.name = $newName
+		$tenant.description = $newDesc
+
+		$this.callAPI($uri, "PUT", $tenant) | Out-Null
+
+		return $tenant
+	}
+
+
     <#
 	-------------------------------------------------------------------------------------
 		BUT : Efface un tenant
 
         IN  : $tenant       -> Objet représentant le tenant à effacer
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/delete_tenant__uuid_
 	#>
     [void] deleteTenant([PSObject]$tenant)
     {
@@ -193,6 +228,8 @@ class AviNetworksAPI: RESTAPICurl
 
 		RET : Objet représentant le rôle
 				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_role
 	#>
 	[PSObject] getRoleByName([string]$name)
 	{
@@ -216,6 +253,8 @@ class AviNetworksAPI: RESTAPICurl
 		BUT : Renvoie la configuration système de tout
 
         RET : Objet avec la configuration système
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_systemconfiguration
 	#>
 	hidden [psobject] getSystemConfiguration()
 	{
@@ -248,6 +287,8 @@ class AviNetworksAPI: RESTAPICurl
 								qui vont avoir le rôle
 
         RET : Tableau avec la liste des règles après ajout de la nouvelle
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/patch_systemconfiguration
 	#>
 	[Array] addAdminAuthRule([Array]$tenantList, [PSObject]$role, [Array]$adGroupList)
 	{
@@ -290,13 +331,21 @@ class AviNetworksAPI: RESTAPICurl
 		
         RET : Objet avec les détails de la règle
 	#>
-	[PSObject] getAdminAuthRule([PSObject]$forTenant)
+	[PSObject] getTenantAdminAuthRule([PSObject]$forTenant)
 	{
 		return $this.getAdminAuthRuleList() | Where-Object { $_.tenant_refs -contains $forTenant.url}
 	}
 
 
-	[void] deleteAdminRule([PSObject]$rule)
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Efface une règle d'authentification
+
+		IN  : $rule	-> Objet représentant la règle à effacer
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/patch_systemconfiguration
+	#>
+	[void] deleteAdminAuthRule([PSObject]$rule)
 	{
 		$uri = "{0}/systemconfiguration" -f $this.baseUrl
 
