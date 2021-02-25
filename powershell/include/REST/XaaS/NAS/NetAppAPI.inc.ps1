@@ -62,7 +62,7 @@ class NetAppAPI: RESTAPICurl
         IN  : $username             -> Nom d'utilisateur
         IN  : $password             -> Mot de passe
 	#>
-	NetAppAPI([Array]$serverList, [string]$username, [string]$password): base($server) 
+	NetAppAPI([Array]$serverList, [string]$username, [string]$password): base("") 
 	{
         # Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
 		$this.setJSONSubPath(@("XaaS", "NAS") )
