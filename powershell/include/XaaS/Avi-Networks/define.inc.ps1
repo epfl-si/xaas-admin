@@ -6,6 +6,13 @@
 
 #>
 
+# Les niveaux d'alerte pour les notifications mail
+enum XaaSAviNetworksAlertLevel {
+   High
+   Medium
+}
+
+
 $global:XAAS_AVI_NETWORKS_USER_ROLE_NAME = "Application-Only"
 
 $global:XAAS_AVI_NETWORKS_TENANT_TYPE = "ch.epfl.avi.tenant.type"

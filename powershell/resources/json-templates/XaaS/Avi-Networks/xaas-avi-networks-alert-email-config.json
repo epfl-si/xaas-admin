@@ -1,0 +1,4 @@
+{
+    "name": "Mails-Notification",
+    "to_emails": "{{mailList}}"
+}

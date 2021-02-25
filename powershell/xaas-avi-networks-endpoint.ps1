@@ -152,7 +152,7 @@ function deleteLB([AviNetworkAPI]$aviNetworks, [string]$bgId, [string]$lbName)
     # TODO:
     # $ruleDeleted = $false
 
-    # [enum]::getValues([AviNetworksTenantType]) | ForEach-Object {
+    # [enum]::getValues([XaaSAviNetworksTenantType]) | ForEach-Object {
 
     #     $name, $desc = $nameGeneratorAviNetworks.getTenantNameAndDesc($bgId, $_)
 
@@ -286,11 +286,16 @@ try
             $initialLabels.add($global:VRA_CUSTOM_PROP_EPFL_BG_ID, $bgId)
             $initialLabels.add($global:VRA_CUSTOM_PROP_VRA_BG_STATUS, $global:VRA_BG_STATUS__ALIVE)
 
+            # -- Liste des mails de notification
+            $logHistory.addLine(("Getting notification mail list for BG '{0}'..." -f $bg.name))
+            $notificationMailList = getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant -returnMails
+            $logHistory.addLine(("{0} mail address(es) found:`n{1}" -f $notificationMailList.count, ($notificationMailList -join "`n")))
+
             # -- Création des Tenants AVI Networks si besoin
             $logHistory.addLine(("Creating tenant for BG '{0}'..." -f $bg.name))
             $tenantList = @()
             # Parcours des types de tenant (notion Avi Networks) possibles pour un BG
-            [enum]::getValues([AviNetworksTenantType]) | ForEach-Object {
+            [enum]::getValues([XaaSAviNetworksTenantType]) | ForEach-Object {
 
                 $name, $desc = $nameGeneratorAviNetworks.getTenantNameAndDesc($bg.name, $_)
 
@@ -303,6 +308,18 @@ try
                     # Ajout du label spécifique pour le type de tenant
 		            $tenantLabels.add($global:XAAS_AVI_NETWORKS_TENANT_TYPE, $_.toString())
                     $tenant = $aviNetworks.addTenant($name, $desc, $tenantLabels)
+
+                    # Ajout de la notification mail
+                    $logHistory.addLine(">> Creating alert mail config for tenant...")
+                    $alertMailConfig = $aviNetWorks.addAlertMailConfig($tenant, $notificationMailList)
+
+                    # Création des niveaux d'alerte
+                    [enum]::getValues([XaaSAviNetworksAlertLevel]) | ForEach-Object {
+                        $alertName, $alertLevelName = $nameGeneratorAviNetworks.getAlertNameAndLevel($_)
+
+                        $logHistory.addLine((">>> Creating alert action level '{0}'..." -f $alertName))
+                        $alertActionLevel = $aviNetworks.addAlertActionLevel($tenant, $alertMailConfig, $alertName, $alertLevelName)
+                    }
                 }
                 else
                 {

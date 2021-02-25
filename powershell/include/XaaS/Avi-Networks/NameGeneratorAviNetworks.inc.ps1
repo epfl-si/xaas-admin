@@ -6,7 +6,7 @@
 
 #>
 
-enum AviNetworksTenantType
+enum XaaSAviNetworksTenantType
 {
    Development
    Test
@@ -47,11 +47,30 @@ class NameGeneratorAviNetworks: NameGeneratorBase
                 - Nom du tenant
                 - Description du tenant
 	#>
-    [Array] getTenantNameAndDesc([string]$bgName, [AviNetworksTenantType]$tenantType)
+    [Array] getTenantNameAndDesc([string]$bgName, [XaaSAviNetworksTenantType]$tenantType)
     {
         return @(
             ("{0}-{1}" -f $bgName, $tenantType.ToString()),
             ("BG: {0}, Type: {1}" -f $bgName, $tenantType.ToString())
+        )
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le nom d'une alerte et le nom de son niveau 
+
+        IN  : $level    -> Identifiant du niveau
+
+		RET : Tableau avec
+                - Nom de l'alerte
+                - Nom du niveau
+	#>
+    [Array] getAlertNameAndLevel([XaaSAviNetworksAlertLevel]$level)
+    {
+        return @(
+            ("Alert-{0}-Email" -f $level.toString()),
+            ("ALERT_{0}" -f $level.toString().toUpper())
         )
     }
 }

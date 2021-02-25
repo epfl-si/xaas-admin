@@ -24,7 +24,7 @@ class AviNetworksAPI: RESTAPICurl
 	hidden [System.Collections.Hashtable]$headers
 	# Chemin jusqu'au fichier JSON où se trouvent les infos sur la version de l'API
 	hidden [string]$pathToAPIInfos
-    
+	
 
 	<#
 	-------------------------------------------------------------------------------------
@@ -69,7 +69,6 @@ class AviNetworksAPI: RESTAPICurl
 		$this.updateAPIVersion($targetEnv)
     }    
 
-
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la version courante de l'API stockée dans le fichier JSON et ceci pour un 
@@ -111,6 +110,29 @@ class AviNetworksAPI: RESTAPICurl
 			$versionInfos | ConvertTo-Json | Out-File $this.pathToAPIInfos -Encoding:utf8
 		}
 	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Initialise le tenant actif sur lequel on va faire les requêtes
+
+		IN  : $tenantName		-> nom du tenant
+	#>
+	hidden [void] setActiveTenant([string]$tenantName)
+	{
+		$this.headers.Item('X-Avi-Tenant') = $tenantName
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Repasse sur le tenant par défaut
+	#>
+	hidden [void] setDefaultTenant()
+	{
+		$this.setActiveTenant('admin')
+	}
+
 
     <#
 		-------------------------------------------------------------------------------------
@@ -438,5 +460,62 @@ class AviNetworksAPI: RESTAPICurl
 		$body = $this.createObjectFromJSON("xaas-avi-networks-delete-systemconfiguration.json", $replace)
 
 		$this.callAPI($uri, "PATCH", $body) | Out-Null
+	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            	ALERT MAIL CONFIG
+       --------------------------------------------------------------------------------------------------------- #>
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute une configuration mail pour les alertes sur un tenant donné
+
+		IN  : $tenant	-> Objet représentant le tenant sur lequel créer la config
+		IN  : $mailList	-> Tableau avec la liste des mails à mettre
+
+		RET : Objet représentant la configuration d'alerte créée
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_alertemailconfig
+	#>
+	[PSObject] addAlertMailConfig([PSObject]$tenant, [Array]$mailList)
+	{
+		$this.setActiveTenant($tenant.name)
+		$uri = "{0}/alertemailconfig" -f $this.baseUrl
+
+		$replace = @{
+			mailList = ($mailList -join ",")
+		}
+
+		$body = $this.createObjectFromJSON("xaas-avi-networks-alert-email-config.json", $replace)
+
+		$res = $this.callAPI($uri, "POST", $body)
+
+		$this.setDefaultTenant()
+
+		return $res
+	}
+
+
+	[PSObject] addAlertActionLevel([PSObject]$tenant, [PSObject]$alertMailConfig, [string]$alertName, [string]$levelName)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/actiongroupconfig" -f $this.baseUrl
+
+		$replace = @{
+			alertName = $alertName
+			alertLevel = $levelName
+			mailConfigRef = $alertMailConfig.url
+		}
+
+		$body = $this.createObjectFromJSON("xaas-avi-networks-action-group-config.json", $replace)
+
+		$res = $this.callAPI($uri, "POST", $body)
+
+		$this.setDefaultTenant()
+
+		return $res
 	}
 }

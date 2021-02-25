@@ -1,0 +1,5 @@
+{
+    "name": "{{alertName}}",
+    "level": "{{alertLevel}}",
+    "email_config_ref": "{{mailConfigRef}}"
+}

@@ -44,11 +44,13 @@ function displayJSONOutput
     IN  : $vra          -> Objet permettant d'accéder à vRA
     IN  : $bg           -> Objet représentant le Business Group auquel le cluster est lié
     IN  : $targetTenant -> Tenant sur lequel se trouve le BusinessGroup
+    IN  : $returnMails  -> Switch pour dire si on veut plutôt la/les adresse(s) mail à la 
+                            place des noms d'utilisateur ou de groupe
 
     RET : Tableau avec la liste des groupes d'accès à utiliser
         $null si pas trouvé
 #>
-function getBGAccessGroupList([vRAAPI]$vra, [PSObject]$bg, [string]$targetTenant)
+function getBGAccessGroupList([vRAAPI]$vra, [PSObject]$bg, [string]$targetTenant, [switch]$returnMails)
 {
     if($null -eq $bg)
     {
@@ -60,20 +62,34 @@ function getBGAccessGroupList([vRAAPI]$vra, [PSObject]$bg, [string]$targetTenant
     $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
     $groupName, $null = $userAndGroupList[0] -split '@'
 
-    # Si on est dans le tenant ITS
-    if($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
+    # Si on est dans le tenant EPFL
+    if($targetTenant -eq $global:VRA_TENANT__EPFL)
+    {
+        if($returnMails)
+        {
+            $accessGroupList = @(Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "user"}| Get-ADUSer -Properties mail | Select-Object  -ExpandProperty mail)
+        }
+        else # On ne veut pas le mail, mais le nom du groupe
+        {
+            # On prent le groupe tel quel
+            $accessGroupList = @($groupName)
+        }
+    }
+    else # Autre tenants
     {
         # Récupération de la liste des groupes qui sont présents dans le 1er groupe qui est dans les CONSUMER du BusinessGroup
         # NOTE: On fait ceci car TKGI/Harbor ne gèrent pas les groupes nested... 
         # FIXME: A supprimer une fois que TKGI/Harbor pourra gérer le groupes nested
         $accessGroupList = Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
 
+        # Si on veut les adresses mails
+        if($returnMails)
+        {
+            $accessGroupList = $accessGroupList | ForEach-Object { "{0}@groupes.epfl.ch" -f ($_ -replace "_AppGrpU","")}
+        }
+    
     }
-    else # Autres tenants
-    {
-        # On prent le groupe tel quel
-        $accessGroupList = @($groupName)
-    }
+
 
     return $accessGroupList
 }
