@@ -20,7 +20,8 @@
             "longName":  "XaaS Admins",
             "shortName":  "xaasadm",
             "snowId":  "SVC0000",
-            "serviceManagerSciper": "287589"
+            "serviceManagerSciper": "287589",
+            "additionalGroupsAdminSciperList": []
         }
     ]
 }

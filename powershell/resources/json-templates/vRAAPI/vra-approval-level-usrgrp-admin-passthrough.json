@@ -1,0 +1,37 @@
+{
+    "name": "{{preApprovalLevelName}}",
+    "description": "",
+    "approvers": [
+        {
+            "value": "{{approverGroupAtDomain}}",
+            "type": "GROUP",
+            "displayName": "{{approverDisplayName}}"
+        }
+    ],
+    "approvalMode": "ANY",
+    "criteria": {
+        "type": "not",
+        "subClause": {
+            "type": "expression",
+            "operator": {
+                "type": "startsWith"
+            },
+            "leftOperand": {
+                "type": "path",
+                "path": "requestedBy~principalIdAsString"
+            },
+            "rightOperand": {
+                "type": "constant",
+                "value": {
+                    "type": "string",
+                    "value": "itadmin-"
+                }
+            }
+        }
+    },
+    "levelNumber": "{{preApprovalLeveNumber}}",
+    "external": false,
+    "editSchema": {
+        "fields": []
+    }
+}

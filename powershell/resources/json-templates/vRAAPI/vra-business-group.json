@@ -1,0 +1,22 @@
+{
+	"name": "{{name}}",
+	"description": "{{description}}",
+	"subtenantRoles": null,
+	"extensionData": {
+		"entries": [{
+         "key": "iaas-machine-prefix",
+         "value": {
+             "type": "string",
+             "value": "{{machinePrefixId}}"
+         }
+      },
+      {
+			"key": "iaas-manager-emails",
+			"value": {
+				"type": "string",
+				"value": "{{capacityAlertsEmail}}"
+			}
+		}]
+	},
+	"tenant": "{{tenant}}"
+}

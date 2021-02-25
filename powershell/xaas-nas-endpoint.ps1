@@ -565,7 +565,7 @@ try
                     $nameGeneratorNAS.setApplicativeDetails($bgId, $volName)
 
                     # Chargement des informations sur le mapping des facultés
-                    $appSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "applicative-svm.json"))
+                    $appSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "XaaS", "NAS", "applicative-svm.json"))
                     $appSVMList = loadFromCommentedJSON -jsonFile $appSVMFile
 
                     # Choix de la SVM
@@ -877,11 +877,11 @@ try
             $logHistory.addLine( ("Searching SVM for Faculty '{0}'" -f $faculty) )
 
             # Chargement des informations sur le mapping des facultés
-            $facultyMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-mapping.json"))
+            $facultyMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "XaaS", "NAS", "faculty-mapping.json"))
             $facultyMappingList = loadFromCommentedJSON -jsonFile $facultyMappingFile
 
             # Chargement des informations 
-            $facultyToSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "xaas", "nas", "faculty-svm.json"))
+            $facultyToSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "XaaS", "NAS", "faculty-svm.json"))
             $facultyToSVM = loadFromCommentedJSON -jsonFile $facultyToSVMFile
 
             # On commence par regarder s'il y a un mapping pour la faculté donnée
