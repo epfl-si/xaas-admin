@@ -16,8 +16,7 @@
 
 
 #>
-
-$global:XAAS_AVI_NETWORK_API_VERSION = "20.1.4"
+ 
 
 class AviNetworksAPI: RESTAPICurl
 {
@@ -475,7 +474,7 @@ class AviNetworksAPI: RESTAPICurl
 		IN  : $tenant	-> Objet représentant le tenant sur lequel créer la config
 		IN  : $mailList	-> Tableau avec la liste des mails à mettre
 
-		RET : Objet représentant la configuration d'alerte créée
+		RET : Objet représentant la configuration d'alerte mail créée
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_alertemailconfig
 	#>
@@ -498,7 +497,71 @@ class AviNetworksAPI: RESTAPICurl
 	}
 
 
-	[PSObject] addAlertActionLevel([PSObject]$tenant, [PSObject]$alertMailConfig, [string]$alertName, [string]$levelName)
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des configurations mail pour les alertes sur un tenant donné
+
+		IN  : $tenant			-> Objet représentant le tenant pour lequel on veut la liste
+
+		RET : Tableau avec les configuration mail
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertemailconfig
+	#>
+	[Array] getAlertMailConfigList([PSObject]$tenant)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/alertemailconfig" -f $this.baseUrl
+
+		# Recherche. Et on filtre aussi pour avoir uniquement les AlertMailConfig définies pour le tenant car
+		# par défaut il va aussi renvoyr les "admin"
+		$res = $this.callAPI($uri, "GET", $null).results | Where-Object  {$_.tenant_ref -eq $tenant.url }
+		$this.setDefaultTenant()
+
+		return $res
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Supprime une configuration mail pour les alertes sur un tenant donné
+
+		IN  : $tenant			-> Objet représentant le tenant sur lequel supprimer la config
+		IN  : $alertMailConfig	-> Config à supprimer
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/delete_alertemailconfig__uuid_
+	#>
+	[void] deleteAlertMailConfig([PSObject]$tenant, [PSObject]$alertMailConfig)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/alertemailconfig/{1}" -f $this.baseUrl, $alertMailConfig.uuid
+
+		$this.callAPI($uri, "DELETE", $null) | Out-Null
+		$this.setDefaultTenant()
+	}
+
+
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            	ALERT GROUP CONFIG
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un niveau d'alerte mail
+
+		IN  : $tenant			-> Objet représentant le tenant sur lequel créer le niveau d'alerte
+		IN  : $alertMailConfig	-> Objet représentant la configuration mail à lier (obtenue par addAlertMailConfig() )
+		IN  : $alertName		-> Nom de l'alerte
+		IN  : $levelName		-> Nom du niveau d'alerte
+
+		RET : Objet représentant la configuration d'alerte créée
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_actiongroupconfig
+	#>
+	[PSObject] addActionGroupConfig([PSObject]$tenant, [PSObject]$alertMailConfig, [string]$alertName, [string]$levelName)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -517,5 +580,135 @@ class AviNetworksAPI: RESTAPICurl
 		$this.setDefaultTenant()
 
 		return $res
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des niveaux d'alerte mail sur un tenant donné
+
+		IN  : $tenant			-> Objet représentant le tenant pour lequel on veut la liste
+
+		RET : Tableau avec les niveaux d'alerte
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_actiongroupconfig
+	#>
+	[Array] getActionGroupConfigList([PSObject]$tenant)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/actiongroupconfig" -f $this.baseUrl
+
+		# Recherche. Et on filtre aussi pour avoir uniquement les ActionLevel définies pour le tenant car
+		# par défaut il va aussi renvoyr les "admin"
+		$res = $this.callAPI($uri, "GET", $null).results | Where-Object  {$_.tenant_ref -eq $tenant.url }
+		$this.setDefaultTenant()
+
+		return $res
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Supprime un niveau d'alerte mail
+
+		IN  : $tenant			-> Objet représentant le tenant sur lequel supprimer le niveau d'alerte
+		IN  : $alertActionLevel	-> Niveau d'alerte à supprimer
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/delete_actiongroupconfig__uuid_
+	#>
+	[void] deleteActionGroupConfig([PSObject]$tenant, [PSObject]$alertActionLevel)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/actiongroupconfig/{1}" -f $this.baseUrl, $alertActionLevel.uuid
+
+		$this.callAPI($uri, "DELETE", $null) | Out-Null
+		$this.setDefaultTenant()
+	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            	ALERT CONFIG
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute une alerte pour un événement sur un élément (statut qui change)
+
+		IN  : $tenant			-> Objet représentant le tenant sur lequel créer le niveau d'alerte
+		IN  : $alertActionLevel	-> Objet représentant le niveaud d'alerte à lier (obtenue par addActionGroupConfig() )
+		IN  : $element			-> Element sur lequel l'alerte s'applique
+		IN  : $status			-> Le statut pour lequel on veut une alerte
+
+		RET : Objet représentant la configuration d'alerte créée
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_alertconfig
+	#>
+	[PSObject] addAlertConfig([PSObject]$tenant, [PSObject]$alertActionLevel, [XaaSAviNetworksMonitoredElements]$element, [XaaSAviNetworksMonitoredStatus]$status)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/alertconfig" -f $this.baseUrl
+
+		# Génération du nom du fichier JSON à utiliser
+		$jsonFile = "xaas-avi-networks-alert-config-{0}-{1}.json" -f $element.toString().toLower(), $status.toString().toLower()
+
+		$replace = @{
+			actionGroupRef = $alertActionLevel.url
+		}
+
+		$body = $this.createObjectFromJSON($jsonFile, $replace)
+
+		$res = $this.callAPI($uri, "POST", $body)
+
+		$this.setDefaultTenant()
+
+		return $res
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des alertes configurées sur un tenant donné
+
+		IN  : $tenant			-> Objet représentant le tenant pour lequel on veut la liste
+
+		RET : Tableau avec les alertes configurées
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertconfig
+	#>
+	[Array] getAlertConfigList([PSObject]$tenant)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/alertconfig" -f $this.baseUrl
+
+		# Recherche. Et on filtre aussi pour avoir uniquement les AlertConfig définies pour le tenant car
+		# par défaut il va aussi renvoyr les "admin"
+		$res = $this.callAPI($uri, "GET", $null).results | Where-Object  {$_.tenant_ref -eq $tenant.url }
+		$this.setDefaultTenant()
+
+		return $res
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Supprime une alerte pour une événement et un statut
+
+		IN  : $tenant		-> Objet représentant le tenant sur lequel supprimer la config
+		IN  : $alertConfig	-> Niveau d'alerte à supprimer
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/delete_alertconfig__uuid_
+	#>
+	[void] deleteAlertConfig([PSObject]$tenant, [PSObject]$alertConfig)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/alertconfig/{1}" -f $this.baseUrl, $alertConfig.uuid
+
+		$this.callAPI($uri, "DELETE", $null) | Out-Null
+		$this.setDefaultTenant()
 	}
 }

@@ -60,10 +60,10 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 
 # Chargement des fichiers propres à XaaS 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "AviNetworksAPI.inc.ps1"))
-
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "Avi-Networks", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "Avi-Networks", "NameGeneratorAviNetworks.inc.ps1"))
+
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "AviNetworksAPI.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
@@ -318,8 +318,26 @@ try
                         $alertName, $alertLevelName = $nameGeneratorAviNetworks.getAlertNameAndLevel($_)
 
                         $logHistory.addLine((">>> Creating alert action level '{0}'..." -f $alertName))
-                        $alertActionLevel = $aviNetworks.addAlertActionLevel($tenant, $alertMailConfig, $alertName, $alertLevelName)
-                    }
+                        $alertActionLevel = $aviNetworks.addActionGroupConfig($tenant, $alertMailConfig, $alertName, $alertLevelName)
+
+                        # En fonction du niveau d'alerte, on défini le status que l'on va monitorer
+                        $monitoredStatus = switch($_)
+                        {
+                            Medium { [XaaSAviNetworksMonitoredStatus]::Up } 
+                            High {[XaaSAviNetworksMonitoredStatus]::Down }
+                        }
+
+                        $logHistory.addLine((">>> Adding monitored elements when status is '{0}" -f $monitoredStatus.toString()))
+
+                        # Parcours des éléments à monitorer
+                        [enum]::getValues([XaaSAviNetworksMonitoredElements]) | ForEach-Object {
+
+                            $logHistory.addLine((">>>> Adding monitored element '{0}'..." -f $_.toString()))
+                            # Ajout du nécessaire pour le statut défini
+                            $alertConfig = $aviNetworks.addAlertConfig($tenant, $alertActionLevel, $_, $monitoredStatus)
+                        }
+
+                    }# FIN BOUCLE de parcours de niveaux d'alerte
                 }
                 else
                 {

@@ -1,0 +1,26 @@
+{
+    "name": "Pool-UP",
+     "enabled": true,
+     "threshold": 1,
+     "throttle": 600,
+     "expiry_time": 86400,
+     "source": "EVENT_LOGS",
+     "category": "REALTIME",
+     "rolling_window": 300,
+     "alert_rule": {
+         "sys_event_rule": [
+             {
+                 "event_id": "POOL_UP",
+                 "not_cond": false
+             },
+             {
+                 "event_id": "SERVER_UP",
+                 "not_cond": false
+             }
+         ],
+         "operator": "OPERATOR_OR"
+     },
+     "autoscale_alert": true,
+     "object_type": "POOL",
+     "action_group_ref": "{{actionGroupRef}}"
+}

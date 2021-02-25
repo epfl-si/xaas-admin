@@ -6,12 +6,7 @@
 
 #>
 
-enum XaaSAviNetworksTenantType
-{
-   Development
-   Test
-   Production
-}
+
 
 class NameGeneratorAviNetworks: NameGeneratorBase
 {
