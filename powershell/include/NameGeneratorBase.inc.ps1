@@ -70,7 +70,7 @@ class NameGeneratorBase
                 .faculty
                 .unit
             ITServices
-                .snowServiceId
+                .serviceShortName
             Research
                 .projectId
     #>
@@ -101,15 +101,15 @@ class NameGeneratorBase
             $global:VRA_TENANT__ITSERVICES
             {
                 # Le nom du BG est au format: its_<svcId>
-                $dummy, $svcId = [regex]::Match($bgName, '^its_([a-z0-9]+)').Groups | Select-Object -ExpandProperty value
+                $dummy, $serviceShortName = [regex]::Match($bgName, '^its_([a-z0-9]+)').Groups | Select-Object -ExpandProperty value
 
-                if($null -eq $svcId)
+                if($null -eq $serviceShortName)
                 {
                     Throw ("Wrong BG name given ({0}) for {1} Tenant" -f $bgName, $this.tenant)
                 }
 
                 $result = @{
-                    snowServiceId = $svcId
+                    serviceShortName = $serviceShortName
                 }
             }
 
@@ -177,9 +177,9 @@ class NameGeneratorBase
             { 
                 # le nom du BG est au format <tenantShort>_<serviceShort>
                 $withDetails = @{
-                    serviceShortName = ''
+                    serviceShortName = $bgDetails.serviceShortName
                     serviceName = ''
-                    snowServiceId = $bgDetails.snowServiceId
+                    snowServiceId = ''
                 }
             }
 

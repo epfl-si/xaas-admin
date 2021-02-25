@@ -41,6 +41,9 @@ class vRAAPI: RESTAPICurl
 	{
 		$this.tenant = $tenant
 
+		# Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
+		$this.setJSONSubPath(@( (Get-PSCallStack)[0].functionName) )
+
 		# Cache pour le mapping entre l'ID custom d'un BG et celui-ci
 		$this.bgCustomIdMappingCache = $null
 

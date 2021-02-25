@@ -118,7 +118,7 @@ $configNSX = [ConfigReader]::New("config-nsx.json")
 function getFullElementNameFromJSON([string]$baseName, [string]$JSONFile, [string]$replaceString, [string]$fieldName)
 {
 	# Chemin complet jusqu'au fichier à charger
-	$filepath = (Join-Path $global:JSON_TEMPLATE_FOLDER $JSONFile)
+	$filepath = (Join-Path $global:VRA_JSON_TEMPLATE_FOLDER $JSONFile)
 
 	# Si le fichier n'existe pas
 	if(-not( Test-Path $filepath))
@@ -1227,7 +1227,7 @@ function createNSGroupIfNotExists
 {
 	param([NSXAPI]$nsx, [string]$nsxNSGroupName, [string]$nsxNSGroupDesc, [string]$nsxSecurityTag)
 
-	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName, "VirtualMachine")
+	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName, $global:NSX_VM_MEMBER_TYPE)
 
 	# Si le NSGroup n'existe pas,
 	if($null -eq $nsGroup)
@@ -1235,7 +1235,7 @@ function createNSGroupIfNotExists
 		$logHistory.addLineAndDisplay(("-> Creating NSX NS Group '{0}'... " -f $nsxNSGroupName))
 
 		# Création de celui-ci
-		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag)
+		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag, $global:NSX_VM_MEMBER_TYPE)
 
 		$counters.inc('NSXNSGroupCreated')
 	}
