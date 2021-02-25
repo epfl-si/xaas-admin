@@ -41,7 +41,9 @@ class HarborAPI: RESTAPICurl
 	#>
 	HarborAPI([string] $server, [string] $user, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
-		
+		# Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
+		$this.setJSONSubPath(@("XaaS", "K8s") )
+
 		$this.baseUrl = "{0}/api/v2.0" -f $this.baseUrl
 
 		# Pour autoriser les certificats self-signed
