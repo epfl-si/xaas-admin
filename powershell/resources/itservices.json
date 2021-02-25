@@ -98,8 +98,8 @@
             "deniedVRAServiceList": []
         },
         {
-            "longName":  "EXHEB Fonctionnement",
-            "shortName":  "exheb",
+            "longName":  "SDDC Fonctionnement",
+            "shortName":  "sddc",
             "snowId":  "SVC0166",
             "serviceManagerSciper": "287589",
             "deniedVRAServiceList": [
@@ -473,8 +473,8 @@
             "deniedVRAServiceList": []
         },
         {
-            "longName":  "EXHEB Fonctionnement",
-            "shortName":  "exheb",
+            "longName":  "SDDC Fonctionnement",
+            "shortName":  "sddc",
             "snowId":  "SVC0166",
             "serviceManagerSciper": "287589",
             "additionalGroupsAdminSciperList": [],
@@ -565,8 +565,8 @@
             ]
         },
         {
-            "longName":  "VPSI Fonctionnement",
-            "shortName":  "vpsi",
+            "longName":  "DSI Fonctionnement",
+            "shortName":  "dsi",
             "snowId":  "SVC0173",
             "serviceManagerSciper": "",
             "deniedVRAServiceList": [
@@ -601,20 +601,8 @@
             ]
         },
         {
-            "longName":  "IDEVING Fonctionnement",
-            "shortName":  "ideving",
-            "snowId":  "SVC0177",
-            "serviceManagerSciper": "",
-            "deniedVRAServiceList": [
-                {
-                    "svc": "NAS (Public)",
-                    "items": ["NAS collaborative volume"]
-                }
-            ]
-        },
-        {
-            "longName":  "EXDESK Fonctionnement",
-            "shortName":  "exdesk",
+            "longName":  "SDESK Fonctionnement",
+            "shortName":  "sdesk",
             "snowId":  "SVC0178",
             "serviceManagerSciper": "",
             "deniedVRAServiceList": [
@@ -625,8 +613,8 @@
             ]
         },
         {
-            "longName":  "EXTERP Fonctionnement",
-            "shortName":  "exterp",
+            "longName":  "SUPR Fonctionnement",
+            "shortName":  "supr",
             "snowId":  "SVC0179",
             "serviceManagerSciper": "115218",
             "deniedVRAServiceList": [
@@ -637,8 +625,8 @@
             ]
         },
         {
-            "longName":  "EXINFR Fonctionnement",
-            "shortName":  "exinfr",
+            "longName":  "INFR Fonctionnement",
+            "shortName":  "infr",
             "snowId":  "SVC0181",
             "serviceManagerSciper": "",
             "deniedVRAServiceList": [
@@ -661,8 +649,8 @@
             ]
         },
         {
-            "longName":  "EXAPP Fonctionnement",
-            "shortName":  "exapp",
+            "longName":  "MWS Fonctionnement",
+            "shortName":  "MWS",
             "snowId":  "SVC0183",
             "serviceManagerSciper": "",
             "deniedVRAServiceList": [
@@ -685,8 +673,8 @@
             ]
         },
         {
-            "longName":  "EXOP-GE Fonctionnement",
-            "shortName":  "exopge",
+            "longName":  "GE Fonctionnement",
+            "shortName":  "ge",
             "snowId":  "SVC0185",
             "serviceManagerSciper": "",
             "deniedVRAServiceList": [
