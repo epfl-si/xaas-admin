@@ -785,7 +785,7 @@
             "shortName":  "pur",
             "snowId":  "SVC0187",
             "serviceManagerSciper": "155161",
-            "additionalGroupsAdminSciperList": ["227703"],
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
