@@ -64,6 +64,9 @@ class NetAppAPI: RESTAPICurl
 	#>
 	NetAppAPI([Array]$serverList, [string]$username, [string]$password): base("") 
 	{
+        # Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
+		$this.setJSONSubPath(@("XaaS", "NAS") )
+
         # Mise à jour des headers
         $this.headers.Add('Accept', 'application/hal+json')
         
