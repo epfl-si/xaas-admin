@@ -58,6 +58,9 @@ class ScalityAPI: APIUtils
 	ScalityAPI([string]$server, [string]$credProfileName, [string]$s3WebConsoleUser, [string]$s3WebConsolePassword, [bool]$isScality)
 	{
         
+        # Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
+		$this.setJSONSubPath(@("XaaS", "S3") )
+
         $this.s3EndpointUrl = "https://{0}" -f $server
 
         if($isScality)

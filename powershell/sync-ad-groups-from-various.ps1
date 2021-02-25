@@ -74,14 +74,14 @@ enum ADGroupCreateSourceType {
 	IN  : $groupMemberGroup			-> Nom du groupe à ajouter dans le groupe $groupName
 	IN  : $OU						-> OU Active Directory dans laquelle créer le groupe
 	IN  : $simulation				-> $true|$false pour dire si on est en mode simulation ou pas.
-	IN  : $updateExistingContent    -> $true|$false pour dire si on doit mettre à jour le contenu
+	IN  : $updateExistingContent    -> switch pour dire si on doit mettre à jour le contenu
 										d'un groupe existant
 
 	RET : $true	-> OK
 		  $false -> le groupe ($groupMemberGroup) à ajouter dans le groupe $groupName 
 		  			n'existe pas.
 #>
-function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation, [bool]$updateExistingContent)
+function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation, [switch]$updateExistingContent)
 {
 	 
 	# Cette petite ligne permet de transformer les tirets style "MS Office" en tirets "normaux". Si on ne fait pas ça, on aura 
@@ -234,6 +234,16 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 					$mailSubject = "Error - Level 4 'GE' unit can't be identified, please proceed manually"
 
 					$templateName = "level-4-ge-unit-not-found"
+				}
+
+				# Service manager manquants pour ITS
+				'missingServiceManagers'
+				{
+					$valToReplace.serviceManagerList = ($uniqueNotifications -join "</li>`n<li>")
+
+					$mailSubject = "Error - Service Manager not found for some services!"
+
+					$templateName = "service-managers-not-found"
 				}
 
 				default
@@ -415,13 +425,25 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 	IN  : $desc					-> Description du groupe
 	IN  : $memberSciperList		-> Tableau avec la liste des scipers des membres du groupe
 	IN  : $adminSciperList		-> Tableau avec la liste des scipers des admins du groupe
+	IN  : $simulation			-> $true|$false Pour dire si on est en train de faire tourner en mode "simulation"
+	IN  : $$allowAdminUpdate	-> Switch pour dire si on autorise à mettre à jour la
+									liste des administrateurs du groupe
 
 	RET : Le groupe
 #>
-function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList)
+function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList, [bool]$simulation, [switch]$allowAdminUpdate)
 {
 	# Recherche du groupe pour voir s'il existe
 	$group = $groupsApp.getGroupByName($name, $true)
+
+	# Nom du groupe admin à ajouter 
+	$ldapAdminGroup = $ldap.getGroupInfos($global:VRA_GROUPS_ADMIN_GROUP)
+	if($null -eq $ldapAdminGroup)
+	{
+		Throw ("Admin group '{0'}' missing" -f $global:VRA_GROUPS_ADMIN_GROUP)
+	}
+	# Ajout de l'ID du groupe à ajouter comme "admin"
+	$adminSciperList += $ldapAdminGroup.uniqueidentifier
 
 	# Si le groupe n'existe pas, 
 	if($null -eq $group)
@@ -434,39 +456,69 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [s
 		$options = @{
 			maillist = '0'
 		}
-		$group = $groupsApp.addGroup($name, $desc, "", $options)
+		if(!$simulation)
+		{
+			$group = $groupsApp.addGroup($name, $desc, "", $options)
+		}
+		
 
 		# Ajout des membres
 		if($memberSciperList.count -gt 0)
 		{
 			$logHistory.addLineAndDisplay(("--> Adding {0} members..." -f $memberSciperList.count))
-			$groupsApp.addMembers($group.id, $memberSciperList)
+			if(!$simulation)
+			{
+				$groupsApp.addMembers($group.id, $memberSciperList)
+			}
 		}
 		
-		# Nom du groupe admin à ajouter 
-		$ldapAdminGroup = $ldap.getGroupInfos($global:VRA_GROUPS_ADMIN_GROUP)
-		if($null -eq $ldapAdminGroup)
-		{
-			Throw ("Admin group '{0'}' missing" -f $global:VRA_GROUPS_ADMIN_GROUP)
-		}
-
-		# Ajout de l'ID du groupe à ajouter comme "admin"
-		$adminSciperList += $ldapAdminGroup.uniqueidentifier
-
 		# Ajout des admins
 		$logHistory.addLineAndDisplay(("--> Adding {0} admins..." -f $adminSciperList.count))
-		$groupsApp.addAdmins($group.id, $adminSciperList)
-		
-		# Suppression du membre ajouté par défaut (celui du "caller", ajouté automatiquement à la création)
-		$groupsApp.removeMember($group.id, $groupsApp.getCallerSciper())
 
-		# Récupération du groupe
-		$group = $groupsApp.getGroupById($group.id)
+		if(!$simulation)
+		{
+			$groupsApp.addAdmins($group.id, $adminSciperList)
+		
+			# Suppression du membre ajouté par défaut (celui du "caller", ajouté automatiquement à la création)
+			$groupsApp.removeMember($group.id, $groupsApp.getCallerSciper())
+
+			# Récupération du groupe
+			$group = $groupsApp.getGroupById($group.id)
+		}
+		
 	}
 	else # le groupe exists
 	{
 		$logHistory.addLineAndDisplay(("--> Groups group '{0}' already exists" -f $name))
-	}
+		
+		# Si on a le droit de mettre à jour la liste des admins
+		if($allowAdminUpdate)
+		{
+			# Liste actuelle des admins
+			$currentAdminList = @($groupsApp.getAdminList($group.id) | Select-Object -ExpandProperty id | Sort-Object)
+
+			# Si la liste est différente de ce qui devrait être présent,
+			$adminDiff = Compare-Object -ReferenceObject $adminSciperList -DifferenceObject $currentAdminList
+			if($null -ne $adminDiff)
+			{
+				$adminDiff | Where-Object { $_.sideIndicator -eq "=>" } | Select-Object -ExpandProperty InputObject | ForEach-Object{
+					$logHistory.addLineAndDisplay(("--> Removing incorrect admin {0}..." -f $_))
+					if(!$simulation)
+					{
+						$groupsApp.removeAdmin($group.id, $_)
+					}
+				}
+				$adminDiff | Where-Object { $_.sideIndicator -eq "<=" } | Select-Object -ExpandProperty InputObject | ForEach-Object{
+					$logHistory.addLineAndDisplay(("--> Adding missing admin {0}..." -f $_))
+					if(!$simulation)
+					{
+						$groupsApp.addAdmin($group.id, $_)
+					}
+				}
+			}# Fin si la liste des admins n'est pas correcte
+		}# Fin SI on a le droit de mettre à jour la liste des admins 		
+		
+	}# FIN SI le groupe existe
 
 	return $group
 }
@@ -814,7 +866,7 @@ try
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent) -eq $false)
 					{
 						if($notifications.missingEPFLADGroups -notcontains $approveGroupNameGroups)
 						{
@@ -849,7 +901,7 @@ try
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $adminGroupNameAD -groupDesc $adminGroupDescAD -groupMemberGroup $adminGroupNameGroups `
-					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
+					-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 					$notifications.missingEPFLADGroups += $adminGroupNameGroups
@@ -860,7 +912,7 @@ try
 
 
 				if((createADGroupWithContent -groupName $supportGroupNameAD -groupDesc $supportGroupDescAD -groupMemberGroup $supportGroupNameGroups `
-					-OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::Support) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
+					-OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::Support) -simulation $SIMULATION_MODE) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage à la faculté suivante car on ne peut pas créer celle-ci
 					$notifications.missingEPFLADGroups += $supportGroupNameGroups
@@ -1159,6 +1211,7 @@ try
 			$itServices = [ITServices]::new()
 
 			$notifications.missingITSADGroups = @()
+			$notifications.missingServiceManagers = @()
 			
 			$servicesList = @{}
 
@@ -1184,12 +1237,24 @@ try
 		
 					$counters.inc('its.serviceProcessed')
 		
-					$groupsContentAndAdmin = @()
+					# Liste des admins avec de potentiels "admin" additionnels
+					$groupsContentAndAdmin = $service.additionalGroupsAdminSciperList
 
+					<# S'il y a un service manager de défini (il se peut qu'il n'y en ait pas dans le cas où c'est une unité VPSI mais pour 
+						laquelle la création du BG n'a pas encore été autorisé par le chef de service)
+					#>
 					if($service.serviceManagerSciper -ne "")
 					{
-						$groupsContentAndAdmin = @($service.serviceManagerSciper)
-					}
+						$groupsContentAndAdmin += $service.serviceManagerSciper
+
+						# Si on n'a aucune information sur le service manager (genre il a quitté l'EPFL)
+						if($null -eq $ldap.getPersonInfos($service.serviceManagerSciper))
+						{
+							$notifications.missingServiceManagers += ("{0} ({1} - {2})" -f $service.serviceManagerSciper, $service.longName, $service.snowId)
+							
+							$logHistory.addWarningAndDisplay(("--> Service manager with sciper {0} doesn't exists anymore..." -f $service.serviceManagerSciper))
+						}
+					}# FIN SI on a un service manager pour le service
 
 					# Service de type "User"
 					if($sourceType -eq [ADGroupCreateSourceType]::User)
@@ -1232,7 +1297,7 @@ try
 
 						# Création des groupes + gestion des groupes prérequis 
 						if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
-							-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+							-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent) -eq $false)
 						{
 							# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
 							if($notifications.missingITSADGroups -notcontains $approveGroupNameGroups)
@@ -1263,7 +1328,7 @@ try
 		
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
-						-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 						$notifications.missingITSADGroups += $admSupGroupNameGroups
@@ -1286,16 +1351,15 @@ try
 					# Récupération des infos du groupe dans Groups
 					$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
 					$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
-					
-					#$adminSciperList = 
 
 					# Création du groupe dans Groups s'il n'existe pas
 					$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
-																		-memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin
+																		-memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin -allowAdminUpdate `
+																		-simulation $SIMULATION_MODE
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
-						-OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -simulation $SIMULATION_MODE -updateExistingContent) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 						if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
@@ -1412,12 +1476,13 @@ try
 
 						# Création du groupe dans Groups s'il n'existe pas
 						$approveGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $approveGroupNameGroups -desc $approveGroupDescGroups `
-																			-memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper)
+																			-memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper) `
+																			-simulation $SIMULATION_MODE
 					}
 					
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroupsAD `
-						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et on note de passer au service suivant car on ne peut pas créer celui-ci
 						if($notifications.missingADGroups -notcontains $approveGroupNameGroupsAD)
@@ -1449,7 +1514,7 @@ try
 				$roleAdmSupGroupOK = $true
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
-					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE -updateExistingContent $false) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true) -simulation $SIMULATION_MODE) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					$notifications.missingRSRCHADGroups += $admSupGroupNameGroups
@@ -1479,12 +1544,13 @@ try
 				
 				# Création du groupe dans Groups s'il n'existe pas
 				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
-																	 -memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper)
+																	 -memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper) `
+																	 -simulation $SIMULATION_MODE
 
 				$roleSharedGroupOk = $true
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
-					 -OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -simulation $SIMULATION_MODE -updateExistingContent $true) -eq $false)
+					 -OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -simulation $SIMULATION_MODE -updateExistingContent) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
 					if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
