@@ -417,7 +417,9 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Créé un groupe dans Groups (s'il n'existe pas)
+	BUT : Créé un groupe dans Groups (s'il n'existe pas).
+			Un groupe d'administration (défini par $global:VRA_GROUPS_ADMIN_GROUP) sera automatiquement
+			ajouté aux admins du groupe créé
 
 	IN  : $groupsApp			-> Objet permettant d'accéder à l'API des groups
 	IN  : $ldap					-> Objet permettant d'accéder au LDAP EPFL
@@ -426,7 +428,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 	IN  : $memberSciperList		-> Tableau avec la liste des scipers des membres du groupe
 	IN  : $adminSciperList		-> Tableau avec la liste des scipers des admins du groupe
 	IN  : $simulation			-> $true|$false Pour dire si on est en train de faire tourner en mode "simulation"
-	IN  : $$allowAdminUpdate	-> Switch pour dire si on autorise à mettre à jour la
+	IN  : $allowAdminUpdate		-> Switch pour dire si on autorise à mettre à jour la
 									liste des administrateurs du groupe
 
 	RET : Le groupe
