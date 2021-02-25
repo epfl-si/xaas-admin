@@ -57,6 +57,7 @@ class ITServices
     {
         # On contrôle que le shortname du service n'existe pas déjà pour l'environnement courant
         $svcIDList = @()
+        $svcShortNameList = @()
         Foreach($service in $this.serviceList.$forTargetEnv)
         {
             if($svcIDList -notcontains $service.snowId)
@@ -66,6 +67,15 @@ class ITServices
             else
             {
                 Throw ("Duplicate ITServices snowId found ({0}) for '{1}' environment!" -f $service.snowId, $forTargetEnv)
+            }
+
+            if($svcShortNameList -notcontains $service.shortName)
+            {
+                $svcShortNameList += $service.shortName
+            }
+            else
+            {
+                Throw ("Duplicate ITServices short name found ({0}) for '{1}' environment!" -f $service.shortName, $forTargetEnv)
             }
         }
 
