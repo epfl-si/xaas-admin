@@ -628,7 +628,7 @@
             "longName":  "EXTERP Fonctionnement",
             "shortName":  "exterp",
             "snowId":  "SVC0179",
-            "serviceManagerSciper": "",
+            "serviceManagerSciper": "115218",
             "deniedVRAServiceList": [
                 {
                     "svc": "NAS (Public)",
