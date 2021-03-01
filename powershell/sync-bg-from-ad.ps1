@@ -357,15 +357,15 @@ function createOrUpdateBG
 		{
 			$existingBgId = (getBGCustomPropValue -bg $existingBg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
 			$logHistory.addWarningAndDisplay(("-> Impossible to create new BG with name '{0}' (ID={1}) because another one already exists with this name (ID={2})" -f `
-												$bgName, $bgId, $existingBgId))
+												$bgName, $bgEPFLID, $existingBgId))
 
-			$notifications.bgNameAlreadyTaken += ("Existing BG {0} ,ID={1}. New BG ID={1}" -f $bgName, $existingBgId, $bgId)
+			$notifications.bgNameAlreadyTaken += ("Existing BG {0} ,ID={1}. New BG ID={1}" -f $bgName, $existingBgId, $bgEPFLID)
 
 			$counters.inc('BGNotCreated')
 		}
 		else # Le Nom est libre, on peut aller de l'avant
 		{
-			$logHistory.addLineAndDisplay(("-> BG '{0}' (ID={1}) doesn't exists, creating..." -f $bgName, $bgId))
+			$logHistory.addLineAndDisplay(("-> BG '{0}' (ID={1}) doesn't exists, creating..." -f $bgName, $bgEPFLID))
 			# Création du BG
 			$bg = $vra.addBG($bgName, $bgDesc, $capacityAlertsEmail, $machinePrefixId, $customProperties)
 
