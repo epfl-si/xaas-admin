@@ -357,15 +357,17 @@ function createOrUpdateBG
 		{
 			$existingBgId = (getBGCustomPropValue -bg $existingBg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
 			$logHistory.addWarningAndDisplay(("-> Impossible to create new BG with name '{0}' (ID={1}) because another one already exists with this name (ID={2})" -f `
-												$bgName, $bgId, $existingBgId))
+												$bgName, $bgEPFLID, $existingBgId))
 
-			$notifications.bgNameAlreadyTaken += ("Existing BG {0} ,ID={1}. New BG ID={1}" -f $bgName, $existingBgId, $bgId)
+			$notifications.bgNameAlreadyTaken += ("Existing BG {0} ,ID={1}. New BG ID={1}" -f $bgName, $existingBgId, $bgEPFLID)
 
 			$counters.inc('BGNotCreated')
+			# On sort et on renvoie $null pour qu'on n'aille pas plus loin dans le traitement de ce BG pour le moment.
+			return $null
 		}
 		else # Le Nom est libre, on peut aller de l'avant
 		{
-			$logHistory.addLineAndDisplay(("-> BG '{0}' (ID={1}) doesn't exists, creating..." -f $bgName, $bgId))
+			$logHistory.addLineAndDisplay(("-> BG '{0}' (ID={1}) doesn't exists, creating..." -f $bgName, $bgEPFLID))
 			# Création du BG
 			$bg = $vra.addBG($bgName, $bgDesc, $capacityAlertsEmail, $machinePrefixId, $customProperties)
 
@@ -1897,6 +1899,9 @@ try
 
 	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")
 	
+	# Extraction de la liste des ID "custom" des éléments qui ont été traités. Cela sera donc les SVCxxxx ou ID d'unité suivant le tenant)
+	$doneBGidList = ($doneElementList | ForEach-Object { ($nameGenerator.extractInfosFromADGroupName($_.adGroup))[-1] } )
+
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
 	$vra.getBGList() | ForEach-Object {
 
@@ -1909,10 +1914,16 @@ try
 			$notifications.bgWithoutCustomPropType += $_.name
 			$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Business Group '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, $_.name))
 		}
-		elseif($isBGOfType -and ( ($doneElementList | ForEach-Object {$_.bgName} ) -notcontains $_.name))
+		else # On a les infos sur le type de BG
 		{
-			$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
-			setBGAsGhostIfNot -vra $vra -bg $_ | Out-Null
+			$bgId = (getBGCustomPropValue -bg $_ -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
+			# Si on n'a pas trouvé de groupe AD qui correspondait au BG, on peut le mettre en "ghost"
+			if(($null -ne $bgId) -and  ($doneBGidList -notcontains $bgId))
+			{
+				$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
+				setBGAsGhostIfNot -vra $vra -bg $_ | Out-Null
+			}
+			
 
 		}
 
