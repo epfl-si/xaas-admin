@@ -4,6 +4,7 @@ config-grants.json
 config-groups.json
 config-mynas.json
 config-nsx.json
+config-snow.json
 config-vra.json
 config-vrops.json
 config-vsphere.json

@@ -43,12 +43,14 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "GroupsAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "SnowAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
 $configVra = [ConfigReader]::New("config-vra.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configGrants = [ConfigReader]::New("config-grants.json")
 $configGroups = [ConfigReader]::New("config-groups.json")
+$configSnow = [ConfigReader]::New("config-snow.json")
 
 # Les types de rôles pour l'application Tableau
 enum TableauRoles 
@@ -234,10 +236,10 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 					$templateName = "level-4-ge-unit-not-found"
 				}
 
-				# Service manager manquants pour ITS
-				'missingServiceManagers'
+				# Service manager pas trouvés dans Snow
+				'serviceManagerNotFound'
 				{
-					$valToReplace.serviceManagerList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.serviceList = ($uniqueNotifications -join "</li>`n<li>")
 
 					$mailSubject = "Error - Service Manager not found for some services!"
 
@@ -415,7 +417,9 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Créé un groupe dans Groups (s'il n'existe pas)
+	BUT : Créé un groupe dans Groups (s'il n'existe pas).
+			Un groupe d'administration (défini par $global:VRA_GROUPS_ADMIN_GROUP) sera automatiquement
+			ajouté aux admins du groupe créé
 
 	IN  : $groupsApp			-> Objet permettant d'accéder à l'API des groups
 	IN  : $ldap					-> Objet permettant d'accéder au LDAP EPFL
@@ -424,7 +428,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 	IN  : $memberSciperList		-> Tableau avec la liste des scipers des membres du groupe
 	IN  : $adminSciperList		-> Tableau avec la liste des scipers des admins du groupe
 	IN  : $simulation			-> $true|$false Pour dire si on est en train de faire tourner en mode "simulation"
-	IN  : $$allowAdminUpdate	-> Switch pour dire si on autorise à mettre à jour la
+	IN  : $allowAdminUpdate		-> Switch pour dire si on autorise à mettre à jour la
 									liste des administrateurs du groupe
 
 	RET : Le groupe
@@ -733,6 +737,11 @@ try
 
 	# Pour faire les recherches dans LDAP
 	$ldap = [EPFLLDAP]::new()
+
+	# Pour accéder à ServiceNow
+	$snow = [snowAPI]::new($configSnow.getConfigValue(@("server")), 
+									$configSnow.getConfigValue(@("user")), 
+									$configSnow.getConfigValue(@("password")))
 								
 	Import-Module ActiveDirectory
 
@@ -1203,7 +1212,7 @@ try
 			$itServices = [ITServices]::new()
 
 			$notifications.missingITSADGroups = @()
-			$notifications.missingServiceManagers = @()
+			$notifications.serviceManagerNotFound = @()
 			
 			$servicesList = @{}
 
@@ -1227,35 +1236,55 @@ try
 		
 					$logHistory.addLineAndDisplay(("-> [{0}/{1}] Service {2}..." -f $serviceNo, $servicesList.$sourceType.Count, $service.shortName))
 		
+					# Si le service est inactif, on ne le traite pas. Cela peut être le cas par exemple pour les BG des unités DSI
+					# qui ont été "pré-remplis" dans le fichier "resources/itservices.json" mais qui ne sont pas forcément actifs
+					if(!$service.active)
+					{
+						$logHistory.addLineAndDisplay("--> Service not marked as active, skipping it!")
+						$counters.inc('its.serviceSkipped')
+						continue
+					}
+					
 					$counters.inc('its.serviceProcessed')
 		
 					# Liste des admins avec de potentiels "admin" additionnels
 					$groupsContentAndAdmin = $service.additionalGroupsAdminSciperList
-
-					<# S'il y a un service manager de défini (il se peut qu'il n'y en ait pas dans le cas où c'est une unité VPSI mais pour 
-						laquelle la création du BG n'a pas encore été autorisé par le chef de service)
-					#>
-					if($service.serviceManagerSciper -ne "")
-					{
-						$groupsContentAndAdmin += $service.serviceManagerSciper
-
-						# Si on n'a aucune information sur le service manager (genre il a quitté l'EPFL)
-						if($null -eq $ldap.getPersonInfos($service.serviceManagerSciper))
-						{
-							$notifications.missingServiceManagers += ("{0} ({1} - {2})" -f $service.serviceManagerSciper, $service.longName, $service.snowId)
-							
-							$logHistory.addWarningAndDisplay(("--> Service manager with sciper {0} doesn't exists anymore..." -f $service.serviceManagerSciper))
-						}
-					}# FIN SI on a un service manager pour le service
 
 					# Service de type "User"
 					if($sourceType -eq [ADGroupCreateSourceType]::User)
 					{
 						$deniedVRAServiceList = $service.deniedVRAServiceList
 						$hasApproval = $true
+
+						# Si c'est un "vrai" service dans ServiceNow (et pas un machin créé pour les projets là...)
+						if($service.snowId -like "svc*")
+						{
+							$logHistory.addLineAndDisplay(("--> Looking for service manager for '{0}' service..." -f $service.longName))
+
+							# On essaie de retrouver le service manager dans Snow
+							$serviceManager = $snow.getServiceManager($service.snowId)
+
+							# Si on n'a pas trouvé l'info dans Snow
+							if($null -eq $serviceManager)
+							{
+								$notifications.serviceManagerNotFound += ("{0} ({1})" -f $service.longName, $service.snowId)
+								
+								$logHistory.addWarningAndDisplay(("--> Service manager for Service '{0}' not found in serviceNow..." -f $service.snowId))
+							}
+							else # On a trouvé un Service Manager
+							{
+								$logHistory.addLineAndDisplay(("--> Service manager is {0} ({1})" -f $serviceManager.fullName, $serviceManager.sciper))
+								$groupsContentAndAdmin += $serviceManager.sciper
+							}
+
+						}# FIN Si c'est un vrai service
+
 					}
 					else # Service de type "Admin"
 					{
+						# Dans ce cas-là, on ne va pas chercher de service manager dans ServiceNow car forcément, il ne va pas exister
+						# du fait qu'on a mis un nom de service bidon
+
 						# Aucun service restreint
 						$deniedVRAServiceList = @()
 						$hasApproval = $false
