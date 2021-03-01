@@ -1,18 +1,43 @@
 {
     "dev": {
-        "server": "",
-        "user": "",
-        "password": ""
+        "infra":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "e2e":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        }        
     },
     "test": {
-        "server": "",
-        "user": "",
-        "password": ""
+        "infra": {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "e2e":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        }  
     },
     "prod": {
-        "server": "",
-        "user": "",
-        "password": ""
+        "infra": {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "e2e":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        }  
     }
 }
         

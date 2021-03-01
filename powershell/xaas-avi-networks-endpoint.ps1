@@ -58,6 +58,8 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "SnowAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "E2EAPI.inc.ps1"))
 
 # Chargement des fichiers propres à XaaS 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "Avi-Networks", "define.inc.ps1"))
@@ -233,9 +235,9 @@ try
 										$configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))	
 
     $aviNetworks = [AviNetworksAPI]::new($targetEnv,
-                                        $configAviNetworks.getConfigValue(@($targetEnv, "server")), 
-										$configAviNetworks.getConfigValue(@($targetEnv, "user")), 
-										$configAviNetworks.getConfigValue(@($targetEnv, "password")))
+                                        $configAviNetworks.getConfigValue(@($targetEnv, "infra", "server")), 
+										$configAviNetworks.getConfigValue(@($targetEnv, "infra", "user")), 
+										$configAviNetworks.getConfigValue(@($targetEnv, "infra", "password")))
 
     # Si on doit activer le Debug,
     if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
