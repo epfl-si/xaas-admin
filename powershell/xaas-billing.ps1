@@ -180,6 +180,14 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 					$templateName = "billing-incorrect-finance-center"
                 }
 
+
+                'copernicBillNotSentEmail'
+                {
+                    $valToReplace.entityList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Cannot send some bills by email"
+					$templateName = "billing-error-bill-per-email"
+                }
+
 				default
 				{
 					# Passage à l'itération suivante de la boucle
@@ -259,6 +267,7 @@ try
     $notifications=@{
         incorrectFinanceCenter = @()
         copernicBillNotSent = @()
+        copernicBillNotSentEmail = @()
     }
 
     # Pour accéder à la base de données
@@ -351,6 +360,7 @@ try
             $counters.add('PDFGenerated', '# PDF generated')
             $counters.add('PDFOldCleaned', '# Old PDF cleaned')
             $counters.add('billSentByEmail', '# Bill send by email')
+            $counters.add('billSentByEmailError', '# error when sending bill by email')
             $counters.add('billIncorrectFinanceCenter', '# incorrect finance center')
             
 
@@ -674,9 +684,20 @@ try
                                 {
                                     $logHistory.addLineAndDisplay("> Sending mail...")
                                     $mailSubject = "vRA Billing - {0}" -f $billDescription
-                                    $billingObject.sendBillByMail($entity.entityFinanceCenter, $targetPDFPath, $mailSubject, $periodStartDate, $periodEndDate)
 
-                                    $counters.inc('billSentByEmail')  
+                                    # Tentative d'envoi du mail
+                                    try
+                                    {
+                                        $billingObject.sendBillByMail($entity.entityFinanceCenter, $targetPDFPath, $mailSubject, $periodStartDate, $periodEndDate)
+
+                                        $counters.inc('billSentByEmail')
+                                    }
+                                    catch # Gestion des erreurs
+                                    {
+                                        $notifications.copernicBillNotSentEmail += ("{0} = {1}" -f $entity.entityFinanceCenter, $_.Exception.Message)
+                                        $counters.inc('billSentByEmailError')
+                                    }
+                                    
                                 }
                                 else # On est en mode simulation
                                 {
