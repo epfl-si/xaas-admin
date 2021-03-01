@@ -45,9 +45,9 @@ function execRequest([string]$request)
 
     $res = $sqldb.execute($request)
 
-    if($res -eq 1)
+    if($res -gt 0)
     {
-        Write-Host -ForegroundColor:DarkGreen "Updated"
+        Write-Host -ForegroundColor:DarkGreen ("{0} Updated" -f $res)
     }
     else
     {
@@ -89,6 +89,10 @@ While($true)
                          $duplicates[1].entityElement, $duplicates[1].entityFinanceCenter, $duplicates[0].entityId
                     execRequest -request $request
     
+                    # On attache les éventuelles mesures faites à la nouvelle entrée pour qu'elles soient à l'ancienne
+                    $request = "UPDATE dbo.BillingItem SET parentEntityId='{0}' WHERE parentEntityId='{1}'" -f $duplicates[0].entityId, $duplicates[1].entityId
+                    execRequest -request $request
+
                     $request = "DELETE FROM dbo.BillingEntity WHERE entityId='{0}'" -f $duplicates[1].entityId
                     execRequest -request $request
                 
