@@ -103,14 +103,13 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 	# Si le groupe n'existe pas encore 
 	if($null -eq $adGroup)
 	{
+		$logHistory.addLineAndDisplay(("--> Creating AD group '{0}'..." -f $groupName))
 		if(-not $simulation)
 		{
-			$logHistory.addLineAndDisplay(("--> Creating AD group '{0}'..." -f $groupName))
 			# Création du groupe
 			New-ADGroup -Name $groupName -Description $groupDesc -GroupScope DomainLocal -Path $OU
-
-			$counters.inc('ADGroupsCreated')
 		}
+		$counters.inc('ADGroupsCreated')
 	}
 	else
 	{
@@ -131,22 +130,25 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 
 	# Si on arrive ici, c'est que le groupe à mettre dans le nouveau groupe AD existe
 
-	if(-not $simulation)
+	
+	# Si le groupe vient d'être CREE
+	# OU
+	# qu'il existe déjà et qu'on a le droit de mettre à jour son contenu,
+	if( ($alreadyExists -eq $false) -or ($alreadyExists -and $updateExistingContent))
 	{
-		# Si le groupe vient d'être CREE
-		# OU
-		# qu'il existe déjà et qu'on a le droit de mettre à jour son contenu,
-		if( ($null -eq $adGroup) -or (($null -ne $ADGroup) -and $updateExistingContent))
+		$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
+
+		if(-not $simulation)
 		{
-			$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
 			# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
 			Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
 			# Et on remet les bons membres
 			Add-ADGroupMember $groupName -Members $groupMemberGroup
 		}
-			
 	}
-	
+
+			
+		
 	return $true
 }
 
@@ -1162,7 +1164,10 @@ try
 				if($facApprovalMembers.Count -gt 0)
 				{
 					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
-					updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower()) -targetTenant $targetTenant
+					if(-not $SIMULATION_MODE)
+					{
+						updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower()) -targetTenant $targetTenant
+					}
 				}
 
 				if($exitFacLoop)
@@ -1189,7 +1194,10 @@ try
 			if($adminMembers.Count -gt 0)
 			{
 				$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
-				updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
+				if(-not $SIMULATION_MODE)
+				{
+					updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
+				}
 			}
 			
 		}# FIN SI Tenant EPFL
@@ -1642,7 +1650,10 @@ try
 
 				# On supprime aussi le groupe AD pour l'approbation (niveau 2)
 				$logHistory.addLineAndDisplay(("--> {0} doesn't exists anymore, removing AD approval group {1} " -f $element, $approveADGroupName))
-				Remove-ADGroup $approveADGroupName -Confirm:$false
+				if(-not $SIMULATION_MODE)
+				{	
+					Remove-ADGroup $approveADGroupName -Confirm:$false	
+				}
 
 			}
 
@@ -1659,9 +1670,11 @@ try
 											unitName = $descInfos.unit
 											unitID = ''
 											financeCenter = ''})
-
-				# Suppression des accès pour le business group correspondant au groupe AD courant.
-				updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+				if(-not $SIMULATION_MODE)
+				{
+					# Suppression des accès pour le business group correspondant au groupe AD courant.
+					updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+				}
 			}
 			
 		}

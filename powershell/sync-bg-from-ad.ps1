@@ -1082,15 +1082,6 @@ function handleNotifications
 				}
 
 				# ---------------------------------------
-				# Groupes AD soudainement devenus vides...
-				'emptyADGroups'
-				{
-					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
-					$mailSubject = "Info - AD groups empty for Business Group"
-					$templateName = "empty-ad-groups"
-				}
-
-				# ---------------------------------------
 				# Groupes AD pour les rôles...
 				'adGroupsNotFound'
 				{
