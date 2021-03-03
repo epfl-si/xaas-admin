@@ -1,4 +1,5 @@
 config-billing.json
+config-e2e.json
 config-global.json
 config-grants.json
 config-groups.json

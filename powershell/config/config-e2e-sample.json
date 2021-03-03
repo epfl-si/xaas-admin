@@ -1,0 +1,23 @@
+{
+    // Information sur les serveurs de l'infrastructure
+    "infra": {
+        "dev": {
+            "server": ""
+        },
+        "test": {
+            "server": ""
+        },
+        "prod": {
+            "server": ""
+        }
+    },
+    // Liste des services pour lesquels on va faire des modifications d'état dans ServiceNow
+    "serviceList": [
+        {
+            "svcId": "",
+            "user": "",
+            "password":""
+        }
+        // compléter avec d'autres services
+    ]
+}
