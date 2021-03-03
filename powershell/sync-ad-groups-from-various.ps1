@@ -1277,7 +1277,7 @@ try
 							{
 								$notifications.serviceManagerNotFound += ("{0} ({1})" -f $service.longName, $service.snowId)
 								
-								$logHistory.addWarningAndDisplay(("--> Service manager for Service '{0}' not found in serviceNow..." -f $service.snowId))
+								$logHistory.addWarningAndDisplay(("--> Service manager for Service '{0}' not found in ServiceNow..." -f $service.snowId))
 							}
 							else # On a trouvé un Service Manager
 							{

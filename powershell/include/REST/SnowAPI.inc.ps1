@@ -54,8 +54,8 @@ class SnowAPI: RESTAPICurl
 
         $res = ([RESTAPICurl]$this).callAPI($uri, "GET", $null, $this.extraArgs)
 
-        # Si pas trouvé
-        if($res.result.count -eq 0)
+        # Si pas trouvé ou vide car il n'y a aucun service manager de défini
+        if(($res.result.count -eq 0) -or (($res.result[0] | Select-Object -ExpandProperty owned_by.name) -eq ""))
         {
             return $null
         }
