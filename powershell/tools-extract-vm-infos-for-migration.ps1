@@ -79,7 +79,7 @@ $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server"))
 
 # Recherche de la VM vRA
 Write-Host ("Getting vRA VM '{0}' on {1} tenant in {2} infrastructure..." -f $vmName, $targetTenant, $targetEnv)
-$vraVm = $vra.getItem("Virtual Machine", $vmName) 
+$vraVm = $vra.getItem($global:VRA_ITEM_TYPE_VIRTUAL_MACHINE, $vmName) 
 
 if($null -eq $vraVm)
 {
