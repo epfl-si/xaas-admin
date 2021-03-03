@@ -16,10 +16,10 @@
 
 # Priorités possibles
 enum E2EStatusPriority {
-    Outage
-    Degradation
-    Up
-    DescriptionUpdate
+    Outage = 1
+    Degradation = 2
+    Up = 5
+    DescriptionUpdate = 6
 }
 
 class E2EAPI: RESTAPICurl
@@ -48,31 +48,6 @@ class E2EAPI: RESTAPICurl
         $this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
     }
-
-
-    <#
-	-------------------------------------------------------------------------------------
-        BUT : Initialise le statut d'un service
-        
-        IN  : $priority			    -> priorité pour laquelle on veut l'ID
-
-        RET : Identifiant numérique de la priorité
-            1 : Outage
-            2 : Degradation
-            5 : Up
-            6 : Modification de la Short Description (visible des utilisateurs) 
-	#>
-    hidden [int] getPriorityId([E2EStatusPriority]$priority)
-    {
-        $id = switch($priority)
-        {
-            Outage { 1 }
-            Degradation { 2 }
-            Up { 5 }
-            DescriptionUpdate { 6 }
-        }
-        return $id
-    }
     
     <#
 		-------------------------------------------------------------------------------------
@@ -100,7 +75,7 @@ class E2EAPI: RESTAPICurl
         return $response
     }
 
-
+    
     <#
 	-------------------------------------------------------------------------------------
         BUT : Initialise le statut du service
@@ -128,7 +103,7 @@ class E2EAPI: RESTAPICurl
 
         $replace = @{
             svcId = $serviceId
-            priority = $this.getPriorityId($priority)
+            priority = $priority.value__
             shortDescription = $shortDescription
             description = $description
         }
