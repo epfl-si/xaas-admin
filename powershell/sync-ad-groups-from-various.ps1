@@ -437,6 +437,10 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 #>
 function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList, [bool]$simulation, [switch]$allowAdminUpdate)
 {
+	# Suppression des potentiels doublons
+	$memberSciperList = $memberSciperList | Sort-Object | Get-Unique
+	$adminSciperList = $adminSciperList | Sort-Object | Get-Unique
+
 	# Recherche du groupe pour voir s'il existe
 	$group = $groupsApp.getGroupByName($name, $true)
 
