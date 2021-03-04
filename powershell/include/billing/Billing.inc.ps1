@@ -79,14 +79,14 @@ class Billing
         BUT : Renvoie une entité ou $null si pas trouvé
         
         IN  : $type             -> Type de l'entité (du type énuméré défini plus haut).
-        IN  : $element          -> Id d'unité, no de service ou no de fond de projet...
+        IN  : $customId         -> Id d'unité, no de service ou no de fond de projet...
 
         RET : Objet avec les infos de l'entité 
             $null si pas trouvé
     #>
-    hidden [PSObject] getEntity([BillingEntityType]$type, [string]$element)
+    hidden [PSObject] getEntity([BillingEntityType]$type, [string]$customId)
     {
-        $request = "SELECT * FROM BillingEntity WHERE entityType='{0}' AND entityElement='{1}'" -f $type, $element
+        $request = "SELECT * FROM BillingEntity WHERE entityType='{0}' AND entityCustomId='{1}'" -f $type, $customId
 
         $entity = $this.db.execute($request)
 
@@ -104,32 +104,34 @@ class Billing
         BUT : Ajoute une entité et la met à jour si elle existe déjà
         
         IN  : $type             -> Type de l'entité (du type énuméré défini plus haut).
-        IN  : $element          -> Id d'unité, no de service ou no de fond de projet...
+        IN  : $customId         -> Id d'unité, no de service ou no de fond de projet...
+        IN  : $name             -> Nom de l'entité (nom d'unité, nom court de projet, etc..)
         IN  : $financeCenter    -> No du centre financier auquel imputer la facture
                                     OU
                                     adresse mail à laquelle envoyer la facture
 
         RET : ID de l'entité
     #>
-    hidden [int] addEntity([BillingEntityType]$type, [string]$element, [string]$financeCenter)
+    hidden [int] addEntity([BillingEntityType]$type, [string]$customId, [string]$name, [string]$financeCenter)
     {
-        $entity = $this.getEntity($type, $element)
+        $entity = $this.getEntity($type, $customId)
 
         # Si l'entité existe déjà dans la DB
         if($null -ne $entity)
         {
             # On commence par la mettre à jour (dans le doute)
-            $this.updateEntity([int]$entity.entityId, $type, $element, $financeCenter)
+            $this.updateEntity([int]$entity.entityId, $type, $name, $financeCenter)
             # Et on retourne son ID
             return [int]$entity.entityId
         }
 
         # L'entité n'existe pas, donc on l'ajoute 
-        $request = "INSERT INTO BillingEntity (entityType, entityElement, entityFinanceCenter) VALUES ('{0}', '{1}', '{2}')" -f $type.toString(), $element, $financeCenter
+        $request = "INSERT INTO BillingEntity (entityType, entityName, entityFinanceCenter, entityCustomId) VALUES ('{0}', '{1}', '{2}', '{3}')" -f `
+                    $type.toString(), $name, $financeCenter, $customId
 
         $this.db.execute($request) | Out-Null
 
-        return [int] ($this.getEntity($type, $element)).entityId
+        return [int] ($this.getEntity($type, $customId)).entityId
     }
 
 
@@ -139,16 +141,16 @@ class Billing
         
         IN  : $id               -> ID de l'entity
         IN  : $type             -> Type de l'entité (du type énuméré défini plus haut).
-        IN  : $element          -> Id d'unité, no de service ou no de fond de projet...
+        IN  : $name             -> Nom de l'entité (nom d'unité, nom court de projet, etc..)
         IN  : $financeCenter    -> No du centre financier auquel imputer la facture
                                     OU
                                     adresse mail à laquelle envoyer la facture
     #>
-    hidden [void] updateEntity([int]$id, [BillingEntityType]$type, [string]$element, [string]$financeCenter)
+    hidden [void] updateEntity([int]$id, [BillingEntityType]$type, [string]$name, [string]$financeCenter)
     {
         # L'entité n'existe pas, donc on l'ajoute 
-        $request = "UPDATE BillingEntity SET entityType='{0}', entityElement='{1}', entityFinanceCenter='{2}' WHERE entityId={3}" -f `
-                    $type.toString(), $element, $financeCenter, $id
+        $request = "UPDATE BillingEntity SET entityType='{0}', entityName='{1}', entityFinanceCenter='{2}' WHERE entityId={3}" -f `
+                    $type.toString(), $name, $financeCenter, $id
 
         $this.db.execute($request) | Out-Null
     }
@@ -375,8 +377,8 @@ class Billing
         else # On a trouvé les infos du BG dans vRA donc on ajoute/met à jour l'entité
         {
             # Ajout de l'entité à la base de données (si pas déjà présente)
-            $entityId = $this.addEntity($entityType, `
-                                        ("{0} {1}" -f $bgId, (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME)), `
+            $entityId = $this.addEntity($entityType, $bgId, `
+                                        (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME), `
                                         (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
         }
         

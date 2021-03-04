@@ -415,8 +415,17 @@ try
 
 	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")
 
+	$bgList = $vra.getBGList()
+
+	# Si on a entré un BG donné à effacer, 
+	if($bgName -ne "")
+	{
+		# On extrait celui-ci de la liste
+		$bgList = $bgList | Where-Object { $_.name -eq $bgName }
+	}
+
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
-	$vra.getBGList() | ForEach-Object {
+	$bgList | ForEach-Object {
 
 		$logHistory.addLineAndDisplay(("Checking Business Group '{0}'..." -f $_.name))
 
