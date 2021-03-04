@@ -19,6 +19,7 @@ $global:DATA_FOLDER                 = ([IO.Path]::Combine("$PSScriptRoot", "..",
 $global:LOGS_FOLDER                 = ([IO.Path]::Combine("$PSScriptRoot", "..", "logs"))
 $global:MAIL_TEMPLATE_FOLDER        = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "mail-templates"))
 $global:JSON_TEMPLATE_FOLDER        = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "json-templates"))
+$global:VRA_JSON_TEMPLATE_FOLDER    = ([IO.Path]::Combine($global:JSON_TEMPLATE_FOLDER, "vRAAPI"))
 $global:JSON_2ND_DAY_ACTIONS_FOLDER = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "2nd-day-actions"))
 $global:ERROR_FOLDER                = ([IO.Path]::Combine("$PSScriptRoot", "..", "errors"))
 $global:RESULTS_FOLDER              = ([IO.Path]::Combine("$PSScriptRoot", "..", "results"))
@@ -42,6 +43,9 @@ $global:VRA_TENANT__DEFAULT      = "vsphere.local"
 $global:VRA_TENANT__EPFL         = "EPFL"
 $global:VRA_TENANT__ITSERVICES   = "ITServices"
 $global:VRA_TENANT__RESEARCH     = "Research"
+
+# Nom du groupe "groups" utilisé par les admins vRA. Sera utilisé principalement pour gérer les groupes dans "groups"
+$global:VRA_GROUPS_ADMIN_GROUP = "vsissp-prod-admins"
 
 # Nom des tenants que l'on devra traiter
 $global:TARGET_TENANT_LIST = @($global:VRA_TENANT__EPFL, $global:VRA_TENANT__ITSERVICES, $global:VRA_TENANT__RESEARCH<#, $global:VRA_TENANT__DEFAULT #>)
@@ -94,6 +98,8 @@ $global:NAS_PRIVATE_ISO_PROD = "\\nassvmmix01\si_vsissp_iso_priv_repo_p01_app"
 # Le nombre de jours pendant lesquels on garde les fichiers ISO privés avant de les supprimer
 $global:PRIVATE_ISO_LIFETIME_DAYS = 30
 
+# Type d'élément géré nativement par vRA
+$global:VRA_ITEM_TYPE_VIRTUAL_MACHINE = "Virtual Machine"
 
 ## Fonctionnement alternatif
 # Fichiers utilisés pour "altérer" le fonctionnement des scripts
@@ -106,6 +112,7 @@ $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE  = "FORCE_ISO_FOLDER_ACL
 ## NSX
 # Nom de la section avant laquelle il faut créer les sections de Firewall vide
 $global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME = "Legacy VLAN"
+$global:NSX_VM_MEMBER_TYPE = "VirtualMachine"
 
 # Mail
 $global:VRA_MAIL_SUBJECT_PREFIX = "vRA Service [{0}->{1}]"

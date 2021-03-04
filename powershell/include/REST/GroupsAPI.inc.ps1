@@ -53,7 +53,7 @@ class GroupsAPI: RESTAPICurl
     #>
     hidden [string] getBaseURI([string]$command)
     {
-        return ("https://{0}/cgi-bin/rwsgroups/{1}?app={2}&caller={3}" -f $this.server, $command, $this.appName, $this.callerSciper)
+        return ("{0}/cgi-bin/rwsgroups/{1}?app={2}&caller={3}" -f $this.baseUrl, $command, $this.appName, $this.callerSciper)
     }
 
 
@@ -206,6 +206,8 @@ class GroupsAPI: RESTAPICurl
     {
         return $this.addGroup($name, $description, $url, @{})
     }
+
+
     <#
 		-------------------------------------------------------------------------------------
         BUT : Ajoute un groupe. Par défaut, on met comme owner ce qui est configuré pour faire
@@ -269,6 +271,34 @@ class GroupsAPI: RESTAPICurl
         $this.callAPI($uri, "POST", $null) | Out-Null
 
         return $this.getGroupByName($name)
+    }
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renomme un groupe
+
+        IN  : $currentName  -> Nom actuel du groupe
+        IN  : $newName      -> Nouveau nom du groupe
+
+        RET : Objet représentant le groupe renommé
+                $null si le groupe n'existe pas à la base
+    #>
+    [PSObject] renameGroup([string]$currentName, [string]$newName)
+    {
+
+        $group = $this.getGroupByName($currentName)
+
+        if($null -eq $group)
+        {
+            return $null
+        }
+
+        $uri = "{0}&id={1}&newname={2}" -f $this.getBaseURI('renameGroup'), $group.id, $newName
+
+        $this.callAPI($uri, "POST", $null) | Out-Null
+
+        return $this.getGroupByName($newName)
     }
 
 
@@ -378,13 +408,13 @@ class GroupsAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Liste les admins d'un groupe
+        BUT : Renvoie les admins d'un groupe
 
         IN  : $groupId          -> ID du groupe
 
         RET : Tableau avec les admins
     #>
-    [Array] listAdmins([string]$groupId)
+    [Array] getAdminList([string]$groupId)
     {
         $uri = "{0}&id={1}" -f $this.getBaseURI('listAdmins'), $groupId
 

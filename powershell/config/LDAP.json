@@ -5,22 +5,26 @@
             {
                 "rootDN": "o=epfl,c=ch",
                 "nbLevelsForSearch": 3,
-                "limitToFaculties": [ "SV", "SI", "P", "STI", "ENAC", "IC", "SB", "CDM", "CDH", "E", "ENT-E", "R", "RHO", "ENT-R", "ENT-P", 
+                "limitToFaculties": [ "SV", "STI", "ENAC", "IC", "SB", "CDM", "CDH", "ENT-P", "P", "ENT-E", "ENT-R",
                     /* Anciennement SI */    
                     "VPO-SI", 
                     /* Anciennement RHO */
                     "VPO", 
+                    "VPO-A",
                     "VPO-RH", 
                     "VPO-SE",
                     "VPO-DC",
-                    /* Anciennement ENT-R et ENT-E */
+                    /* Provient de ENT-R et ENT-E */
                     "VPA-AVP-CP",
                     /* Anciennement E */ 
                     "VPA-AVP-E", 
                     "VPA-AVP-PGE",
+                    "VPA-AVP-SAO",
                     /* Anciennement R */
                     "VPA",
-                    "VPA-AVP-R"                    
+                    "VPA-AVP-R",
+                    /* Provient de P */
+                    "I"
                 ]
             },
             {
@@ -30,9 +34,5 @@
             }
         ]
         
-    },
-    "members":  {
-        "server": "scoldap.epfl.ch:636",
-        "rootDN": "o=epfl,c=ch"
     }
 }

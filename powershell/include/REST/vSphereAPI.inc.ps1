@@ -42,6 +42,9 @@ class vSphereAPI: RESTAPICurl
 	#>
 	vSphereAPI([string] $server, [string] $userAtDomain, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
+		# Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
+		$this.setJSONSubPath(@( (Get-PSCallStack)[0].functionName) )
+		
 		$this.headers = @{}
 		$this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
@@ -51,7 +54,8 @@ class vSphereAPI: RESTAPICurl
 		# Mise à jour des headers
 		$this.headers.Add('Authorization', ("Basic {0}" -f $authInfos))
 
-		$uri = "https://{0}/rest/com/vmware/cis/session" -f $this.server
+		$this.baseUrl = "{0}/rest" -f $this.baseUrl
+		$uri = "{0}/com/vmware/cis/session" -f $this.baseUrl
 
 		# Pour autoriser les certificats self-signed
 		[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $True }
@@ -73,7 +77,7 @@ class vSphereAPI: RESTAPICurl
 	#>
 	[Void] disconnect()
 	{
-		$uri = "https://{0}/rest/com/vmware/cis/session" -f $this.server
+		$uri = "{0}/com/vmware/cis/session" -f $this.baseUrl
 
 		$this.callAPI($uri, "Delete", $null)
 	}    
@@ -91,7 +95,7 @@ class vSphereAPI: RESTAPICurl
 	#>
 	hidden [PSObject] getVM([string] $vmName)
 	{
-		$uri = "https://{0}/rest/vcenter/vm?filter.names={1}" -f $this.server, $vmName
+		$uri = "{0}/vcenter/vm?filter.names={1}" -f $this.baseUrl, $vmName
 		return ($this.callAPI($uri, "Get", $null)).value[0]
 	}
 
@@ -105,7 +109,7 @@ class vSphereAPI: RESTAPICurl
 	#>
 	hidden [PSObject] getTagById([string] $tagId)
 	{
-		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag/id:{1}" -f $this.server, $tagId
+		$uri = "{0}/com/vmware/cis/tagging/tag/id:{1}" -f $this.baseUrl, $tagId
 		return ($this.callAPI($uri, "Get", $null)).value
 	}
 	
@@ -119,7 +123,7 @@ class vSphereAPI: RESTAPICurl
 	#>
 	hidden [PSObject] getCategoryById([string] $categoryId)
 	{
-		$uri = "https://{0}/rest/com/vmware/cis/tagging/category/id:{1}" -f $this.server, $categoryId
+		$uri = "{0}/com/vmware/cis/tagging/category/id:{1}" -f $this.baseUrl, $categoryId
 		return ($this.callAPI($uri, "Get", $null)).value
 	}
 
@@ -167,7 +171,7 @@ class vSphereAPI: RESTAPICurl
 		}
 
 
-		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag-association/id:{1}?~action={2}" -f $this.server, $tag.id, $action
+		$uri = "{0}/com/vmware/cis/tagging/tag-association/id:{1}?~action={2}" -f $this.baseUrl, $tag.id, $action
 
 		$replace = @{tagId = $tag.id
 					objectType = "VirtualMachine"
@@ -272,7 +276,7 @@ class vSphereAPI: RESTAPICurl
     [Array] getVMTags([psobject] $vm)
     {
 
-		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag-association?~action=list-attached-tags" -f $this.server
+		$uri = "{0}/com/vmware/cis/tagging/tag-association?~action=list-attached-tags" -f $this.baseUrl
 
 		$replace = @{objectType = "VirtualMachine"
 					objectId = $vm.vm}
@@ -317,7 +321,7 @@ class vSphereAPI: RESTAPICurl
 	#>
 	[Array] getTagList()
 	{
-		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag" -f $this.server
+		$uri = "{0}/com/vmware/cis/tagging/tag" -f $this.baseUrl
 
 		return $this.callAPI($uri, "Get", $null).value
 	}
@@ -328,7 +332,7 @@ class vSphereAPI: RESTAPICurl
 	#>
 	[Array] getCategoryList()
 	{
-		$uri = "https://{0}/rest/com/vmware/cis/tagging/category" -f $this.server
+		$uri = "{0}/com/vmware/cis/tagging/category" -f $this.baseUrl
 
 		return $this.callAPI($uri, "Get", $null).value
 	}
@@ -341,7 +345,7 @@ class vSphereAPI: RESTAPICurl
 	#>
 	[Array] getTagList([string]$categoryName)
 	{
-		$uri = "https://{0}/rest/com/vmware/cis/tagging/tag" -f $this.server
+		$uri = "{0}/com/vmware/cis/tagging/tag" -f $this.baseUrl
 
 		return $this.callAPI($uri, "Get", $null).value
 	}

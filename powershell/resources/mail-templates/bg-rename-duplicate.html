@@ -1,0 +1,14 @@
+Les renommage des BG suivants n'ont pas pu être effectués car il existait déjà un BG avec le nouveau nom.<br>
+Il se peut qu'un changement au niveau des sources de données fasse que le BG avec le nom "cible" soit en fait un BG qui est passé en "ghost" car devant être supprimé. Et donc, vu qu'il garde
+son nom "normal" pendant qu'il est en mode "ghost", il n'est pas possible de renommer l'autre BG pour qu'il prenne son nouveau nom.<br>
+Pour la résolution, il faut faire les étapes suivantes:
+<ol>
+    <li>Se connecter à vRA pour vérifier que le BG qui porte le nouveau nom soit effectivement passé en "ghost"</li>
+    <li>Si le BG est effectivement passé en "ghost", utiliser le script <i>clean-ghost-bg.ps1</i> en lui passant en paramètre le nom du BG à supprimer (voir le USAGE du script pour les paramètres)</li>
+</ol>
+
+Liste des renommages concernés:
+<br>
+<ul>
+    <li>{{bgRenameList}}</li>
+</ul>

@@ -100,7 +100,7 @@ class NameGeneratorBase
 
             $global:VRA_TENANT__ITSERVICES
             {
-                # Le nom du BG est au format: its_<serviceShortName>
+                # Le nom du BG est au format: its_<svcId>
                 $dummy, $serviceShortName = [regex]::Match($bgName, '^its_([a-z0-9]+)').Groups | Select-Object -ExpandProperty value
 
                 if($null -eq $serviceShortName)
@@ -291,6 +291,10 @@ class NameGeneratorBase
         if(!$this.details.ContainsKey($name))
         {
             Throw ("Asked detail ({0}) doesn't exists in list" -f $name)
+        }
+        elseif($this.details.$name -eq "")
+        {
+            Throw ("Asked detail ({0}) has empty value" -f $name)
         }
 
         return $this.details.$name

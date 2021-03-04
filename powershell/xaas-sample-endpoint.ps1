@@ -157,7 +157,7 @@ try
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     # TODO: Adapter la ligne suivante
-    #$logHistory = [LogHistory]::new('xaas-s3', (Join-Path $PSScriptRoot "logs"), 30)
+    #$logHistory = [LogHistory]::new(@('xaas','s3', 'endpoint'), $global:LOGS_FOLDER, 30)
     
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))

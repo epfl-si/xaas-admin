@@ -53,7 +53,8 @@ class NetBackupAPI: RESTAPICurl
 	#>
 	NetBackupAPI([string] $server, [string] $user, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
-		$this.server = $server
+		# Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
+		$this.setJSONSubPath(@("XaaS", "Backup") )
 
 		<# Le plus souvent, on utilise 'application/json' pour les 'Accept' et 'Content-Type' mais NetBackup semble vouloir faire
 			autrement... du coup, obligé de mettre ceci car sinon cela génère des erreurs. Et au final, c'est toujours du JSON... #>
@@ -65,7 +66,7 @@ class NetBackupAPI: RESTAPICurl
 		$body = @{userName = $user
 					password = $password}
 
-		$uri = "https://{0}/login" -f $this.server
+		$uri = "{0}/login" -f $this.baseUrl
 
 		# Pour autoriser les certificats self-signed
 		[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $True }
@@ -128,7 +129,7 @@ class NetBackupAPI: RESTAPICurl
 	#>
 	[Void] disconnect()
 	{
-		$uri = "https://{0}/logout" -f $this.server
+		$uri = "{0}/logout" -f $this.baseUrl
 
 		$this.callAPI($uri, "Post", $null)
     }
@@ -156,7 +157,7 @@ class NetBackupAPI: RESTAPICurl
 
 		$pagination =  [System.Net.WebUtility]::UrlEncode("page[offset]=0&page[limit]={0}&" -f $global:NETBACKUP_API_PAGE_LIMIT_MAX)
 
-		$uri = "https://{0}/catalog/images?filter=clientName eq '{1}' and backupTime ge {2}&{3}" -f $this.server, $vmName, $dateAgo, $pagination
+		$uri = "{0}/catalog/images?filter=clientName eq '{1}' and backupTime ge {2}&{3}" -f $this.baseUrl, $vmName, $dateAgo, $pagination
 
 		
 
@@ -180,7 +181,7 @@ class NetBackupAPI: RESTAPICurl
     #>
     [PSObject] restoreVM([string]$vmName, [string]$backupId, [string]$backupTimestamp)
     {
-        $uri = "https://{0}/recovery/workloads/vmware/scenarios/full-vm/recover" -f $this.server
+        $uri = "{0}/recovery/workloads/vmware/scenarios/full-vm/recover" -f $this.baseUrl
 
 		# Si c'est le timestamp qui a été donné, 
 		if($backupId -eq "")
@@ -225,7 +226,7 @@ class NetBackupAPI: RESTAPICurl
     [PSCustomObject] getJobDetails([string]$jobId)
     {
 
-		$uri = "https://{0}/admin/jobs/{1}" -f $this.server, $jobId
+		$uri = "{0}/admin/jobs/{1}" -f $this.baseUrl, $jobId
 
 		$res = ($this.callAPI($uri, "Get", $null))
 
