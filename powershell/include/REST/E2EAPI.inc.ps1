@@ -6,6 +6,10 @@
         qui permettrait d'accéder à tous les services mais il faut par contre s'authentifier spécifiquement
         pour un service...
 
+        On doit donner la possibilité d'utiliser un Proxy car ServiceNow n'est pas hébergé
+         "on premise" et donc depuis les endpoints PowerShell, on ne peut pas attendre Snow
+         sans utiliser un proxy...
+
    AUTEUR : Lucien Chaboudez
    DATE   : Mars 2021
 
@@ -25,6 +29,7 @@ enum E2EStatusPriority {
 class E2EAPI: RESTAPICurl
 {
     hidden [Array] $serviceList
+    hidden [string] $proxy
 
     <#
 	-------------------------------------------------------------------------------------
@@ -35,8 +40,10 @@ class E2EAPI: RESTAPICurl
                                         .svcId
                                         .user
                                         .password
+        IN  : $proxy            -> Le proxy à utiliser. Peut être vide.
+                                    Format: http://<server>:<port>
 	#>
-	E2EAPI([string]$server, [Array]$serviceList): base($server)
+	E2EAPI([string]$server, [Array]$serviceList, [string]$proxy): base($server)
 	{
         # Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
 		$this.setJSONSubPath(@( (Get-PSCallStack)[0].functionName) )
@@ -47,6 +54,8 @@ class E2EAPI: RESTAPICurl
 
         $this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
+
+        $this.proxy = $proxy
     }
     
     <#
@@ -98,6 +107,12 @@ class E2EAPI: RESTAPICurl
 
         # Mise à jour des "extra args" pour pouvoir exécuter la requête correctement
         $extraArgs = "-u {0}:{1}" -f $serviceInfos.user, $serviceInfos.password
+
+        # Ajout des infos du proxy si besoin
+        if($this.proxy -ne "")
+        {
+            $extraArgs = "{0} --proxy {1}" -f $extraArgs, $this.proxy
+        }
 
         $uri = "{0}/import/u_event_api" -f $this.baseUrl
 

@@ -72,6 +72,7 @@ param([string]$targetEnv,
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configAviNetworks = [ConfigReader]::New("config-xaas-avi-networks.json")
 $configVra = [ConfigReader]::New("config-vra.json")
+$configE2E = [ConfigReader]::New("config-e2e.json")
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
@@ -212,6 +213,8 @@ try
     # Ajout d'informations dans le log
     $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
     
+    $nameGeneratorAviNetworks = [NameGeneratorAviNetworks]::new($targetEnv, $targetTenant)
+    
     <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
 	!! Attention !!
@@ -230,14 +233,18 @@ try
 
 
 	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-										$targetTenant, 
-										$configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
-										$configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))	
+                        $targetTenant, 
+                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
+                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))	
 
     $aviNetworks = [AviNetworksAPI]::new($targetEnv,
                                         $configAviNetworks.getConfigValue(@($targetEnv, "infra", "server")), 
 										$configAviNetworks.getConfigValue(@($targetEnv, "infra", "user")), 
 										$configAviNetworks.getConfigValue(@($targetEnv, "infra", "password")))
+
+    $e2e = 	[E2EAPI]::new($configE2E.getConfigValue(@("server", $targetEnv)), 
+                            $configE2E.getConfigValue(@("serviceList")),
+                            $configE2E.getConfigValue(@("proxy")))                    
 
     # Si on doit activer le Debug,
     if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))

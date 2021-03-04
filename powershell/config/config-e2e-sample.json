@@ -1,15 +1,14 @@
 {
+    /* 
+    Le proxy doit être sous la forme: 
+    http:\/\/<serverFQDN>:<port> 
+    */
+    "proxy": "",
     // Information sur les serveurs de l'infrastructure
-    "infra": {
-        "dev": {
-            "server": ""
-        },
-        "test": {
-            "server": ""
-        },
-        "prod": {
-            "server": ""
-        }
+    "server": {
+        "dev": "",
+        "test": "",
+        "prod": ""
     },
     // Liste des services pour lesquels on va faire des modifications d'état dans ServiceNow
     "serviceList": [
