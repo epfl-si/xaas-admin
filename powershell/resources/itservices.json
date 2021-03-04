@@ -593,7 +593,7 @@
             ]
         },
         {
-            "active": false,
+            "active": true,
             "longName":  "IDEV-FSD Fonctionnement",
             "shortName":  "idevfsd",
             "snowId":  "SVC0176",
@@ -684,7 +684,7 @@
             ]
         },
         {
-            "active": false,
+            "active": true,
             "longName":  "GE Fonctionnement",
             "shortName":  "ge",
             "snowId":  "SVC0185",
