@@ -140,7 +140,7 @@ try
         $counters.inc('BGProcessed')
         
         # Parcours des VM se trouvant dans le Business Group
-        $vra.getBGItemList($_, "Virtual Machine") | ForEach-Object {
+        $vra.getBGItemList($_, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE) | ForEach-Object {
 
             $vmName = $_.Name
 

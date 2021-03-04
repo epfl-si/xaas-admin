@@ -98,6 +98,8 @@ $global:NAS_PRIVATE_ISO_PROD = "\\nassvmmix01\si_vsissp_iso_priv_repo_p01_app"
 # Le nombre de jours pendant lesquels on garde les fichiers ISO privés avant de les supprimer
 $global:PRIVATE_ISO_LIFETIME_DAYS = 30
 
+# Type d'élément géré nativement par vRA
+$global:VRA_ITEM_TYPE_VIRTUAL_MACHINE = "Virtual Machine"
 
 ## Fonctionnement alternatif
 # Fichiers utilisés pour "altérer" le fonctionnement des scripts

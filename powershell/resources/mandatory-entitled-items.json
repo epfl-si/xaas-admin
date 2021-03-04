@@ -15,6 +15,11 @@
         "onlyForBG": []
     },
     {
+        "name": "Windows_Clone",
+        "hasApproval": false,
+        "onlyForBG": []
+    },
+    {
         "name": "OVA_Import",
         "hasApproval": false,
         "onlyForBG": []
