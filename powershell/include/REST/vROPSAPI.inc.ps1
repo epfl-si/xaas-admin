@@ -216,16 +216,25 @@ class vROPSAPI: RESTAPICurl
 									des dossiers jusqu'à la propriété à ajouter
 									Ce chemin sera ajouté à la suite de $global:VROPS_RESOURCE_PROPERTY_BASE_PATH
         IN  : $propertyValue    -> Valeur de la propriété
+		IN  : $date				-> (optionnel) la date de la mesure (si pas passée, on prend la date actuelle)
 
         RET : Objet avec la ressource modifiée
+
+		https://vsissp-vrops-t-01.epfl.ch/suite-api/doc/swagger-ui.html#/Resource/addPropertiesUsingPOST
 	#>
-    [PSObject] addResourceProperty([PSObject]$resource, [Array]$propertyPath, [string]$propertyValue)
+	[PSObject] addResourceProperty([PSObject]$resource, [Array]$propertyPath, [string]$propertyValue)
+	{
+		return $this.addResourceProperty($resource, $propertyPath, $propertyValue, (Get-Date))
+	}
+
+    [PSObject] addResourceProperty([PSObject]$resource, [Array]$propertyPath, [string]$propertyValue, [DateTime]$date)
     {
         $uri = "{0}/resources/{1}/properties" -f $this.baseUrl, $resource.identifier
         # Valeur à mettre pour la configuration du BG
 		$replace = @{
             propertyPath = ("{0}{1}" -f $global:VROPS_RESOURCE_PROPERTY_BASE_PATH, ($propertyPath -join "|"))
-            timestamp = @(((getUnixTimestamp) * 1000), $true)
+			# Transformation de la date donnée en timestamp Unix
+            timestamp = @((([int][double]::Parse((Get-Date($date) -UFormat %s))) * 1000), $true)
             value = $propertyValue
         }
 
