@@ -27,7 +27,7 @@ class SnowAPI: RESTAPICurl
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
         IN  : $proxy            -> Le proxy à utiliser. Peut être vide.
-                                    Format: https://<server>:<port>
+                                    Format: http://<server>:<port>
 	#>
 	SnowAPI([string]$server, [string]$username, [string]$password, [string]$proxy): base($server) 
 	{
@@ -41,7 +41,7 @@ class SnowAPI: RESTAPICurl
 
         if($proxy -ne "")
         {
-            $this.extraArgs = "{0} --proxy {1}", -f $this.extraArgs, $proxy
+            $this.extraArgs = "{0} --proxy {1}" -f $this.extraArgs, $proxy
         }
 
     }
