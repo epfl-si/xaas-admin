@@ -1007,15 +1007,18 @@ try
                 # Si pas trouvé
                 if($null -eq $exportPolicy)
                 {
-                    Throw ("Export policy '{0}' doesn't exists" -f $exportPolicyName)
+                    $output.error = ("Export policy '{0}' doesn't exists" -f $exportPolicyName)
+                    $logHistory.addLine($output.error)
                 }
+                else
+                {
+                    $logHistory.addLine(("Getting access protocol for volume '{0}'..." -f $volName))
+                    $protocol = $netapp.getVolumeAccessProtocol($volObj)
+                    $logHistory.addLine(("Access protocol is {0}" -f $protocol.toString()))
 
-                $logHistory.addLine(("Getting access protocol for volume '{0}'..." -f $volName))
-                $protocol = $netapp.getVolumeAccessProtocol($volObj)
-                $logHistory.addLine(("Access protocol is {0}" -f $protocol.toString()))
-
-                $logHistory.addLine("Updating rules in export policy...")
-                $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","), $protocol)
+                    $logHistory.addLine("Updating rules in export policy...")
+                    $netapp.updateExportPolicyRules($exportPolicy, ($IPsRO -split ","), ($IPsRW -split ","), ($IPsRoot -split ","), $protocol)
+                }
             }
         }
 
