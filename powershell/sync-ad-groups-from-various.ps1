@@ -227,17 +227,6 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 					$templateName = "ad-groups-missing-for-groups-creation-wait"
 				}
 
-				# Unité 'Gestion' pas trouvée au niveau 4 pour une unité de niveau 3
-				'level3GEUnitNotFound'
-				{
-					$valToReplace.unitList = ($uniqueNotifications -join "</li>`n<li>")
-					$valToReplace.docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=130975579"
-
-					$mailSubject = "Error - Level 4 'GE' unit can't be identified, please proceed manually"
-
-					$templateName = "level-4-ge-unit-not-found"
-				}
-
 				# Service manager pas trouvés dans Snow
 				'serviceManagerNotFound'
 				{
@@ -737,8 +726,7 @@ try
 	$counters.add('ADMembersNotFound', '# AD members not found')
 	$counters.add('groupsGroupsCreated', '# Groups groups created')
 	$counters.add('membersAddedTovRAUsers', '# Users added to vraUsers table (Tableau)')
-	$counters.add('level3GEUnitNotFound', '# level 3 GE unit not found')
-
+	
 	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
 	!! Attention !!
@@ -748,7 +736,6 @@ try
 	(cette liste sera accédée en variable globale même si c'est pas propre XD)
 	#>
 	$notifications = @{}
-	$notifications.level3GEUnitNotFound = @()
 	$notifications.missingADGroups = @()
 
 	# Chargement des informations sur les unités qu'il faut ajouter manuellement à une faculté donnée
