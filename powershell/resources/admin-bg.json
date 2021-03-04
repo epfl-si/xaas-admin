@@ -17,6 +17,7 @@
     "itservices":
     [
         {
+            "active": true,
             "longName":  "XaaS Admins",
             "shortName":  "xaasadm",
             "snowId":  "SVC0000",
