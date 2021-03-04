@@ -180,6 +180,14 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 					$templateName = "billing-incorrect-finance-center"
                 }
 
+
+                'copernicBillNotSentEmail'
+                {
+                    $valToReplace.entityList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Error - Cannot send some bills by email"
+					$templateName = "billing-error-bill-per-email"
+                }
+
 				default
 				{
 					# Passage à l'itération suivante de la boucle
@@ -259,6 +267,7 @@ try
     $notifications=@{
         incorrectFinanceCenter = @()
         copernicBillNotSent = @()
+        copernicBillNotSentEmail = @()
     }
 
     # Pour accéder à la base de données
@@ -351,6 +360,7 @@ try
             $counters.add('PDFGenerated', '# PDF generated')
             $counters.add('PDFOldCleaned', '# Old PDF cleaned')
             $counters.add('billSentByEmail', '# Bill send by email')
+            $counters.add('billSentByEmailError', '# error when sending bill by email')
             $counters.add('billIncorrectFinanceCenter', '# incorrect finance center')
             
 
@@ -381,7 +391,7 @@ try
             # Parcours des entités
             ForEach($entity in $entityList)
             {
-                $logHistory.addLineAndDisplay(("Processing entity {0} ({1})..." -f $entity.entityElement, $entity.entityType))
+                $logHistory.addLineAndDisplay(("Processing entity {0} ({1})..." -f $entity.entityName, $entity.entityType))
 
                 $counters.inc('entityProcessed')
 
@@ -517,7 +527,7 @@ try
                     # Si on n'a pas atteint le montant minimum pour émettre une facture pour l'entité courante,
                     if($totalPrice -lt $global:BILLING_MIN_MOUNT_CHF)
                     {
-                        $logHistory.addLineAndDisplay(("Entity '{0}' won't be billed this month, bill amount to small ({1} CHF)" -f $entity.entityElement, $totalPrice))
+                        $logHistory.addLineAndDisplay(("Entity '{0}' won't be billed this month, bill amount to small ({1} CHF)" -f $entity.entityName, $totalPrice))
                         $counters.inc('billSkippedToLow')
                     }
                     else # On a atteint le montant minimum pour facturer 
@@ -536,7 +546,7 @@ try
 
                             # Entête
                             billingForType = $entity.entityType
-                            billingForElement = $entity.entityElement
+                            billingForElement = ("{0} {1}" -f $entity.entityCustomId, $entity.entityName)
                             billReference = $billReference
                             financeCenter = $entity.entityFinanceCenter
                             reportDate = $curDateGoodLooking 
@@ -583,7 +593,7 @@ try
                         $billingTemplateHtml= replaceInString -str $billingTemplate -valToReplace $billingDocumentReplace 
 
                         # Génération du nom du fichier PDF de sortie
-                        $PDFFilename = "{0}__{1}.pdf" -f ($billReference, $entity.entityElement)
+                        $PDFFilename = "{0}__{1} {2}.pdf" -f ($billReference, $entity.entityCustomId, $entity.entityName)
                         $targetPDFPath = ([IO.Path]::Combine($global:XAAS_BILLING_PDF_FOLDER, $PDFFilename))
 
                         $logHistory.addLineAndDisplay(("> Generating PDF '{0}'" -f $targetPDFPath))
@@ -632,14 +642,15 @@ try
                                 {
                                     # Enregistrement de l'erreur
                                     $errorId = "{0}_{1}" -f (Get-Date -Format "yyyyMMdd_hhmmss"), $entity.entityId
-                                    $errorMsg = "Error adding Copernic Bill for entity '{0}'`nError message was: {1}" -f $entity.entityElement, $result.error
+                                    $errorMsg = "Error adding Copernic Bill for entity '{0}' ({1})`nError message was: {2}" -f $entity.entityName, $entity.entityCustomId, $result.error
                                     $errorFolder = saveRESTError -category "billing" -errorId $errorId -errorMsg $errorMsg -jsonContent $copernic.getLastBodyJSON()
                                     $logHistory.addLineAndDisplay(("> Error sending bill to Copernic for entity ID (error: {0}). Details can be found in folder '{1}'" -f $result.error, $errorFolder))
 
                                     $counters.inc('billCopernicError')
 
                                     # Ajout du nécessaire pour les notifications
-                                    $notifications.copernicBillNotSent += "{0} ({1}) - Error logs are on {2} in folder {3} " -f $entity.entityElement, $entity.entityType, $env:computername, $errorFolder
+                                    $notifications.copernicBillNotSent += "{0} (CustomId: {1}, Type: {2}) - Error logs are on {3} in folder {4} " -f `
+                                                                $entity.entityName, $entity.entityCustomId, $entity.entityType, $env:computername, $errorFolder
                                 }
                                 else # Pas d'erreur
                                 {
@@ -656,7 +667,8 @@ try
                                         $logHistory.addLineAndDisplay("> Bill sent to Copernic in SIMULATION MODE without any error")
                                     }
 
-                                    $logHistory.addLineAndDisplay(("> {0} items '{1}' set as billed for entity '{2}'" -f $itemList.count, ($billedItemTypes -join "', '"), $entity.entityElement))
+                                    $logHistory.addLineAndDisplay(("> {0} items '{1}' set as billed for entity '{2}' ({3})" -f `
+                                                    $itemList.count, ($billedItemTypes -join "', '"), $entity.entityName, $entity.entityCustomId))
                                     $counters.inc('billSentToCopernic')    
 
                                 } # Fin si pas d'erreur
@@ -672,9 +684,20 @@ try
                                 {
                                     $logHistory.addLineAndDisplay("> Sending mail...")
                                     $mailSubject = "vRA Billing - {0}" -f $billDescription
-                                    $billingObject.sendBillByMail($entity.entityFinanceCenter, $targetPDFPath, $mailSubject, $periodStartDate, $periodEndDate)
 
-                                    $counters.inc('billSentByEmail')  
+                                    # Tentative d'envoi du mail
+                                    try
+                                    {
+                                        $billingObject.sendBillByMail($entity.entityFinanceCenter, $targetPDFPath, $mailSubject, $periodStartDate, $periodEndDate)
+
+                                        $counters.inc('billSentByEmail')
+                                    }
+                                    catch # Gestion des erreurs
+                                    {
+                                        $notifications.copernicBillNotSentEmail += ("{0} = {1}" -f $entity.entityFinanceCenter, $_.Exception.Message)
+                                        $counters.inc('billSentByEmailError')
+                                    }
+                                    
                                 }
                                 else # On est en mode simulation
                                 {
@@ -687,8 +710,8 @@ try
                                 # On ajoute l'erreur pour que ça soit envoyé par email
                                 # Le développeur est tout à fait conscient que si on arrive ici et qu'on ne peut pas faire de facturation, le fichier PDF
                                 # aura malgré tout déjà été créé... ce n'est pas grave, y'a des choses pires dans la vie.
-                                $logHistory.addLineAndDisplay(("> Incorrect finance center ({0}) for entity '{1}'" -f $entity.entityFinanceCenter, $entity.entityElement))
-                                $notifications.incorrectFinanceCenter += ("Entity: {0} - Finance Center: {1}" -f $entity.entityElement, $entity.entityFinanceCenter)
+                                $logHistory.addLineAndDisplay(("> Incorrect finance center ({0}) for entity '{1}' ({2})" -f $entity.entityFinanceCenter, $entity.entityName, $entity.entityCustomId))
+                                $notifications.incorrectFinanceCenter += ("Entity: {0} ({1}) - Finance Center: {2}" -f $entity.entityName, $entity.entityCustomId, $entity.entityFinanceCenter)
                                 $counters.inc('billIncorrectFinanceCenter')
                             }
                             
@@ -701,7 +724,7 @@ try
                 }
                 else # Il n'y a aucun élément à facturer
                 {
-                    $logHistory.addLineAndDisplay(("Nothing left to bill for entity {0}" -f $entity.entityElement))
+                    $logHistory.addLineAndDisplay(("Nothing left to bill for entity {0} ({1})" -f $entity.entityName, $entity.entityCustomId))
                     $counters.inc('billSkippedNothing')
                 }
 
