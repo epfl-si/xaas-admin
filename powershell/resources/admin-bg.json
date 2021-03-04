@@ -17,11 +17,11 @@
     "itservices":
     [
         {
+            "active": true,
             "longName":  "XaaS Admins",
             "shortName":  "xaasadm",
             "snowId":  "SVC0000",
-            "serviceManagerSciper": "287589",
-            "additionalGroupsAdminSciperList": []
+            "additionalGroupsAdminSciperList": ["287589"]
         }
     ]
 }
