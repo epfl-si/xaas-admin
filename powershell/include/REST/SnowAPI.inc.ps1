@@ -4,6 +4,10 @@
          La classe parente est APIUtils et celle-ci fourni juste une méthode, celle pour
          charger le nécessaire depuis des fichiers JSON.
 
+         On doit donner la possibilité d'utiliser un Proxy car ServiceNow n'est pas hébergé
+         "on premise" et donc depuis les endpoints PowerShell, on ne peut pas attendre Snow
+         sans utiliser un proxy...
+
 
    AUTEUR : Lucien Chaboudez
    DATE   : Février 2021
@@ -22,8 +26,10 @@ class SnowAPI: RESTAPICurl
         IN  : $server			-> Nom DNS du serveur
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
+        IN  : $proxy            -> Le proxy à utiliser. Peut être vide.
+                                    Format: https://<server>:<port>
 	#>
-	SnowAPI([string]$server, [string]$username, [string]$password): base($server) 
+	SnowAPI([string]$server, [string]$username, [string]$password, [string]$proxy): base($server) 
 	{
         # Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
 		$this.setJSONSubPath(@( (Get-PSCallStack)[0].functionName) )
@@ -32,6 +38,11 @@ class SnowAPI: RESTAPICurl
         #$this.headers.Add('Accept', 'application/hal+json')
         
         $this.extraArgs = "-u {0}:{1}" -f $username, $password
+
+        if($proxy -ne "")
+        {
+            $this.extraArgs = "{0} --proxy {1}", -f $this.extraArgs, $proxy
+        }
 
     }
 

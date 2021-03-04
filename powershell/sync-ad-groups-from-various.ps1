@@ -743,7 +743,8 @@ try
 	# Pour accéder à ServiceNow
 	$snow = [snowAPI]::new($configSnow.getConfigValue(@("server")), 
 									$configSnow.getConfigValue(@("user")), 
-									$configSnow.getConfigValue(@("password")))
+									$configSnow.getConfigValue(@("password")),
+									$configSnow.getConfigValue(@("proxy")))
 								
 	Import-Module ActiveDirectory
 
