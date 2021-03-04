@@ -1,0 +1,10 @@
+{
+    "server": "",
+    "user": "",
+    "password": "",
+    /* 
+    Le proxy doit être sous la forme: 
+    http:\/\/<serverFQDN>:<port> 
+    */
+    "proxy":""
+}

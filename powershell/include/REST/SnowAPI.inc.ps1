@@ -4,6 +4,10 @@
          La classe parente est APIUtils et celle-ci fourni juste une méthode, celle pour
          charger le nécessaire depuis des fichiers JSON.
 
+         On doit donner la possibilité d'utiliser un Proxy car ServiceNow n'est pas hébergé
+         "on premise" et donc depuis les endpoints PowerShell, on ne peut pas attendre Snow
+         sans utiliser un proxy...
+
 
    AUTEUR : Lucien Chaboudez
    DATE   : Février 2021
@@ -22,15 +26,26 @@ class SnowAPI: RESTAPICurl
         IN  : $server			-> Nom DNS du serveur
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
+        IN  : $proxy            -> Le proxy à utiliser. Peut être vide.
+                                    Format: http://<server>:<port>
 	#>
-	SnowAPI([string]$server, [string]$username, [string]$password): base($server) 
+	SnowAPI([string]$server, [string]$username, [string]$password, [string]$proxy): base($server) 
 	{
         # Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
 		$this.setJSONSubPath(@( (Get-PSCallStack)[0].functionName) )
+
+        # Mise à jour des headers
+        #$this.headers.Add('Accept', 'application/hal+json')
+        
+        $this.baseUrl = "{0}/api/now/" -f $this.baseUrl
         
         $this.extraArgs = "-u {0}:{1}" -f $username, $password
 
-        $this.baseUrl = "{0}/api/now/" -f $this.baseUrl
+        if($proxy -ne "")
+        {
+            $this.extraArgs = "{0} --proxy {1}" -f $this.extraArgs, $proxy
+        }
+
     }
 
 
@@ -50,10 +65,10 @@ class SnowAPI: RESTAPICurl
     {
         $uri = "{0}/table/cmdb_ci_service?sysparm_fields=owned_by.user_name%2C%20owned_by.name&sysparm_limit=10&u_number={1}" -f $this.baseUrl, $serviceId
 
-        $res = $this.callAPI($uri, "GET", $null, $this.extraArgs)
+        $res = ([RESTAPICurl]$this).callAPI($uri, "GET", $null, $this.extraArgs)
 
-        # Si pas trouvé
-        if($res.result.count -eq 0)
+        # Si pas trouvé ou vide car il n'y a aucun service manager de défini
+        if(($res.result.count -eq 0) -or (($res.result[0] | Select-Object -ExpandProperty owned_by.name) -eq ""))
         {
             return $null
         }
@@ -63,6 +78,5 @@ class SnowAPI: RESTAPICurl
             sciper = $res.result[0] | Select-Object -ExpandProperty owned_by.user_name
         }
     }
-
 
 }
