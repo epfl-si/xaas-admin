@@ -384,17 +384,27 @@ class TKGIKubectl
 	-------------------------------------------------------------------------------------
 		BUT : Ajoute un Namespace à un cluster
 
-        IN  : $clusterName  -> Nom du cluster
-        IN  : $namespace    -> Nom du namespace
-        IN  : $nsxEnv       -> environnement NSX (prod/test/dev)
+        IN  : $clusterName      -> Nom du cluster
+        IN  : $namespace        -> Nom du namespace
+        IN  : $nsxEnv           -> environnement NSX (prod/test/dev)
+        IN  : $userNamespace    -> $true|$false pour dire si Namespace utilisateur
     #>
-    [void] addClusterNamespace([string]$clusterName, [string]$namespace, [string]$nsxEnv)
+    [void] addClusterNamespace([string]$clusterName, [string]$namespace, [string]$nsxEnv, [bool]$userNamespace)
     {
+        if($userNamespace)
+        {
+            $yamlFile = "xaas-k8s-cluster-namespace-user.yaml"
+        }
+        else
+        {
+            $yamlFile = "xaas-k8s-cluster-namespace.yaml"
+        }
+
         $replace = @{
             name = $namespace
             nsxEnv = $nsxEnv
         }
-        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-namespace.yaml", $replace)
+        $command = $this.generateKubectlCmdWithYaml($yamlFile, $replace)
 
         $this.exec($clusterName, $command) | Out-Null
     }
