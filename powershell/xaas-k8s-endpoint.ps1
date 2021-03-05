@@ -318,14 +318,19 @@ function searchClusterIngressIPAddress([string]$clusterIP, [NSXAPI]$nsx)
         # Parcours des serveurs virtuels du LoadBalancer pour récupérer leurs IP
         ForEach($virtualServerId in $service.virtual_server_ids)
         {
-            $ipList += $nsx.getLBVirtualServer($virtualServerId).ip_address
+			$lb = $nsx.getLBVirtualServer($virtualServerId)
+			$ipList += @{
+				ip = $lb.ip_address
+				name = $lb.display_name
+			}
         }
 
         # Si l'adresse IP du cluster se trouve dans la liste du service courant
-        if($ipList -contains $clusterIP)
+        if($null -ne ($ipList | Where-Object { $_.ip -eq $clusterIP}))
         {
-            # On retourne l'ip qui reste
-            return $ipList | Where-Object { $_ -ne $clusterIP} | Get-Unique
+            $logHistory.addLine(("Looking for Ingress IP in list: {0}" -f ($ipList | ConvertTo-Json)))
+            # On retourne l'IP qui correspond à l'entrée "projectcontour"
+            return ($ipList | Where-Object { $_.name -like "*projectcontour*"}).ip | Get-Unique
         }
     }
 
@@ -657,18 +662,9 @@ try
             # -----------
             # ---- Réseau
             $ipMain = $cluster.kubernetes_master_ips[0]
-            $logHistory.addLine(("IP address for cluster is {0}. Looking for Ingress IP..." -f $ipMain))
-            $ipIngress = searchClusterIngressIPAddress -clusterIP $ipMain -nsx $nsx
-
-            if($null -eq $ipIngress)
-            {
-                Throw "Impossible to find IP address for Ingress part"
-            }
-            $logHistory.addLine(("Ingress IP address is {0}" -f $ipIngress))
             
-            $logHistory.addLine(("Adding DNS entries in {0} zone..." -f $global:K8S_DNS_ZONE_NAME))
+            $logHistory.addLine(("Adding DNS entries for Main IP in {0} zone..." -f $global:K8S_DNS_ZONE_NAME))
             $EPFLDNS.registerDNSIP($dnsHostName, $ipMain, $global:K8S_DNS_ZONE_NAME)
-            $EPFLDNS.registerDNSIP($dnsHostNameIngress, $ipIngress, $global:K8S_DNS_ZONE_NAME)
 
 
             # - Storage Class
@@ -680,7 +676,7 @@ try
             
             # Namespace
             $logHistory.addLine(("Adding namespace '{0}' to cluster '{1}'..." -f $global:K8S_NEW_NAMESPACE, $clusterName))
-            $tkgiKubectl.addClusterNamespace($clusterName, $global:K8S_NEW_NAMESPACE, $targetEnv)
+            $tkgiKubectl.addClusterNamespace($clusterName, $global:K8S_NEW_NAMESPACE, $targetEnv, $true)
 
             # Configuration du NameSpace par défaut
             configureNamespaceElements -clusterName $clusterName -namespace $global:K8S_NEW_NAMESPACE -targetEnv $targetEnv `
@@ -719,9 +715,22 @@ try
 
             # Ajout du nouveau namespace
             $logHistory.addLine(("Adding namespace '{0}' to cluster '{1}'..." -f $global:CONTOUR_NAMESPACE, $clusterName))
-            $tkgiKubectl.addClusterNamespace($clusterName, $global:CONTOUR_NAMESPACE, $targetEnv)
+            $tkgiKubectl.addClusterNamespace($clusterName, $global:CONTOUR_NAMESPACE, $targetEnv, $false)
             $logHistory.addLine("Configuring Contour...")
             $tkgiKubectl.configureContour($clusterName)
+
+            
+            $logHistory.addLine(("IP address for cluster is {0}. Looking for Ingress/Contour IP..." -f $ipMain))
+            $ipIngress = searchClusterIngressIPAddress -clusterIP $ipMain -nsx $nsx
+
+            if($null -eq $ipIngress)
+            {
+                Throw "Impossible to find IP address for Ingress/Contour part"
+            }
+            $logHistory.addLine(("Ingress/Contour IP address is {0}" -f $ipIngress))
+
+            $logHistory.addLine(("Adding DNS entries for Ingress/Contour IP in {0} zone..." -f $global:K8S_DNS_ZONE_NAME))
+            $EPFLDNS.registerDNSIP($dnsHostNameIngress, $ipIngress, $global:K8S_DNS_ZONE_NAME)
 
             # -----------
             # ---- Harbor
@@ -913,7 +922,7 @@ try
 
             # Ajout du nouveau namespace
             $logHistory.addLine(("Adding namespace '{0}' to cluster '{1}'..." -f $namespace, $clusterName))
-            $tkgiKubectl.addClusterNamespace($clusterName, $namespace, $targetEnv)
+            $tkgiKubectl.addClusterNamespace($clusterName, $namespace, $targetEnv, $true)
 
             $logHistory.addLine(("Getting access group list for Business Group '{0}'..." -f $bg.name))
             $accessGroupList = getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant
