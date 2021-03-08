@@ -227,17 +227,6 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 					$templateName = "ad-groups-missing-for-groups-creation-wait"
 				}
 
-				# Unité 'Gestion' pas trouvée au niveau 4 pour une unité de niveau 3
-				'level3GEUnitNotFound'
-				{
-					$valToReplace.unitList = ($uniqueNotifications -join "</li>`n<li>")
-					$valToReplace.docUrl = "https://sico.epfl.ch:8443/pages/viewpage.action?pageId=130975579"
-
-					$mailSubject = "Error - Level 4 'GE' unit can't be identified, please proceed manually"
-
-					$templateName = "level-4-ge-unit-not-found"
-				}
-
 				# Service manager pas trouvés dans Snow
 				'serviceManagerNotFound'
 				{
@@ -550,12 +539,10 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [s
 	IN  : $billToMailList		-> Tableau avec les informations sur les directives
 									de facturation définies dans un fichier JSON.
 	IN  : $sourceType			-> Type de source pour les unités (User ou admin)
-	IN  : $geUnitMappingList	-> Objet avec les informations sur le mapping d'unité de gestion.
-									Le contenu provient du fichier 'data/billing/ge-unit-mapping.json'
-
+	
 	RET : Le centre financier à utiliser pour l'unité
 #>
-function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Array]$billToMailList, [ADGroupCreateSourceType]$sourceType, [PSCustomObject]$geUnitMappingList)
+function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Array]$billToMailList, [ADGroupCreateSourceType]$sourceType)
 {
 	# Si on est dans la source d'unités "admin" 
 	if($sourceType -eq [ADGroupCreateSourceType]::Admin)
@@ -608,52 +595,10 @@ function determineUnitFinanceCenter([PSCustomObject]$unit, [Array]$unitList, [Ar
 	# Si on n'a pas encore de centre financier de défini (donc pas d'adresse mail )
 	if($null -eq $financeCenter)
 	{
-		# Si c'est une unité de niveau 3 (centre), on doit chercher l'unité de niveau 4 qui fait office de "gestion"
-		if($unit.level -eq 3)
-		{
-			$logHistory.addLineAndDisplay("--> Level 3 unit (Center), looking for level 4 'GE' unit for finance center..." )
-
-			# Noms d'unité à rechercher. On cherche de plusieurs manières parce qu'ils ont été incapables de nommer ça d'une façon cohérente...
-			$geUnitNameList = @( ("{0}-GE" -f $unit.name)
-								("{0}-GE" -f [Regex]::match($unit.name, '[A-Za-z]+-(.*)').groups[1].value) )
-
-			# Ajout d'un potentiel mapping hard-codé dans le fichier JSON
-			$geUnitNameList += ($geUnitMappingList | Where-Object { $_.level3Center -eq $unit.name }).level4GeUnit
-
-			# Suppression des valeurs vides (oui, il peut y en avoir on dirait... )
-			$geUnitNameList = $geUnitNameList | Where-Object { $_ -ne "" -and $null -ne $_ }
-			$financeCenter = $null
-
-			# Parcours des noms d'unité de "Gestion" pour voir si on trouve quelque chose
-			ForEach($geUnitName in $geUnitNameList)
-			{
-				$logHistory.addLineAndDisplay(("---> Looking for '{0}' unit..." -f $geUnitName))
-				$geUnit = $unitList | Where-Object { $_.name -eq $geUnitName }
-
-				if($null -ne $geUnit)
-				{
-					$logHistory.addLineAndDisplay("---> Unit found, getting finance center")
-					$financeCenter = $geUnit.accountingnumber
-					break
-				}
-			}
-
-			# Si on n'a rien trouvé... 
-			if($null -eq $financeCenter)
-			{
-				$logHistory.addLineAndDisplay("--> 'GE' unit not found... using 'normal' finance center")
-				$financeCenter = $unit.accountingnumber
-				$counters.inc('level3GEUnitNotFound')
-				# Ajout du nom de l'unité niveau 3 pour notifier par mail que pas trouvée
-				$notifications.level3GEUnitNotFound += $unit.name
-			}
-		}
-		else # Ce n'est pas une unité de niveau 3 (centre)
-		{
-			$financeCenter = $unit.accountingnumber
-		}
-
-	}# FIN SI on n'a pas encore de centre financier
+		# On prend simplement le centre financier défini dans LDAP
+		$financeCenter = $unit.accountingnumber
+	
+	}
 
 	return $financeCenter
 
@@ -781,8 +726,7 @@ try
 	$counters.add('ADMembersNotFound', '# AD members not found')
 	$counters.add('groupsGroupsCreated', '# Groups groups created')
 	$counters.add('membersAddedTovRAUsers', '# Users added to vraUsers table (Tableau)')
-	$counters.add('level3GEUnitNotFound', '# level 3 GE unit not found')
-
+	
 	<# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
 	!! Attention !!
@@ -792,7 +736,6 @@ try
 	(cette liste sera accédée en variable globale même si c'est pas propre XD)
 	#>
 	$notifications = @{}
-	$notifications.level3GEUnitNotFound = @()
 	$notifications.missingADGroups = @()
 
 	# Chargement des informations sur les unités qu'il faut ajouter manuellement à une faculté donnée
@@ -817,6 +760,7 @@ try
 			$counters.add('epfl.LDAPUnitsProcessed', '# LDAP Units processed')
 			$counters.add('epfl.ManualUnitsProcessed', '# Manual Units processed')
 			$counters.add('epfl.LDAPUnitsEmpty', '# LDAP Units empty')
+			$counters.add('epfl.level3UnitsSkipped', '# Level 3 units skipped')
 
 			# Ajout du nécessaire pour gérer les notifications pour ce Tenant
 			$notifications.missingEPFLADGroups = @()
@@ -825,11 +769,6 @@ try
 			$facultyList = $ldap.getLDAPFacultyList() #  | Where-Object { $_['name'] -eq "ASSOCIATIONS" } # Décommenter et modifier pour limiter à une faculté donnée
 
 			$exitFacLoop = $false
-
-			# Chargement des informations sur le mapping des facultés
-			# FIXME: Voir si c'est toujours pertinent après avoir mergé la PR https://github.com/epfl-si/xaas-admin/pull/109
-			$geUnitMappingFile = ([IO.Path]::Combine($global:DATA_FOLDER, "billing", "ge-unit-mapping.json"))
-			$geUnitMappingList = loadFromCommentedJSON -jsonFile $geUnitMappingFile
 
 			# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
 			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "billing", "bill-to-mail.json"))
@@ -952,7 +891,6 @@ try
 					$unitList.add([ADGroupCreateSourceType]::Admin, @($manualUnitsFacInfos.manualUnits))
 				}
 
-				
 
 				# Parcours des types de sources
 				Foreach($sourceType in $unitList.keys)
@@ -966,9 +904,19 @@ try
 					{
 						$logHistory.addLineAndDisplay(("-> [{0}/{1}] Unit {2} => {3} ({4})..." -f $unitNo, $unitList.$sourceType.Count, $faculty.name, $unit.name, $unit.uniqueidentifier))
 
+						$unitNo += 1
+
+						# Si c'est une unité de niveau 3, on la skip
+						if($unit.level -eq 3)
+						{
+							$logHistory.addLineAndDisplay("--> Level 3 unit, skipping...")
+							$counters.inc('epfl.level3UnitsSkipped')
+							continue
+						}
+
 						# Recherche du centre financier à utiliser
 						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList.$sourceType -billToMailList $billToMailList `
-										-sourceType $sourceType -geUnitMappingList $geUnitMappingList
+										-sourceType $sourceType
 
 						$vRAServicesToDeny = @()
 						# On ne gère les "deny" de service/items de catalogue uniquement si on est dans une source pour les utilisateurs
@@ -1146,7 +1094,7 @@ try
 							$counters.inc('epfl.ManualUnitsProcessed')
 						}
 						
-						$unitNo += 1
+						
 
 						# Pour faire des tests
 						if($TEST_MODE -and ($counters.get('epfl.LDAPUnitsProcessed') -ge $EPFL_TEST_NB_UNITS_MAX))
