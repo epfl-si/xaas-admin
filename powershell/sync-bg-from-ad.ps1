@@ -1220,7 +1220,7 @@ function createNSGroupIfNotExists
 {
 	param([NSXAPI]$nsx, [string]$nsxNSGroupName, [string]$nsxNSGroupDesc, [string]$nsxSecurityTag)
 
-	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName, $global:NSX_VM_MEMBER_TYPE)
+	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName, [NSXNSGroupMemberType]::VirtualMachine)
 
 	# Si le NSGroup n'existe pas,
 	if($null -eq $nsGroup)
@@ -1228,7 +1228,7 @@ function createNSGroupIfNotExists
 		$logHistory.addLineAndDisplay(("-> Creating NSX NS Group '{0}'... " -f $nsxNSGroupName))
 
 		# Création de celui-ci
-		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag, $global:NSX_VM_MEMBER_TYPE)
+		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag, [NSXNSGroupMemberType]::VirtualMachine)
 
 		$counters.inc('NSXNSGroupCreated')
 	}

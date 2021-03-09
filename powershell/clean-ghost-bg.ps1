@@ -252,7 +252,7 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 
 			# Security Group
 			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bg.name)
-			$nsxNSGroup = $nsx.getNSGroupByName($nsxNSGroupName, $global:NSX_VM_MEMBER_TYPE)
+			$nsxNSGroup = $nsx.getNSGroupByName($nsxNSGroupName, [NSXNSGroupMemberType]::VirtualMachine)
 			$logHistory.addLineAndDisplay(("--> Deleting NSX NS Group '{0}'..." -f $nsxNSGroupName))
 			$nsx.deleteNSGroup($nsxNSGroup)
 		}

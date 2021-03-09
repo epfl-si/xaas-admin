@@ -204,7 +204,7 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     $nsGroupName, $nsGroupDesc = $nameGeneratorK8s.getSecurityGroupNameAndDesc($clusterName)
     $logHistory.addLine("Some cleaning in NSX...")
 
-    $nsGroup = $nsx.getNSGroupByName($nsGroupName, $global:NSX_LOGICAL_SWITCH_MEMBER_TYPE)
+    $nsGroup = $nsx.getNSGroupByName($nsGroupName, [NSXNSGroupMemberType]::LogicalSwitch)
     # Si le NSGroup existe
     if($null -ne $nsGroup)
     {
@@ -569,7 +569,7 @@ try
 
         $envNSGroupName = $nameGeneratorK8s.getEnvSecurityGroupName()
         $logHistory.addLine(("Looking for environement NSX NSGroup '{0}'" -f $envNSGroupName))
-        $envNSGroup = $nsx.getNSGroupByName($envNSGroupName, $global:NSX_LOGICAL_SWITCH_MEMBER_TYPE)
+        $envNSGroup = $nsx.getNSGroupByName($envNSGroupName, [NSXNSGroupMemberType]::LogicalSwitch)
 
         if($null -eq $envNSGroup)
         {
@@ -719,8 +719,13 @@ try
             $logHistory.addLine("Configuring Contour...")
             $tkgiKubectl.configureContour($clusterName)
 
+            # On attend un peu parce que sinon, l'adresse IP n'a pas le temps d'apparaître dans NSX et donc on va générer une
+            # erreur et toute la procédure de création va faire un rollback...
+            $waitSec = 30
+            $logHistory.addLine(("Waiting {0} sec for Contour to appear in NSX..." -f $waitSec))
+            Start-Sleep -Seconds $waitSec
             
-            $logHistory.addLine(("IP address for cluster is {0}. Looking for Ingress/Contour IP..." -f $ipMain))
+            $logHistory.addLine(("IP address for cluster is {0}. Looking for Ingress/Contour IP in NSX..." -f $ipMain))
             $ipIngress = searchClusterIngressIPAddress -clusterIP $ipMain -nsx $nsx
 
             if($null -eq $ipIngress)
@@ -1178,6 +1183,7 @@ catch
         $logHistory.addLine(("Error while creating cluster '{0}', deleting it so everything is clean:`n{1}`nStack Trace:`n{2}" -f $clusterName, $errorMessage, $errorTrace))
         deleteCluster -pks $pks -nsx $nsx -EPFLDNS $EPFLDNS -nameGeneratorK8s $nameGeneratorK8s -harbor $harbor  -clusterName $clusterName `
                     -clusterUUID "" -targetTenant $targetTenant -envNSGroup $envNSGroup
+        $logHistory.addLine("Cleaning done")
     }
 
     # Reset des infos s'il y en avait, ajout de l'erreur et affichage

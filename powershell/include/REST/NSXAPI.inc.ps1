@@ -9,6 +9,12 @@
    DATE   : Mai 2019
 
 #>
+
+enum NSXNSGroupMemberType {
+    VirtualMachine
+    LogicalSwitch
+}
+
 class NSXAPI: RESTAPICurl
 {
     hidden [string]$authInfos
@@ -91,10 +97,10 @@ class NSXAPI: RESTAPICurl
 
 		RET : Le NS group 
     #>
-    [PSObject] getNSGroupByName([string]$name, [string]$memberType)
+    [PSObject] getNSGroupByName([string]$name, [NSXNSGroupMemberType]$memberType)
     {
         # Note: On filtre exprès avec 'member_types=VirtualMachine' car sinon tous les NSGroup attendus ne sont pas renvoyés... 
-        $uri = "{0}/ns-groups/?populate_references=false&member_types={1}" -f $this.baseUrl, $memberType
+        $uri = "{0}/ns-groups/?populate_references=false&member_types={1}" -f $this.baseUrl, $memberType.ToString()
 
         $id =  ($this.callAPI($uri, "Get", $null).results | Where-Object {$_.display_name -eq $name}).id
      
@@ -126,7 +132,7 @@ class NSXAPI: RESTAPICurl
 
 		RET : Le NS group créé
 	#>
-    [PSObject] addNSGroup([string]$name, [string]$desc, [string] $tag, [string]$memberType)
+    [PSObject] addNSGroup([string]$name, [string]$desc, [string] $tag, [NSXNSGroupMemberType]$memberType)
     {
 		$uri = "{0}/ns-groups" -f $this.baseUrl
 
@@ -135,7 +141,7 @@ class NSXAPI: RESTAPICurl
             name = $name
             description = $desc
             tag = $tag
-            memberType = $memberType
+            memberType = $memberType.toString()
         }
 
         $body = $this.createObjectFromJSON("nsx-nsgroup.json", $replace)
@@ -201,7 +207,7 @@ class NSXAPI: RESTAPICurl
         $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
-        return $this.getNSGroupByName($name, "LogicalSwitch")
+        return $this.getNSGroupByName($name, [NSXNSGroupMemberType]::LogicalSwitch)
     }
 
 
