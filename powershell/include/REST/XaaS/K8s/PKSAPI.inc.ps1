@@ -19,6 +19,9 @@
 #>
 
 
+# Le nombre de secondes qu'on attend entre chaque check pour voir si une action est terminée sur un cluster.
+# 09.03.2021: Au début on faisait 30s et ça prend vite super du temps donc autant passer à 60 en fait, ça polluera 2x moins les logs
+$global:XAAS_K8S_JOB_WAIT_CHECK_INTERVAL_SLEEP_SEC = 60
 
 class PKSAPI: RESTAPICurl
 {
@@ -134,7 +137,7 @@ class PKSAPI: RESTAPICurl
 		$cluster = $null
 		do
 		{
-			Start-Sleep -Seconds 30
+			Start-Sleep -Seconds $global:XAAS_K8S_JOB_WAIT_CHECK_INTERVAL_SLEEP_SEC
 			$this.debugLog(("Checking if cluster action is done on {0}..." -f $clusterName))
 			$cluster = $this.getCluster($clusterName)
 		} while (($null -ne $cluster) -and ($cluster.last_action_state -eq "in progress"))
