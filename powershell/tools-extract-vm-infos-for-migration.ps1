@@ -45,8 +45,9 @@ $configvSphere = [ConfigReader]::New("config-vsphere.json")
 
 # Liste des propriétés à extraire de la VM
 $propList = @(
-	"VirtualMachine.Storage.Cluster.Name",
-	"VMware.VirtualCenter.OperatingSystem",
+    # On met ici une liste car il se peut que l'information soit dans 2 endroits différents
+	@("VirtualMachine.Storage.Cluster.Name", "VirtualMachine.Storage.Name"),
+	@("VMware.VirtualCenter.OperatingSystem", "VirtualMachine.Cafe.Blueprint.Name") ,
 	"ch.epfl.deployment_tag",
 	"ch.epfl.iaas.dmz.add_ports.details",
 	"ch.epfl.iaas.dmz.add_ports.enabled",
@@ -70,6 +71,12 @@ $outFile = ([IO.Path]::Combine($outFolder, ("{0}.csv" -f $vmName)))
 if(!(Test-Path $outFolder))
 {
     New-Item -Path $outFolder -ItemType:Directory | Out-Null
+}
+
+# Si le fichier de sortie existe, on le supprime
+if(Test-Path $outFile)
+{
+    Remove-Item -path $outFile -Force
 }
 
 $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
@@ -96,7 +103,35 @@ Write-host "Extracting informations..." -NoNewline
 # Extraction des propriétés nécessaires
 ForEach($prop in $propList)
 {
-    ("{0};{1}" -f $prop, ($vraVm.resourceData.Entries | Where-Object { $_.key -eq $prop }).value.value)  | Out-File -Append -Encoding:utf8 $outFile 
+    $propArray = $prop
+    if($propArray -isnot [System.Array])
+    {
+        $propArray = @($propArray)
+    }
+
+    $propVal = ""
+    $valFound = $false
+    ForEach($prop in $propArray) {
+        $propVal = ($vraVm.resourceData.Entries | Where-Object { $_.key -eq $prop }).value.value
+
+        if($null -ne $propVal)
+        {
+            $valFound = $true
+            ("{0};{1}" -f $prop, $propVal)  | Out-File -Append -Encoding:utf8 $outFile 
+            break
+        }
+        
+    }
+
+    if(!$valFound)
+    {
+        Write-Warning ("No value found for '{0}'" -f ($propArray -join ", "))
+        #Throw "No value found for '{0}'" -f ($propArray -join ", ")
+    }
+
+    
+
+    
 }
 
 
