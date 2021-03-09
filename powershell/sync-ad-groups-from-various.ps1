@@ -124,8 +124,9 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 				Set-ADGroup $groupName -Description $groupDesc -Confirm:$false
 				$counters.inc('ADGroupsDescriptionUpdated')
 			}
-			
 		}
+
+		$alreadyExists = $true
 	}
 
 	# Si on arrive ici, c'est que le groupe à mettre dans le nouveau groupe AD existe
