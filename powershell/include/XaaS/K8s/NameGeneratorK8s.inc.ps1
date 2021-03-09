@@ -199,7 +199,27 @@ class NameGeneratorK8s: NameGeneratorBase
    #>
    [string] getRoleName([string]$namespace)
    {
-      return "ro-{0}-{1}" -f $this.getDetail('snowServiceId'), $namespace
+      $res = ""
+      switch($this.tenant)
+      {
+         $global:VRA_TENANT__EPFL
+         {
+            $res = "ro-{0}-{1}" -f $this.getDetail('unitID'), $namespace
+         }
+
+         $global:VRA_TENANT__ITSERVICES
+         {
+            $res = "ro-{0}-{1}" -f $this.getDetail('snowServiceId'), $namespace
+         }
+
+         $global:VRA_TENANT__RESEARCH
+         {
+            $res = "ro-{0}-{1}" -f $this.getDetail('projectId'), $namespace
+         }
+      }
+
+      return $res
+      
    }
 
 
@@ -226,7 +246,25 @@ class NameGeneratorK8s: NameGeneratorBase
    #>
    [string] getClusterRoleName()
    {
-      return "clro-{0}" -f $this.getDetail('snowServiceId')
+      $res = ""
+      switch($this.tenant)
+      {
+         $global:VRA_TENANT__EPFL
+         {
+            $res = "clro-{0}" -f $this.getDetail('unitID')
+         }
+
+         $global:VRA_TENANT__ITSERVICES
+         {
+            $res = "clro-{0}" -f $this.getDetail('snowServiceId')
+         }
+
+         $global:VRA_TENANT__RESEARCH
+         {
+            $res = "clro-{0}" -f $this.getDetail('projectId')
+         }
+      }
+      return $res
    }
 
 
