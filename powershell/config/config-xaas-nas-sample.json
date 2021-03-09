@@ -17,6 +17,13 @@
     "psGateway": { // ces credentials seront utilisées pour initialiser les droits sur les shares CIFS créés
         "user": "",
         "password":""
+    },
+    "webisteDB": {
+        "host": "",
+        "port":"",
+        "user":"",
+        "password":"",
+        "dbName": ""
     }
 } 
 
