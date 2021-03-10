@@ -41,13 +41,13 @@ param ( [string]$targetEnv,
 
 # Chargement des fichiers de configuration
 $configVra = [ConfigReader]::New("config-vra.json")
-$configvSphere = [ConfigReader]::New("config-vsphere.json")
 
 # Liste des propriétés à extraire de la VM
 $propList = @(
     # On met ici une liste car il se peut que l'information soit dans 2 endroits différents
 	@("VirtualMachine.Storage.Cluster.Name", "VirtualMachine.Storage.Name"),
 	@("VMware.VirtualCenter.OperatingSystem", "VirtualMachine.Cafe.Blueprint.Name") ,
+    "VirtualMachine.Admin.Hostname",
 	"ch.epfl.deployment_tag",
 	"ch.epfl.iaas.dmz.add_ports.details",
 	"ch.epfl.iaas.dmz.add_ports.enabled",
@@ -61,6 +61,8 @@ $propList = @(
 	"ch.epfl.xaas.backup.vm.tag"
 )
 
+
+
 # Fichier de sortie pour les informations extraites
 $outFolder = ([IO.Path]::Combine($global:RESULTS_FOLDER, "VM-Infos"))
 $outFile = ([IO.Path]::Combine($outFolder, ("{0}.csv" -f $vmName)))
@@ -73,16 +75,13 @@ if(!(Test-Path $outFolder))
     New-Item -Path $outFolder -ItemType:Directory | Out-Null
 }
 
-# Si le fichier de sortie existe, on le supprime
-if(Test-Path $outFile)
-{
-    Remove-Item -path $outFile -Force
-}
+
 
 $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
                         $targetTenant, 
                         $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
                         $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+          
 
 # Recherche de la VM vRA
 Write-Host ("Getting vRA VM '{0}' on {1} tenant in {2} infrastructure..." -f $vmName, $targetTenant, $targetEnv)
@@ -94,11 +93,19 @@ if($null -eq $vraVm)
     exit
 }
 
+# Si le fichier de sortie existe, on le supprime
+if(Test-Path $outFile)
+{
+    Remove-Item -path $outFile -Force
+}
+
 Write-host "Extracting informations..." -NoNewline
 
 ("Owner;{0}" -f $vraVm.owners[0].ref) | Out-File -Append -Encoding:utf8 $outFile
 ("DeploymentName;{0}" -f $vraVm.parentResourceRef.label) | Out-File -Append -Encoding:utf8 $outFile
 
+
+$oneLinePropList = @()
 
 # Extraction des propriétés nécessaires
 ForEach($prop in $propList)
@@ -118,6 +125,12 @@ ForEach($prop in $propList)
         {
             $valFound = $true
             ("{0};{1}" -f $prop, $propVal)  | Out-File -Append -Encoding:utf8 $outFile 
+
+            if($prop.startsWith("ch.epfl"))
+            {
+                $oneLinePropList += ("{0},{1}" -f $prop, ($propVal -replace ",",";"))
+            }
+            
             break
         }
         
@@ -128,11 +141,13 @@ ForEach($prop in $propList)
         Write-Warning ("No value found for '{0}'" -f ($propArray -join ", "))
         #Throw "No value found for '{0}'" -f ($propArray -join ", ")
     }
-
-    
-
-    
 }
+
+# Recherche de l'IP dans le DNS
+$ips = [System.Net.Dns]::GetHostAddresses(("{0}.xaas.epfl.ch" -f $vmName))
+
+
+("`nOne line prop list:`n,{0}, HOP, VirtualMachine.Network0.Address, {1}, HOP, VirtualMachine.Network0.DnsSuffix, xaas.epfl.ch, HOP" -f ($oneLinePropList -join ", HOP,"), $ips[0].IPAddressToString) | Out-File -Append -Encoding:utf8 $outFile 
 
 
 Write-Host "done"
