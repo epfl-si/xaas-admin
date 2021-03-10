@@ -696,19 +696,20 @@ try
                                                 $nameGeneratorK8s.getClusterRoleName(), 
                                                 $nameGeneratorK8s.getClusterRoleBindingName($clusterName), 
                                                 ("oidc:{0}" -f $accessGroupList[0]))
-        
 
+            $logHistory.addLine("> C2C Gentlemen agreement")
+            # Pour que C2C puisse accéder au cluster via Prometheus et ArgoCD
+            $tkgiKubectl.addClusterRoleBinding($clusterName, 
+                                                "cluster-admin", 
+                                                "crb-gentleman-agreement", 
+                                                "oidc:vra_t_svc1219")
+                    
+            $logHistory.addLine("> Service Accounts")
             # Pour les services accounts
             $tkgiKubectl.addClusterRoleBinding($clusterName, 
                                                    $nameGeneratorK8s.getClusterRoleName(), 
                                                    $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $true), 
                                                    "system:serviceaccounts")
-
-            # FIXME: A valider si effectivement ce n'est plus nécessaire. Mis en commentaire le 8.2.2021 suite à discussion avec MonSeigneur Haro
-            # $logHistory.addLine("Adding ClusterRoleBinding for Service Accounts...")
-            # $tkgiKubectl.addClusterRoleBindingServiceAccounts($clusterName, 
-            #                                                   $nameGeneratorK8s.getClusterRoleName(), 
-            #                                                   $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $true))
 
             # ------------
             # ---- Contour
@@ -772,6 +773,16 @@ try
             # ---- NSX
 
             $nsGroupName, $nsGroupDesc = $nameGeneratorK8s.getSecurityGroupNameAndDesc($clusterName)
+
+            $logHistory.addLine(("Checking if 'old' NSX NSGroup '{0}' exists (maybe a cleaning process that failed in the past...)" -f $nsGroupName))
+            $nsGroup = $nsx.getNSGroupByName($nsGroupName, [NSXNSGroupMemberType]::LogicalSwitch)
+            if($null -ne $nsGroup)
+            {
+                $logHistory.addLine(("Deleting old NSX NSGroup '{0}'" -f $nsGroupName))
+                $nsx.deleteNSGroup($nsGroup)
+            }
+
+            # Création du nouvel élément
             $logHistory.addLine(("Creating NSX NSGroup '{0}'" -f $nsGroupName))
             $nsGroup = $nsx.addNSGroupK8sCluster($nsGroupName, $nsGroupDesc, $cluster.uuid)
             $logHistory.addLine(("Adding NSGroup '{0}' to environement NSGroup '{1}'" -f $nsGroupName, $envNSGroupName))
