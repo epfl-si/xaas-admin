@@ -162,21 +162,7 @@ catch
     # Récupération des infos
     $errorMessage = $_.Exception.Message
     $errorTrace = $_.ScriptStackTrace
-    
-    # Si on était en train de créer un volume
-    if(($action -eq $ACTION_CREATE) -and $cleaningCanBeDoneIfError)
-    {
-        # On efface celui-ci pour ne rien garder qui "traine"
-        $logHistory.addLine(("Error while creating Volume '{0}', deleting it so everything is clean. Error was: {1}" -f $volName, $errorMessage))
 
-        # Suppression du dossier monté s'il existe
-        unMountPSDrive -driveLetter $global:XAAS_NAS_TEMPORARY_DRIVE
-        deleteVolume -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -output $null
-    }
-
-    # Ajout de l'erreur et affichage
-    $output.error = "{0}`n`n{1}" -f $errorMessage, $errorTrace
-    displayJSONOutput -output $output
 
     $logHistory.addError(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
     
