@@ -318,7 +318,7 @@ class NSXAPI: RESTAPICurl
 	#>
     [void] deleteNSGroup([PSObject]$nsGroup)
     {
-        $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $nsGroup.id
+        $uri = "{0}/ns-groups/{1}?force=true" -f $this.baseUrl, $nsGroup.id
 
         $this.callAPI($uri, "Delete", $null) | Out-Null
     }
