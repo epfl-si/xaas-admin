@@ -23,6 +23,12 @@ enum HarborProjectRole
 	Master
 }
 
+enum HarborProjectSeverity
+{
+	High
+	None
+}
+
 
 class HarborAPI: RESTAPICurl
 {
@@ -194,15 +200,17 @@ class HarborAPI: RESTAPICurl
 		BUT : Renvoie les infos d'un projet
 
 		IN  : $name		-> Nom du projet
+		IN  : $severity	-> Severity...
 
 		RET : Le projet créé
 	#>
-	[PSObject] addProject([string]$name)
+	[PSObject] addProject([string]$name, [HarborProjectSeverity]$severity)
 	{
 		$uri = "{0}/projects" -f $this.baseUrl
 
 		$replace = @{
 			projectName = $name
+			severity = $severity.toString().ToLower()
 		}
 
 		$body = $this.createObjectFromJSON("xaas-k8s-new-harbor-project.json", $replace)

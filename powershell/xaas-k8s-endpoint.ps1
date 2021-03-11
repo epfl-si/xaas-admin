@@ -747,8 +747,19 @@ try
             # Si le projet n'existe pas
             if($null -eq $harborProject)
             {
-                $logHistory.addLine(("Project '{0}' doesn't exists in Harbor, creating it..." -f $harborProjectName))
-                $harborProject = $harbor.addProject($harborProjectName)                
+                # Définition de la severity pour le projet
+                if($deploymentTag -eq "dev")
+                {
+                    $severity = [HarborProjectSeverity]::None
+                }
+                else
+                {
+                    $severity = [HarborProjectSeverity]::High
+                }
+
+                $logHistory.addLine(("Project '{0}' doesn't exists in Harbor, creating it with severity '{1}'..." -f $harborProjectName, $severity.toString()))
+
+                $harborProject = $harbor.addProject($harborProjectName, $severity)                
             }
             else
             {
