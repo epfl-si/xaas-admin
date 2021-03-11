@@ -60,24 +60,35 @@ $ACTION_IMPORT              = "import"
 
 function getVolToOnboard([SQLDB]$sqldb)
 {
+    $tables = @(
+        "nas_fs",
+        "infra_vserver",
+        "nas_service_type"
+    )
+
     $conditions = @(
-        "nas_fs.infra_vserver_id = infra_vserver.infra_vserver_id"
+        "nas_fs.infra_vserver_id = infra_vserver.infra_vserver_id",
+        "nas_fs.nas_fs_svc_type_id = nas_service_type.nas_svc_type_id",
         "nas_fs.nas_fs_date_delete_asked IS NULL",
         "nas_fs.nas_fs_name NOT IN (SELECT vol_name FROM nas2020_onboarding)"
     )
 
     $columns = @(
         "nas_fs.*",
+        "nas_service_type.nas_svc_type_name",
         "infra_vserver.infra_vserver_name"
     )
 
-    $request = ("SELECT {0} FROM nas_fs, infra_vserver WHERE {1} ORDER BY nas_fs_unit,infra_vserver_name,nas_fs_name" -f `
-                ($columns -join ","), ($conditions -join " AND "))
+    
+    $request = ("SELECT {0} FROM {1} WHERE {2} ORDER BY nas_fs_unit,infra_vserver_name,nas_fs_name" -f `
+                ($columns -join ","), ($tables -join ","), ($conditions -join " AND "))
 
     $list = $sqldb.execute($request)                
 
-    $list
+    return $list
 }
+
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -115,7 +126,7 @@ try
                         $configNAS.getConfigValue(@("webisteDB", "dbName")),
                         $configNAS.getConfigValue(@("webisteDB", "user")),
                         $configNAS.getConfigValue(@("webisteDB", "password")),
-                        $configNAS.getConfigValue(@("webisteDB", "port")))                                
+                        $configNAS.getConfigValue(@("webisteDB", "port")), $false)                                
 
     # Si on doit activer le Debug,
     if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
@@ -132,8 +143,7 @@ try
     $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
                                                     ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
-
-
+    #$dataFile = ([IO.Path]::Combine("$PSScriptRoot", $dataFile))
     # -------------------------------------------------------------------------
     # En fonction de l'action demandée
     switch ($action)
@@ -142,7 +152,47 @@ try
         # -- Création d'un nouveau Volume 
         $ACTION_GEN_DATA_FILE 
         {
-            $list = getVolToOnboard -sqldb $sqldb
+            Write-Host -NoNewLine "Getting volume list... "
+            $volList = getVolToOnboard -sqldb $sqldb
+            Write-Host "done" -foregroundColor:DarkGreen
+
+            $cols = @(
+                @("nas3VolName", "nas_fs_name"),
+                @("unitId", "nas_fs_unit"),
+                @("Rattachement", "nas_fs_rattachement"),
+                @("vServer", "infra_vserver_name"),
+                @("SizeGB", "nas_fs_quota_gb"),
+                "nas2020VolName",
+                "targetTenantName",
+                "targetBgName")
+
+            (($cols | ForEach-Object{@($_)[0]}) -join ",") | Out-File $dataFile -Encoding:utf8
+
+            Write-Host -NoNewLine "Extracting data... " 
+            # Parcours des volumes récupérés
+            Foreach($vol in $volList)
+            {
+                $valList = @()
+
+                $cols | ForEach-Object {
+                    $tag, $dbCol = $_
+                    if($null -eq $dbCol)
+                    {
+                        $val = ""
+                    }
+                    else
+                    {
+                        $val = $vol.$dbCol
+                    }
+
+                    $valList += $val
+                }
+
+                ($valList -join ",") | Out-File $dataFile -Encoding:utf8 -append
+            }
+            Write-Host "done" -foregroundColor:DarkGreen
+
+            Write-Host ("Output can be found in '{0}' file" -f $dataFile)
         }
 
 
