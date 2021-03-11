@@ -1,5 +1,6 @@
 <#
 USAGES:
+    xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId>
     xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -ipList <ipList>
     xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action modify -bgId <bgId> -lbName <lbName> -ipList <ipList>
     xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action delete -bgId <bgId> -lbName <lbName>
@@ -50,6 +51,9 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "ConfigReader.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGeneratorBase.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
@@ -59,13 +63,14 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "SnowAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "E2EAPI.inc.ps1"))
 
 # Chargement des fichiers propres à XaaS 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "Avi-Networks", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "Avi-Networks", "NameGeneratorAviNetworks.inc.ps1"))
 
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "AviNetworksAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "Avi-Networks", "AviNetworksAPI.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
@@ -141,6 +146,61 @@ function handleNotifications
 	}# FIN BOUCLE de parcours des catégories de notifications
 }
 
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Efface les Tenants AVI Networks associés à un BG vRA
+
+	IN  : $bg                       -> Objet représentant le BG dans vRA
+	IN  : $nameGeneratorAviNetworks	-> Objet représentant le générateur de noms
+	IN  : $aviNetworks              -> Objet pour communiquer avec l'environnement AVI
+    IN  : $logHistory               -> Objet pour écrire les logs
+#>
+function deleteBGTenants([PSObject]$bg, [NameGeneratorAviNetworks]$nameGeneratorAviNetworks, [AviNetworksAPI]$aviNetWorks, [LogHistory]$logHistory)
+{
+    # Parcours des types de tenant
+    [enum]::getValues([XaaSAviNetworksTenantType]) | ForEach-Object {
+        $name, $desc = $nameGeneratorAviNetworks.getTenantNameAndDesc($bg.name, $_)
+    
+        $tenant = $aviNetworks.getTenantByName($name)
+
+        $logHistory.addLine(("Processing tenant {0}..." -f $name))
+
+        # Si le tenant existe
+        if($null -ne $tenant)
+        {
+            
+            $logHistory.addLine(("> Deleting alert config list..."))
+            $aviNetworks.getAlertConfigList($tenant) | ForEach-Object { 
+
+                $logHistory.addLine((">> {0}" -f $_.name))
+                $aviNetworks.deleteAlertConfig($tenant, $_)
+            }
+
+            $logHistory.addLine(("> Deleting action group config..."))
+            $aviNetworks.getActionGroupConfigList($tenant) | ForEach-Object { 
+                $logHistory.addLine((">> {0}" -f $_.name))
+                $aviNetworks.deleteActionGroupConfig($tenant, $_)
+            }
+
+            # Suppression des configuration d'alertes
+            $logHistory.addLine(("> Deleting alert mail config..."))
+            $aviNetworks.getAlertMailConfigList($tenant) | ForEach-Object { 
+                $logHistory.addLine((">> {0}" -f $_.name))
+                $aviNetworks.deleteAlertMailConfig($tenant, $_)
+            }
+            
+            $logHistory.addLine("> Deleting tenant...")
+            $aviNetworks.deleteTenant($tenant)
+        }
+        else # Le tenant n'a pas été trouvé 
+        {
+            $logHistory.addLine("> Tenant already deleted")
+        }
+
+    }# FIN BOUCLE de parcours des types de tenant
+    
+}
 
 <#
 -------------------------------------------------------------------------------------
@@ -262,8 +322,6 @@ try
 	}
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
 												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
-
-
 
     # Si on nous a passé un ID de BG,
     if($bgId -ne "")
@@ -400,7 +458,8 @@ try
         # -- Effacement d'un LoadBalancer
         $ACTION_DELETE {
             $logHistory.addLine(("Deleting Tenants for Business Group '{0}'..." -f $bg.name))
-            deleteLB -aviNetworks $aviNetworks -bgId $bgId -lbName $lbName
+            #deleteBGTenants($bg, $nameGeneratorAviNetworks, $aviNetWorks, $logHistory)
+            #deleteLB -aviNetworks $aviNetworks -bgId $bgId -lbName $lbName
         }
 
     }
@@ -417,7 +476,6 @@ try
     # Gestion des erreurs s'il y en a
     handleNotifications -notifications $notifications -targetEnv $targetEnv -targetTenant $targetTenant
     
-
 }
 catch
 {
@@ -432,8 +490,16 @@ catch
     # Si on était en train de créer un bucket et qu'on peut faire le cleaning
     if(($action -eq $ACTION_CREATE))
     {
+
+        #deleteLB -aviNetworks $aviNetworks -bgId $bgId -lbName $lbName
+
+        if($deleteTenants)
+        {
+            $logHistory.addLine(("Error while creating LB '{0}', deleting it so everything is clean. Error was: {1}" -f $lbName, $errorMessage))
+            deleteBGTenants($bg, $nameGeneratorAviNetworks, $aviNetWorks, $logHistory)
+        }
         
-        deleteLB -aviNetworks $aviNetworks -bgId $bgId -lbName $lbName
+        
         
     }
 
