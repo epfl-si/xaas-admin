@@ -343,7 +343,7 @@ class HarborAPI: RESTAPICurl
 		else # C'est un utilisateur qu'on ajoute
 		{
 			# FIXME: voir pour résoudre ce problème
-			Throw "Not handled for now, raise 500 intenal server error, even when trying to do it using web interface"
+			Throw ("Adding user ({0}) is not handled for now, it raises 500 intenal server error, even when trying to do it using web interface" -f $userOrGroupName)
 			# $replace = @{
 			# 	roleId = @($this.getRoleID($role), $true)
 			# 	userName = $userOrGroupName
