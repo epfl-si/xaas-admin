@@ -301,6 +301,7 @@ class HarborAPI: RESTAPICurl
 		catch
 		{
 			$this.debugLog(("Impossible to get group '{0}' in AD, so, assuming it is a user" -f $userOrGroupName))
+			$this.debugLog(("Get-ADGroup error was:`n{0}" -f $_.Exception.Message))
 			$groupDN = $null	
 		}
 		
