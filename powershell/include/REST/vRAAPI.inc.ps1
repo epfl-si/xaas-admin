@@ -1619,6 +1619,27 @@ class vRAAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie le formulaire de demande pour un élément de catalogue donné
+			  
+		IN  : $catalogItem	-> Objet représentant l'item de catalogue pour lequel on veut le formulaire de demande
+		IN  : $bg			-> Objet représentant le Business Group dans lequel on veut faire la demande pour le nouvel élément
+		IN  : $requestedFor	-> utilisateur au nom duquel faire la demande (user@intranet.epfl.ch)
+
+		RET : Formulaire
+				$null si pas trouvé
+	#>
+	[PSObject] getCatalogItemRequestTemplate([PSOBject]$catalogItem, [PSObject]$bg, [string]$requestedFor)
+	{
+		$uri = "{0}/catalog-service/api/consumer/entitledCatalogItems/{1}/requests/template?businessGroupId={2}&requestedFor={3}" -f `
+				$this.baseUrl, $catalogItem.id, $bg.id, $requestedFor
+
+		# Retour de la liste mais on ne prend que les éléments qui existent encore.
+		return ($this.callAPI($uri, "Get", $null)) 	
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
 									Business Group Items
 		-------------------------------------------------------------------------------------
