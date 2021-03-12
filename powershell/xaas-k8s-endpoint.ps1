@@ -5,7 +5,7 @@ USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getClusterInfos -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action setNbWorkers -clusterName <clusterName> -nbWorkers <nbWorkers>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNbWorkers -clusterName <clusterName>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addNS -bgId <bgId> -clusterName <clusterName> -namespace <namespace>
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addNS -bgId <bgId> -clusterName <clusterName> -namespace <namespace> -deploymentTag prod|test|dev
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNSList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNS -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNSResources -clusterName <clusterName> -namespace <namespace>
@@ -676,7 +676,7 @@ try
             
             # Namespace
             $logHistory.addLine(("Adding namespace '{0}' to cluster '{1}'..." -f $global:K8S_NEW_NAMESPACE, $clusterName))
-            $tkgiKubectl.addClusterNamespace($clusterName, $global:K8S_NEW_NAMESPACE, $targetEnv, $true)
+            $tkgiKubectl.addClusterNamespace($clusterName, $global:K8S_NEW_NAMESPACE, $deploymentTag, $true)
 
             # Configuration du NameSpace par défaut
             configureNamespaceElements -clusterName $clusterName -namespace $global:K8S_NEW_NAMESPACE -targetEnv $targetEnv `
@@ -716,19 +716,27 @@ try
 
             # Ajout du nouveau namespace
             $logHistory.addLine(("Adding namespace '{0}' to cluster '{1}'..." -f $global:CONTOUR_NAMESPACE, $clusterName))
-            $tkgiKubectl.addClusterNamespace($clusterName, $global:CONTOUR_NAMESPACE, $targetEnv, $false)
+            $tkgiKubectl.addClusterNamespace($clusterName, $global:CONTOUR_NAMESPACE, $deploymentTag, $false)
             $logHistory.addLine("Configuring Contour...")
             $tkgiKubectl.configureContour($clusterName)
 
-            # On attend un peu parce que sinon, l'adresse IP n'a pas le temps d'apparaître dans NSX et donc on va générer une
-            # erreur et toute la procédure de création va faire un rollback...
-            $waitSec = 30
-            $logHistory.addLine(("Waiting {0} sec for Contour to appear in NSX..." -f $waitSec))
-            Start-Sleep -Seconds $waitSec
-            
-            $logHistory.addLine(("IP address for cluster is {0}. Looking for Ingress/Contour IP in NSX..." -f $ipMain))
-            $ipIngress = searchClusterIngressIPAddress -clusterIP $ipMain -nsx $nsx
+            # L'adresse IP va probablement prendre un peu de temps à apparaître dans NSX, donc on va poller celui-ci 
+            # périodiquement pour la récupérer, tout en mettant un timeout pour éviter de faire ça indéfiniment
+            $remainingSecWait = 90
+            $waitSecInterval = 10
 
+            $logHistory.addLine(("IP address for cluster is {0}. Looking for Ingress/Contour IP in NSX..." -f $ipMain))
+            do
+            {
+                $logHistory.addLine(("Waiting {0} sec for Contour to appear in NSX..." -f $waitSec))
+                Start-Sleep -Seconds $waitSec
+                $remainingSecWait -= $waitSecInterval
+                $ipIngress = searchClusterIngressIPAddress -clusterIP $ipMain -nsx $nsx
+            }
+            # Tant qu'on n'a pas trouvé l'IP ou qu'on n'a pas écoulé le temps d'attente...
+            while(($null -eq $ipIngress) -and ($remainingSecWait -gt 0))
+
+            # Si on n'a pas réussi à trouver l'IP dans le temps imparti... 
             if($null -eq $ipIngress)
             {
                 Throw "Impossible to find IP address for Ingress/Contour part"
@@ -949,7 +957,7 @@ try
 
             # Ajout du nouveau namespace
             $logHistory.addLine(("Adding namespace '{0}' to cluster '{1}'..." -f $namespace, $clusterName))
-            $tkgiKubectl.addClusterNamespace($clusterName, $namespace, $targetEnv, $true)
+            $tkgiKubectl.addClusterNamespace($clusterName, $namespace, $deploymentTag, $true)
 
             $logHistory.addLine(("Getting access group list for Business Group '{0}'..." -f $bg.name))
             $accessGroupList = @(getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant)
