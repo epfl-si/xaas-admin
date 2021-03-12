@@ -952,7 +952,7 @@ try
             $tkgiKubectl.addClusterNamespace($clusterName, $namespace, $targetEnv, $true)
 
             $logHistory.addLine(("Getting access group list for Business Group '{0}'..." -f $bg.name))
-            $accessGroupList = getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant
+            $accessGroupList = @(getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant)
             if($null -eq $accessGroupList)
             {
                 $output.error = "Access group list not found"
