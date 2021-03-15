@@ -302,6 +302,11 @@ try
 
                 $lineNo++
             }
+
+            # On fige le header
+            $excel.Rows.Item("2:2").Select()
+            $excel.ActiveWindow.FreezePanes = $true
+
             Write-Host "done" -foregroundColor:DarkGreen
 
             $workbook.SaveAs($dataFile)
