@@ -92,31 +92,6 @@ function getResClusterName([PSObject]$reservation)
 
 
 <#
-	-------------------------------------------------------------------------------------
-	BUT : Recherche et renvoie un group AD défini par son nom.
-			On renvoie aussi la description du groupe
-	   
-	IN  : $groupName	-> Le nom du groupe à renvoer
-
-	RET : le groupe
-			$NULL si pas trouvé
-#>
-function getADGroup([string]$groupName)
-{
-	try
-	{
-		# On tente de récupérer le groupe (on met dans une variable juste pour que ça ne s'affiche pas à l'écran)
-		return (Get-ADGroup -Identity $groupName -Properties Description)
-		
-	}
-	catch # Une erreur est survenue donc le groupe n'existe pas
-	{
-		return $null
-	}
-}
-
-
-<#
 -------------------------------------------------------------------------------------
 	BUT : Retourne le hash de la chaîne de caractères passée 
 
