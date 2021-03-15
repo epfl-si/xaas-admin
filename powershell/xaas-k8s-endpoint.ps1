@@ -70,6 +70,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLDNS.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 
 # Fichiers propres au script courant 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "functions.inc.ps1"))
@@ -492,6 +493,9 @@ try
     # Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
     $nameGeneratorK8s = [NameGeneratorK8s]::new($targetEnv, $targetTenant)
 
+    # Pour faire les recherches dans LDAP
+	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))      
+
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
 						 $targetTenant, 
@@ -506,7 +510,8 @@ try
     # Création d'une connexion au serveur Harbor pour accéder à ses API REST
 	$harbor = [HarborAPI]::new($configK8s.getConfigValue(@($targetEnv, "harbor", "server")),
             $configK8s.getConfigValue(@($targetEnv, "harbor", "user")),
-            $configK8s.getConfigValue(@($targetEnv, "harbor", "password")))
+            $configK8s.getConfigValue(@($targetEnv, "harbor", "password")),
+            $ldap)
 
     # Connexion à NSX pour pouvoir allouer/restituer des adresses IP
     $nsx = [NSXAPI]::new($configNSX.getConfigValue(@($targetEnv, "server")),
@@ -524,9 +529,7 @@ try
                                         $configK8s.getConfigValue(@($targetEnv, "tkgi", "user")),
                                         $configK8s.getConfigValue(@($targetEnv, "tkgi", "password")),
                                         $configK8s.getConfigValue(@($targetEnv, "tkgi", "certificate")))
-
-    # Pour faire les recherches dans LDAP
-	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))                                        
+                                  
     
     # Chargement des informations sur le nombre de Workers pour les plans
     $resourceQuotaLimitsFile = ([IO.Path]::Combine($global:DATA_FOLDER, "XaaS", "K8s", "resource-quota-limits.json"))

@@ -33,6 +33,7 @@ enum HarborProjectSeverity
 class HarborAPI: RESTAPICurl
 {
 	hidden [string]$token
+	hidden [EPFLLDAP]$ldap
 	
 
 	<#
@@ -42,10 +43,11 @@ class HarborAPI: RESTAPICurl
 		IN  : $server			-> Nom DNS du serveur
 		IN  : $user         	-> Nom d'utilisateur 
 		IN  : $password			-> Mot de passe
+		IN  : $ldap				-> Objet pour contacter LDAP
 
 		Documentation:
 	#>
-	HarborAPI([string] $server, [string] $user, [string] $password) : base($server) # Ceci appelle le constructeur parent
+	HarborAPI([string] $server, [string] $user, [string] $password, [EPFLLDAP]$ldap) : base($server) # Ceci appelle le constructeur parent
 	{
 		# Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
 		$this.setJSONSubPath(@("XaaS", "K8s") )
@@ -61,6 +63,8 @@ class HarborAPI: RESTAPICurl
 
 		# Mise à jour des headers
 		$this.headers.Add('Authorization', ("Basic {0}" -f [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $user,$password)))))
+
+		$this.ldap = $ldap
 
     }
 
@@ -294,16 +298,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[void] addProjectMember([PSObject]$project, [string]$userOrGroupName, [HarborProjectRole]$role)
 	{
-		try
-		{
-			$groupDN = (Get-ADGroup $userOrGroupName).DistinguishedName
-		}
-		catch
-		{
-			$this.debugLog(("Impossible to get group '{0}' in AD, so, assuming it is a user" -f $userOrGroupName))
-			$this.debugLog(("Get-ADGroup error was:`n{0}" -f $_.Exception.Message))
-			$groupDN = $null	
-		}
+		$adGroup = $this.ldap.getADGroup($userOrGroupName)
 		
 		$uri = "{0}/projects/{1}/members" -f $this.baseUrl, $project.project_id
 
@@ -311,8 +306,12 @@ class HarborAPI: RESTAPICurl
 		$memberList = $this.getProjectMemberList($project)
 
 		# Si c'est un groupe qu'on ajoute, 
-		if($null -ne $groupDN)
+		if($null -ne $adGroup)
 		{
+			# On a un format LDAP://CN=vra_t_12635_13030,OU=User,OU=EPFL,OU=Test,OU=XaaS,OU=DIT-Services Communs,DC=intranet,DC=epfl,DC=ch
+			# et on a besoin de virer le début (LDAP://) pour que ça soit utilisable par Harbor
+			$groupDN = $adGroup.path -replace "LDAP://", ""
+			
 			# Recherche du groupe dans Harbor car même si on lui file le DN de LDAP pour ajouter un nouveau groupe, faut aussi lui filer
 			# l'ID du groupe en interne... stupide mais bref... ça a été codé avec les pieds Harbor on dirait..
 			$harborGroup = $this.getUserGroup($groupDN)
