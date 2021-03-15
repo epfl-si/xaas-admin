@@ -51,6 +51,7 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 $configGrants = [ConfigReader]::New("config-grants.json")
 $configGroups = [ConfigReader]::New("config-groups.json")
 $configSnow = [ConfigReader]::New("config-snow.json")
+$configLdapAD = [ConfigReader]::New("config-ldap-ad.json")
 
 # Les types de rôles pour l'application Tableau
 enum TableauRoles 
@@ -71,6 +72,7 @@ enum ADGroupCreateSourceType {
 	BUT : Regarde si un groupe Active Directory existe et si ce n'est pas le cas, il 
 		  est créé.
 
+	IN  : $ldap						-> Objet pour communiquer avec LDAP
 	IN  : $groupName				-> Nom du groupe à créer
 	IN  : $groupDesc				-> Description du groupe à créer.
 	IN  : $groupMemberGroup			-> Nom du groupe à ajouter dans le groupe $groupName
@@ -83,7 +85,7 @@ enum ADGroupCreateSourceType {
 		  $false -> le groupe ($groupMemberGroup) à ajouter dans le groupe $groupName 
 		  			n'existe pas.
 #>
-function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation, [switch]$updateExistingContent)
+function createADGroupWithContent([EPFLLDAP]$ldap, [string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation, [switch]$updateExistingContent)
 {
 	 
 	# Cette petite ligne permet de transformer les tirets style "MS Office" en tirets "normaux". Si on ne fait pas ça, on aura 
@@ -91,14 +93,14 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 	$groupDesc = $groupDesc -replace '–', '-'
 
 	# On regarde si le groupe à ajouter dans le nouveau groupe existe
-	if($null -eq (getADGroup -groupName $groupMemberGroup))
+	if($null -eq ($ldap.getADGroup($groupMemberGroup)))
 	{
 		$logHistory.addWarningAndDisplay(("Inner group '{0}' has been created but still not available in AD (wait for sync), skipping AD group '{1}' creation for now!" -f $groupMemberGroup, $groupName))
 		return $false
 	}
 
 	# Recherche du groupe qu'on doit créer
-	$adGroup = getADGroup -groupName $groupName
+	$adGroup = $ldap.getADGroup($groupName)
 
 	# Si le groupe n'existe pas encore 
 	if($null -eq $adGroup)
@@ -118,14 +120,15 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 		if(-not $SIMULATION_MODE)
 		{
 			# Mise à jour de la description du groupe dans le cas où ça aurait changé
-			if($adGroup.Description -ne $groupDesc)
+			if($adGroup.properties.Description -ne $groupDesc)
 			{
 				$logHistory.addLineAndDisplay(("--> Updating AD group '{0}' description because it changed" -f $groupName))
 				Set-ADGroup $groupName -Description $groupDesc -Confirm:$false
 				$counters.inc('ADGroupsDescriptionUpdated')
 			}
-			
 		}
+
+		$alreadyExists = $true
 	}
 
 	# Si on arrive ici, c'est que le groupe à mettre dans le nouveau groupe AD existe
@@ -687,7 +690,7 @@ try
 							$configVra.getConfigValue(@($targetEnv, "db", "port")))
 
 	# Pour faire les recherches dans LDAP
-	$ldap = [EPFLLDAP]::new()
+	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))
 
 	# Pour accéder à ServiceNow
 	$snow = [snowAPI]::new($configSnow.getConfigValue(@("server")), 
@@ -818,7 +821,7 @@ try
 					$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
 
 					# Création des groupes + gestion des groupes prérequis 
-					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+					if((createADGroupWithContent -ldap $ldap -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
 						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent) -eq $false)
 					{
 						if($notifications.missingEPFLADGroups -notcontains $approveGroupNameGroups)
