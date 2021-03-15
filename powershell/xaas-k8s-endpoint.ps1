@@ -89,10 +89,11 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "K8s", "HarborAPI.inc.ps1"))
 
 # Chargement des fichiers de configuration
-$configGlobal = [ConfigReader]::New("config-global.json")
-$configVra = [ConfigReader]::New("config-vra.json")
-$configK8s = [ConfigReader]::New("config-xaas-k8s.json")
-$configNSX = [ConfigReader]::New("config-nsx.json")
+$configGlobal   = [ConfigReader]::New("config-global.json")
+$configVra      = [ConfigReader]::New("config-vra.json")
+$configK8s      = [ConfigReader]::New("config-xaas-k8s.json")
+$configNSX      = [ConfigReader]::New("config-nsx.json")
+$configLdapAD   = [ConfigReader]::New("config-ldap-ad.json")
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
@@ -523,6 +524,9 @@ try
                                         $configK8s.getConfigValue(@($targetEnv, "tkgi", "user")),
                                         $configK8s.getConfigValue(@($targetEnv, "tkgi", "password")),
                                         $configK8s.getConfigValue(@($targetEnv, "tkgi", "certificate")))
+
+    # Pour faire les recherches dans LDAP
+	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))                                        
     
     # Chargement des informations sur le nombre de Workers pour les plans
     $resourceQuotaLimitsFile = ([IO.Path]::Combine($global:DATA_FOLDER, "XaaS", "K8s", "resource-quota-limits.json"))
