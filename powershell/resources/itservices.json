@@ -914,6 +914,15 @@
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
+        
+        {
+            "active": true,
+            "longName":  "Data Center Monitoring",
+            "shortName":  "dcm",
+            "snowId":  "SVC1344",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
+        },
         {
             "active": true,
             "longName":  "SAM – Software Asset Management",

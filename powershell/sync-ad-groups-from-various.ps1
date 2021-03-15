@@ -51,6 +51,7 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 $configGrants = [ConfigReader]::New("config-grants.json")
 $configGroups = [ConfigReader]::New("config-groups.json")
 $configSnow = [ConfigReader]::New("config-snow.json")
+$configLdapAD = [ConfigReader]::New("config-ldap-ad.json")
 
 # Les types de rôles pour l'application Tableau
 enum TableauRoles 
@@ -124,8 +125,9 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 				Set-ADGroup $groupName -Description $groupDesc -Confirm:$false
 				$counters.inc('ADGroupsDescriptionUpdated')
 			}
-			
 		}
+
+		$alreadyExists = $true
 	}
 
 	# Si on arrive ici, c'est que le groupe à mettre dans le nouveau groupe AD existe
@@ -687,7 +689,7 @@ try
 							$configVra.getConfigValue(@($targetEnv, "db", "port")))
 
 	# Pour faire les recherches dans LDAP
-	$ldap = [EPFLLDAP]::new()
+	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))
 
 	# Pour accéder à ServiceNow
 	$snow = [snowAPI]::new($configSnow.getConfigValue(@("server")), 
