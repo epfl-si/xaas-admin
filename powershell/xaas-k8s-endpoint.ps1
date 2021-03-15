@@ -728,8 +728,8 @@ try
             $logHistory.addLine(("IP address for cluster is {0}. Looking for Ingress/Contour IP in NSX..." -f $ipMain))
             do
             {
-                $logHistory.addLine(("Waiting {0} sec for Contour to appear in NSX..." -f $waitSec))
-                Start-Sleep -Seconds $waitSec
+                $logHistory.addLine(("Waiting {0} sec for Contour to appear in NSX..." -f $waitSecInterval))
+                Start-Sleep -Seconds $waitSecInterval
                 $remainingSecWait -= $waitSecInterval
                 $ipIngress = searchClusterIngressIPAddress -clusterIP $ipMain -nsx $nsx
             }
