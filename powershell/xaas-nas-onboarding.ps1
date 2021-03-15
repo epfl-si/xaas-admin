@@ -26,6 +26,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NotificationMail.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "Counters.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SQLDB.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "EPFLLDAP.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGeneratorBase.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "NameGenerator.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "SecondDayActions.inc.ps1"))
@@ -45,9 +46,10 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "NameGeneratorNAS.inc.ps1"))
 
 # Chargement des fichiers de configuration
-$configGlobal = [ConfigReader]::New("config-global.json")
-$configvRA = [ConfigReader]::New("config-vra.json")
-$configNAS = [ConfigReader]::New("config-xaas-nas.json")
+$configGlobal   = [ConfigReader]::New("config-global.json")
+$configvRA      = [ConfigReader]::New("config-vra.json")
+$configNAS      = [ConfigReader]::New("config-xaas-nas.json")
+$configLdapAd   = [ConfigReader]::New("config-ldap-ad.json")
 
 
 
@@ -107,6 +109,12 @@ function getVolToOnboard([SQLDB]$sqldb, [string]$volType)
 }
 
 
+<# Renvoie le nom d'une unité en fonction de son ID #>
+function getUnitName([array]$params)
+{
+    return $ldap.getUnitInfos($params[0]).cn
+}
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -147,6 +155,7 @@ try
                                 $configNAS.getConfigValue(@($targetEnv, "password")))
 
 
+    $ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))						                                 
 
     # Pour accéder à la base de données
 	$sqldb = [SQLDB]::new([DBType]::MySQL,
@@ -169,6 +178,40 @@ try
         $netapp.activateDebug($logHistory)    
     }
 
+    $cols = @(
+        @("nas3VolName", "nas_fs_name"),
+        @("nas3VServer", "infra_vserver_name"),
+        @("unitId", "nas_fs_unit"),
+        @("unitName", @("getUnitName", "nas_fs_unit") ),
+        @("Rattachement", "nas_fs_rattachement"),
+        @("Faculty", "nas_fs_faculty")
+        @("SizeGB", "nas_fs_quota_gb"),
+        @("Mail List", "mailList"), 
+        "volNo",
+        "nas2020VolName",
+        "nas2020VServer",
+        "Owner (user@intranet.epfl.ch)",
+        "targetTenantName",
+        "targetBgName",
+        "onboard Date")
+        
+
+    $colCounter = 1
+    $colNas3VolName     = $colCounter++
+    $colNas3vServer     = $colCounter++
+    $colUnitId          = $colCounter++
+    $colUnitName        = $colCounter++
+    $colRattachement    = $colCounter++
+    $colFaculty         = $colCounter++
+    $colSizeGB          = $colCounter++
+    $colMailList        = $colCounter++
+    $colVolNo           = $colCounter++
+    $colNas2020VolName  = $colCounter++
+    $colNas2020vServer  = $colCounter++
+    $colOwner           = $colCounter++
+    $colTargetTenantName= $colCounter++
+    $colTargetBGName    = $colCounter++
+    $colOnboardDate     = $colCounter++
     
 
     #$dataFile = ([IO.Path]::Combine("$PSScriptRoot", $dataFile))
@@ -184,43 +227,85 @@ try
             $volList = getVolToOnboard -sqldb $sqldb -volType $volType
             Write-Host "done" -foregroundColor:DarkGreen
 
-            $cols = @(
-                @("nas3VolName", "nas_fs_name"),
-                @("unitId", "nas_fs_unit"),
-                @("Rattachement", "nas_fs_rattachement"),
-                @("vServer", "infra_vserver_name"),
-                @("SizeGB", "nas_fs_quota_gb"),
-                @("Mail List", "mailList"), 
-                "nas2020VolName",
-                "Owner (user@intranet.epfl.ch)",
-                "targetTenantName",
-                "targetBgName")
 
-            (($cols | ForEach-Object{@($_)[0]}) -join $CSV_SEPARATOR) | Out-File $dataFile -Encoding:utf8
+            if(Test-Path $dataFile)
+            {
+                Remove-Item $dataFile -Force
+            }
+
+            $excel = New-Object -ComObject excel.application 
+            $excel.visible = $false
+            $workbook = $excel.Workbooks.Add()
+
+            $excelSheet= $workbook.Worksheets.Item(1) 
+            $excelSheet.Name = 'Volume list'
+            $usedRange = $excelSheet.UsedRange
+            $usedRange.EntireColumn.AutoFit()| Out-Null
+
+            $colNo = 1
+            $cols | ForEach-Object{
+                $excelSheet.Cells.Item(1, $colNo) = @($_)[0]
+                $colNo++
+            }
 
             Write-Host -NoNewLine "Extracting data... " 
+            $lineNo = 2
             # Parcours des volumes récupérés
             Foreach($vol in $volList)
             {
-                $valList = @()
-
+                $colNo = 1
                 $cols | ForEach-Object {
+                    
                     $tag, $dbCol = $_
+
+                    # Si pas de nom de champ ou de fonction
                     if($null -eq $dbCol)
                     {
-                        $val = ""
+                        if($colNo -eq $colNas2020VolName)
+                        {
+                            $formula = Switch($volType)
+                            {
+                                #"col" { '="u"&C{0}&"_"&LOWER(SUBSTITUTE(F{0},"-",""))&"_"&LOWER(SUBSTITUTE(D{0},"-",""))&"_"&I{0}&"_files"' -f $lineNo }
+                                "col" { '="u"&C{0}&"_"&LOWER(SUBSTITUTE(F{0},"-",""))&"_"&LOWER(SUBSTITUTE(D{0},"-",""))&"_"&I{0}&"_files"' -f $lineNo }
+                                "app" { Throw "Not handled"}
+                            }
+                            
+                            $excelSheet.Cells.Item($lineNo, $colNo).Formula = $formula
+                        }
                     }
                     else
                     {
-                        $val = $vol.$dbCol
+                        
+                        if($dbCol -is [System.Array])
+                        {
+                            $funcName, $paramNameList = $dbCol
+                            $paramValueList = @()
+                            Foreach($param in $paramNameList)
+                            {
+                                $paramValueList += $vol.$param
+                            }
+                            $expression = '$val = {0} -params $paramValueList' -f $funcName
+                            Invoke-expression $expression
+                        }
+                        else # Si nom de champ
+                        {
+                            $val = $vol.$dbCol
+                        }
+
+                        $excelSheet.Cells.Item($lineNo, $colNo) = $val
                     }
 
-                    $valList += $val
+                    
+
+                    $colNo++
                 }
 
-                ($valList -join $CSV_SEPARATOR) | Out-File $dataFile -Encoding:utf8 -append
+                $lineNo++
             }
             Write-Host "done" -foregroundColor:DarkGreen
+
+            $workbook.SaveAs($dataFile)
+            $excel.Quit()
 
             Write-Host ("Output can be found in '{0}' file" -f $dataFile)
         }
@@ -229,13 +314,20 @@ try
         # -- Importation depuis un fichier de données
         $ACTION_IMPORT
         {
+            
             $catalogItemName = Switch($volType)
             {
                 "col" { $XAAS_NAS_ONBOARD_COLL_CATALOG_ITEM }
                 "app" { Throw "Not handled"}
             }
         
+            # Test de l'existence du fichier de données
+            if(!(Test-Path $dataFile))
+            {
+                Throw ("Data file '{0}' not found !" -f $dataFile)
+            }
 
+            # Récupération de l'item de catalogue correspondant au type du volume à importer
             $catalogItem = $vra.getCatalogItem($catalogItemName)
 
             if($null -eq $catalogItem)
@@ -243,13 +335,68 @@ try
                 Throw ("Catalog Item '{0}' not found on {1}::{2}" -f $catalogItemName, $targetEnv.toUpper(), $targetTenant)
             }
 
-            $bg = $vra.getBG("epfl_vposi_itop_sddc")
+            $excel = New-Object -ComObject excel.application 
+            $workbook = $excel.Workbooks.Open($dataFile)
+            $excel.visible = $false
+            $excelSheet= $workbook.Worksheets.Item(1) 
+
+            # Parcours des éléments du fichier Excel
+            for($lineNo=2 ; $lineNo -lt ($excelSheet.UsedRange.Rows).count; $lineNo++)
+            {
+                $volName = $excelSheet.Cells.Item($lineNo, $colNas3VolName).text
+                $logHistory.addLineAndDisplay(("Volume '{0}'..." -f $volName))
+
+                $onboardDate = $excelSheet.Cells.Item($lineNo, $colOnboardDate).text
+                if($onboardDate -ne "")
+                {
+                    $logHistory.addLineAndDisplay(("> Already onboarded ({0}), skipping" -f $onboardDate))
+                    continue
+                }
+
+                # Check de la validité des données entrées dans le fichier Excel
+                for($colNo = $colNas2020VolName; $colNo -lt $colOnboardDate; $colNo++ )
+                {
+                    if($excelSheet.Cells.Item($lineNo, $colNo).text -eq "")
+                    {
+                        Throw ("Empty value found on line {0} and column no {1}" -f $lineNo, $colNo)
+                    }
+                }
 
 
-            $template = $vra.getCatalogItemRequestTemplate($catalogItem, $bg, "chaboude@intranet.epfl.ch")
 
-            $template
+                $bgName = $excelSheet.Cells.Item($lineNo, $colTargetBGName).text
+                $logHistory.addLineAndDisplay(("> BG '{0}'" -f $bgName))
+
+                $bg = $vra.getBG($bgName)
+
+                if($null -eq $bg)
+                {
+                    Throw ("Incorrect BG ({0}) given for volume ({1}). Check Excel file on line {3}" -f $bgName, $volName, $lineNo)
+                }
+
+                $owner = $excelSheet.Cells.Item($lineNo, $colOwner).text
+
+                $template = $vra.getCatalogItemRequestTemplate($catalogItem, $bg, $bg)
+
+                if($null -eq $template)
+                {
+                    Throw "Template not found!"
+                }
+
+                $template
+
+            }# FIN Parcours des lignes du fichier Excel
+
+            
+            
+            if($null -ne $excel)
+            {
+                $excel.Quit()
+            }
+            
         }
+
+        
 
     }
 
@@ -262,7 +409,11 @@ catch
     $errorMessage = $_.Exception.Message
     $errorTrace = $_.ScriptStackTrace
 
-
+    if($null -ne $excel)
+    {
+        $excel.Quit()
+    }
+    
     $logHistory.addError(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
 
     if($null -ne $vra)
