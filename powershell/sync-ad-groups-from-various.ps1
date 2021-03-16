@@ -72,7 +72,6 @@ enum ADGroupCreateSourceType {
 	BUT : Regarde si un groupe Active Directory existe et si ce n'est pas le cas, il 
 		  est créé.
 
-	IN  : $ldap						-> Objet pour communiquer avec LDAP
 	IN  : $groupName				-> Nom du groupe à créer
 	IN  : $groupDesc				-> Description du groupe à créer.
 	IN  : $groupMemberGroup			-> Nom du groupe à ajouter dans le groupe $groupName
@@ -85,7 +84,7 @@ enum ADGroupCreateSourceType {
 		  $false -> le groupe ($groupMemberGroup) à ajouter dans le groupe $groupName 
 		  			n'existe pas.
 #>
-function createADGroupWithContent([EPFLLDAP]$ldap, [string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation, [switch]$updateExistingContent)
+function createADGroupWithContent([string]$groupName, [string]$groupDesc, [string]$groupMemberGroup, [string]$OU, [bool]$simulation, [switch]$updateExistingContent)
 {
 	 
 	# Cette petite ligne permet de transformer les tirets style "MS Office" en tirets "normaux". Si on ne fait pas ça, on aura 
@@ -99,9 +98,17 @@ function createADGroupWithContent([EPFLLDAP]$ldap, [string]$groupName, [string]$
 		return $false
 	}
 
-	# Recherche du groupe qu'on doit créer
-	$adGroup = $ldap.getADGroup($groupName)
-
+	try
+	{
+		# Tentative de recherche du groupe
+		$adGroup = Get-ADGroup $groupName -Properties Description
+	}
+	catch
+	{
+		# Groupe pas trouvé
+		$adGroup = $null
+	}
+	
 	# Si le groupe n'existe pas encore 
 	if($null -eq $adGroup)
 	{
@@ -120,7 +127,7 @@ function createADGroupWithContent([EPFLLDAP]$ldap, [string]$groupName, [string]$
 		if(-not $SIMULATION_MODE)
 		{
 			# Mise à jour de la description du groupe dans le cas où ça aurait changé
-			if($adGroup.properties.Description -ne $groupDesc)
+			if($adGroup.description -ne $groupDesc)
 			{
 				$logHistory.addLineAndDisplay(("--> Updating AD group '{0}' description because it changed" -f $groupName))
 				Set-ADGroup $groupName -Description $groupDesc -Confirm:$false
@@ -821,7 +828,7 @@ try
 					$approveGroupNameGroups = $nameGenerator.getApproveGroupsADGroupName($level, $false)
 
 					# Création des groupes + gestion des groupes prérequis 
-					if((createADGroupWithContent -ldap $ldap -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
+					if((createADGroupWithContent -groupName $approveGroupInfos.name -groupDesc $approveGroupDescAD -groupMemberGroup $approveGroupNameGroups `
 						-OU $nameGenerator.getADGroupsOUDN($approveGroupInfos.onlyForTenant, [ADSubOUType]::Approval) -simulation $SIMULATION_MODE -updateExistingContent) -eq $false)
 					{
 						if($notifications.missingEPFLADGroups -notcontains $approveGroupNameGroups)
