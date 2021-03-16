@@ -1640,6 +1640,14 @@ class vRAAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+									Requests
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	#>
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Effectue une demande de création pour un élément de catalogue donné
 			  
 		IN  : $catalogItem		-> Objet représentant l'item de catalogue pour lequel on veut le formulaire de demande
@@ -1648,8 +1656,7 @@ class vRAAPI: RESTAPICurl
 		IN  : $filledTemplate	-> Objet avec le contenu de la requête. C'est celui renvoyé par getCatalogItemRequestTemplate()
 									et qui aura été rempli.
 
-		RET : Formulaire
-				$null si pas trouvé
+		RET : Objet représentant la requête faite
 	#>
 	[PSObject] doCatalogItemRequest([PSObject]$catalogItem, [PSObject]$bg, [string]$requestedFor, [PSObject]$filledTemplate)
 	{
@@ -1657,6 +1664,23 @@ class vRAAPI: RESTAPICurl
 				$this.baseUrl, $catalogItem.id, $bg.id, $requestedFor
 
 		return ($this.callAPI($uri, "POST", $filledTemplate))
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie les infos d'une demande de création pour un élément de catalogue donné
+			  
+		IN  : $requestId	-> ID de la requête dont on veut avoir les infos
+
+		RET : Objet représenant la requête faite
+				$null si pas trouvé
+	#>
+	[PSObject] getCatalogItemRequest([string]$requestId)
+	{
+		$uri = "{0}/catalog-service/api/consumer/requests/{1}" -f $requestId
+
+		return ($this.callAPI($uri, "GET", $null))
 	}
 
 
