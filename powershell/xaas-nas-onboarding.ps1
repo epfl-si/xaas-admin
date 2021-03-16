@@ -548,8 +548,19 @@ try
                 $template.data.volType = $volType
                 $template.data.webdavAccess = ($excelSheet.Cells.Item($lineNo, $colWebDav).text -eq "1")
 
-                Write-Host "> Doing request..."
+                Write-Host "> Doing request" -NoNewLine
                 $res = $vra.doCatalogItemRequest($catalogItem, $bg, $owner, $template)
+
+                do
+                {
+                    Start-Sleep -Seconds 5
+                    Write-Host "." -NoNewLine
+                    $request = $vra.getCatalogItemRequest($res.id)
+                }
+                while($request.state -eq "RUNNING")
+                
+                Write-Host " done" -foregroundColor:DarkGreen
+
 
                 # Mise à jour de la date d'onboarding et sauvegarde du fichier
                 Write-Host "> Saving onboard date..."
