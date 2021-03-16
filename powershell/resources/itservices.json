@@ -125,6 +125,14 @@
             "snowId":  "SVC0070",
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
+            "longName":  "MyPrint",
+            "shortName":  "mprntt",
+            "snowId":  "SVC0056",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
         }
         
     ],
