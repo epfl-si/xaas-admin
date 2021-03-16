@@ -91,12 +91,17 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 	# des problèmes par la suite dans vRA car ça pourrira le JSON...
 	$groupDesc = $groupDesc -replace '–', '-'
 
-	# On regarde si le groupe à ajouter dans le nouveau groupe existe
-	if($null -eq ($ldap.getADGroup($groupMemberGroup)))
+	try
+	{
+		# On regarde si le groupe à mettre dans le groupe à créer existe bel et bien.
+		$adMemberGroup = Get-ADGroup $groupMemberGroup
+	}
+	catch
 	{
 		$logHistory.addWarningAndDisplay(("Inner group '{0}' has been created but still not available in AD (wait for sync), skipping AD group '{1}' creation for now!" -f $groupMemberGroup, $groupName))
 		return $false
 	}
+
 
 	try
 	{
