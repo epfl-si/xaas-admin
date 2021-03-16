@@ -146,10 +146,6 @@ class AviNetworksAPI: RESTAPICurl
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
-		# Oui, cette ligne est débile... pourquoi on la met? simplement parce qu'il semblerait que du côté AVI, ils ne gèrent pas 
-		# "si bien que ça" le fait que plein de requêtes REST arrivent à la suite... 
-		Start-Sleep -Seconds 1
-
 		# On fait un "cast" pour être sûr d'appeler la fonction de la classe courante et pas une surcharge éventuelle
 		$result = ([RESTAPICurl]$this).callAPI($uri, $method, $body)
 
