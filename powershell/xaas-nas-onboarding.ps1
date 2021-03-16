@@ -115,6 +115,60 @@ function getUnitName([array]$params)
     return $ldap.getUnitInfos($params[0]).cn
 }
 
+function getTargetTenant()
+{
+    $tenant = switch($volType) {
+        "col" { "epfl" }
+        "app" { "itservices" }
+    }
+
+    return $tenant
+}
+
+
+$global:BG_LIST = @()
+function getTargetBG([array]$params)
+{
+    if($volType -eq "col")
+    {
+        # Si on n'a pas d'infos, on ne va pas chercher plus loin
+        if($params[0] -eq [DBNull]::Value )
+        {
+            return ""
+        }
+        # On regarde dans le cache
+        $bg = $global:BG_LIST | Where-Object { $_.id -eq $params[0]}
+
+        # Si pas trouvé dans le cache
+        if($null -eq $bg)
+        {
+            $vraBG = $vra.getBGByCustomId($params[0])
+
+            if($null -eq $vraBG)
+            {
+                return ""
+            }
+
+            $bg = @{
+                id = $params[0]
+                name = $vraBG.name
+            }
+
+            $global:BG_LIST += $bg
+        }
+
+        return $bg.name
+    }
+    return ""
+}
+
+
+function getExcelColName([int]$colIndex)
+{
+    $offset = [byte][char]'A'
+
+    return [char][byte] ($offset +$colIndex -1)
+}
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -181,29 +235,39 @@ try
     $cols = @(
         @("nas3VolName", "nas_fs_name"),
         @("nas3VServer", "infra_vserver_name"),
+        @("accessType", "nas_fs_access_type_id")
+        @("Type", "nas_fs_type_id"),
         @("unitId", "nas_fs_unit"),
         @("unitName", @("getUnitName", "nas_fs_unit") ),
         @("Rattachement", "nas_fs_rattachement"),
         @("Faculty", "nas_fs_faculty")
         @("SizeGB", "nas_fs_quota_gb"),
+        @("WebDav", "nas_fs_webdav_access"),
+        @("Comment", "nas_fs_comment"),
+        @("Reason for req", "nas_fs_reason_for_request"),
         @("Mail List", "mailList"), 
         "volNo",
         "nas2020VolName",
         "nas2020VServer",
         "Owner (user@intranet.epfl.ch)",
-        "targetTenantName",
-        "targetBgName",
+        @("targetTenantName", @("getTargetTenant")),
+        @("targetBgName", @("getTargetBG", "nas_fs_unit")),
         "onboard Date")
         
 
     $colCounter = 1
     $colNas3VolName     = $colCounter++
     $colNas3vServer     = $colCounter++
+    $colAccessType      = $colCounter++
+    $colType            = $colCounter++
     $colUnitId          = $colCounter++
     $colUnitName        = $colCounter++
     $colRattachement    = $colCounter++
     $colFaculty         = $colCounter++
     $colSizeGB          = $colCounter++
+    $colWebDav          = $colCounter++
+    $colComment         = $colCounter++
+    $colReasonForRequest= $colCounter++
     $colMailList        = $colCounter++
     $colVolNo           = $colCounter++
     $colNas2020VolName  = $colCounter++
@@ -248,11 +312,22 @@ try
                 $colNo++
             }
 
-            Write-Host -NoNewLine "Extracting data... " 
+            Write-Host -NoNewLine ("Extracting data ({0} volumes)" -f $volList.count)
+            $progressStep = 10
             $lineNo = 2
             # Parcours des volumes récupérés
             Foreach($vol in $volList)
             {
+                if(($lineNo % $progressStep) -eq 0)
+                {
+                    Write-Host $lineNo -NoNewLine
+                }
+                else
+                {
+                    Write-Host "." -NoNewLine
+                }
+
+
                 $colNo = 1
                 $cols | ForEach-Object {
                     
@@ -261,21 +336,34 @@ try
                     # Si pas de nom de champ ou de fonction
                     if($null -eq $dbCol)
                     {
+                        # SI on est sur la colonne avec le nom de volume
                         if($colNo -eq $colNas2020VolName)
                         {
+                            # Formule pour calculer
+                            $suffix = ""
+                            if($vol.nas_fs_access_type_id -eq "nfsv3")
+                            {
+                                $suffix = '&"_nfs"'
+                            }
                             $formula = Switch($volType)
                             {
-                                #"col" { '="u"&C{0}&"_"&LOWER(SUBSTITUTE(F{0},"-",""))&"_"&LOWER(SUBSTITUTE(D{0},"-",""))&"_"&I{0}&"_files"' -f $lineNo }
-                                "col" { '="u"&C{0}&"_"&LOWER(SUBSTITUTE(F{0},"-",""))&"_"&LOWER(SUBSTITUTE(D{0},"-",""))&"_"&I{0}&"_files"' -f $lineNo }
+                                "col" { '="u"&{1}{0}&"_"&LOWER(SUBSTITUTE({2}{0},"-",""))&"_"&LOWER(SUBSTITUTE({3}{0},"-",""))&"_"&{4}{0}&"_files"{5}' -f `
+                                         $lineNo, 
+                                         (getExcelColName -colIndex $colUnitId), 
+                                         (getExcelColName -colIndex $colFaculty),
+                                         (getExcelColName -colIndex $colUnitName),
+                                         (getExcelColName -colIndex $colVolNo),
+                                          $suffix }
                                 "app" { Throw "Not handled"}
                             }
                             
                             $excelSheet.Cells.Item($lineNo, $colNo).Formula = $formula
                         }
                     }
-                    else
+                    else # C'est un nom de champ ou de fonction
                     {
                         
+                        # Si on a des infos sur une fonction à utiliser
                         if($dbCol -is [System.Array])
                         {
                             $funcName, $paramNameList = $dbCol
@@ -284,7 +372,11 @@ try
                             {
                                 $paramValueList += $vol.$param
                             }
-                            $expression = '$val = {0} -params $paramValueList' -f $funcName
+                            $expression = '$val = {0}' -f $funcName
+                            if($paramValueList.count -gt 0)
+                            {
+                                $expression = '{0} -params $paramValueList' -f $expression
+                            }
                             Invoke-expression $expression
                         }
                         else # Si nom de champ
@@ -293,18 +385,16 @@ try
                         }
 
                         $excelSheet.Cells.Item($lineNo, $colNo) = $val
-                    }
-
-                    
+                    } 
 
                     $colNo++
-                }
+                }# Fin boucle de parcours des colonnes de la ligne courante 
 
                 $lineNo++
-            }
+            }# Fin boucle de parcours des volumes récupérés
 
             # On fige le header
-            $excel.Rows.Item("2:2").Select()
+            $excel.Rows.Item("2:2").Select() | Out-Null
             $excel.ActiveWindow.FreezePanes = $true
 
             Write-Host "done" -foregroundColor:DarkGreen
@@ -345,16 +435,33 @@ try
             $excel.visible = $false
             $excelSheet= $workbook.Worksheets.Item(1) 
 
+
+            # On commence juste par check l'unicité des noms de volumes
+            Write-Host "Checking volume name unicity... " -NoNewLine
+            $volList = @()
+            for($lineNo=2 ; $lineNo -lt ($excelSheet.UsedRange.Rows).count; $lineNo++)
+            {
+                $volName = $excelSheet.Cells.Item($lineNo, $colNas3VolName).text
+                if($volList -contains $volName)
+                {
+                    Throw ("Duplicate volume name found: {0}" -f $volName)
+                }
+                $volList += $volName
+            }
+            Write-Host "done" -foregroundColor:DarkGreen
+
+
+            Write-Host "Doing job... "
             # Parcours des éléments du fichier Excel
             for($lineNo=2 ; $lineNo -lt ($excelSheet.UsedRange.Rows).count; $lineNo++)
             {
                 $volName = $excelSheet.Cells.Item($lineNo, $colNas3VolName).text
-                $logHistory.addLineAndDisplay(("Volume '{0}'..." -f $volName))
+                Write-Host ("Volume '{0}'..." -f $volName)
 
                 $onboardDate = $excelSheet.Cells.Item($lineNo, $colOnboardDate).text
                 if($onboardDate -ne "")
                 {
-                    $logHistory.addLineAndDisplay(("> Already onboarded ({0}), skipping" -f $onboardDate))
+                    Write-Host ("> Already onboarded ({0}), skipping" -f $onboardDate)
                     continue
                 }
 
@@ -370,7 +477,7 @@ try
 
 
                 $bgName = $excelSheet.Cells.Item($lineNo, $colTargetBGName).text
-                $logHistory.addLineAndDisplay(("> BG '{0}'" -f $bgName))
+                Write-Host ("> BG '{0}'" -f $bgName)
 
                 $bg = $vra.getBG($bgName)
 
@@ -399,7 +506,7 @@ try
                 $excel.Quit()
             }
             
-        }
+        }# FIN ACTION IMPORT
 
         
 
@@ -419,7 +526,7 @@ catch
         $excel.Quit()
     }
     
-    $logHistory.addError(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
+    Write-Host ("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace) -foregroundColor:DarkRed
 
     if($null -ne $vra)
     {
