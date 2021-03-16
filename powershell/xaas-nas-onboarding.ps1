@@ -61,8 +61,6 @@ $ACTION_IMPORT              = "import"
 
 $CSV_SEPARATOR = ";"
 
-$XAAS_NAS_ONBOARD_COLL_CATALOG_ITEM =  "NAS(C) Onboard"
-
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
 
@@ -109,12 +107,18 @@ function getVolToOnboard([SQLDB]$sqldb, [string]$volType)
 }
 
 
-<# Renvoie le nom d'une unité en fonction de son ID #>
+<# -----------------------------------------------------------
+    Renvoie le nom d'une unité en fonction de son ID 
+#>
 function getUnitName([array]$params)
 {
     return $ldap.getUnitInfos($params[0]).cn
 }
 
+
+<# -----------------------------------------------------------
+    Renvoie le tenant cible
+#>
 function getTargetTenant()
 {
     $tenant = switch($volType) {
@@ -126,6 +130,9 @@ function getTargetTenant()
 }
 
 
+<# -----------------------------------------------------------
+    Renvoie le BG en fonction de son ID
+#>
 $global:BG_LIST = @()
 function getTargetBG([array]$params)
 {
@@ -163,6 +170,28 @@ function getTargetBG([array]$params)
 }
 
 
+<# -----------------------------------------------------------
+    Renvoie le type d'accès correct qui est utilisé pour le NAS
+#>
+function getAccessType([array]$params)
+{
+
+    if($params[0] -eq "nfsv3")
+    {
+        return "nfs3"
+    }
+
+    if($params[0] -eq "cifs-app")
+    {
+        return "cifs"
+    }
+    return $params[0]
+}
+
+
+<# -----------------------------------------------------------
+    Renvoie la lettre d'une colonne en fonction du numéro (ne fonctionne que pour 26 colonnes)
+#>
 function getExcelColName([int]$colIndex)
 {
     $offset = [byte][char]'A'
@@ -235,7 +264,7 @@ try
     $cols = @(
         @("nas3VolName", "nas_fs_name"),
         @("nas3VServer", "infra_vserver_name"),
-        @("accessType", "nas_fs_access_type_id")
+        @("accessType", @("getAccessType", "nas_fs_access_type_id")),
         @("Type", "nas_fs_type_id"),
         @("unitId", "nas_fs_unit"),
         @("unitName", @("getUnitName", "nas_fs_unit") ),
@@ -410,11 +439,7 @@ try
         $ACTION_IMPORT
         {
             
-            $catalogItemName = Switch($volType)
-            {
-                "col" { $XAAS_NAS_ONBOARD_COLL_CATALOG_ITEM }
-                "app" { Throw "Not handled"}
-            }
+            $catalogItemName = "Raw Onboard Volume"
         
             # Test de l'existence du fichier de données
             if(!(Test-Path $dataFile))
@@ -455,7 +480,7 @@ try
             # Parcours des éléments du fichier Excel
             for($lineNo=2 ; $lineNo -lt ($excelSheet.UsedRange.Rows).count; $lineNo++)
             {
-                $volName = $excelSheet.Cells.Item($lineNo, $colNas3VolName).text
+                $volName = $excelSheet.Cells.Item($lineNo, $colNas2020VolName).text
                 Write-Host ("Volume '{0}'..." -f $volName)
 
                 $onboardDate = $excelSheet.Cells.Item($lineNo, $colOnboardDate).text
@@ -474,29 +499,63 @@ try
                     }
                 }
 
-
-
+                # -- Business Group
                 $bgName = $excelSheet.Cells.Item($lineNo, $colTargetBGName).text
-                Write-Host ("> BG '{0}'" -f $bgName)
+                Write-Host ("> Getting BG '{0}'..." -f $bgName)
 
                 $bg = $vra.getBG($bgName)
 
                 if($null -eq $bg)
                 {
-                    Throw ("Incorrect BG ({0}) given for volume ({1}). Check Excel file on line {3}" -f $bgName, $volName, $lineNo)
+                    Throw ("Incorrect BG ({0}) given for volume ({1}). Check Excel file on line {2}" -f $bgName, $volName, $lineNo)
                 }
+
+                # -- Volume
+                Write-Host ("> Getting Volume '{0}'..." -f $volName)
+                $netappVol = $netapp.getVolumeByName($volName)
+
+                if($null -eq $netappVol)
+                {
+                    Throw ("Incorrect volume name ({0}) given. Check Excel file on line {1}" -f $volName, $lineNo)
+                }
+
 
                 $owner = $excelSheet.Cells.Item($lineNo, $colOwner).text
 
-                $template = $vra.getCatalogItemRequestTemplate($catalogItem, $bg, $bg)
+                Write-Host ("> Getting request template...")
+                $template = $vra.getCatalogItemRequestTemplate($catalogItem, $bg, $owner)
 
                 if($null -eq $template)
                 {
                     Throw "Template not found!"
                 }
 
-                $template
+                # Remplissage du template
+                #$template.description = $excelSheet.Cells.Item($lineNo, $colComment).text
+                #$template.reasons = $excelSheet.Cells.Item($lineNo, $colReasonForRequest).text
 
+                $template.data.access = $excelSheet.Cells.Item($lineNo, $colAccessType).text
+                $template.data.bgName = $bgName
+                $template.data.deploymentTag = $excelSheet.Cells.Item($lineNo, $colType).text
+                $template.data.notificationMail = $excelSheet.Cells.Item($lineNo, $colMailList).text
+                $template.data.reasonsForRequest = $excelSheet.Cells.Item($lineNo, $colReasonForRequest).text
+                $template.data.requestor = $owner
+                $template.data.svm = $excelSheet.Cells.Item($lineNo, $colNas2020vServer).text
+                $template.data.targetTenant = $excelSheet.Cells.Item($lineNo, $colTargetTenantName).text
+
+                $template.data.volId = $netappVol.uuid
+                $template.data.volName = $volName
+                $template.data.volType = $volType
+                $template.data.webdavAccess = ($excelSheet.Cells.Item($lineNo, $colWebDav).text -eq "1")
+
+                Write-Host "> Doing request..."
+                $res = $vra.doCatalogItemRequest($catalogItem, $bg, $owner, $template)
+
+                # Mise à jour de la date d'onboarding et sauvegarde du fichier
+                Write-Host "> Saving onboard date..."
+                $excelSheet.Cells.Item($lineNo, $colOnboardDate) = (Get-Date -Format "yyyy-MM-dd H:m:s")
+                $workbook.SaveAs($dataFile)
+                
             }# FIN Parcours des lignes du fichier Excel
 
             
