@@ -709,7 +709,7 @@ try
             $tkgiKubectl.addClusterRoleBinding($clusterName, 
                                                 "cluster-admin", 
                                                 "crb-gentleman-agreement", 
-                                                "oidc:vra_t_svc1219")
+                                                "oidc:vra_t_svc1219_AppGrpU")
                     
             $logHistory.addLine("> Service Accounts")
             # Pour les services accounts
