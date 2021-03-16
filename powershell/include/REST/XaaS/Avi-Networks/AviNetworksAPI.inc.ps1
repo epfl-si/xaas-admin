@@ -522,7 +522,7 @@ class AviNetworksAPI: RESTAPICurl
 		$res = $this.callAPI($uri, "GET", $null).results | Where-Object  {$_.tenant_ref -eq $tenant.url }
 		$this.setDefaultTenant()
 
-		return $res
+		return @($res)
 	}
 
 
@@ -614,6 +614,36 @@ class AviNetworksAPI: RESTAPICurl
 
 	<#
 	-------------------------------------------------------------------------------------
+		BUT : Renvoie les infos d'un niveau d'alerte mail sur un tenant donné
+
+		IN  : $tenant	-> Objet représentant le tenant pour lequel on veut le niveau d'alerte
+		IN  : $name		-> Nom du niveau d'alerte
+
+		RET : Objet avec le niveau d'alerte
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_actiongroupconfig
+	#>
+	[PSObject] getActionGroupConfig([PSObject]$tenant, [string]$name)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/actiongroupconfig?name={1}" -f $this.baseUrl, $name
+
+		$res = $this.callAPI($uri, "GET", $null).results
+		$this.setDefaultTenant()
+
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+
+		return $res[0]
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
 		BUT : Supprime un niveau d'alerte mail
 
 		IN  : $tenant			-> Objet représentant le tenant sur lequel supprimer le niveau d'alerte
@@ -644,12 +674,13 @@ class AviNetworksAPI: RESTAPICurl
 		IN  : $alertActionLevel	-> Objet représentant le niveaud d'alerte à lier (obtenue par addActionGroupConfig() )
 		IN  : $element			-> Element sur lequel l'alerte s'applique
 		IN  : $status			-> Le statut pour lequel on veut une alerte
+		IN  : $name				-> Nom de l'alert config
 
 		RET : Objet représentant la configuration d'alerte créée
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_alertconfig
 	#>
-	[PSObject] addAlertConfig([PSObject]$tenant, [PSObject]$alertActionLevel, [XaaSAviNetworksMonitoredElements]$element, [XaaSAviNetworksMonitoredStatus]$status)
+	[PSObject] addAlertConfig([PSObject]$tenant, [PSObject]$alertActionLevel, [XaaSAviNetworksMonitoredElements]$element, [XaaSAviNetworksMonitoredStatus]$status, [string]$name)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -660,6 +691,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		$replace = @{
 			actionGroupRef = $alertActionLevel.url
+			name = $name
 		}
 
 		$body = $this.createObjectFromJSON($jsonFile, $replace)
@@ -693,7 +725,54 @@ class AviNetworksAPI: RESTAPICurl
 		$res = $this.callAPI($uri, "GET", $null).results | Where-Object  {$_.tenant_ref -eq $tenant.url }
 		$this.setDefaultTenant()
 
-		return $res
+		return @($res)
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie une alerte configurées sur un tenant donné, par son nom
+
+		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve l'alert config
+		IN  : $name		-> Nom de l'Alert Config	
+
+		RET : Objet avec l'alert config
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertconfig
+	#>
+	[PSObject] getAlertConfig([PSObject]$tenant, [string]$name)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/alertconfig?name={1}" -f $this.baseUrl, $name
+
+		$res = $this.callAPI($uri, "GET", $null).results
+		$this.setDefaultTenant()
+
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+
+		return $res[0]
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des alertes configurées sur un tenant et un élément donné
+
+		IN  : $tenant			-> Objet représentant le tenant pour lequel on veut la liste
+		IN  : $forElement		-> Objet représentant l'élément pour lequel on veut les "Alert Config"
+
+		RET : Tableau avec les alertes configurées
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertconfig
+	#>
+	[Array] getAlertConfigList([PSObject]$tenant, [XaaSAviNetworksMonitoredElements]$forElement)
+	{
+		return @($this.getAlertConfigList($tenant) | Where-Object { $_.object_type -eq $forElement.toString()})
 	}
 
 

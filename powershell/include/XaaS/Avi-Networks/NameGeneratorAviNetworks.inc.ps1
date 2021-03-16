@@ -68,4 +68,25 @@ class NameGeneratorAviNetworks: NameGeneratorBase
             ("ALERT_{0}" -f $level.toString().toUpper())
         )
     }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le nom d'une "Alert config"
+
+        IN  : $element  -> Element qui doit être monitoré
+        IN  : $status   -> statut à monitorer
+
+		RET : Nom de l'Alert Config.
+	#>
+    [string] getAlertConfigName([XaaSAviNetworksMonitoredElements]$element, [XaaSAviNetworksMonitoredStatus]$status)
+    {
+        $elementStr = switch($element)
+        {
+            VirtualService { "VS" }
+            Pool { "Pool"}
+        }
+
+        return ("{0}-{1}" -f $elementStr, $status.toString().toUpper())
+    }
 }

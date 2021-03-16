@@ -375,36 +375,6 @@ try
                     # Ajout du label spécifique pour le type de tenant
 		            $tenantLabels.add($global:XAAS_AVI_NETWORKS_TENANT_TYPE, $_.toString())
                     $tenant = $aviNetworks.addTenant($name, $desc, $tenantLabels)
-
-                    # Ajout de la notification mail
-                    $logHistory.addLine(">> Creating alert mail config for tenant...")
-                    $alertMailConfig = $aviNetWorks.addAlertMailConfig($tenant, $notificationMailList)
-
-                    # Création des niveaux d'alerte
-                    [enum]::getValues([XaaSAviNetworksAlertLevel]) | ForEach-Object {
-                        $alertName, $alertLevelName = $nameGeneratorAviNetworks.getAlertNameAndLevel($_)
-
-                        $logHistory.addLine((">>> Creating alert action level '{0}'..." -f $alertName))
-                        $alertActionLevel = $aviNetworks.addActionGroupConfig($tenant, $alertMailConfig, $alertName, $alertLevelName)
-
-                        # En fonction du niveau d'alerte, on défini le status que l'on va monitorer
-                        $monitoredStatus = switch($_)
-                        {
-                            Medium { [XaaSAviNetworksMonitoredStatus]::Up } 
-                            High {[XaaSAviNetworksMonitoredStatus]::Down }
-                        }
-
-                        $logHistory.addLine((">>> Adding monitored elements when status is '{0}" -f $monitoredStatus.toString()))
-
-                        # Parcours des éléments à monitorer
-                        [enum]::getValues([XaaSAviNetworksMonitoredElements]) | ForEach-Object {
-
-                            $logHistory.addLine((">>>> Adding monitored element '{0}'..." -f $_.toString()))
-                            # Ajout du nécessaire pour le statut défini
-                            $alertConfig = $aviNetworks.addAlertConfig($tenant, $alertActionLevel, $_, $monitoredStatus)
-                        }
-
-                    }# FIN BOUCLE de parcours de niveaux d'alerte
                 }
                 else
                 {
@@ -413,6 +383,72 @@ try
                     $deleteTenants = $false
                 }
 
+
+                $alertMailConfigList = $aviNetworks.getAlertMailConfigList($tenant)
+                # Si aucune "Alert Mail Config" n'existe,
+                if($alertMailConfigList.count -eq 0)
+                {
+                    # Ajout de la notification mail
+                    $logHistory.addLine(">> Creating alert mail config for tenant...")
+                    $alertMailConfig = $aviNetWorks.addAlertMailConfig($tenant, $notificationMailList)
+                }
+                else # le "Alert Mail Config" existe
+                {
+                    $logHistory.addLine(">> Alert mail config already exists")
+                    $alertMailConfig = $alertMailConfigList[0]
+                }
+
+                # Création des niveaux d'alerte
+                [enum]::getValues([XaaSAviNetworksAlertLevel]) | ForEach-Object {
+                    $alertName, $alertLevelName = $nameGeneratorAviNetworks.getAlertNameAndLevel($_)
+
+                    # -- Alert action level
+                    $alertActionLevel = $aviNetWorks.getActionGroupConfig($tenant, $alertName)
+
+                    if($null -eq $alertActionLevel)
+                    {
+                        $logHistory.addLine((">>> Creating alert action level '{0}'..." -f $alertName))
+                        $alertActionLevel = $aviNetworks.addActionGroupConfig($tenant, $alertMailConfig, $alertName, $alertLevelName)
+                    }
+                    else
+                    {
+                        $logHistory.addLine(">>> Alert action level '{0}' already exists" -f $alertName)
+                    }
+                    
+
+                    # En fonction du niveau d'alerte, on défini le status que l'on va monitorer
+                    $monitoredStatus = switch($_)
+                    {
+                        Medium { [XaaSAviNetworksMonitoredStatus]::Up } 
+                        High {[XaaSAviNetworksMonitoredStatus]::Down }
+                    }
+
+                    $logHistory.addLine((">>> Adding monitored elements when status is '{0}" -f $monitoredStatus.toString()))
+
+                    # Parcours des éléments à monitorer
+                    [enum]::getValues([XaaSAviNetworksMonitoredElements]) | ForEach-Object {
+
+                        # Récupération du nom
+                        $alertConfigName = $nameGeneratorAviNetworks.getAlertConfigName($_, $monitoredStatus)
+
+                        $alertConfig = $aviNetWorks.getAlertConfig($tenant, $alertConfigName)
+
+                        # Si n'existe pas
+                        if($null -eq $alertConfig)
+                        {
+                            $logHistory.addLine((">>>> Adding monitored element '{0}'..." -f $_.toString()))
+                            # Ajout du nécessaire pour le statut défini
+                            $alertConfig = $aviNetworks.addAlertConfig($tenant, $alertActionLevel, $_, $monitoredStatus, $alertConfigName)
+                        }
+                        else
+                        {
+                            $logHistory.addLine((">>>> Monitored element '{0}' already exists" -f $_.toString()))
+                        }
+                        
+                    }# FIN BOUCLE de parcours des élément à monitorer
+                    
+                }# FIN BOUCLE de parcours de niveaux d'alerte
+                
                 $tenantList += $tenant
             }# FIN BOUCLE de création des tenants pour le Business Group
 

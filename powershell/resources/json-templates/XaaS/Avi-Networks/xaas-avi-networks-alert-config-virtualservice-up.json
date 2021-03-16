@@ -1,5 +1,5 @@
 {
-    "name": "VS-UP",
+    "name": "{{name}}",
     "enabled": true,
     "threshold": 1,
     "throttle": 600,
