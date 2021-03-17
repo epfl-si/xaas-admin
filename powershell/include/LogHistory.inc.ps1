@@ -47,9 +47,16 @@ class LogHistory
         
         $this.concatLogFiles()
 
-        # Suppression des "vieux logs"
-        Get-ChildItem $this.allLogsFolder -Directory | `
-            Where-Object {$_.CreationTime -le (Get-Date).AddDays(-$nbDaysToKeep) } | Remove-Item -Force -Recurse
+        try
+        {
+            # Suppression des "vieux logs"
+            Get-ChildItem $this.allLogsFolder -File | `
+                Where-Object {$_.CreationTime -le (Get-Date).AddDays(-$nbDaysToKeep) } | Remove-Item -Force -Recurse
+        }
+        catch
+        {
+            $this.addLine(("Error deleting old log files:`n{0}" -f $_.Exception.Message))
+        }
         
     }
 
