@@ -158,6 +158,15 @@ try
     # TODO: Adapter la ligne suivante
     #$logHistory = [LogHistory]::new(@('xaas','s3', 'endpoint'), $global:LOGS_FOLDER, 30)
     
+    # Objet pour pouvoir envoyer des mails de notification
+	$valToReplace = @{
+		targetEnv = $targetEnv
+		targetTenant = $targetTenant
+	}
+	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
+												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
+
+                                                
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
@@ -194,15 +203,6 @@ try
         $scality.activateDebug($logHistory)    
     }
     
-
-    # Objet pour pouvoir envoyer des mails de notification
-	$valToReplace = @{
-		targetEnv = $targetEnv
-		targetTenant = $targetTenant
-	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
-												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
-
 
     # En fonction de l'action demandée
     switch ($action)
