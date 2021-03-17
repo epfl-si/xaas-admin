@@ -64,6 +64,31 @@ $CSV_SEPARATOR = ";"
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
 
+
+<# -----------------------------------------------------------
+    Renvoie les infos d'une demande initiale de volume
+#>
+function getVolInitialRequest([SQLDB]$sqldb, [string]$volId)
+{
+    $request = "SELECT * FROM nas_req_fs WHERE nas_fs_id={0} AND action_desc_code='fs-user-new'" -f $volId
+    $request = "SELECT * FROM action_log WHERE nas_fs_id={0} AND action_desc_code='fs-user-new'" -f $volId
+
+    $conditions = @(
+        "nas_req_fs.nas_req_fs_id=action_log.nas_req_fs_id",
+        ("nas_req_fs.nas_fs_id={0}" -f $volId),
+        "nas_req_fs.action_desc_code='fs-user-new'",
+        "action_log.action_desc_code='fs-user-new'"
+    )
+
+    $request = "SELECT * FROM nas_req_fs, action_log WHERE {0}" -f ($conditions -join " AND ")
+
+    return $sqldb.execute($request)
+}
+
+
+<# -----------------------------------------------------------
+    Renvoie la liste des volumes qui doivent être onboardés
+#>
 function getVolToOnboard([SQLDB]$sqldb, [string]$volType)
 {
 
@@ -100,10 +125,7 @@ function getVolToOnboard([SQLDB]$sqldb, [string]$volType)
     $request = ("SELECT {0} FROM {1} WHERE {2} GROUP BY nas_fs_admin_mail.nas_fs_id ORDER BY nas_fs_unit,infra_vserver_name,nas_fs_name " -f `
                 ($columns -join ","), ($tables -join ","), ($conditions -join " AND "))
 
-    $list = $sqldb.execute($request)                
-
-
-    return $list
+    return $sqldb.execute($request)
 }
 
 
@@ -116,18 +138,6 @@ function getUnitName([array]$params)
 }
 
 
-<# -----------------------------------------------------------
-    Renvoie le tenant cible
-#>
-function getTargetTenant()
-{
-    $tenant = switch($volType) {
-        "col" { "epfl" }
-        "app" { "itservices" }
-    }
-
-    return $tenant
-}
 
 
 <# -----------------------------------------------------------
@@ -277,9 +287,7 @@ try
         @("Mail List", "mailList"), 
         "volNo",
         "nas2020VolName",
-        "nas2020VServer",
         "Owner (user@intranet.epfl.ch)",
-        @("targetTenantName", @("getTargetTenant")),
         @("targetBgName", @("getTargetBG", "nas_fs_unit")),
         "onboard Date")
         
@@ -300,12 +308,12 @@ try
     $colMailList        = $colCounter++
     $colVolNo           = $colCounter++
     $colNas2020VolName  = $colCounter++
-    $colNas2020vServer  = $colCounter++
     $colOwner           = $colCounter++
-    $colTargetTenantName= $colCounter++
     $colTargetBGName    = $colCounter++
     $colOnboardDate     = $colCounter++
     
+    $excel = New-Object -ComObject excel.application 
+    $excel.visible = $false
 
     #$dataFile = ([IO.Path]::Combine("$PSScriptRoot", $dataFile))
     # -------------------------------------------------------------------------
@@ -326,8 +334,6 @@ try
                 Remove-Item $dataFile -Force
             }
 
-            $excel = New-Object -ComObject excel.application 
-            $excel.visible = $false
             $workbook = $excel.Workbooks.Add()
 
             $excelSheet= $workbook.Worksheets.Item(1) 
@@ -356,7 +362,7 @@ try
                     Write-Host "." -NoNewLine
                 }
 
-
+                
                 $colNo = 1
                 $cols | ForEach-Object {
                     
@@ -387,6 +393,20 @@ try
                             }
                             
                             $excelSheet.Cells.Item($lineNo, $colNo).Formula = $formula
+                        }
+                        elseif($colNo -eq $colOwner)
+                        {
+                            # Recherche de la requête "initiale"
+                            $reqInfos = getVolInitialRequest -sqldb $sqldb -volId $vol.nas_fs_id
+
+                            if($null -ne $reqInfos)
+                            {
+                                # Suppression d'une éventuelle première partie avec un ,
+                                $userFullName = $reqInfos.act_log_user_name -replace ".*?," , "" 
+                                
+                                Throw "Do LDAP request to get user uid to generate <uid>@intranet.epfl.ch"
+                            }
+
                         }
                     }
                     else # C'est un nom de champ ou de fonction
@@ -455,18 +475,15 @@ try
                 Throw ("Catalog Item '{0}' not found on {1}::{2}" -f $catalogItemName, $targetEnv.toUpper(), $targetTenant)
             }
 
-            $excel = New-Object -ComObject excel.application 
             $workbook = $excel.Workbooks.Open($dataFile)
-            $excel.visible = $false
             $excelSheet= $workbook.Worksheets.Item(1) 
-
 
             # On commence juste par check l'unicité des noms de volumes
             Write-Host "Checking volume name unicity... " -NoNewLine
             $volList = @()
-            for($lineNo=2 ; $lineNo -lt ($excelSheet.UsedRange.Rows).count; $lineNo++)
+            for($lineNo=2 ; $lineNo -le ($excelSheet.UsedRange.Rows).count; $lineNo++)
             {
-                $volName = $excelSheet.Cells.Item($lineNo, $colNas3VolName).text
+                $volName = $excelSheet.Cells.Item($lineNo, $colNas2020VolName).text
                 if($volList -contains $volName)
                 {
                     Throw ("Duplicate volume name found: {0}" -f $volName)
@@ -478,7 +495,7 @@ try
 
             Write-Host "Doing job... "
             # Parcours des éléments du fichier Excel
-            for($lineNo=2 ; $lineNo -lt ($excelSheet.UsedRange.Rows).count; $lineNo++)
+            for($lineNo=2 ; $lineNo -le ($excelSheet.UsedRange.Rows).count; $lineNo++)
             {
                 $volName = $excelSheet.Cells.Item($lineNo, $colNas2020VolName).text
                 Write-Host ("Volume '{0}'..." -f $volName)
@@ -491,7 +508,7 @@ try
                 }
 
                 # Check de la validité des données entrées dans le fichier Excel
-                for($colNo = $colNas2020VolName; $colNo -lt $colOnboardDate; $colNo++ )
+                for($colNo = $colVolNo; $colNo -lt $colOnboardDate; $colNo++ )
                 {
                     if($excelSheet.Cells.Item($lineNo, $colNo).text -eq "")
                     {
@@ -519,7 +536,7 @@ try
                     Throw ("Incorrect volume name ({0}) given. Check Excel file on line {1}" -f $volName, $lineNo)
                 }
 
-
+                
                 $owner = $excelSheet.Cells.Item($lineNo, $colOwner).text
 
                 Write-Host ("> Getting request template...")
@@ -540,8 +557,8 @@ try
                 $template.data.notificationMail = $excelSheet.Cells.Item($lineNo, $colMailList).text
                 $template.data.reasonsForRequest = $excelSheet.Cells.Item($lineNo, $colReasonForRequest).text
                 $template.data.requestor = $owner
-                $template.data.svm = $excelSheet.Cells.Item($lineNo, $colNas2020vServer).text
-                $template.data.targetTenant = $excelSheet.Cells.Item($lineNo, $colTargetTenantName).text
+                $template.data.svm = $netappVol.svm.name
+                $template.data.targetTenant = $targetTenant
 
                 $template.data.volId = $netappVol.uuid
                 $template.data.volName = $volName
@@ -598,12 +615,6 @@ catch
     
     Write-Host ("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace) -foregroundColor:DarkRed
 
-    if($null -ne $vra)
-    {
-        $vra.disconnect()
-    }
-
-    Throw
 }
 
 if($null -ne $vra)
