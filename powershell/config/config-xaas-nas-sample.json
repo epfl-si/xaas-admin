@@ -18,7 +18,7 @@
         "user": "",
         "password":""
     },
-    "webisteDB": {
+    "websiteDB": {
         "host": "",
         "port":"",
         "user":"",

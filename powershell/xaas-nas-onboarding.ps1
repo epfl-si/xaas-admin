@@ -252,11 +252,11 @@ try
 
     # Pour accéder à la base de données
 	$sqldb = [SQLDB]::new([DBType]::MySQL,
-                        $configNAS.getConfigValue(@("webisteDB", "host")),
-                        $configNAS.getConfigValue(@("webisteDB", "dbName")),
-                        $configNAS.getConfigValue(@("webisteDB", "user")),
-                        $configNAS.getConfigValue(@("webisteDB", "password")),
-                        $configNAS.getConfigValue(@("webisteDB", "port")), $false)                                
+                        $configNAS.getConfigValue(@("websiteDB", "host")),
+                        $configNAS.getConfigValue(@("websiteDB", "dbName")),
+                        $configNAS.getConfigValue(@("websiteDB", "user")),
+                        $configNAS.getConfigValue(@("websiteDB", "password")),
+                        $configNAS.getConfigValue(@("websiteDB", "port")), $false)                                
 
     $logHistory.addLineAndDisplay("Connecting to vRA...")
     $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
