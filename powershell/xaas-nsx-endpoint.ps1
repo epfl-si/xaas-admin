@@ -37,6 +37,7 @@ param([string]$targetEnv,
       [string]$targetTenant, 
       [string]$action, 
       [string]$vmName,
+      # On met "Array" et si la valeur passée est une liste d'éléments séparés par des virgules (sans espace), ça fait automatiquement un tableau
       [Array]$tagList)
 
 
