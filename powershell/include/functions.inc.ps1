@@ -344,3 +344,26 @@ function loadFromCommentedJSON([string]$jsonFile)
 {
 	return ((Get-Content -Path $jsonFile -raw -Encoding:UTF8) -replace '(?m)\s*//.*?$' -replace '(?ms)/\*.*?\*/') | ConvertFrom-JSON
 }
+
+
+<#
+    -------------------------------------------------------------------------------------
+	BUT : Renvoie une Hashtable qui correspond à un objet PowerShell
+    
+    IN  : $obj		-> Objet PowerShell à convertir en HashTable
+
+    RET : Objet représentant la HashTable
+#>
+function PSCustomObjectToHashtable([PSCustomObject]$obj)
+{
+	$result = [HashTable]@{}
+
+	# Parcours des données membres
+	$obj | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name | Foreach-Object {
+		# Ajout dans le résultat
+		$result.add($_, ($obj | Select-Object -ExpandProperty $_))
+	}
+
+	return $result
+}
+

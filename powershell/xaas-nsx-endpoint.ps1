@@ -1,7 +1,7 @@
 <#
 USAGES:
-    xaas-nsx-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action setVMTags -vmName <vmName> -tagList <tagList>
-    xaas-nsx-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action addVMTags -vmName <vmName> -tagList <tagList>
+    xaas-nsx-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action setVMTags -vmName <vmName> -jsonTagList <jsonTagList>
+    xaas-nsx-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action addVMTags -vmName <vmName> -jsonTagList <jsonTagList>
     xaas-nsx-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action delVMTags -vmName <vmName> -tagList <tagList>
  
 #>
@@ -39,7 +39,10 @@ param([string]$targetEnv,
       [string]$targetTenant, 
       [string]$action, 
       [string]$vmName,
-      # On met "Array" et si la valeur passée est une liste d'éléments séparés par des virgules (sans espace), ça fait automatiquement un tableau
+      # JSON avec la liste des tags, avec "key=>value", ne pas oublier de mettre entre simple quotes
+      # Ex: '{"key":"value", "key2":"value2"}'
+      [string]$jsonTagList,
+      # Juste le nom des tags, séparés par des virgules (sans espaces), ça va donner un tableau
       [Array]$tagList)
 
 
@@ -207,6 +210,14 @@ try
         }
     }
 
+    # Si on a reçu la liste des tags en JSON, on créé l'objet
+    if($jsonTagList -ne "")
+    {
+        # Transformation du JSON qu'on a récupéré pour avoir une Hashtable, car ça permettra de travailler plus 
+        # facilement dessus de cette manière
+        $tagList = PSCustomObjectToHashtable -obj ($jsonTagList | ConvertFrom-Json)
+    }
+
     
     # En fonction de l'action demandée
     switch ($action)
@@ -227,22 +238,26 @@ try
         $ACTION_ADD_VM_TAGS {
             
             # Extraction des tags existants sur la VM
-            $existingTags = $vm.tags | Select-Object -ExpandProperty tag
-            $logHistory.addLine(("Current Tag list is:`n{0}" -f ($existingTags -join "`n")))
+            $existingTags = $vm.tags
+            $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
 
-            $logHistory.addLine(("Adding missing tags ({0})..." -f ($tagList -join ",")))
+            $logHistory.addLine(("Adding missing tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList.Item($_))}) -join "`n")))
 
-            $tagList | Foreach-Object {
-                if($existingTags -notcontains $_)
-                {
-                    $existingTags += $_
-                }
+            # Liste des nouveau tags
+            $newTags = [HashTable]@{}
+            # Ajout des tags existants
+            $existingTags | Foreach-Object {
+                $newTags.Add($_.tag, $_.scope)
             }
 
-            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ($existingTags -join "`n")))
-            # Ajout des tags
-            $vm = $nsx.setVirtualMachineTags($vm, $existingTags)
+            # Ajout/mise à jour de ce qui manque
+            $tagList.keys | Foreach-Object {
+                $newTags[$_] = $tagList.item($_)
+            }
 
+            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ( ($newTags.keys | Foreach-Object { ("{0}={1}" -f $_, $newTags.Item($_))}) -join "`n")))
+            # Ajout des tags
+            $vm = $nsx.setVirtualMachineTags($vm, $newTags)
         }
 
 
@@ -250,19 +265,24 @@ try
         $ACTION_DEL_VM_TAGS {
             
             # Extraction des tags existants sur la VM
-            $existingTags = $vm.tags | Select-Object -ExpandProperty tag
-            $logHistory.addLine(("Current Tag list is:`n{0}" -f ($existingTags -join "`n")))
+            $existingTags = $vm.tags
+            $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
 
-            $logHistory.addLine(("Removing unwanted tags ({0})..." -f ($tagList -join ",")))
+            $logHistory.addLine(("Removing unwanted tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList.Item($_))}) -join "`n")))
 
-            Foreach($tagName in $tagList)
-            {
-                $existingTags = $existingTags | Where-Object { $_ -ne $tagName}
+            # Liste des nouveau tags
+            $newTags = [HashTable]@{}
+            # Ajout des tags existants en sautant ceux qui ne doivent pas y être
+            $existingTags | Foreach-Object {
+                if($tagList -notcontains $_.tag)
+                {
+                    $newTags.Add($_.tag, $_.scope)
+                }
             }
 
-            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ($existingTags -join "`n")))
+            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ($newTags -join "`n")))
             # Ajout des tags
-            $vm = $nsx.setVirtualMachineTags($vm, $existingTags)
+            $vm = $nsx.setVirtualMachineTags($vm, $newTags)
         
         }
 

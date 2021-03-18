@@ -568,16 +568,25 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+                                            TAGS
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+    #> 
+
+    <#
+		-------------------------------------------------------------------------------------
         BUT : Initialise les tags d'une VM
         
         IN  : $vm       -> Objet représentant la VM (renvoyé par getVirtualMachine() )
-        IN  : $tagList  -> Tableau avec la liste des tags     
+        IN  : $tagList  -> Tableau associatif avec la liste des tags, avec en clef
+                            le nom du tag et en valeur, ben sa valeur...
       
         RET : Objet représentant la VM mise à jour
 
         https://code.vmware.com/apis/222/nsx-t#/Fabric/ListVirtualMachines
     #>
-    [PSObject] setVirtualMachineTags([PSObject]$vm, [Array]$tagList)
+    [PSObject] setVirtualMachineTags([PSObject]$vm, [Hashtable]$tagList)
     {
         $uri = "{0}/fabric/virtual-machines?action=update_tags" -f $this.baseUrl
 
@@ -587,10 +596,10 @@ class NSXAPI: RESTAPICurl
 
         $body = $this.createObjectFromJSON("nsx-vm-tag-list.json", $replace)
 
-        $tagList | Foreach-Object {
+        $tagList.keys | Foreach-Object {
             $replace = @{
-                scope = ""
                 tag = $_
+                scope = $tagList.Item($_)
             }
             $body.tags += $this.createObjectFromJSON("nsx-tag.json", $replace)
         }
