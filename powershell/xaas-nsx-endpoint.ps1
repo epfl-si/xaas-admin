@@ -1,6 +1,8 @@
 <#
 USAGES:
     xaas-nsx-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action setVMTags -vmName <vmName> -tagList <tagList>
+    xaas-nsx-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action addVMTags -vmName <vmName> -tagList <tagList>
+    xaas-nsx-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action delVMTags -vmName <vmName> -tagList <tagList>
  
 #>
 <#
@@ -71,6 +73,8 @@ $configNSX      = [ConfigReader]::New("config-nsx.json")
 
 # Liste des actions possibles
 $ACTION_SET_VM_TAGS    = "setVMTags"
+$ACTION_ADD_VM_TAGS    = "addVMTags"
+$ACTION_DEL_VM_TAGS    = "delVMTags"
 
 
 <#
@@ -189,8 +193,21 @@ try
         # Activation du debug
         $nsx.activateDebug($logHistory)    
     }
-    
 
+    # Si on a un nom de VM
+    if($vmName -ne "")
+    {
+        $logHistory.addLine(("Getting Virtual Machine {0}..." -f $vmName))
+        $vm = $nsx.getVirtualMachine($vmName)
+        
+        # Si la VM demandée n'existe pas,
+        if($null -eq $vm)
+        {
+            Throw ("Virtual Machine {0} doesn't exists" -f $vmName)
+        }
+    }
+
+    
     # En fonction de l'action demandée
     switch ($action)
     {
@@ -198,23 +215,56 @@ try
         # -- Initialisation des tags d'une VM
         $ACTION_SET_VM_TAGS {
             
-            $logHistory.addLine(("Getting Virtual Machine {0}..." -f $vmName))
-            $vm = $nsx.getVirtualMachine($vmName)
+            $logHistory.addLine("Assigning tags on Virtual Machine...")
+            # Création des tags
+            $vm = $nsx.setVirtualMachineTags($vm, $tagList)
+        
+
+        }
+
+
+        # -- Ajout de tags à une VM
+        $ACTION_ADD_VM_TAGS {
             
-            # Si la VM demandée n'existe pas,
-            if($null -eq $vm)
-            {
-                $output.error = ("Virtual Machine {0} doesn't exists" -f $vmName)
-                $logHistory.addLine($output.error)
-            }
-            else # La VM existe
-            {
-                $logHistory.addLine("Assigning tags on Virtual Machine...")
-                # Création des tags
-                $vm = $nsx.setVirtualMachineTags($vm, $tagList)
+            # Extraction des tags existants sur la VM
+            $existingTags = $vm.tags | Select-Object -ExpandProperty tag
+            $logHistory.addLine(("Current Tag list is:`n{0}" -f ($existingTags -join "`n")))
+
+            $logHistory.addLine(("Adding missing tags ({0})..." -f ($tagList -join ",")))
+
+            $tagList | Foreach-Object {
+                if($existingTags -notcontains $_)
+                {
+                    $existingTags += $_
+                }
             }
 
-        }# FIN Action Create
+            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ($existingTags -join "`n")))
+            # Ajout des tags
+            $vm = $nsx.setVirtualMachineTags($vm, $existingTags)
+
+        }
+
+
+        # -- Suppression de tags d'une VM
+        $ACTION_DEL_VM_TAGS {
+            
+            # Extraction des tags existants sur la VM
+            $existingTags = $vm.tags | Select-Object -ExpandProperty tag
+            $logHistory.addLine(("Current Tag list is:`n{0}" -f ($existingTags -join "`n")))
+
+            $logHistory.addLine(("Removing unwanted tags ({0})..." -f ($tagList -join ",")))
+
+            Foreach($tagName in $tagList)
+            {
+                $existingTags = $existingTags | Where-Object { $_ -ne $tagName}
+            }
+
+            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ($existingTags -join "`n")))
+            # Ajout des tags
+            $vm = $nsx.setVirtualMachineTags($vm, $existingTags)
+        
+        }
 
 
         default {
