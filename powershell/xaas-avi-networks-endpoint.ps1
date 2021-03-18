@@ -345,8 +345,7 @@ try
 
         # -- Création d'un nouveau LoadBalancer
         $ACTION_CREATE {
-            $deleteTenants = $true
-
+            
             # Labels à ajouter. On a fait le choix de reprendre ceux qui sont utilisés dans vRA car ils auront en fait
             # la même valeur et seront mis à jour par un script de synchro
             $initialLabels = @{}
@@ -358,9 +357,21 @@ try
             $notificationMailList = getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant -returnMails
             $logHistory.addLine(("{0} mail address(es) found:`n{1}" -f $notificationMailList.count, ($notificationMailList -join "`n")))
 
+            # -- Recherche de la configuration d'alerte Syslog
+            $logHistory.addLine(("Getting Syslog Alert Configuration ({0})..." -f $global:XAAS_AVI_NETWORKS_ALERT_SYSLOG_CONFIG_NAME))
+            $syslogAlertConfig = $aviNetWorks.getAlertSyslogConfig($global:XAAS_AVI_NETWORKS_ALERT_SYSLOG_CONFIG_NAME)
+
+            # Si on n'a pas trouvé la chose
+            if($null -eq $syslogAlertConfig)
+            {
+                Throw ("Syslog Alert Configuration '{0}' not found" -f $global:XAAS_AVI_NETWORKS_ALERT_SYSLOG_CONFIG_NAME)
+            }
+
             # -- Création des Tenants AVI Networks si besoin
             $logHistory.addLine(("Creating tenant for BG '{0}'..." -f $bg.name))
             $tenantList = @()
+
+            $deleteTenants = $true
             # Parcours des types de tenant (notion Avi Networks) possibles pour un BG
             [enum]::getValues([XaaSAviNetworksTenantType]) | ForEach-Object {
 
@@ -398,6 +409,7 @@ try
                     $alertMailConfig = $alertMailConfigList[0]
                 }
 
+                
                 # Création des niveaux d'alerte
                 [enum]::getValues([XaaSAviNetworksAlertLevel]) | ForEach-Object {
                     $alertName, $alertLevelName = $nameGeneratorAviNetworks.getAlertNameAndLevel($_)
@@ -408,7 +420,7 @@ try
                     if($null -eq $alertActionLevel)
                     {
                         $logHistory.addLine((">>> Creating alert action level '{0}'..." -f $alertName))
-                        $alertActionLevel = $aviNetworks.addActionGroupConfig($tenant, $alertMailConfig, $alertName, $alertLevelName)
+                        $alertActionLevel = $aviNetworks.addActionGroupConfig($tenant, $alertMailConfig, $syslogAlertConfig, $alertName, $alertLevelName)
                     }
                     else
                     {

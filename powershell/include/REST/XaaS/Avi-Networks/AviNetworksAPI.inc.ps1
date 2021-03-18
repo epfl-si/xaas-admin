@@ -553,7 +553,8 @@ class AviNetworksAPI: RESTAPICurl
 		BUT : Ajoute un niveau d'alerte mail
 
 		IN  : $tenant			-> Objet représentant le tenant sur lequel créer le niveau d'alerte
-		IN  : $alertMailConfig	-> Objet représentant la configuration mail à lier (obtenue par addAlertMailConfig() )
+		IN  : $alertMailConfig	-> Objet représentant la configuration mail à lier (obtenu par addAlertMailConfig() )
+		IN  : $sysLogConfig		-> Objet représentant la configuration d'alerting Syslog (obtenu par getAlertSyslogConfig())
 		IN  : $alertName		-> Nom de l'alerte
 		IN  : $levelName		-> Nom du niveau d'alerte
 
@@ -561,7 +562,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_actiongroupconfig
 	#>
-	[PSObject] addActionGroupConfig([PSObject]$tenant, [PSObject]$alertMailConfig, [string]$alertName, [string]$levelName)
+	[PSObject] addActionGroupConfig([PSObject]$tenant, [PSObject]$alertMailConfig, [PSObject]$sysLogConfig, [string]$alertName, [string]$levelName)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -571,6 +572,7 @@ class AviNetworksAPI: RESTAPICurl
 			alertName = $alertName
 			alertLevel = $levelName
 			mailConfigRef = $alertMailConfig.url
+			syslogConfigRef = $sysLogConfig.url
 		}
 
 		$body = $this.createObjectFromJSON("xaas-avi-networks-action-group-config.json", $replace)
@@ -789,5 +791,60 @@ class AviNetworksAPI: RESTAPICurl
 
 		$this.callAPI($uri, "DELETE", $null) | Out-Null
 		$this.setDefaultTenant()
+	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            	ALERT SYSLOG CONFIG
+       --------------------------------------------------------------------------------------------------------- #>
+	
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des configuration d'alertes SysLog sur un tenant donné
+
+		IN  : $tenant			-> Objet représentant le tenant pour lequel on veut la liste
+
+		RET : Tableau avec les configurations d'alertes syslog
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertsyslogconfig
+	#>
+	[Array] getAlertSyslogConfigList([PSObject]$tenant)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/alertsyslogconfig" -f $this.baseUrl
+
+		# Recherche. Et on filtre aussi pour avoir uniquement les AlertConfig définies pour le tenant car
+		# par défaut il va aussi renvoyr les "admin"
+		$res = $this.callAPI($uri, "GET", $null).results 
+		$this.setDefaultTenant()
+
+		return @($res)
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie une configuration d'alerte Syslog sur un tenant donné, par son nom
+
+		IN  : $name		-> Nom de la configuration d'alerte syslog
+
+		RET : Objet avec la configuration
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertsyslogconfig
+	#>
+	[PSObject] getAlertSyslogConfig([string]$name)
+	{
+		$uri = "{0}/alertsyslogconfig?name={1}" -f $this.baseUrl, $name
+
+		$res = $this.callAPI($uri, "GET", $null).results
+		
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+
+		return $res[0]
 	}
 }

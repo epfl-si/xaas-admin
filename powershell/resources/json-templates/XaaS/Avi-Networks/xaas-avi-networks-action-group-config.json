@@ -1,5 +1,6 @@
 {
     "name": "{{alertName}}",
     "level": "{{alertLevel}}",
-    "email_config_ref": "{{mailConfigRef}}"
+    "email_config_ref": "{{mailConfigRef}}",
+    "syslog_config_ref": "{{syslogConfigRef}}"
 }
