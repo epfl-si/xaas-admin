@@ -241,7 +241,7 @@ try
             $existingTags = $vm.tags
             $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
 
-            $logHistory.addLine(("Adding missing tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList.Item($_))}) -join "`n")))
+            $logHistory.addLine(("Adding missing tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList[$_])}) -join "`n")))
 
             # Liste des nouveau tags
             $newTags = [HashTable]@{}
@@ -255,7 +255,7 @@ try
                 $newTags[$_] = $tagList.item($_)
             }
 
-            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ( ($newTags.keys | Foreach-Object { ("{0}={1}" -f $_, $newTags.Item($_))}) -join "`n")))
+            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ( ($newTags.keys | Foreach-Object { ("{0}={1}" -f $_, $newTags[$_])}) -join "`n")))
             # Ajout des tags
             $vm = $nsx.setVirtualMachineTags($vm, $newTags)
         }
@@ -268,7 +268,7 @@ try
             $existingTags = $vm.tags
             $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
 
-            $logHistory.addLine(("Removing unwanted tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList.Item($_))}) -join "`n")))
+            $logHistory.addLine(("Removing unwanted tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList.[$_])}) -join "`n")))
 
             # Liste des nouveau tags
             $newTags = [HashTable]@{}
@@ -280,7 +280,7 @@ try
                 }
             }
 
-            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ($newTags -join "`n")))
+            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ( ($newTags.keys | Foreach-Object { ("{0}={1}" -f $_, $newTags[$_])}) -join "`n")))
             # Ajout des tags
             $vm = $nsx.setVirtualMachineTags($vm, $newTags)
         
