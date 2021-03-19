@@ -1191,18 +1191,22 @@ function checkIfADGroupsExists([EPFLLDAP]$ldap, [System.Collections.ArrayList]$g
 				# $groupShort = 'xyz' 
 				# $domain = 'intranet.epfl.ch'
 				$groupShort, $domain = $groupName.Split('@')
-				if($null -eq ($ldap.getADGroup($groupShort)))
+
+				try
+				{
+					$dummy = Get-ADGroup $groupShort
+
+					# Si on arrive jusqu'ici, c'est que le groupe existe, donc on l'enregistre pour ne plus avoir le à le contrôler par la suite 
+					$global:existingADGroups += $groupName
+				}
+				catch
 				{
 					$logHistory.addWarningAndDisplay(("Security group '{0}' not found in Active Directory" -f $groupName))
 					# Enregistrement du nom du groupe
 					$notifications.adGroupsNotFound += $groupName
 					$allOK = $false
 				}
-				else # Le groupe est OK
-				{
-					# On l'enregistre pour ne plus avoir le à le contrôler par la suite 
-					$global:existingADGroups += $groupName
-				}
+				
 
 			}# FIN Si le groupe ressemble à un groupe AD
 
