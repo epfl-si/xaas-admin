@@ -185,7 +185,7 @@ try
     $targetTenant = $targetTenant.ToLower()
 
     # Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
-	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
+	$logHistory.addLine("Connecting to NSX-T...")
 	$nsx = [NSXAPI]::new($configNSX.getConfigValue(@($targetEnv, "server")), 
 						 $configNSX.getConfigValue(@($targetEnv, "user")), 
 						 $configNSX.getConfigValue(@($targetEnv, "password")))
@@ -239,20 +239,23 @@ try
             
             # Extraction des tags existants sur la VM
             $existingTags = $vm.tags
-            if($existingTags.count -gt 0)
+            if($null -eq $existingTags)
             {
-                $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
+                $existingTags = @()
             }
-            else
-            {
-                $logHistory.addLine("No tags currently defined on VM")
-            }
+            
+
+            $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
             
 
             $logHistory.addLine(("Adding missing tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList[$_])}) -join "`n")))
 
             # Liste des nouveau tags
             $newTags = [HashTable]@{}
+            if($existingTags.count -gt 0)
+            {
+
+            }
             # Ajout des tags existants
             $existingTags | Foreach-Object {
                 $newTags.Add($_.tag, $_.scope)
@@ -260,7 +263,7 @@ try
 
             # Ajout/mise à jour de ce qui manque
             $tagList.keys | Foreach-Object {
-                $newTags[$_] = $tagList.item($_)
+                $newTags[$_] = $tagList[$_]
             }
 
             $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ( ($newTags.keys | Foreach-Object { ("{0}={1}" -f $_, $newTags[$_])}) -join "`n")))
@@ -274,16 +277,13 @@ try
             
             # Extraction des tags existants sur la VM
             $existingTags = $vm.tags
-            if($existingTags.count -gt 0)
+            if($null -eq $existingTags)
             {
-                $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
+                $existingTags = @()
             }
-            else
-            {
-                $logHistory.addLine("No tags currently defined on VM")
-            }
+            $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
 
-            $logHistory.addLine(("Removing unwanted tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList.[$_])}) -join "`n")))
+            $logHistory.addLine(("Removing unwanted tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList[$_])}) -join "`n")))
 
             # Liste des nouveau tags
             $newTags = [HashTable]@{}
