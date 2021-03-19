@@ -239,7 +239,15 @@ try
             
             # Extraction des tags existants sur la VM
             $existingTags = $vm.tags
-            $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
+            if($existingTags.count -gt 0)
+            {
+                $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
+            }
+            else
+            {
+                $logHistory.addLine("No tags currently defined on VM")
+            }
+            
 
             $logHistory.addLine(("Adding missing tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList[$_])}) -join "`n")))
 
@@ -266,7 +274,14 @@ try
             
             # Extraction des tags existants sur la VM
             $existingTags = $vm.tags
-            $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
+            if($existingTags.count -gt 0)
+            {
+                $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
+            }
+            else
+            {
+                $logHistory.addLine("No tags currently defined on VM")
+            }
 
             $logHistory.addLine(("Removing unwanted tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList.[$_])}) -join "`n")))
 
