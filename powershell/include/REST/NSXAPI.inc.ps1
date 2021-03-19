@@ -2,7 +2,9 @@
    BUT : Contient les fonctions donnant accès à l'API NSX
 
    Documentation: 
-    - API: https://code.vmware.com/apis/222/nsx-t
+    - API:
+        Swagger: https://code.vmware.com/apis/222/nsx-t
+        Autre: https://vsissp-nsxm-t.epfl.ch/policy/api.html
     - Fichiers JSON utilisés: https://sico.epfl.ch:8443/display/SIAC/Ressources+-+PRJ0011976#Ressources-PRJ0011976-NSX
 
    AUTEUR : Lucien Chaboudez
@@ -529,5 +531,84 @@ class NSXAPI: RESTAPICurl
             $this.callAPI($uri, "DELETE", $null) | Out-Null
         }
     }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	    							        ENTITES
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+    #> 
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie une virtual machine définie dans NSX
+        
+        IN  : $vmName    -> Nom de la VM
+
+        RET :  Objet représentant la VM
+                $null si pas trouvé
+      
+        https://code.vmware.com/apis/222/nsx-t#/Fabric/ListVirtualMachines
+    #>
+    [PSObject] getVirtualMachine([string]$vmName)
+    {
+        $uri = "{0}/fabric/virtual-machines?display_name={1}" -f $this.baseUrl, $vmName
+
+        $res = $this.callAPI($uri, "GET", $null).results
+
+        if($res.count -eq 0)
+        {
+            return $null
+        }
+        return $res[0]
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+                                            TAGS
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+    #> 
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Initialise les tags d'une VM
+        
+        IN  : $vm       -> Objet représentant la VM (renvoyé par getVirtualMachine() )
+        IN  : $tagList  -> Tableau associatif avec la liste des tags, avec en clef
+                            le nom du tag et en valeur, ben sa valeur...
+      
+        RET : Objet représentant la VM mise à jour
+
+        https://code.vmware.com/apis/222/nsx-t#/Fabric/ListVirtualMachines
+    #>
+    [PSObject] setVirtualMachineTags([PSObject]$vm, [Hashtable]$tagList)
+    {
+        $uri = "{0}/fabric/virtual-machines?action=update_tags" -f $this.baseUrl
+
+        $replace = @{
+            externalId = $vm.external_id
+        }
+
+        $body = $this.createObjectFromJSON("nsx-vm-tag-list.json", $replace)
+
+        $tagList.keys | Foreach-Object {
+            $replace = @{
+                tag = $_
+                scope = $tagList.Item($_)
+            }
+            $body.tags += $this.createObjectFromJSON("nsx-tag.json", $replace)
+        }
+
+        # Création des règles
+        $this.callAPI($uri, "Post", $body) | Out-Null
+
+        return $this.getVirtualMachine($vm.display_name)
+    }
+
 
 }
