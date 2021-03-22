@@ -1,19 +1,15 @@
 <#
-    Fichier script d'exemple pour "endpoint" à adapter au besoin. 
-    TODO: Virer ce bloc de commentaires
-
-    TODO: Suivre les todo ci-dessous et les virer une fois qu'ils auront été traité
-#>
-<#
 USAGES:
-    xaas-sample-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -friendlyName <friendlyName> [-linkedTo <linkedTo>] [-bucketTag <bucketTag>]
+    xaas-nsx-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action setVMTags -vmName <vmName> -jsonTagList <jsonTagList>
+    xaas-nsx-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action addVMTags -vmName <vmName> -jsonTagList <jsonTagList>
+    xaas-nsx-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action delVMTags -vmName <vmName> -tagList <tagList>
  
 #>
 <#
-    BUT 		: TODO:
+    BUT 		: Permet de faire différentes opérations dans NSX
 
-	DATE 	: TODO:
-    AUTEUR 	: TODO:
+	DATE 	: Mars 2021
+    AUTEUR 	: Lucien Chaboudez
     
     REMARQUES : 
     - Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy via Set-ExecutionPolicy. 
@@ -22,7 +18,8 @@ USAGES:
         soit demandé d'utiliser "Unblock-File" pour permettre l'exécution. Ceci ne fonctionne pas ! A la 
         place il faut à nouveau passer par la commande Set-ExecutionPolicy mais mettre la valeur "ByPass" 
         en paramètre.
-    
+
+
 
     FORMAT DE SORTIE: Le script utilise le format JSON suivant pour les données qu'il renvoie.
     {
@@ -37,16 +34,17 @@ USAGES:
 
 #>
 
-# TODO: adapter les paramètres en fonction de l'utilisation
+
 param([string]$targetEnv, 
       [string]$targetTenant, 
       [string]$action, 
-      [string]$bgId,
-      [string]$bucketTag,
-      [switch]$status)
+      [string]$vmName,
+      # JSON avec la liste des tags, avec "key=>value", ne pas oublier de mettre entre simple quotes
+      # Ex: '{"key":"value", "key2":"value2"}'
+      [string]$jsonTagList,
+      # Juste le nom des tags, séparés par des virgules (sans espaces), ça va donner un tableau
+      [Array]$tagList)
 
-# Chargement du module PowerShell
-# TODO: si besoin
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -64,20 +62,22 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 
-# Chargement des fichiers propres à XaaS TODO: inclure les fichiers spécifiques
+# Chargement des fichiers propres à XaaS
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "NSXAPI.inc.ps1"))
 
 
 
 # Chargement des fichiers de configuration
-$configGlobal = [ConfigReader]::New("config-global.json")
-# TODO: Fichier de config XAAS
+$configGlobal   = [ConfigReader]::New("config-global.json")
+$configNSX      = [ConfigReader]::New("config-nsx.json")
+
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
 # Liste des actions possibles
-$ACTION_CREATE              = "create"
-$ACTION_DELETE              = "delete"
-# TODO: Compléter la liste des actions
+$ACTION_SET_VM_TAGS    = "setVMTags"
+$ACTION_ADD_VM_TAGS    = "addVMTags"
+$ACTION_DEL_VM_TAGS    = "delVMTags"
 
 
 <#
@@ -152,17 +152,16 @@ try
     $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    # TODO: Adapter la ligne suivante
-    #$logHistory = [LogHistory]::new(@('xaas','s3', 'endpoint'), $global:LOGS_FOLDER, 30)
+    $logHistory = [LogHistory]::new(@('xaas','nsx', 'endpoint'), $global:LOGS_FOLDER, 30)
     
     # Objet pour pouvoir envoyer des mails de notification
-	$valToReplace = @{
-		targetEnv = $targetEnv
-		targetTenant = $targetTenant
-	}
-	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
-												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
-                                                
+    $valToReplace = @{
+        targetEnv = $targetEnv
+        targetTenant = $targetTenant
+    }
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
+                                                ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
+
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
@@ -185,46 +184,127 @@ try
     $targetEnv = $targetEnv.ToLower()
     $targetTenant = $targetTenant.ToLower()
 
-    # TODO: Ajouter ici la création des éléments d'accès au backend. Voir Exemple
-    # $scality = [ScalityAPI]::new($configXaaSS3.getConfigValue(@($targetEnv, "server")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "credentialProfile")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "webConsoleUser")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "webConsolePassword")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, "isScality")))
+    # Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
+	$logHistory.addLine("Connecting to NSX-T...")
+	$nsx = [NSXAPI]::new($configNSX.getConfigValue(@($targetEnv, "server")), 
+						 $configNSX.getConfigValue(@($targetEnv, "user")), 
+						 $configNSX.getConfigValue(@($targetEnv, "password")))
 
     # Si on doit activer le Debug,
     if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
     {
         # Activation du debug
-        $scality.activateDebug($logHistory)    
+        $nsx.activateDebug($logHistory)    
     }
-    
+
+    # Si on a un nom de VM
+    if($vmName -ne "")
+    {
+        $logHistory.addLine(("Getting Virtual Machine {0}..." -f $vmName))
+        $vm = $nsx.getVirtualMachine($vmName)
+        
+        # Si la VM demandée n'existe pas,
+        if($null -eq $vm)
+        {
+            Throw ("Virtual Machine {0} doesn't exists" -f $vmName)
+        }
+    }
+
+    # Si on a reçu la liste des tags en JSON, on créé l'objet
+    if($jsonTagList -ne "")
+    {
+        # Transformation du JSON qu'on a récupéré pour avoir une Hashtable, car ça permettra de travailler plus 
+        # facilement dessus de cette manière
+        $tagList = PSCustomObjectToHashtable -obj ($jsonTagList | ConvertFrom-Json)
+    }
 
     
-
-
     # En fonction de l'action demandée
     switch ($action)
     {
 
-        # -- Création d'un nouveau bucket 
-        $ACTION_CREATE {
-
-            $doCleaningIfError = $true
-
-        }# FIN Action Create
-
-
-        # -- Effacement d'un bucket
-        $ACTION_DELETE {
+        # -- Initialisation des tags d'une VM
+        $ACTION_SET_VM_TAGS {
+            
+            $logHistory.addLine("Assigning tags on Virtual Machine...")
+            # Création des tags
+            $vm = $nsx.setVirtualMachineTags($vm, $tagList)
+        
 
         }
+
+
+        # -- Ajout de tags à une VM
+        $ACTION_ADD_VM_TAGS {
+            
+            # Extraction des tags existants sur la VM
+            $existingTags = $vm.tags
+            if($null -eq $existingTags)
+            {
+                $existingTags = @()
+            }
+            
+
+            $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
+            
+
+            $logHistory.addLine(("Adding missing tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList[$_])}) -join "`n")))
+
+            # Liste des nouveau tags
+            $newTags = [HashTable]@{}
+            if($existingTags.count -gt 0)
+            {
+
+            }
+            # Ajout des tags existants
+            $existingTags | Foreach-Object {
+                $newTags.Add($_.tag, $_.scope)
+            }
+
+            # Ajout/mise à jour de ce qui manque
+            $tagList.keys | Foreach-Object {
+                $newTags[$_] = $tagList[$_]
+            }
+
+            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ( ($newTags.keys | Foreach-Object { ("{0}={1}" -f $_, $newTags[$_])}) -join "`n")))
+            # Ajout des tags
+            $vm = $nsx.setVirtualMachineTags($vm, $newTags)
+        }
+
+
+        # -- Suppression de tags d'une VM
+        $ACTION_DEL_VM_TAGS {
+            
+            # Extraction des tags existants sur la VM
+            $existingTags = $vm.tags
+            if($null -eq $existingTags)
+            {
+                $existingTags = @()
+            }
+            $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
+
+            $logHistory.addLine(("Removing unwanted tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList[$_])}) -join "`n")))
+
+            # Liste des nouveau tags
+            $newTags = [HashTable]@{}
+            # Ajout des tags existants en sautant ceux qui ne doivent pas y être
+            $existingTags | Foreach-Object {
+                if($tagList -notcontains $_.tag)
+                {
+                    $newTags.Add($_.tag, $_.scope)
+                }
+            }
+
+            $logHistory.addLine(("Assigning updated tags on Virtual Machine:`n{0}" -f ( ($newTags.keys | Foreach-Object { ("{0}={1}" -f $_, $newTags[$_])}) -join "`n")))
+            # Ajout des tags
+            $vm = $nsx.setVirtualMachineTags($vm, $newTags)
+        
+        }
+
 
         default {
             Throw ("Action '{0}' not supported" -f $action)
         }
-
-        # TODO: Compléter avec la liste des actions définies précédemment
     }
 
     $logHistory.addLine("Script execution done!")
@@ -250,18 +330,6 @@ catch
     # Ajout de l'erreur et affichage
     $output.error = "{0}`n`n{1}" -f $errorMessage, $errorTrace
     displayJSONOutput -output $output
-
-    # Si on était en train de créer un bucket et qu'on peut faire le cleaning
-    if(($action -eq $ACTION_CREATE) -and $doCleaningIfError)
-    {
-        # TODO: Adapter le contenu
-
-        # On efface celui-ci pour ne rien garder qui "traine"
-        #$logHistory.addLine(("Error while creating Bucket '{0}', deleting it so everything is clean. Error was: {1}" -f $bucketInfos.bucketName, $errorMessage))
-
-        # Suppression du bucket
-        #deleteBucket -scality $scality -bucketName $bucketInfos.bucketName
-    }
 
 	$logHistory.addError(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
     

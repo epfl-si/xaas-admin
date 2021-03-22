@@ -102,6 +102,29 @@ class vSphereAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+        BUT : Renvoie une VM donnée par son nom, avec tous les détails
+        
+		IN  : $vmName	-> Nom de la VM
+		
+		RET : Objet représentant la VM
+			  $null si pas trouvé
+
+	#>
+	hidden [PSOBject] getVMFullDetails([string]$vmName)
+	{
+		$vm = $this.getVM($vmName)
+		if($null -eq $vm)
+		{
+			return $null
+		}
+
+		$uri = "{0}/vcenter/vm/{1}" -f $this.baseUrl, $vm.vm
+		return ($this.callAPI($uri, "Get", $null)).value
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
         BUT : Renvoie les détails d'un tag.
         
         IN  : $tagId	-> ID du tag dont on veut les détails

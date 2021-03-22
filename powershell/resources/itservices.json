@@ -125,6 +125,14 @@
             "snowId":  "SVC0070",
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
+            "longName":  "MyPrint",
+            "shortName":  "mprntt",
+            "snowId":  "SVC0056",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
         }
         
     ],
@@ -911,6 +919,15 @@
             "longName":  "audiovisuel SAVE_S3",
             "shortName":  "save",
             "snowId":  "SVC1307",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
+        },
+        
+        {
+            "active": true,
+            "longName":  "Data Center Monitoring",
+            "shortName":  "dcm",
+            "snowId":  "SVC1344",
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
