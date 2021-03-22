@@ -146,12 +146,18 @@ ForEach($prop in $propList)
 # Recherche de l'IP dans le DNS
 $ips = [System.Net.Dns]::GetHostAddresses(("{0}.xaas.epfl.ch" -f $vmName))
 
+if($ips.count -eq 0)
+{
+    Write-Error  ("NO IP found for VM {0} in DNS" -f $vmName)
+}
 
 ("`nOne line prop list:`n,{0}, HOP, VirtualMachine.Network0.Address, {1}, HOP, VirtualMachine.Network0.DnsSuffix, xaas.epfl.ch, HOP" -f ($oneLinePropList -join ", HOP,"), $ips[0].IPAddressToString) | Out-File -Append -Encoding:utf8 $outFile 
 
 
 Write-Host "done"
 Write-host ("Informations can be found in following CSV file: {0}" -f $outFile)
+
+Write-Warning "Don't forget to reclaim IP address after VM unregistration process"
                     
 $vra.disconnect()
 
