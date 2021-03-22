@@ -1,0 +1,6 @@
+{
+    "external_id": "{{externalId}}",
+    "tags": [
+        // Ajouter ici les tags, en créant des objets depuis le fichier "nsx-tag.json"
+    ]
+}
