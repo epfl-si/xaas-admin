@@ -23,11 +23,19 @@
 						récupérer la liste des personnes d'une unité en allant dans SCOLDAP.epfl.ch... je ne
 						sais pas depuis quand mais maintenant on trouve bien toutes les personnes de l'unité
 						dans LDAP.epfl.ch...
-	
+	15.03.2021 - 1.5 - Ajout de la possibilité de récupérer des informations dans le LDAP de l'ActiveDirectory.
+						Généralement, on utilise les CMDLETs "Get-AD*" mais pour une raison inconnue, lorsque
+						l'on exécute un script sur le endpoint PowerShell depuis vRO, ces cmdlet ne fonctionnent
+						pas renvoie une erreur "Unable to connecto to the server"...
+						On fait donc une connexion "spécifique" au LDAP pour récupérer les informations.
+
 #>
 class EPFLLDAP
 {
 	hidden [System.DirectoryServices.AuthenticationTypes]$auth
+
+	# Pour la recherche dans AD
+	hidden [System.Management.Automation.PSCredential]$adCredentials
 
 	# Pour stocker la configuration que l'on va aller lire dans le fichier JSON
 	hidden [PSObject]$LDAPconfig
@@ -35,9 +43,13 @@ class EPFLLDAP
 	<#
 	-------------------------------------------------------------------------------------
 		BUT : Créer une instance de l'objet et ouvre une connexion à LDAP
+		
+		IN  : $adUsername		-> Nom d'utilisateur (shortname) pour se connecter au LDAP AD
+		IN  : $adPassword		-> Mot de passe
 	#>
-	EPFLLDAP()
+	EPFLLDAP([string]$adUsername, [string]$adPassword)
 	{
+		# Pour la connexion au LDAP école
 		$this.auth = [System.DirectoryServices.AuthenticationTypes]::FastBind
 
 		# Chemin complet jusqu'au fichier à charger
@@ -51,6 +63,10 @@ class EPFLLDAP
 
 		# Chargement du code JSON
 		$this.LDAPconfig = loadFromCommentedJSON -jsonFile $filepath
+
+		# Création des credentials pour la connexion à AD
+		$this.adCredentials = New-Object System.Management.Automation.PSCredential -ArgumentList @($adUsername, `
+                                                (ConvertTo-SecureString -String $adPassword -AsPlainText -Force))
 	}
 
 	<#
@@ -386,6 +402,34 @@ class EPFLLDAP
 		}
 
 		return $null
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Retourne les informations d'un groupe qui se trouve dans AD
+
+		IN  : $groupName	-> Nom du groupe 
+
+		RET : Objet avec le groupe
+				.path		-> DN jusqu'au groupe
+				.properties	-> dictionnaire avec les infos
+			  $null si pas trouvé
+	#>
+	[PSObject] getADGroup([string]$groupName)
+	{
+		$Searcher = New-Object -TypeName System.DirectoryServices.DirectorySearcher                
+		
+		# Filtre de recherche
+		$Searcher.Filter = "(&(objectClass~=group)(cn={0}))" -f $groupName
+		
+		$Searcher.SearchRoot = New-Object -TypeName System.DirectoryServices.DirectoryEntry `
+					-ArgumentList $(([adsisearcher]"").Searchroot.path), # Domaine actuel
+								$($this.adCredentials.UserName),
+								$($this.adCredentials.GetNetworkCredential().password)
+		
+		# Execute the Search
+		return $Searcher.FindOne()
 	}
 
 }
