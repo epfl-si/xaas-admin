@@ -296,25 +296,95 @@ try
         $netapp.activateDebug($logHistory)    
     }
 
-    
     $cols = @(
-        @("nas3VolName", "nas_fs_name"),
-        @("nas3VServer", "infra_vserver_name"),
-        @("accessType", @("getAccessType", "nas_fs_access_type_id")),
-        @("Type", "nas_fs_type_id"),
-        @("unitId", "nas_fs_unit"),
-        @("unitName", @("getUnitName", "nas_fs_unit") ),
-        @("Rattachement", "nas_fs_rattachement"),
-        @("Faculty", @("getRightFaculty", "nas_fs_faculty")),
-        @("WebDav", "nas_fs_webdav_access"),
-        @("Comment", "nas_fs_comment"),
-        @("Reason for req", "nas_fs_reason_for_request"),
-        @("Mail List", "mailList"), 
-        "volNo",
-        "nas2020VolName",
-        "Owner (user@intranet.epfl.ch)",
-        @("targetBgName", @("getTargetBG", "nas_fs_unit")),
-        "onboard Date")
+        @{
+            name = "nas3VolName"
+            src = "nas_fs_name"
+            redIfEmpty = $false
+        },
+        @{
+            name = "nas3VServer"
+            src = "infra_vserver_name"
+            redIfEmpty = $false
+        },
+        @{
+            name = "accessType"
+            src = @("getAccessType", "nas_fs_access_type_id")
+            redIfEmpty = $false
+        },
+        @{
+            name = "Type"
+            src = "nas_fs_type_id"
+            redIfEmpty = $false
+        },
+        @{
+            name = "unitId"
+            src = "nas_fs_unit"
+            redIfEmpty = $true
+        },
+        @{
+            name = "unitName"
+            src = @("getUnitName", "nas_fs_unit")
+            redIfEmpty = $true
+        },
+        @{
+            name = "Rattachement"
+            src = "nas_fs_rattachement"
+            redIfEmpty = $false
+        },
+        @{
+            name = "Faculty"
+            src = @("getRightFaculty", "nas_fs_faculty")
+            redIfEmpty = $true
+        },
+        @{
+            name = "WebDav"
+            src = "nas_fs_webdav_access"
+            redIfEmpty = $false
+        },
+        @{
+            name = "Comment"
+            src = "nas_fs_comment"
+            redIfEmpty = $false
+        },
+        @{
+            name = "Reason for req"
+            src = "nas_fs_reason_for_request"
+            redIfEmpty = $false
+        },
+        @{
+            name = "Mail List"
+            src = "MailList"
+            redIfEmpty = $false
+        },
+        @{
+            name = "volNo"
+            src = $null
+            redIfEmpty = $false
+        },
+        @{
+            name = "nas2020VolName"
+            src = $null
+            redIfEmpty = $false
+        },
+        @{
+            name = "Owner (user@intranet.epfl.ch)"
+            src = $null
+            redIfEmpty = $false
+        },
+        @{
+            name = "targetBgName"
+            src = @("getTargetBG", "nas_fs_unit")
+            redIfEmpty = $false
+        },
+        @{
+            name = "onboard Date"
+            src = $null
+            redIfEmpty = $false
+        }
+
+    )
+    
         
 
     $colCounter = 1
@@ -367,7 +437,7 @@ try
 
             $colNo = 1
             $cols | ForEach-Object{
-                $excelSheet.Cells.Item(1, $colNo) = @($_)[0]
+                $excelSheet.Cells.Item(1, $colNo) = $_.name
                 $colNo++
             }
 
@@ -390,7 +460,7 @@ try
                 $colNo = 1
                 $cols | ForEach-Object {
                     
-                    $tag, $dbCol = $_
+                    $dbCol = $_.src
 
                     # Si pas de nom de champ ou de fonction
                     if($null -eq $dbCol)
@@ -436,24 +506,25 @@ try
                                     
                                     $person = $ldap.getPersonInfos($userFullName)
 
-                                    # Si pas trouvé dans LDAP
+                                    # Si trouvé dans LDAP
                                     if($null -ne $person)
                                     {
                                         $owner = "{0}@intranet.epfl.ch" -f ($person.uid | Where-Object { $_ -notlike "*@*"})
                                     }
-                                    else
+                                    else # Pas trouvé dans LDAP
                                     {
-                                        $owner = "!!!!!!!!!{0}" -f $userFullName
-                                        $excelSheet.Cells.Item($lineNo, $colNo).Interior.ColorIndex = 3 # rouge
+                                        # On met le nom FULL de la personne
+                                        $owner = $userFullName
+                                        # Mise du fond de la cellule en rouge pour dire de check l'info
+                                        $excelSheet.Cells.Item($lineNo, $colNo).Interior.ColorIndex = 3
                                     }
-                                    
 
                                     $excelSheet.Cells.Item($lineNo, $colNo) = $owner
                                 }
                             }
-                        }
-                        
 
+                        }# FIN SWITCH en fonction de la colonne
+                        
                     }
                     else # C'est un nom de champ ou de fonction
                     {
@@ -481,9 +552,14 @@ try
                         }
 
                         $excelSheet.Cells.Item($lineNo, $colNo) = $val
-                        
 
                     } 
+
+                    # Si la case est vide ET qu'il faut mettre en rouge si vide,
+                    if(($excelSheet.Cells.Item($lineNo, $colNo).text -eq "") -and $_.redIfEmpty )
+                    {
+                        $excelSheet.Cells.Item($lineNo, $colNo).Interior.ColorIndex = 3
+                    }
 
                     $colNo++
                 }# Fin boucle de parcours des colonnes de la ligne courante 
