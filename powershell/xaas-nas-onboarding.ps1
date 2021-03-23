@@ -102,20 +102,26 @@ function getVolToOnboard([SQLDB]$sqldb, [string]$volType)
         "nas_fs",
         "infra_vserver",
         "nas_service_type",
-        "nas_fs_admin_mail"
+        "nas_fs_admin_mail",
+        "managers_emails"
     )
 
     $conditions = @(
+        # Joinntures
         "nas_fs.infra_vserver_id = infra_vserver.infra_vserver_id",
         "nas_fs.nas_fs_svc_type_id = nas_service_type.nas_svc_type_id",
         "nas_fs.nas_fs_date_delete_asked IS NULL",
+        "nas_fs.nas_fs_id=nas_fs_admin_mail.nas_fs_id",
+        "nas_fs.nas_fs_faculty = managers_emails.faculty",
+
+        # Conditions de recherche
         ("nas_fs_svc_type_id IN ({0})" -f ($volTypeIdList -join ",")),
-        "nas_fs.nas_fs_name NOT IN (SELECT vol_name FROM nas2020_onboarding)",
-        "nas_fs.nas_fs_id=nas_fs_admin_mail.nas_fs_id"
+        "nas_fs.nas_fs_name NOT IN (SELECT vol_name FROM nas2020_onboarding)"
     )
 
     $columns = @(
         "nas_fs.*",
+        "managers_emails.vserver_name_prefix",
         "nas_service_type.nas_svc_type_name",
         "infra_vserver.infra_vserver_name",
         "GROUP_CONCAT(nas_fs_admin_mail.nas_fs_admin_mail)AS mailList"
@@ -209,6 +215,25 @@ function getExcelColName([int]$colIndex)
     return [char][byte] ($offset +$colIndex -1)
 }
 
+<# -----------------------------------------------------------
+    Renvoie la bonne faculté à utiliser en fonction du mapping qui est défini
+#>
+function getRightFaculty([array]$params)
+{
+    $forFaculty = $params[0]
+
+    $targetFaculty = switch($forFaculty)
+    {
+        "VPSI" { "VPO-SI" }
+        "R" { "VPO-SI" }
+
+        default { $forFaculty }
+    }
+
+    return $targetFaculty
+}
+
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -271,6 +296,7 @@ try
         $netapp.activateDebug($logHistory)    
     }
 
+    
     $cols = @(
         @("nas3VolName", "nas_fs_name"),
         @("nas3VServer", "infra_vserver_name"),
@@ -279,8 +305,7 @@ try
         @("unitId", "nas_fs_unit"),
         @("unitName", @("getUnitName", "nas_fs_unit") ),
         @("Rattachement", "nas_fs_rattachement"),
-        @("Faculty", "nas_fs_faculty")
-        @("SizeGB", "nas_fs_quota_gb"),
+        @("Faculty", @("getRightFaculty", "nas_fs_faculty")),
         @("WebDav", "nas_fs_webdav_access"),
         @("Comment", "nas_fs_comment"),
         @("Reason for req", "nas_fs_reason_for_request"),
@@ -301,7 +326,6 @@ try
     $colUnitName        = $colCounter++
     $colRattachement    = $colCounter++
     $colFaculty         = $colCounter++
-    $colSizeGB          = $colCounter++
     $colWebDav          = $colCounter++
     $colComment         = $colCounter++
     $colReasonForRequest= $colCounter++
@@ -313,7 +337,7 @@ try
     $colOnboardDate     = $colCounter++
     
     $excel = New-Object -ComObject excel.application 
-    $excel.visible = $false
+    $excel.visible = $true
 
     #$dataFile = ([IO.Path]::Combine("$PSScriptRoot", $dataFile))
     # -------------------------------------------------------------------------
@@ -371,43 +395,65 @@ try
                     # Si pas de nom de champ ou de fonction
                     if($null -eq $dbCol)
                     {
-                        # SI on est sur la colonne avec le nom de volume
-                        if($colNo -eq $colNas2020VolName)
-                        {
-                            # Formule pour calculer
-                            $suffix = ""
-                            if($vol.nas_fs_access_type_id -eq "nfsv3")
-                            {
-                                $suffix = '&"_nfs"'
-                            }
-                            $formula = Switch($volType)
-                            {
-                                "col" { '="u"&{1}{0}&"_"&LOWER(SUBSTITUTE({2}{0},"-",""))&"_"&LOWER(SUBSTITUTE({3}{0},"-",""))&"_"&{4}{0}&"_files"{5}' -f `
-                                         $lineNo, 
-                                         (getExcelColName -colIndex $colUnitId), 
-                                         (getExcelColName -colIndex $colFaculty),
-                                         (getExcelColName -colIndex $colUnitName),
-                                         (getExcelColName -colIndex $colVolNo),
-                                          $suffix }
-                                "app" { Throw "Not handled"}
-                            }
-                            
-                            $excelSheet.Cells.Item($lineNo, $colNo).Formula = $formula
-                        }
-                        elseif($colNo -eq $colOwner)
-                        {
-                            # Recherche de la requête "initiale"
-                            $reqInfos = getVolInitialRequest -sqldb $sqldb -volId $vol.nas_fs_id
 
-                            if($null -ne $reqInfos)
+                        switch($colNo)
+                        {
+                            # - Volume Name
+                            $colNas2020VolName
                             {
-                                # Suppression d'une éventuelle première partie avec un ,
-                                $userFullName = $reqInfos.act_log_user_name -replace ".*?," , "" 
-                                
-                                Throw "Do LDAP request to get user uid to generate <uid>@intranet.epfl.ch"
+                                # Formule pour calculer
+                                $suffix = ""
+                                if($vol.nas_fs_access_type_id -eq "nfsv3")
+                                {
+                                    $suffix = '&"_nfs"'
+                                }
+                                $formula = Switch($volType)
+                                {
+                                    "col" { '="u"&{1}{0}&"_"&LOWER(SUBSTITUTE({2}{0},"-",""))&"_"&LOWER(SUBSTITUTE({3}{0},"-",""))&"_"&{4}{0}&"_files"{5}' -f `
+                                            $lineNo, 
+                                            (getExcelColName -colIndex $colUnitId), 
+                                            (getExcelColName -colIndex $colFaculty),
+                                            (getExcelColName -colIndex $colUnitName),
+                                            (getExcelColName -colIndex $colVolNo),
+                                            $suffix }
+                                    "app" { Throw "Not handled"}
+                                }
+
+                                $excelSheet.Cells.Item($lineNo, $colNo).Formula = $formula
                             }
 
+
+                            # - Owner
+                            $colOwner
+                            {
+                                # Recherche de la requête "initiale"
+                                $reqInfos = getVolInitialRequest -sqldb $sqldb -volId $vol.nas_fs_id
+
+                                if($null -ne $reqInfos)
+                                {
+                                    # Suppression d'une éventuelle première partie avec un ,
+                                    $userFullName = $reqInfos.act_log_user_name -replace ".*?," , "" 
+                                    
+                                    $person = $ldap.getPersonInfos($userFullName)
+
+                                    # Si pas trouvé dans LDAP
+                                    if($null -ne $person)
+                                    {
+                                        $owner = "{0}@intranet.epfl.ch" -f ($person.uid | Where-Object { $_ -notlike "*@*"})
+                                    }
+                                    else
+                                    {
+                                        $owner = "!!!!!!!!!{0}" -f $userFullName
+                                        $excelSheet.Cells.Item($lineNo, $colNo).Interior.ColorIndex = 3 # rouge
+                                    }
+                                    
+
+                                    $excelSheet.Cells.Item($lineNo, $colNo) = $owner
+                                }
+                            }
                         }
+                        
+
                     }
                     else # C'est un nom de champ ou de fonction
                     {
@@ -427,6 +473,7 @@ try
                                 $expression = '{0} -params $paramValueList' -f $expression
                             }
                             Invoke-expression $expression
+
                         }
                         else # Si nom de champ
                         {
@@ -434,6 +481,8 @@ try
                         }
 
                         $excelSheet.Cells.Item($lineNo, $colNo) = $val
+                        
+
                     } 
 
                     $colNo++
