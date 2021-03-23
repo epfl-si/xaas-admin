@@ -301,86 +301,109 @@ try
             name = "nas3VolName"
             src = "nas_fs_name"
             redIfEmpty = $false
+            colWidth = 30
         },
         @{
             name = "nas3VServer"
             src = "infra_vserver_name"
             redIfEmpty = $false
+            colWidth = 17
         },
         @{
-            name = "accessType"
+            name = "access"
             src = @("getAccessType", "nas_fs_access_type_id")
             redIfEmpty = $false
+            colWidth = 5
         },
         @{
             name = "Type"
             src = "nas_fs_type_id"
             redIfEmpty = $false
+            colWidth = 5
         },
         @{
             name = "unitId"
             src = "nas_fs_unit"
-            redIfEmpty = $true
+            redIfEmpty = ($volType -eq "col")
+            colWidth = $null
         },
         @{
             name = "unitName"
             src = @("getUnitName", "nas_fs_unit")
-            redIfEmpty = $true
+            redIfEmpty = ($volType -eq "col")
+            colWidth = $null
+        },
+        @{
+            name = "SVC No"
+            src = $null
+            redIfEmpty = ($volType -eq "app")
+            colWidth = 8
         },
         @{
             name = "Rattachement"
             src = "nas_fs_rattachement"
             redIfEmpty = $false
+            colWidth = $null
         },
         @{
-            name = "Faculty"
+            name = "Fac"
             src = @("getRightFaculty", "nas_fs_faculty")
             redIfEmpty = $true
+            colWidth = 6
         },
         @{
             name = "WebDav"
             src = "nas_fs_webdav_access"
             redIfEmpty = $false
+            colWidth = 8
         },
         @{
             name = "Comment"
             src = "nas_fs_comment"
             redIfEmpty = $false
+            colWidth = 30
         },
         @{
             name = "Reason for req"
             src = "nas_fs_reason_for_request"
             redIfEmpty = $false
+            colWidth = 30
         },
         @{
             name = "Mail List"
             src = "MailList"
             redIfEmpty = $false
+            colWidth = $null
         },
         @{
             name = "volNo"
             src = $null
             redIfEmpty = $false
+            colWidth = 5
         },
         @{
             name = "nas2020VolName"
             src = $null
             redIfEmpty = $false
+            colWidth = 33
         },
         @{
             name = "Owner (user@intranet.epfl.ch)"
             src = $null
             redIfEmpty = $false
+            colWidth = 30
         },
         @{
             name = "targetBgName"
             src = @("getTargetBG", "nas_fs_unit")
             redIfEmpty = $false
+            colWidth = 22
         },
         @{
             name = "onboard Date"
             src = $null
             redIfEmpty = $false
+            colWidth = 12
         }
 
     )
@@ -394,6 +417,7 @@ try
     $colType            = $colCounter++
     $colUnitId          = $colCounter++
     $colUnitName        = $colCounter++
+    $colSvcId           = $colCounter++
     $colRattachement    = $colCounter++
     $colFaculty         = $colCounter++
     $colWebDav          = $colCounter++
@@ -432,6 +456,7 @@ try
 
             $excelSheet= $workbook.Worksheets.Item(1) 
             $excelSheet.Name = 'Volume list'
+            $excel.ActiveWindow.Zoom = 90
             $usedRange = $excelSheet.UsedRange
             $usedRange.EntireColumn.AutoFit()| Out-Null
 
@@ -486,7 +511,11 @@ try
                                             (getExcelColName -colIndex $colUnitName),
                                             (getExcelColName -colIndex $colVolNo),
                                             $suffix }
-                                    "app" { Throw "Not handled"}
+                                    "app" { '=LOWER({1}{0})&"_{2}"' -f `
+                                            $lineNo,
+                                            (getExcelColName -colIndex $colSvcId),
+                                            # On reprend le nom du volume mais on vire le nom de la faculté et le potentiel doublon à la fin ou au début. ça a été constaté sur au moins un volume
+                                            ($vol.nas_fs_name -replace "^[a-z]+_", "" -replace "_app_app$", "_app" -replace "^si_si_", "si_" )}
                                 }
 
                                 $excelSheet.Cells.Item($lineNo, $colNo).Formula = $formula
@@ -559,6 +588,12 @@ try
                     if(($excelSheet.Cells.Item($lineNo, $colNo).text -eq "") -and $_.redIfEmpty )
                     {
                         $excelSheet.Cells.Item($lineNo, $colNo).Interior.ColorIndex = 3
+                    }
+
+                    # Si on doit modifier la largeur
+                    if($null -ne $_.colWidth)
+                    {
+                        $excelSheet.Cells.Item($lineNo, $colNo).columnWidth = $_.colWidth
                     }
 
                     $colNo++
