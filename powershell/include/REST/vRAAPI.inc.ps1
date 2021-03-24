@@ -1660,7 +1660,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSObject] doCatalogItemRequest([PSObject]$catalogItem, [PSObject]$bg, [string]$requestedFor, [PSObject]$filledTemplate)
 	{
-		$uri = "{0}/catalog-service/api/consumer/entitledCatalogItems/{1}/requests/template?businessGroupId={2}&requestedFor={3}" -f `
+		$uri = "{0}/catalog-service/api/consumer/entitledCatalogItems/{1}/requests?businessGroupId={2}&requestedFor={3}" -f `
 				$this.baseUrl, $catalogItem.id, $bg.id, $requestedFor
 
 		return ($this.callAPI($uri, "POST", $filledTemplate))
@@ -1678,7 +1678,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSObject] getCatalogItemRequest([string]$requestId)
 	{
-		$uri = "{0}/catalog-service/api/consumer/requests/{1}" -f $requestId
+		$uri = "{0}/catalog-service/api/consumer/requests/{1}" -f $this.baseUrl, $requestId
 
 		return ($this.callAPI($uri, "GET", $null))
 	}
