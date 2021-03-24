@@ -543,6 +543,7 @@ try
         $pks.activateDebug($logHistory)
         $harbor.activateDebug($logHistory)
         $tkgiKubectl.activateDebug($logHistory)
+        $nsx.activateDebug($logHistory)
     }
     
     
