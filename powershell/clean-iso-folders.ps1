@@ -191,7 +191,7 @@ try
 		if($null -ne $bg)
 		{
 			# Recherche de la liste des VM existantes dans le Tenant
-			$vmList = $vra.getBGItemList($bg, 'Virtual Machine')
+			$vmList = $vra.getBGItemList($bg, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
 
 			$logHistory.addLineAndDisplay( ("Looking for VM in BG {0} to see if ISO file is mounted" -f $bgName) )
 			# Parcours des VM
