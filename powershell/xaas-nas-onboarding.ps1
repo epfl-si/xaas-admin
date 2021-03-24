@@ -1,7 +1,7 @@
 <#
 USAGES:
-    xaas-nas-onboarding.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action genDataFile -volType col|app -dataFile <dataFile>
-    xaas-nas-onboarding.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action import -volType col|app -dataFile <dataFile>
+    xaas-nas-onboarding.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices -action genDataFile -volType col|app -dataFile <dataFile>
+    xaas-nas-onboarding.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices -action import -volType col|app -dataFile <dataFile>
 #>
 <#
     BUT 		: Script permettant d'effectuer le onboarding des volumes NAS
@@ -233,7 +233,36 @@ function getRightFaculty([array]$params)
     return $targetFaculty
 }
 
+<# -----------------------------------------------------------
+    Renvoie la nom du tenant avec la bonne casse
+#>
+function getTargetTenantCorrectCase([string]$targetTenant)
+{
+    $correctCase = switch($targetTenant)
+    {
+        "epfl" {"EPFL"}
+        "itservices" { "ITServices" }
+    }
 
+
+    return $correctCase
+}
+
+
+<# -----------------------------------------------------------
+    Renvoie la nom du deployment 
+#>
+function getCorrectDeploymentTag([string] $deploymentTag)
+{
+    $correctValue = switch($deploymentTag)
+    {
+        "prod" { "Production"}
+        "test" { "Test" }
+        "dev" { "Development"}
+    }
+
+    return $correctValue
+}
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -403,7 +432,7 @@ try
             name = "onboard Date"
             src = $null
             redIfEmpty = $false
-            colWidth = 12
+            colWidth = 20
         }
 
     )
@@ -635,7 +664,7 @@ try
                 Throw ("Catalog Item '{0}' not found on {1}::{2}" -f $catalogItemName, $targetEnv.toUpper(), $targetTenant)
             }
 
-            $workbook = $excel.Workbooks.Open($dataFile, 0, $false)
+            $workbook = $excel.Workbooks.Open($dataFile)
             $excelSheet= $workbook.Worksheets.Item(1) 
 
 
@@ -727,12 +756,12 @@ try
 
                 $template.data.access = $excelSheet.Cells.Item($lineNo, $colAccessType).text
                 $template.data.bgName = $bgName
-                $template.data.deploymentTag = $excelSheet.Cells.Item($lineNo, $colType).text
+                $template.data.deploymentTag = (getCorrectDeploymentTag -deploymentTag $excelSheet.Cells.Item($lineNo, $colType).text)
                 $template.data.notificationMail = $excelSheet.Cells.Item($lineNo, $colMailList).text
                 $template.data.reasonsForRequest = $excelSheet.Cells.Item($lineNo, $colReasonForRequest).text
                 $template.data.requestor = $owner
                 $template.data.svm = $netappVol.svm.name
-                $template.data.targetTenant = $targetTenant
+                $template.data.targetTenant = (getTargetTenantCorrectCase -targetTenant $targetTenant)
 
                 $template.data.volId = $netappVol.uuid
                 $template.data.volName = $volName
@@ -742,6 +771,7 @@ try
                 Write-Host "> Doing request" -NoNewLine
                 $res = $vra.doCatalogItemRequest($catalogItem, $bg, $owner, $template)
 
+                # On attend que l'exécution soit terminée
                 do
                 {
                     Start-Sleep -Seconds 5
@@ -759,8 +789,8 @@ try
 
                 # Mise à jour de la date d'onboarding et sauvegarde du fichier
                 Write-Host "> Saving onboard date..."
-                $excelSheet.Cells.Item($lineNo, $colOnboardDate) = (Get-Date -Format "yyyy-MM-dd H:m:s")
-                $workbook.SaveAs($dataFile)
+                $excelSheet.Cells.Item($lineNo, $colOnboardDate) = (Get-Date -Format "dd.MM.yyyy H:m:s")
+                $workbook.Save()
                 
             }# FIN Parcours des lignes du fichier Excel
 
