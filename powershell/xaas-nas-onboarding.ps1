@@ -431,7 +431,7 @@ try
     $colOnboardDate     = $colCounter++
     
     $excel = New-Object -ComObject excel.application 
-    $excel.visible = $true
+    $excel.visible = $false
 
     #$dataFile = ([IO.Path]::Combine("$PSScriptRoot", $dataFile))
     # -------------------------------------------------------------------------
@@ -635,9 +635,12 @@ try
                 Throw ("Catalog Item '{0}' not found on {1}::{2}" -f $catalogItemName, $targetEnv.toUpper(), $targetTenant)
             }
 
-            $workbook = $excel.Workbooks.Open($dataFile)
+            $workbook = $excel.Workbooks.Open($dataFile, 0, $false)
             $excelSheet= $workbook.Worksheets.Item(1) 
 
+
+            # ------------------------------------------------
+            # -- CHECKS 
             # On commence juste par check l'unicité des noms de volumes
             Write-Host "Checking volume name unicity... " -NoNewLine
             $volList = @()
@@ -653,6 +656,8 @@ try
             Write-Host "done" -foregroundColor:DarkGreen
 
 
+            # ------------------------------------------------
+            # -- IMPORTATION 
             Write-Host "Doing job... "
             # Parcours des éléments du fichier Excel
             for($lineNo=2 ; $lineNo -le ($excelSheet.UsedRange.Rows).count; $lineNo++)
@@ -696,6 +701,15 @@ try
                     Throw ("Incorrect volume name ({0}) given. Check Excel file on line {1}" -f $volName, $lineNo)
                 }
 
+                # -- vRA Volume
+                $vraVol = $vra.getItem($global:VRA_XAAS_NAS_DYNAMIC_TYPE, $volName)
+
+                # Si le volume existe déjà dans vRA, y'a un souci
+                if($null -ne $vraVol)
+                {
+                    Throw ("Volume '{0}' is already onboarded in vRA but 'onboard date' wasn't set, please manually check" -f $volName)
+                }
+
                 
                 $owner = $excelSheet.Cells.Item($lineNo, $colOwner).text
 
@@ -734,10 +748,14 @@ try
                     Write-Host "." -NoNewLine
                     $request = $vra.getCatalogItemRequest($res.id)
                 }
-                while($request.state -eq "RUNNING")
+                while($request.executionStatus -ne "STOPPED")
                 
                 Write-Host " done" -foregroundColor:DarkGreen
 
+                if($request.phase -ne "SUCCESSFUL")
+                {
+                    Throw ("Error onboarding volume '{0}'. Phase: {1}" -f $volName, $request.phase)
+                }
 
                 # Mise à jour de la date d'onboarding et sauvegarde du fichier
                 Write-Host "> Saving onboard date..."
