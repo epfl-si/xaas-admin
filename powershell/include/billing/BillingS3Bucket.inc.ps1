@@ -40,7 +40,7 @@ class BillingS3Bucket: Billing
 		RET : Instance de l'objet
 	#>
     BillingS3Bucket([Hashtable]$vraTenantList, [SQLDB]$db, [PSObject]$serviceBillingInfos, [string]$targetEnv) : `
-                    base($vraTenantList, $db, $serviceBillingInfos, $targetEnv, "S3_Bucket")
+                    base($vraTenantList, $db, $serviceBillingInfos, $targetEnv, $global:VRA_XAAS_S3_DYNAMIC_TYPE)
     {
     }
 
