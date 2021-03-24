@@ -199,11 +199,16 @@ class TKGIKubectl
         
         IN  : $clusterName  -> nom du cluster sur lequel exécuter la commande
         IN  : $command      -> commande à exécuter
+        IN  : $namespace    -> (optionnel) le Namespace sur lequel exécuter la commande
         
         RET : - Objet généré avec le JSON renvoyé par la commande
               - Chaine de caractères toute simple (en fonction de ce qui est renvoyé)
 	#>
     [PSObject] exec([string]$clusterName, [string]$command)
+    {
+        return $this.exec($clusterName, $command, "")
+    }
+    [PSObject] exec([string]$clusterName, [string]$command, [string]$namespace)
     {
         $this.cmdToOutputFile = @()
 
@@ -220,11 +225,20 @@ class TKGIKubectl
         # Ajout de la commande de sélection du cluster, avec authentification, puis sélection du bon contexte
         $this.addCmdToBatchFile($this.getTkgiCmdWithPassword(("get-credentials {0}" -f $clusterName)), $batchFilePath)
         $this.addCmdToBatchFile($this.generateKubectlCmd(("config use-context {0}" -f $clusterName)), $batchFilePath)
+
+        # Si on doit spécifier le namespace
+        if($namespace -ne "")
+        {
+            $this.addCmdToBatchFile($this.generateKubectlCmd(("config set-context --current --namespace={0}" -f $namespace)), $batchFilePath)
+        }
         
         # Ajout de la commande à exécuter avec redirection vers un fichier de sortie
         $this.addCmdToBatchFile($command, $batchFilePath)
         
         $this.addCmdToBatchFile($this.logoutCmd, $batchFilePath)
+
+        # Log du contenu du fichier Batch
+        $this.debugLog(("Batch file content:`n{0}" -f (Get-Content $batchFilePath -Raw)))
 
         $this.batchFile.StartInfo.FileName = $batchFilePath
 
@@ -481,13 +495,13 @@ class TKGIKubectl
     #>
     [PSObject] getClusterNamespaceResourceQuota([string]$clusterName, [string]$namespace)
     {
-        $result = ($this.exec($clusterName, $this.generateKubectlCmd("get resourcequota --output=json"))).items | Where-Object { $_.metadata.namespace -eq $namespace } 
+        $result = ($this.exec($clusterName, $this.generateKubectlCmd("get resourcequota --output=json"), $namespace)).items #| Where-Object { $_.metadata.namespace -eq $namespace } 
 
         if($result.count -gt 1)
         {
             Throw ("Too many ResourceQuota defined ({0}) for cluster '{1}' and namespace '{2}'" -f $result.count, $clusterName, $namespace)
         }
-        return $result
+        return $result[0]
     }
     
 
