@@ -108,6 +108,7 @@ class BillingNASVolume: Billing
         
         IN  : $month    -> Le no du mois pour lequel extraire les infos
         IN  : $year     -> L'année pour laquelle extraire les infos
+        IN  : $logHistory   -> Objet pour faire un peu de logging de ce qu'on fait
 
         RET : Tableau avec:
                 0 -> le nombre d'éléments ajoutés pour être facturés
@@ -116,7 +117,7 @@ class BillingNASVolume: Billing
                 3 -> le nombre d'éléments ne pouvant pas être facturés car données par correctes
                 4 -> le nombre d'éléments pour lesquels on n'a pas assez d'informations pour les facturer
     #>
-    [Array] extractData([int]$month, [int]$year)
+    [Array] extractData([int]$month, [int]$year, [LogHistory]$logHistory)
     {
         # Compteurs
         $nbItemsAdded = 0

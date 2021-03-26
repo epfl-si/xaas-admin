@@ -335,7 +335,7 @@ try
 
             # Extraction des données pour les mettre dans la table où tout est formaté la même chose
             # On enregistre aussi le nombre d'éléments qui peuvent être facturés
-            $itemEligibleToBeBilled, $itemNonBillable, $itemsZeroQte, $itemsNonBillableIncorrectData, $itemsNonBillableNotEnoughData  =  $billingObject.extractData($month, $year)
+            $itemEligibleToBeBilled, $itemNonBillable, $itemsZeroQte, $itemsNonBillableIncorrectData, $itemsNonBillableNotEnoughData  =  $billingObject.extractData($month, $year, $logHistory)
 
             $counters.set('itemEligibleToBeBilled',$itemEligibleToBeBilled)
             $counters.set('itemNonBillable', $itemNonBillable)
@@ -524,14 +524,17 @@ try
                 if($totItems -gt 0)
                 {
                     
+                    $logHistory.addLineAndDisplay(("> {0} items to be billed" -f $totItems))
+
                     # Si on n'a pas atteint le montant minimum pour émettre une facture pour l'entité courante,
                     if($totalPrice -lt $global:BILLING_MIN_MOUNT_CHF)
                     {
-                        $logHistory.addLineAndDisplay(("Entity '{0}' won't be billed this month, bill amount to small ({1} CHF)" -f $entity.entityName, $totalPrice))
+                        $logHistory.addLineAndDisplay(("> Entity '{0}' won't be billed this month, bill amount to small ({1} CHF)" -f $entity.entityName, $totalPrice))
                         $counters.inc('billSkippedToLow')
                     }
                     else # On a atteint le montant minimum pour facturer 
                     {
+                        $logHistory.addLineAndDisplay(("> Minimum amount to bill reached ({0} > {1} CHF), processing to billing" -f $totalPrice, $global:BILLING_MIN_MOUNT_CHF ))
 
                         # Référence de la facture
                         $billReference = ("{0}_{1}_{2}" -f $serviceBillingInfos.serviceName, $curDateYYYYMMDDHHMM, $entity.entityFinanceCenter) 
@@ -577,6 +580,7 @@ try
                         # un seul niveau de facturation
                         if(($serviceBillingInfos.billedItems.Count -eq 1) -and ($itemsLevels.Count -eq 1))
                         {
+                            $logHistory.addLineAndDisplay("> Only one type of items to bill")
                             # On peut mettre la valeur pour la quantité totale et le prix par mois car
                             # c'est une addition de même types d'éléments pour le premier et le même prix
                             # partout pour le 2e
@@ -585,6 +589,7 @@ try
                         }
                         else # Plusieurs types d'éléments à facturer
                         {
+                            $logHistory.addLineAndDisplay("> More than one type of items to bill")
                             # On n'affiche pas de valeur pour les 2 cases car ça serait incohérent
                             $billingDocumentReplace.quantityTot = ""
                             $billingDocumentReplace.unitPricePerMonthCHF = ""
@@ -603,12 +608,12 @@ try
                         # S'il faut envoyer à Copernic,
                         if($sendToCopernic)
                         {
+                            $logHistory.addLineAndDisplay("> We have to send bill in Copernic")
                             $billDescription = "{0} - du {1} au {2}" -f $serviceBillingInfos.serviceName, $periodStartDate, $periodEndDate
 
                             # Si le centre financier est un "vrai" centre financier (et donc que des chiffres)
                             if($entity.entityFinanceCenter -match '[0-9]+')
                             {
-
 
                                 # Facture de base
                                 $PDFFiles = @( @{
@@ -633,7 +638,7 @@ try
                                     }
                                 }# FIN SI on a une grille tarifaire pour le type d'entité
             
-                            
+                                $logHistory.addLineAndDisplay("> Adding Bill in Copernic...")
                                 # Ajout de la facture dans Copernic avec le mode d'exécution spécifié
                                 $result = $copernic.addBill($serviceBillingInfos, $targetEnv, $billReference, $billDescription, $PDFFiles, $entity, $itemList, $execMode)
                                 
@@ -714,8 +719,11 @@ try
                                 $notifications.incorrectFinanceCenter += ("Entity: {0} ({1}) - Finance Center: {2}" -f $entity.entityName, $entity.entityCustomId, $entity.entityFinanceCenter)
                                 $counters.inc('billIncorrectFinanceCenter')
                             }
-                            
-                        }# Fin s'il faut envoyer à Copernic
+                        }
+                        else # Pas besoin d'envoyer à Copernic
+                        {
+                            $logHistory.addLineAndDisplay("> We don't need to send Bill in Copernic")
+                        }# Fin s'il ne faut pas envoyer à Copernic
                         
                         $counters.inc('billDone')
 
