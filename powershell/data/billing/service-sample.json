@@ -23,8 +23,7 @@
                 {
                     "default": 0
                 }
-            },
-            "freeAmount": 0 // Quantité (dans l'unité facturée) qui est offert à chaque entité chaque mois
+            }
         }
     ],
     "pdfAuthor": "", // Texte à mettre en tant qu'auteur du fichier PDF (ça se voit dans les détails de celui-ci)
