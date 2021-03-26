@@ -419,13 +419,12 @@ try
                 ForEach($billedItemInfos in $serviceBillingInfos.billedItems)
                 {
 
+                    $logHistory.addLineAndDisplay(("Looking for items '{0}' in service '{1}'" -f $billedItemInfos.itemTypeInDB, $service))
                     # Si on n'a pas d'infos de facturation pour le type d'entité courante, on ne va pas plus loin, on traite ça comme une erreur
                     if(!(objectPropertyExists -obj $billedItemInfos.entityTypesMonthlyPriceLevels -propertyName $entity.entityType))
                     {
                         Throw ("Error for item type '{0}' because no billing info found for entity '{1}'. Have a look at billing JSON configuration file for service '{2}'" -f $billedItemInfos.itemTypeInDB, $entity.entityType, $service)
                     }
-
-                    $logHistory.addLineAndDisplay(("> Looking for items '{0}' in service '{1}'" -f $billedItemInfos.itemTypeInDB, $service))
 
                     # Recherche pour les éléments qu'il faut facturer et qui ne l'ont pas encore été
                     $itemList = $billingObject.getEntityItemToBeBilledList($entity.entityId, $billedItemInfos.itemTypeInDB)
@@ -435,6 +434,8 @@ try
                     # Parcours des items à facturer
                     ForEach($item in $itemList)
                     {
+
+                        $logHistory.addLineAndDisplay((">> Processing {0} '{1}'... " -f $billedItemInfos.itemTypeInDB, $item.itemName))
 
                         # Si on n'a pas d'infos de niveau de facturation (niveau de prix) pour l'item courant, on passe au suivant
                         if(!(objectPropertyExists -obj $billedItemInfos.entityTypesMonthlyPriceLevels.($entity.entityType) -propertyName $item.itemPriceLevel))
@@ -478,7 +479,7 @@ try
                             }
                         }
 
-                        $logHistory.addLineAndDisplay((">> Processing {0} '{1}'... " -f $billedItemInfos.itemTypeInDB, $item.itemName))
+                        $logHistory.addLineAndDisplay(("> Billing begin date will be: {0}" -f $billingBeginDate))
 
                         # On sauvegarde le no d'article pour pouvoir l'utiliser plus tard dans la facturation
                         $item | Add-Member -NotePropertyName "prestationCode" -NotePropertyValue $billedItemInfos.copernicPrestationCode.$targetEnv
@@ -493,6 +494,8 @@ try
                             # On coupe le prix à 2 décimales
                             itemPrice = truncateToNbDecimal -number ([double]($item.itemQuantity) * $item.unitPricePerMonthCHF) -nbDecimals 2
                         }
+
+                        $logHistory.addLineAndDisplay(("> Item price is {0} CHF for {1} {2}" -f $billingItemReplacements.itemPrice, $billingItemReplacements.quantity, $item.itemUnit))
 
                         # Mise à jour des totaux pour la facture
                         $totalPrice += $billingItemReplacements.itemPrice
@@ -524,7 +527,7 @@ try
                 if($totItems -gt 0)
                 {
                     
-                    $logHistory.addLineAndDisplay(("> {0} items to be billed" -f $totItems))
+                    $logHistory.addLineAndDisplay(("> {0} items to be billed for total amount of {1} CHF" -f $totItems, $totalPrice))
 
                     # Si on n'a pas atteint le montant minimum pour émettre une facture pour l'entité courante,
                     if($totalPrice -lt $global:BILLING_MIN_MOUNT_CHF)
