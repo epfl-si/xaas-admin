@@ -732,7 +732,7 @@ try
                 }
                 else # Il n'y a aucun élément à facturer
                 {
-                    $logHistory.addLineAndDisplay(("Nothing left to bill for entity {0} ({1})" -f $entity.entityName, $entity.entityCustomId))
+                    $logHistory.addLineAndDisplay(("> Nothing to bill for entity {0} ({1})" -f $entity.entityName, $entity.entityCustomId))
                     $counters.inc('billSkippedNothing')
                 }
 
