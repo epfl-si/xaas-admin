@@ -24,7 +24,8 @@
                     "U.2": 0,
                     "U.3": 0
                 }
-            }
+            },
+            "freeAmount": 1
         }
     ],
     "pdfAuthor": "EPFL SI SI-EXOP",
