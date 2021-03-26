@@ -88,7 +88,7 @@ try
 {
 
    # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-   $logHistory = [LogHistory]::new(@('mynas', 'process-user-delete'), $global:LOGS_FOLDER, 30)
+   $logHistory = [LogHistory]::new(@('mynas', 'process-user-delete'), $global:LOGS_FOLDER, 120)
 
    # Objet pour pouvoir envoyer des mails de notification
    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MYNAS_MAIL_TEMPLATE_FOLDER, $global:MYNAS_MAIL_SUBJECT_PREFIX, @{})

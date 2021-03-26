@@ -458,8 +458,9 @@ class Billing
 		-------------------------------------------------------------------------------------
         BUT : Extrait les données pour un type d'élément à facturer
 
-        IN  : $month    -> Le no du mois pour lequel extraire les infos
-        IN  : $year     -> L'année pour laquelle extraire les infos
+        IN  : $month        -> Le no du mois pour lequel extraire les infos
+        IN  : $year         -> L'année pour laquelle extraire les infos
+        IN  : $logHistory   -> Objet pour faire un peu de logging de ce qu'on fait
 
         RET : Tableau avec:
                 0 -> le nombre d'éléments ajoutés pour être facturés
@@ -468,7 +469,7 @@ class Billing
                 3 -> le nombre d'éléments ne pouvant pas être facturés car données par correctes
                 4 -> le nombre d'éléments pour lesquels on n'a pas assez d'informations pour les facturer
     #>
-    [Array] extractData([int]$month, [int]$year)
+    [Array] extractData([int]$month, [int]$year, [LogHistory]$logHistory)
     {
         <# 
         Cette fonction devra être implémentée par les classes enfants de celle-ci. Elle sera en charge d'extraire mensuellement

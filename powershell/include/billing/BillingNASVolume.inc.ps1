@@ -108,6 +108,7 @@ class BillingNASVolume: Billing
         
         IN  : $month    -> Le no du mois pour lequel extraire les infos
         IN  : $year     -> L'année pour laquelle extraire les infos
+        IN  : $logHistory   -> Objet pour faire un peu de logging de ce qu'on fait
 
         RET : Tableau avec:
                 0 -> le nombre d'éléments ajoutés pour être facturés
@@ -116,7 +117,7 @@ class BillingNASVolume: Billing
                 3 -> le nombre d'éléments ne pouvant pas être facturés car données par correctes
                 4 -> le nombre d'éléments pour lesquels on n'a pas assez d'informations pour les facturer
     #>
-    [Array] extractData([int]$month, [int]$year)
+    [Array] extractData([int]$month, [int]$year, [LogHistory]$logHistory)
     {
         # Compteurs
         $nbItemsAdded = 0
@@ -130,23 +131,26 @@ class BillingNASVolume: Billing
         $request = "SELECT * FROM NasVolumeArchive"
         $volumeList = $this.db.execute($request)
 
+        $logHistory.addLineAndDisplay(("{0} Volumes to process" -f $volumeList.count))
+
         # Parcours de la liste des volumes
         ForEach($volume in $volumeList)
         {
+            $logHistory.addLineAndDisplay(("Processing Volume {0} ({1})..." -f $volume.volName, $volume.unitOrSvcID))
             $entityType = $this.getEntityType($volume)
 
             # Si pas supporté, on passe à l'élément suivant
             # NOTE: on n'utilise pas de "switch" car l'utilisation de "Continue" n'est pas possible au sein de celui-ci...
             if($entityType -eq [BillingEntityType]::NotSupported)
             {
-                Write-Warning ("Entity not supported for item (name={0}, tenant={1})" -f $volume.volName, $volume.targetTenant)
+                $logHistory.addLineAndDisplay(("Entity not supported for item (name={0}, tenant={1})" -f $volume.volName, $volume.targetTenant))
                 $nbItemsNotSupported++
                 Continue
             }
 
             if($volume.targetTenant -eq $global:VRA_TENANT__ITSERVICES)
             {
-                Write-Warning ("Skipping ITService entity ({0}) because not billed" -f $volume.volName)
+                $logHistory.addLineAndDisplay(("Skipping ITService entity ({0}) because not billed" -f $volume.volName))
                 $nbItemsNotBillable++
                 Continue
             }
@@ -157,12 +161,14 @@ class BillingNASVolume: Billing
             # Si on n'a pas trouvé l'entité, c'est que n'a pas les infos nécessaires pour l'ajouter à la DB
             if($entityId -eq 0)
             {
-                Write-Warning ("Business Group '{0}' with ID {1} ('{2}') has been deleted and item '{3}' wasn't existing last month. Not enough information to bill it" -f `
-                                $entityType.toString(), $volume.bgId, $volume.targetTenant, $volume.volName)
+                $logHistory.addLineAndDisplay(("Business Group '{0}' with ID {1} ('{2}') has been deleted and item '{3}' wasn't existing last month. Not enough information to bill it" -f `
+                                $entityType.toString(), $volume.bgId, $volume.targetTenant, $volume.volName))
                 $nbItemsNotEnoughInfos++
                 Continue
             }
             
+
+            $logHistory.addLineAndDisplay(("> Entity '{0}' type is {1} (tenant = {2})" -f $volume.unitOrSvcID, $entityType.toString(), $volume.targetTenant))
 
             # -- Informations sur l'élément à facturer --
 
@@ -172,17 +178,21 @@ class BillingNASVolume: Billing
             # On coupe à la 2e décimale 
             $volumeUsage = truncateToNbDecimal -number $volumeUsage -nbDecimals 2
 
+            $logHistory.addLineAndDisplay(("> Volume is using {0} TB" -f $volumeUsage))
+
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
             $itemDesc = "{0}`nOwner: {1}" -f $volume.volName, $this.getItemOwner($volume.requestor)
 
             # Ajout de l'item et check s'il a effectivement été ajouté
             if($this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $volume.volId, $itemDesc, $month, $year, $volumeUsage, "TB" ,"U.1") -ne 0)
             {
+                $logHistory.addLineAndDisplay("> Added to Volumes to be billed")
                 # Incrémentation du nombre d'éléments ajoutés
                 $nbItemsAdded++
             }
             else # L'item n'a pas été ajouté car quantité égale à 0
             {
+                $logHistory.addLineAndDisplay("> Ignored because quantity equals 0")
                 $nbItemsAmountZero++
             }
 
