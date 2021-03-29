@@ -113,6 +113,7 @@ class BillingS3Bucket: Billing
         
         IN  : $month    -> Le no du mois pour lequel extraire les infos
         IN  : $year     -> L'année pour laquelle extraire les infos
+        IN  : $logHistory   -> Objet pour faire un peu de logging de ce qu'on fait
 
         RET : Tableau avec:
                 0 -> le nombre d'éléments ajoutés pour être facturés
@@ -121,7 +122,7 @@ class BillingS3Bucket: Billing
                 3 -> le nombre d'éléments ne pouvant pas être facturés car données par correctes
                 4 -> le nombre d'éléments pour lesquels on n'a pas assez d'informations pour les facturer
     #>
-    [Array] extractData([int]$month, [int]$year)
+    [Array] extractData([int]$month, [int]$year, [LogHistory]$logHistory)
     {
         # Compteurs
         $nbItemsAdded = 0
@@ -135,9 +136,12 @@ class BillingS3Bucket: Billing
         $request = "SELECT * FROM BucketsArchive"
         $bucketList = $this.db.execute($request)
 
+        $logHistory.addLineAndDisplay(("{0} Buckets to process" -f $bucketList.count))
+
         # Parcours de la liste des buckets
         ForEach($bucket in $bucketList)
         {
+            $logHistory.addLineAndDisplay(("Processing Bucket {0} ({1})..." -f $bucket.bucketName, $bucket.unitOrSvcID))
             $entityType = $this.getEntityType($bucket)
 
             $targetTenant = $null
@@ -149,13 +153,13 @@ class BillingS3Bucket: Billing
             {
                 # Si on arrive ici, c'est que ce n'est pas supporté ou que potentiellement le champ unitOrSvcID ne contient pas une valeur correcte,
                 # ce qui peut arriver dans l'environnement de test (et prod) parce qu'on met un peu tout et n'importe quoi dans unitOrSvcID...
-                Write-Warning ("Entity not supported for item (name={0}, unitOrSvcId={1})" -f $bucket.bucketName, $bucket.unitOrSvcID)
+                $logHistory.addLineAndDisplay(("> Entity not supported for item (bucket={0}, unitOrSvcId={1})" -f $bucket.bucketName, $bucket.unitOrSvcID))
                 $nbItemsNotSupported++
                 Continue
             }
             elseif($entityType -eq [BillingEntityType]::Service)
             {
-                Write-Warning ("Skipping 'ITService' entity (for bucket {0}) because not billed" -f $bucket.bucketName)
+                $logHistory.addLineAndDisplay(("> Skipping 'ITService' entity (for bucket {0}) because not billed" -f $bucket.bucketName))
                 $nbItemsNotBillable++
                 Continue
             }
@@ -168,16 +172,22 @@ class BillingS3Bucket: Billing
                 $targetTenant = $global:VRA_TENANT__RESEARCH
             }
 
+            $logHistory.addLineAndDisplay(("> Entity '{0}' type is {1} (tenant = {2})" -f $bucket.unitOrSvcID, $entityType.toString(), $targetTenant))
+
             # On ajoute ou met à jour l'entité dans la DB et on retourne son ID
             $entityId = $this.initAndGetEntityId($entityType, $targetTenant, $bucket.unitOrSvcID, $bucket.bucketName)
 
             # Si on n'a pas trouvé l'entité, c'est que n'a pas les infos nécessaires pour l'ajouter à la DB
             if($null -eq $entityId)
             {
-                Write-Warning ("Business Group '{0}' with ID {1} ('{2}') has been deleted and item '{3}' wasn't existing last month. Not enough information to bill it" -f `
-                                $entityType.toString(), $bucket.unitOrSvcID, $targetTenant, $bucket.bucketName)
+                $logHistory.addLineAndDisplay(("> Business Group '{0}' with ID {1} ('{2}') has been deleted and item '{3}' wasn't existing last month. Not enough information to bill it" -f `
+                                $entityType.toString(), $bucket.unitOrSvcID, $targetTenant, $bucket.bucketName))
                 $nbItemsNotEnoughInfos++
                 Continue
+            }
+            else
+            {
+                $logHistory.addLineAndDisplay(("> Entity ID is {0}" -f $entityId))
             }
 
 
@@ -189,16 +199,20 @@ class BillingS3Bucket: Billing
             # On coupe à la 2e décimale 
             $bucketUsage = truncateToNbDecimal -number $bucketUsage -nbDecimals 2
 
+            $logHistory.addLineAndDisplay(("> Bucket is using {0} TB" -f $bucketUsage))
+
             # Description de l'élément (qui sera mise ensuite dans le PDF de la facture)
             $itemDesc = "{0}`n({1})`nOwner: {2}" -f $bucket.bucketName, $bucket.friendlyName, $this.getItemOwner($bucket.requestor)
 
             if($this.addItem($entityId, $this.serviceBillingInfos.billedItems[0].itemTypeInDB, $bucket.bucketName, $itemDesc, $month, $year, $bucketUsage, "TB" ,"U.1") -ne 0)
             {
+                $logHistory.addLineAndDisplay("> Added to Buckets to be billed")
                 # Incrémentation du nombre d'éléments ajoutés
                 $nbItemsAdded++
             }
             else # L'item n'a pas été ajouté car quantité égale à 0
             {
+                $logHistory.addLineAndDisplay("> Ignored because quantity equals 0")
                 $nbItemsAmountZero++
             }
 
