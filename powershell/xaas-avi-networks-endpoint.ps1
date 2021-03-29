@@ -158,17 +158,38 @@ function handleNotifications
 #>
 function deleteBGTenants([PSObject]$bg, [NameGeneratorAviNetworks]$nameGeneratorAviNetworks, [AviNetworksAPI]$aviNetWorks, [LogHistory]$logHistory)
 {
+    
     # Parcours des types de tenant
     [enum]::getValues([XaaSAviNetworksTenantType]) | ForEach-Object {
         $name, $desc = $nameGeneratorAviNetworks.getTenantNameAndDesc($bg.name, $_)
-    
-        $tenant = $aviNetworks.getTenantByName($name)
 
         $logHistory.addLine(("Processing tenant {0}..." -f $name))
+
+        $tenant = $aviNetworks.getTenantByName($name)
 
         # Si le tenant existe
         if($null -ne $tenant)
         {
+
+            # On commence par supprimer les règles d'accès
+            # Note: ceci ne sera à priori fait que pour le premier des 3 tenant du BG que l'on va supprimer, vu que les
+            # règles sont partagées entre les tenants
+            $accessRulesList = $aviNetWorks.getTenantAdminAuthRuleList($tenant)
+
+            # S'il y a des règles à supprimer
+            if($accessRulesList.Count -gt 0)
+            {
+                $logHistory.addLine("> Removing access rules...")
+
+                # Parcours des règles à supprimer
+                ForEach($accessRule in $accessRulesList)
+                {
+                    $logHistory.addLine((">> Deleting rule with index '{0}'..." -f $accessRule.index))
+                    $aviNetWorks.deleteAdminAuthRule($accessRule)
+                }
+
+            }# FIN S'il y a des règles à supprimer 
+            
             
             $logHistory.addLine(("> Deleting alert config list..."))
             $aviNetworks.getAlertConfigList($tenant) | ForEach-Object { 
@@ -226,7 +247,7 @@ function deleteLB([AviNetworkAPI]$aviNetworks, [string]$bgId, [string]$lbName)
     #         if(!$ruleDeleted)
     #         {
     #             $logHistory.addLine(("> Searching auth rule for tenant '{0}'..." -f $name))
-    #             $rule = $aviNetworks.getTenantAdminAuthRule($tenant)
+    #             $rule = $aviNetworks.getTenantAdminAuthRuleList($tenant)
 
     #             if($null -ne $rule)
     #             {
@@ -491,7 +512,11 @@ try
 
             # -- Ajout de la règle de sécurité
             $logHistory.addLine(("Adding security rule for Business Group's tenants"))
-            $ruleList = $aviNetworks.addAdminAuthRule($tenantList, $role, $groupList)
+            $groupList | ForEach-Object {
+                $logHistory.addLine(("> For group '{0}'" -f $_))
+                $ruleList = $aviNetworks.addAdminAuthRule($tenantList, $role, $_)
+            }
+            
 
 
         }# FIN Action Create
@@ -506,7 +531,7 @@ try
         # -- Effacement d'un LoadBalancer
         $ACTION_DELETE {
             $logHistory.addLine(("Deleting Tenants for Business Group '{0}'..." -f $bg.name))
-            #deleteBGTenants($bg, $nameGeneratorAviNetworks, $aviNetWorks, $logHistory)
+            deleteBGTenants -bg $bg -nameGeneratorAviNetworks $nameGeneratorAviNetworks -aviNetworks $aviNetWorks -logHistory $logHistory
             #deleteLB -aviNetworks $aviNetworks -bgId $bgId -lbName $lbName
         }
 
@@ -544,7 +569,7 @@ catch
         if($deleteTenants)
         {
             $logHistory.addLine(("Error while creating LB '{0}', deleting it so everything is clean. Error was: {1}" -f $lbName, $errorMessage))
-            deleteBGTenants($bg, $nameGeneratorAviNetworks, $aviNetWorks, $logHistory)
+            deleteBGTenants -bg $bg -nameGeneratorAviNetworks $nameGeneratorAviNetworks -aviNetworks $aviNetWorks -logHistory $logHistory
         }
         
         

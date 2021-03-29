@@ -386,14 +386,13 @@ class AviNetworksAPI: RESTAPICurl
 		IN  : $tenantList	-> Tableau avec la liste des objets représentant des tenants auxquels
 								appliquer une nouvelle règle
 		IN  : $role			-> Objet représentant le role à appliquer
-		IN  : $adGroupList	-> Tableau avec les noms courts des groupe AD contenant les utilisateurs 
-								qui vont avoir le rôle
+		IN  : $adGroup		-> Nom court du groupe AD contenant les utilisateurs qui vont avoir le rôle
 
         RET : Tableau avec la liste des règles après ajout de la nouvelle
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/patch_systemconfiguration
 	#>
-	[Array] addAdminAuthRule([Array]$tenantList, [PSObject]$role, [Array]$adGroupList)
+	[Array] addAdminAuthRule([Array]$tenantList, [PSObject]$role, [String]$adGroup)
 	{
 		$uri = "{0}/systemconfiguration" -f $this.baseUrl
 
@@ -413,7 +412,7 @@ class AviNetworksAPI: RESTAPICurl
 			tenantRefList = @( ( @($tenantList | Select-Object -ExpandProperty url) | ConvertTo-Json), $true)
 			index = $index
 			roleRef = $role.url
-			adGroupList = @( ( $adGroupList | ConvertTo-Json), $true)
+			adGroup = $adGroup
 			authProfileRef = $systemConfig.admin_auth_configuration.auth_profile_ref
 		}
 
@@ -428,15 +427,22 @@ class AviNetworksAPI: RESTAPICurl
 
 	<#
 	-------------------------------------------------------------------------------------
-		BUT : Renvoie la règle qui est utilisée pour donner les droits au tenant passé
+		BUT : Renvoie un tableau avec la liste des règles qui sont utilisée pour donner les droits au tenant passé.
 
 		IN  : $forTenant	-> Objet représentant le tenant pour lequel on veut avoir la règle
 		
-        RET : Objet avec les détails de la règle
+        RET : Tableau avec la liste des règles
+
+		REMARQUES: 
+		- Les règles en question sont peut être aussi utilisées pour d'autres tenants
+		- La règle "SuperUser" n'est pas retournée
 	#>
-	[PSObject] getTenantAdminAuthRule([PSObject]$forTenant)
+	[Array] getTenantAdminAuthRuleList([PSObject]$forTenant)
 	{
-		return $this.getAdminAuthRuleList() | Where-Object { $_.tenant_refs -contains $forTenant.url}
+		return @($this.getAdminAuthRuleList() | Where-Object { 
+			$null -ne $forTenant.url -and ` # On check que pas $null car si n'existe pas, c'est qu'on est peut-être dans la règle "SuperUser"
+			$_.tenant_refs -contains $forTenant.url
+		})
 	}
 
 

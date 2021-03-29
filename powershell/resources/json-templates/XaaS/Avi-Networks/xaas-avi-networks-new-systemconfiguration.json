@@ -8,7 +8,7 @@
               "tenant_refs":"{{tenantRefList}}", // ça doit être au final une liste et pas un string
               "group_match": {
                 "criteria": "AUTH_MATCH_CONTAINS",
-                "groups": "{{adGroupList}}" // ça doit être au final une liste et pas un string
+                "groups": ["{{adGroup}}" ]
               },
               "index": "{{index}}",
               "role_refs": [
