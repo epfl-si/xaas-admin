@@ -19,9 +19,6 @@ USAGES:
         soit demandé d'utiliser "Unblock-File" pour permettre l'exécution. Ceci ne fonctionne pas ! A la 
         place il faut à nouveau passer par la commande Set-ExecutionPolicy mais mettre la valeur "ByPass" 
         en paramètre.
-    - Ce script prend du temps à s'exécuter car il charge le PowerCLI Amazon S3 et ce dernier étant énoOOOrme, 
-        ça prend du temps... une tentative de ne  charger que les CmdLets nécessaires a été faite mais ça 
-        n'accélère en rien...
 
 
     FORMAT DE SORTIE: Le script utilise le format JSON suivant pour les données qu'il renvoie.
