@@ -853,4 +853,162 @@ class AviNetworksAPI: RESTAPICurl
 
 		return $res[0]
 	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            		POOLS
+       --------------------------------------------------------------------------------------------------------- #>
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des pools sur un tenant donné
+
+		IN  : $tenant			-> Objet représentant le tenant pour lequel on veut la liste
+
+		RET : Tableau avec les pools
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_pool
+	#>
+	[Array] getPoolList([PSObject]$tenant)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/pool" -f $this.baseUrl
+
+		$res = $this.callAPI($uri, "GET", $null).results
+		$this.setDefaultTenant()
+
+		return @($res)
+	}
+
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un pool qui est sur un tenant donné, par son nom
+
+		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le pool
+		IN  : $name		-> Nom du pool
+
+		RET : Objet avec le pool
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_pool
+	#>
+	[PSObject] getPool([PSObject]$tenant, [string]$name)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/pool?name={1}" -f $this.baseUrl, $name
+
+		$res = $this.callAPI($uri, "GET", $null).results
+		$this.setDefaultTenant()
+
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+
+		return $res[0]
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie les infos de runtime pour un pool donné
+
+		IN  : $tenant			-> Objet représentant le tenant sur lequel se trouve le pool
+		IN  : $pool				-> Objet représentant le pool
+		IN  : $serverDetails	-> (optionnel) $true|$false pour dire si on veut, à la place, la liste détaillée
+
+		RET : Objet avec les infos du pool
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_pool__uuid__runtime_
+	#>
+	[PSObject] getPoolRuntime([PSObject]$tenant, [PSObject]$pool)
+	{
+		return $this.getPoolRuntime($tenant, $pool, $false)
+	}
+	[PSObject] getPoolRuntime([PSObject]$tenant, [PSObject]$pool, [bool]$serverDetails)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/pool/{1}/runtime/" -f $this.baseUrl, $pool.uuid
+
+		# Si on veut les détails sur les serveurs
+		if($serverDetails)
+		{
+			$uri = "{0}server/" -f $uri
+		}
+
+		$res = $this.callAPI($uri, "GET", $null)
+		$this.setDefaultTenant()
+
+		f($res.count -eq 0)
+		{
+			return $null
+		}
+
+		return $res[0]
+	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            VIRTUAL SERVICE
+       --------------------------------------------------------------------------------------------------------- #>
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des virtuals services sur un tenant donné
+
+		IN  : $tenant			-> Objet représentant le tenant pour lequel on veut la liste
+
+		RET : Tableau avec les virtual services
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_virtualservice
+	#>
+	[Array] getVirtualServiceList([PSObject]$tenant)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/virtualservice/" -f $this.baseUrl
+
+		$res = $this.callAPI($uri, "GET", $null).results
+		$this.setDefaultTenant()
+
+		return @($res)
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un virtual service qui est sur un tenant donné, par son nom
+
+		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le virtual service
+		IN  : $name		-> Nom du virtual service
+
+		RET : Objet avec le pool
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_virtualservice
+	#>
+	[PSObject] getVirtualService([PSObject]$tenant, [string]$name)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/virtualservice?name={1}" -f $this.baseUrl, $name
+
+		$res = $this.callAPI($uri, "GET", $null).results
+		$this.setDefaultTenant()
+
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+
+		return $res[0]
+	}
+	
 }

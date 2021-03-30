@@ -367,3 +367,18 @@ function PSCustomObjectToHashtable([PSCustomObject]$obj)
 	return $result
 }
 
+
+<#
+    -------------------------------------------------------------------------------------
+	BUT : Renvoie une chaîne de caractères correspondant à la date représentée par le
+			paramètre passé
+    
+    IN  : $unixTime		-> temps Unix
+
+    RET : Chaîne de caractères avec la date
+#>
+function unixTimeToDate([int]$unixTime)
+{
+	return [datetimeoffset]::FromUnixTimeSeconds($unixTime).DateTime
+}
+
