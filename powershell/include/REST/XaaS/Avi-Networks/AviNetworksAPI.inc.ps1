@@ -1121,7 +1121,7 @@ class AviNetworksAPI: RESTAPICurl
 		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le virtual service
 		IN  : $name		-> Nom du virtual service
 
-		RET : Objet avec le pool
+		RET : Objet avec le virtual service
 				$null si pas trouvé
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_virtualservice
@@ -1171,6 +1171,63 @@ class AviNetworksAPI: RESTAPICurl
 		return @($res)
 	}
 
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            	HEALTH MONITOR
+       --------------------------------------------------------------------------------------------------------- #>
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Health Monitor sur un tenant donné
+
+		IN  : $tenant			-> Objet représentant le tenant pour lequel on veut la liste
+
+		RET : Tableau avec les Health Monitor
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_healthmonitor
+	#>
+	[Array] getHealthMonitorList([PSObject]$tenant)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/healthmonitor" -f $this.baseUrl
+
+		$res = $this.callAPI($uri, "GET", $null).results
+		$this.setDefaultTenant()
+
+		return @($res)
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un health monitor qui est sur un tenant donné, par son nom
+
+		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le health monitor
+		IN  : $name		-> Nom du health monitor
+
+		RET : Objet avec le health monitor
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_healthmonitor
+	#>
+	[PSObject] getHealthMonitor([PSObject]$tenant, [string]$name)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/healthmonitor?name={1}" -f $this.baseUrl, $name
+
+		$res = $this.callAPI($uri, "GET", $null).results
+		$this.setDefaultTenant()
+
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+
+		return $res[0]
+	}
 
 	
 }

@@ -38,3 +38,9 @@ $global:XAAS_AVI_NETWORKS_USER_ROLE_NAME = "Application-Only"
 $global:XAAS_AVI_NETWORKS_TENANT_TYPE = "ch.epfl.avi.tenant.type"
 
 $global:XAAS_AVI_NETWORKS_NSXT_CLOUD = "CLOUD_NSXT"
+
+
+$global:XAAS_AVI_NETWORKS_HEALTH_MONITOR_LIST = @(
+   "System-TCP-443-EPFL",
+   "System-Ping-EPFL"
+)
