@@ -223,6 +223,7 @@ class RESTAPICurl: RESTAPI
 			# Si erreur Curl
 			else
 			{
+				$this.debugLog("CURL exit code is $($this.curl.ExitCode)")
 				# Si on a fait le max de tentative, on peut lever une erreur
 				if($currentAttemptNo -eq $nbCurlAttempts)
 				{
