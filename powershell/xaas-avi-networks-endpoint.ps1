@@ -1,7 +1,7 @@
 <#
 USAGES:
     xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId>
-    xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -ipList <ipList>
+    xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -ipList <ipList> -lbAlgo  <lbAlgo>
     xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action modify -bgId <bgId> -lbName <lbName> -ipList <ipList>
     xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action delete -bgId <bgId> -lbName <lbName>
  
@@ -39,7 +39,8 @@ param([string]$targetEnv,
       [string]$action, 
       [string]$bgId,
       [string]$ipList,
-      [switch]$lbName)
+      [string]$lbName,
+      [string]$lbAlgo)
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -374,15 +375,16 @@ try
             $logHistory.addLine(("Getting notification mail list for BG '{0}'..." -f $bg.name))
             $notificationMailList = getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant -returnMails
             $logHistory.addLine(("{0} mail address(es) found:`n{1}" -f $notificationMailList.count, ($notificationMailList -join "`n")))
-
+            
             # -- Recherche de la configuration d'alerte Syslog
-            $logHistory.addLine(("Getting Syslog Alert Configuration ({0})..." -f $global:XAAS_AVI_NETWORKS_ALERT_SYSLOG_CONFIG_NAME))
-            $syslogAlertConfig = $aviNetWorks.getAlertSyslogConfig($global:XAAS_AVI_NETWORKS_ALERT_SYSLOG_CONFIG_NAME)
+            $alertSyslogConfigName = $configAviNetworks.getConfigValue(@($targetEnv, "alertSyslogConfigName"))
+            $logHistory.addLine(("Getting Syslog Alert Configuration ({0})..." -f $alertSyslogConfigName))
+            $syslogAlertConfig = $aviNetWorks.getAlertSyslogConfig($alertSyslogConfigName)
 
             # Si on n'a pas trouvé la chose
             if($null -eq $syslogAlertConfig)
             {
-                Throw ("Syslog Alert Configuration '{0}' not found" -f $global:XAAS_AVI_NETWORKS_ALERT_SYSLOG_CONFIG_NAME)
+                Throw ("Syslog Alert Configuration '{0}' not found" -f $alertSyslogConfigName)
             }
 
             # -- Création des Tenants AVI Networks si besoin
