@@ -146,13 +146,33 @@ class AviNetworksAPI: RESTAPICurl
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
-		# On fait un "cast" pour être sûr d'appeler la fonction de la classe courante et pas une surcharge éventuelle
-		$result = ([RESTAPICurl]$this).callAPI($uri, $method, $body)
+		$nbRetries = 2
+		do
+		{
+			# On fait un "cast" pour être sûr d'appeler la fonction de la classe courante et pas une surcharge éventuelle
+			$result = ([RESTAPICurl]$this).callAPI($uri, $method, $body)
 
-        if(objectPropertyExists -obj $result -propertyName "error")
-        {
-            Throw $result.error
-        }
+			if(objectPropertyExists -obj $result -propertyName "error")
+			{
+				# De manière aléatoire, on peut avoir une erreur qui fait que le serveur LDAP n'est pas atteignable, à tous 
+				# les coups c'est parce qu'en amont ils ne font aucun retry... du coup, ça a été implémenté ici.
+				if(($nbRetries -gt 0) -and ($result.error -like "*LDAP server(s) not reachable*"))
+				{
+					$nbRetries--
+					$this.debugLog("Error with LDAP servers, retrying in 2 sec")
+					Start-Sleep -Seconds 2
+				}
+				else
+				{
+					Throw $result.error
+				}
+				
+			}
+			else # Pas d'erreur, on peut sortir de la boucle
+			{
+				break
+			}
+		} while($nbRetries -gt 0)
 
         return $result
 	}
