@@ -200,7 +200,7 @@ function deleteBGTenants([PSObject]$bg, [NameGeneratorAviNetworks]$nameGenerator
                         if($aviNetWorks.removeTenantFromAdminAuthRule($accessRule, $tenant))
                         {
                             # Vu que la règle est vide, on peut la supprimer complètement
-                            $logHistory.addLineAndDisplay((">> Rule is now empty, we can delete it..."))
+                            $logHistory.addLine((">> Rule is now empty, we can delete it..."))
                             $aviNetWorks.deleteAdminAuthRule($accessRule)
                         }
                     }
