@@ -145,6 +145,7 @@ function handleNotifications
 }
 
 
+
 <#
 -------------------------------------------------------------------------------------
 	BUT : Efface les Tenants AVI Networks associés à un BG vRA
@@ -153,9 +154,17 @@ function handleNotifications
 	IN  : $nameGeneratorAviNetworks	-> Objet représentant le générateur de noms
 	IN  : $aviNetworks              -> Objet pour communiquer avec l'environnement AVI
     IN  : $logHistory               -> Objet pour écrire les logs
+    IN  : $supportGroup             -> Groupe d'accès pour le
 #>
 function deleteBGTenants([PSObject]$bg, [NameGeneratorAviNetworks]$nameGeneratorAviNetworks, [AviNetworksAPI]$aviNetWorks, [LogHistory]$logHistory)
 {
+    $logHistory.addLine("Getting support group for BG...")
+    $supportGroup = getBGSupportGroup -bg $bg
+    $logHistory.addLine(("Support group is '{0}'" -f $supportGroup))
+
+    # Recherche de la règle qui n'a "que" le groupe de support donné
+    $logHistory.addLine(("Looking for support access rule for group '{0}'..." -f $supportGroup))
+    $supportRule = $aviNetWorks.getAdminAuthRuleList() | Where-Object { ($_.group_match.groups.count -eq 1) -and ($_.group_match.groups -contains $supportGroup) }
     
     # Parcours des types de tenant
     [enum]::getValues([XaaSAviNetworksTenantType]) | ForEach-Object {
@@ -182,8 +191,24 @@ function deleteBGTenants([PSObject]$bg, [NameGeneratorAviNetworks]$nameGenerator
                 # Parcours des règles à supprimer
                 ForEach($accessRule in $accessRulesList)
                 {
-                    $logHistory.addLine((">> Deleting rule with index '{0}'..." -f $accessRule.index))
-                    $aviNetWorks.deleteAdminAuthRule($accessRule)
+                    # Si c'est la règle d'accès pour le support
+                    if($accessRule.index -eq $supportRule.index)
+                    {
+                        $logHistory.addLine((">> Updating support access rule with index '{0}'..." -f $accessRule.index))
+
+                        # Si la règle ne contient maintenant plus aucun tenant,
+                        if($aviNetWorks.removeTenantFromAdminAuthRule($accessRule, $tenant))
+                        {
+                            # Vu que la règle est vide, on peut la supprimer complètement
+                            $logHistory.addLineAndDisplay((">> Rule is now empty, we can delete it..."))
+                            $aviNetWorks.deleteAdminAuthRule($accessRule)
+                        }
+                    }
+                    else # C'est la règle d'accès "standard", on peut donc la supprimer
+                    {
+                        $logHistory.addLine((">> Deleting access rule with index '{0}'..." -f $accessRule.index))
+                        $aviNetWorks.deleteAdminAuthRule($accessRule)
+                    }
                 }
 
             }# FIN S'il y a des règles à supprimer 
@@ -211,6 +236,7 @@ function deleteBGTenants([PSObject]$bg, [NameGeneratorAviNetworks]$nameGenerator
             
             $logHistory.addLine("> Deleting tenant...")
             $aviNetworks.deleteTenant($tenant)
+            
         }
         else # Le tenant n'a pas été trouvé 
         {
@@ -218,7 +244,34 @@ function deleteBGTenants([PSObject]$bg, [NameGeneratorAviNetworks]$nameGenerator
         }
 
     }# FIN BOUCLE de parcours des types de tenant
-    
+
+}
+
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Créée ou met à jour une règle d'authentification Admin pour 
+
+    IN  : $aviNetworks  -> Objet permettant de communiquer avec Avi Networks
+	IN  : $tenantList   -> Tableau avec les objets représentant les Tenant à ajouter dans la règle
+    IN  : $supportGroup -> Nom du groupe de support
+    IN  : $role         -> Objet représentant le Role dans le cas où la règle n'existerait pas et qu'il faudrait la créer
+#>
+function createOrUpdateSupportAdminAuthRule([AviNetworksAPI]$aviNetWorks, [Array]$tenantList, [string]$supportGroup, [PSObject]$role)
+{
+    # Recherche de la règle qui n'a "que" le groupe de support donné
+    $rule = $aviNetWorks.getAdminAuthRuleList() | Where-Object { ($_.group_match.groups.count -eq 1) -and ($_.group_match.groups -contains $supportGroup) }
+
+    if($null -eq $rule)
+    {
+        $logHistory.addLine("Support admin rule doesn't exists, creating it...")
+        $ruleList = $aviNetworks.addAdminAuthRule($tenantList, $role, $supportGroup)
+    }
+    else # La règle existe
+    {
+        $logHistory.addLine("Support admin rule already exists, updating it...")
+        $ruleList = $aviNetWorks.addTenantsToAdminAuthRule($rule, $tenantList)
+    }
 }
 
 <#
@@ -229,7 +282,7 @@ function deleteBGTenants([PSObject]$bg, [NameGeneratorAviNetworks]$nameGenerator
 	IN  : $bgId         -> ID "epfl" du BG vRA
     IN  : $lbName       -> le nom du Load Balancer
 #>
-function deleteLB([AviNetworkAPI]$aviNetworks, [string]$bgId, [string]$lbName)
+function deleteLB([AviNetworksAPI]$aviNetworks, [string]$bgId, [string]$lbName)
 {
     # TODO:
     # $ruleDeleted = $false
@@ -496,26 +549,31 @@ try
 
 
             # -- Récupération des groupes de sécurité
-            $logHistory.addLine(("Getting security groups from Business Group '{0}'..." -f $bg.name))
-            # Groupe de support
-            $groupList = @($vra.getBGRoleContent($bg.id, "CSP_SUPPORT") | ForEach-Object { ($_ -split '@')[0]})
+
+            # Groupe "Support"
+            $logHistory.addLine(("Getting support security groups from Business Group '{0}'..." -f $bg.name))
+            $supportGroup = getBGSupportGroup -bg $bg
+            $logHistory.addLine(("Adding rights for support Group {0}" -f $supportGroup))
+            createOrUpdateSupportAdminAuthRule -aviNetWorks $aviNetWorks -tenantList $tenantList -supportGroup $supportGroup -role $role
+
+
             # Groupe "utilisateur"
-            $groupList += getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant
+            $logHistory.addLine(("Getting user security group for Business Group '{0}'..." -f $bg.name))
+            $groupList = @(getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant)
 
             if($groupList.count -eq 0)
             {
-                Throw ("Not security group found for Business Group '{0}'" -f $bg.name)
+                Throw ("No security group found for Business Group '{0}'" -f $bg.name)
             }
-            $logHistory.addLine(("Security Groups will be:`n- {0}" -f ($groupList -join "`n- ")))
+            if($groupList.count -gt 1)
+            {
+                Throw ("Too many ({0}) security groups found for Buiness Group '{1}', only one supported" -f $groupList.count, $bg.name)
+            }
+            $logHistory.addLine(("Adding rights for security Group {0}" -f $groupList[0] ))
 
 
-            # -- Ajout de la règle de sécurité
-            $logHistory.addLine(("Adding security rule for Business Group's tenants"))
-            $groupList | ForEach-Object {
-                $logHistory.addLine(("> For group '{0}'" -f $_))
-                $ruleList = $aviNetworks.addAdminAuthRule($tenantList, $role, $_)
-            }
-            
+
+            $ruleList = $aviNetworks.addAdminAuthRule($tenantList, $role, $groupList[0])
 
 
         }# FIN Action Create

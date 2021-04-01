@@ -382,3 +382,28 @@ function unixTimeToDate([int]$unixTime)
 	return [datetimeoffset]::FromUnixTimeSeconds($unixTime).DateTime
 }
 
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Renvoie le groupe de support utilisé par un Business Group.
+			Si aucun ou plus d'un groupe sont trouvés, une exception est propagée
+
+    IN  : $bg       -> Objet représentant le Business Group
+
+    RET : Nom du groupe de support
+#>
+function getBGSupportGroup([PSObject]$bg)
+{
+    $groupList = @($vra.getBGRoleContent($bg.id, "CSP_SUPPORT") | ForEach-Object { ($_ -split '@')[0]})
+
+    if($groupList.count -eq 0)
+    {
+        Throw ("No security group found for Business Group '{0}'" -f $bg.name)
+    }
+    if($groupList.count -gt 1)
+    {
+        Throw ("Too many ({0}) security groups found for Buiness Group '{1}', only one supported" -f $groupList.count, $bg.name)
+    }
+
+    return $groupList[0]
+}

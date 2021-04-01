@@ -172,9 +172,33 @@ class AviNetworksAPI: RESTAPICurl
 	#>
     [Array] getTenantList()
     {
-        $uri = "{0}/tenant" -f $this.baseUrl
+		# On fait en sorte de retourner les "custom labels" mais on doit aussi ajouter à nouveau les "config_settings" car ils 
+		# sont du coup supprimés quand on utilise le paramètre "fields"
+        $uri = "{0}/tenant?fields=suggested_object_labels,config_settings" -f $this.baseUrl
 
         return ($this.callAPI($uri, "Get", $null)).results
+    }
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste de tenants existants qui correspondent aux filtres donnés pour les labels
+
+		IN  : $labelFilters	-> Tableau associatif avec en clef le nom du label à filtrer et en valeur, 
+								la valeur que le label doit avoir.
+
+        RET : Tableau avec la liste des tenants filtrés
+	#>
+    [Array] getTenantList([Hashtable]$labelFilters)
+    {
+        $list = $this.getTenantList() 
+
+		ForEach($labelKey in $labelFilters.keys)
+		{
+			$list = $list | Where-Object { $null -ne ($_.suggested_object_labels | Where-Object { $_.key -eq $labelKey -and $_.value -eq $labelFilters.item($labelKey) } ) }
+		}
+
+		return @($list)
     }
 
 
@@ -383,35 +407,43 @@ class AviNetworksAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
 		BUT : Ajoute une règle d'authentification pour un ou plusieurs tenants
 
-		IN  : $tenantList	-> Tableau avec la liste des objets représentant des tenants auxquels
-								appliquer une nouvelle règle
-		IN  : $role			-> Objet représentant le role à appliquer
-		IN  : $adGroup		-> Nom court du groupe AD contenant les utilisateurs qui vont avoir le rôle
+		IN  : $tenantRefList	-> Tableau avec la liste des références (URL) des tenants auxquels
+									appliquer une nouvelle règle
+		IN  : $roleRef			-> Référence (URL) sur le role à appliquer
+		IN  : $adGroup			-> Nom court du groupe AD contenant les utilisateurs qui vont avoir le rôle
+		IN  : $ruleIndex		-> (optionnel) index de la règle dans le cas où on veut faire un "Update"
+									On passe -1 si on veut ajouter une règle
 
         RET : Tableau avec la liste des règles après ajout de la nouvelle
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/patch_systemconfiguration
+
+		Dans le WebUI, c'est dans "Adminitration" > "Settings" > "Authentication/Authorization"
 	#>
-	[Array] addAdminAuthRule([Array]$tenantList, [PSObject]$role, [String]$adGroup)
+	hidden [Array] addOrUpdateAdminAuthRule([Array]$tenantRefList, [string]$roleRef, [String]$adGroup, [int]$ruleIndex)
 	{
 		$uri = "{0}/systemconfiguration" -f $this.baseUrl
 
 		$systemConfig = $this.getSystemConfiguration()
 
-		# Recherche du prochain index dispo
-		$usedIndexList = @($systemConfig.admin_auth_configuration.mapping_rules | Select-Object -ExpandProperty index | Sort-Object)
+		# Si on doit faire un ajout, on doit rechercher le bon index
+		if($ruleIndex -eq -1)
+		{
+			# Recherche du prochain index dispo
+			$usedIndexList = @($systemConfig.admin_auth_configuration.mapping_rules | Select-Object -ExpandProperty index | Sort-Object)
 
-		# Index de départ (aucune idée si on peut partir à 0 donc on part à 1)
-		$index = 1
-		# Recherche du premier index libre
-		While($usedIndexList -contains $index) {
-			$index++
-		}
+			# Index de départ (aucune idée si on peut partir à 0 donc on part à 1)
+			$ruleIndex = 1
+			# Recherche du premier index libre
+			While($usedIndexList -contains $ruleIndex) {
+				$ruleIndex++
+			}
+		}		
 
 		$replace = @{
-			tenantRefList = @( ( @($tenantList | Select-Object -ExpandProperty url) | ConvertTo-Json), $true)
-			index = $index
-			roleRef = $role.url
+			tenantRefList = @( ( ConvertTo-Json @($tenantRefList)), $true)
+			index = $ruleIndex
+			roleRef = $roleRef
 			adGroup = $adGroup
 			authProfileRef = $systemConfig.admin_auth_configuration.auth_profile_ref
 		}
@@ -422,6 +454,87 @@ class AviNetworksAPI: RESTAPICurl
 		
 		# Retour de la liste mise à jour
 		return $this.getAdminAuthRuleList()
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute une règle d'authentification pour un ou plusieurs tenants
+
+		IN  : $tenantList	-> Tableau avec la liste des objets représentant des tenants auxquels
+								appliquer une nouvelle règle
+		IN  : $role			-> Objet représentant le role à appliquer
+		IN  : $adGroup		-> Nom court du groupe AD contenant les utilisateurs qui vont avoir le rôle
+
+        RET : Tableau avec la liste des règles après ajout de la nouvelle
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/patch_systemconfiguration
+
+		Dans le WebUI, c'est dans "Adminitration" > "Settings" > "Authentication/Authorization"
+	#>
+	[Array] addAdminAuthRule([Array]$tenantList, [PSObject]$role, [String]$adGroup)
+	{
+		return $this.addOrUpdateAdminAuthRule(@($tenantList | Select-Object -ExpandProperty url), $role.url, $adGroup, -1)
+	}
+	
+	
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un tenant dans une règle d'authentification
+
+		IN  : $rule			-> Objet représentant la règle à modifier
+		IN  : $tenantList	-> Tableau avec les objets représentant les tenants à ajouter
+
+        RET : Tableau avec la liste des références (URL) sur les tenants qui sont dans
+				la règle après modification
+	#>
+	[Array] addTenantsToAdminAuthRule([PSObject]$rule, [Array]$tenantList)
+	{
+		$updateNeeded = $false
+
+		# Ajout des tenants manquants dans la liste
+		$tenantList | Foreach-Object {
+			if($rule.tenant_refs -notcontains $_.url)
+			{
+				# On ajoute la référence du nouveau tenant
+				$rule.tenant_refs += $_.url	
+				# Pour dire qu'on doit mettre à jour
+				$updateNeeded = $true
+			}
+		}
+		
+		# Au moins un tenant a été ajouté à la liste
+		if($updateNeeded)
+		{
+			# Mise à jour
+			$this.addOrUpdateAdminAuthRule($rule.tenant_refs, $rule.role_refs[0], $rule.group_match.groups[0], $rule.index) | Out-Null
+		}
+	
+		return @($rule.tenant_refs)
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Supprime un tenant d'une règle d'authentification
+
+		IN  : $rule			-> Objet représentant la règle à modifier
+		IN  : $tenant		-> Tableau avec les objets représentant les tenants à supprimer
+
+        RET : Bool pour dire si la règle est maintenant exempte de tout tenant ou pas.
+	#>
+	[bool] removeTenantFromAdminAuthRule([PSObject]$rule, [PSObject]$tenant)
+	{
+		if($rule.tenant_refs -contains $tenant.url)
+		{
+			# On supprime la référence à supprimer
+			$rule.tenant_refs = @($rule.tenant_refs | Where-Object { $_ -ne $tenant.url })
+
+			# Mise à jour
+			$this.addOrUpdateAdminAuthRule($rule.tenant_refs, $rule.role_refs[0], $rule.group_match.groups[0], $rule.index) | Out-Null
+		}
+		
+		return @($rule.tenant_refs).count -eq 0
 	}
 
 
@@ -914,6 +1027,25 @@ class AviNetworksAPI: RESTAPICurl
 	}
 
 
+
+	# [PSObject] addPool([PSObject]$tenant)
+	# {
+	# 	$this.setActiveTenant($tenant.name)
+
+	# 	$uri = "{0}/pool" -f $this.baseUrl
+
+	# 	$replace = @{
+	# 		actionGroupRef = $alertActionLevel.url
+	# 		name = $name
+	# 	}
+
+	# 	$body = $this.createObjectFromJSON($jsonFile, $replace)
+
+	# 	$res = $this.callAPI($uri, "POST", $body).results
+	# 	$this.setDefaultTenant()
+	# }
+
+
 	<#
 	-------------------------------------------------------------------------------------
 		BUT : Renvoie les infos de runtime pour un pool donné
@@ -945,7 +1077,7 @@ class AviNetworksAPI: RESTAPICurl
 		$res = $this.callAPI($uri, "GET", $null)
 		$this.setDefaultTenant()
 
-		f($res.count -eq 0)
+		if($res.count -eq 0)
 		{
 			return $null
 		}
@@ -1010,5 +1142,35 @@ class AviNetworksAPI: RESTAPICurl
 
 		return $res[0]
 	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            		CLOUDS
+       --------------------------------------------------------------------------------------------------------- #>
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Clouds sur un tenant donné
+
+		IN  : $tenant			-> Objet représentant le tenant pour lequel on veut la liste
+
+		RET : Tableau avec les clouds
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_cloud
+	#>
+	[Array] getCloudList([PSObject]$tenant)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/cloud" -f $this.baseUrl
+
+		$res = $this.callAPI($uri, "GET", $null).results
+		$this.setDefaultTenant()
+
+		return @($res)
+	}
+
+
 	
 }
