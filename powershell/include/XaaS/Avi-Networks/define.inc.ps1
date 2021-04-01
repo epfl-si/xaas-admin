@@ -34,6 +34,7 @@ enum XaaSAviNetworksAlertLevel {
 
 
 $global:XAAS_AVI_NETWORKS_USER_ROLE_NAME = "Application-Only"
-$global:XAAS_AVI_NETWORKS_ALERT_SYSLOG_CONFIG_NAME = "Syslog-vRLI-Test"
 
 $global:XAAS_AVI_NETWORKS_TENANT_TYPE = "ch.epfl.avi.tenant.type"
+
+$global:XAAS_AVI_NETWORKS_NSXT_CLOUD = "CLOUD_NSXT"
