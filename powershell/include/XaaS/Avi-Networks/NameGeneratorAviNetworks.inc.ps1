@@ -89,4 +89,34 @@ class NameGeneratorAviNetworks: NameGeneratorBase
 
         return ("{0}-{1}" -f $elementStr, $status.toString().toUpper())
     }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le nom du virtual service.
+
+        IN  : $friendlyName     -> Nom entré par l'utilisateur
+        IN  : $deploymentTag    -> tag de déploiement
+
+		RET : Nom du virtual service
+	#>
+    [string] getVirtualServiceName([string]$friendlyName, [string]$deploymentTag)
+    {
+        return "{0}-{1}" -f $friendlyName, $this.getDeploymentTagShort($deploymentTag)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le nom du pool pour un virtual service donné.
+
+        IN  : $virtualServiceName     -> Nom du virtual service auquel le pool est lié.
+
+		RET : Nom du pool
+	#>
+    [string] getPoolName([string]$virtualServiceName)
+    {
+        return "{0}-pool" -f $virtualServiceName
+    }
+
 }

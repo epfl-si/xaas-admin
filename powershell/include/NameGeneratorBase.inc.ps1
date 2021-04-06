@@ -361,4 +361,19 @@ class NameGeneratorBase
         $name = $this.sanitizeName($name)
         return (truncateString -str $name -maxChars $maxChars)
     }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom court (la première lettre quoi) du tag de déploiment passé.
+
+        IN  : $deploymentTag     -> le tag de déploiement
+
+        RET : le tag de déploiement court
+    #>
+    hidden [string] getDeploymentTagShort([string]$deploymentTag)
+    {
+        return $deploymentTag.toLower()[0]
+    }
+    
 }
