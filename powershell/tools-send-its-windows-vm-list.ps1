@@ -1,6 +1,6 @@
 <#
 USAGES:
-    tools-send-its-vm-list.ps1 -targetEnv prod|test|dev -mail <mail>
+    tools-send-its-windows-vm-list.ps1 -targetEnv prod|test|dev -mail <mail>
 #>
 <#
     BUT 		: Script permettant de récupérer la liste des VM qui sont sur ITServices et de les envoyer
