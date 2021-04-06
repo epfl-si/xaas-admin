@@ -106,6 +106,7 @@ try
         {
             $logHistory.addLineAndDisplay(("--> VM '{0}'" -f $vm.name))
 
+            # Récupération du Blueprint pour déterminer si c'est une VM Windows ou pas
             $bluePrint = getvRAObjectCustomPropValue -object $vm -customPropName "VirtualMachine.Cafe.Blueprint.Name"
 
             if($bluePrint -like "*Windows*")
@@ -144,9 +145,6 @@ try
     }
 
     
-
-    # Nettoyage
-    Remove-Item -Path $outFile -Force
 }
 catch
 {
