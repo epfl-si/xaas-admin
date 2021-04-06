@@ -23,6 +23,7 @@ USAGES:
         en paramètre.
 
 #>
+Throw "Not working, need to finalize"
 param([string]$targetEnv, 
       [string]$targetTenant)
 
@@ -153,6 +154,25 @@ try
 
         $logHistory.addLineAndDisplay(("[{0}/{1}] Tenant '{2}' (SVCID={3})" -f $tenantNo, $tenantList.count, $tenant.name, $serviceId))
 
+        # Recherche des infos du tenant dans le fichier de données
+        $tenantData = ($e2eData.tenantList | Where-Object { $_.uuid -eq $tenant.uuid})
+
+        # Si pas d'infos sur le tenant dans le fichier de données, on ajoute
+        if($null -eq $tenantData)
+        {
+            $e2eData.tenantList += @{
+                name = $tenant.name
+                uuid = $tenant.uuid
+                lastStatus = $null
+                poolList = @()
+            }
+        }
+        else # Infos trouvées
+        {
+
+        }
+
+
         # Récupération de la liste des pools
         $logHistory.addLineAndDisplay("> Getting Pool list...")
 
@@ -160,6 +180,9 @@ try
 
         $logHistory.addLineAndDisplay(("> {0} Pool(s) found" -f $poolList.count))
 
+        # Pour savoir si le statut d'au moins un des pool du tenant a changé
+        $onePoolStatusHasChanged = $false
+        
         $poolNo = 1
         ForEach($pool in $poolList)
         {
@@ -170,14 +193,19 @@ try
 
             # Récupération des détails sur les serveurs
             $servers = $aviNetWorks.getPoolRuntime($tenant, $pool, $true)
-
+          
             # On regarde s'il y a eu un changement depuis le dernier check
             # OU
             # si on est en mode d'initialisation des données du fichier de suivi
             if(($runtime.oper_status.last_changed_time.secs -gt $e2eData.lastCheckTime) -or $initDataFile)
             {
+                $onePoolStatusHasChanged = $true
 
+                # Recherche des infos du pool dans le fichier de données
                 $poolData = ($e2eData.poolList | Where-Object { $_.uuid -eq $pool.uuid})
+
+                $downServerList = ($servers | Where-Object { $_.oper_status.state -ne "OPER_DOWN" } | Select-Object -ExpandProperty hostname | Sort-Object | Get-Unique)
+
                 # Si on n'a pas d'infos sur le pool dans le fichier de données (ce qui est notamment 
                 # le cas quand on est en mode d'initialisation des données -> $initDataFile )
                 if($null -eq $poolData)
@@ -187,50 +215,48 @@ try
                     $e2eData.poolList += @{
                         uuid = $pool.uuid
                         name = $pool.name
+                        tenant = $tenant.name
+                        downServerList = $downServerList
                         percServersUp = $runtime.percent_servers_up_total
                     }
                 }
                 else # On a les infos sur le pool dans le fichier de données
                 {
                     $logHistory.addLineAndDisplay(">>> Data found in file for pool")
+
+
                     # S'il y a eu un changement depuis la dernière fois
-                    if($poolData.percServersUp -ne $runtime.percent_servers_up_total)
+                    if($null -ne (Compare-Object -ReferenceObject $poolData.downServerList -DifferenceObject $downServerList))
                     {
-                        $logHistory.addLineAndDisplay((">>> Percentage of UP servers has changed: {0}% -> {1}%" -f $poolData.percServersUp, $runtime.percent_servers_up_total))
+                        $logHistory.addLineAndDisplay((">>> Down server list has changed, it is now:`n- {0}" -f ($downServerList -join "`n- ")))
 
-                        $shortDescription = "{0}/{1} servers UP" -f $runtime.num_servers_up, $runtime.num_servers
-                        $description = $shortDescription
 
-                        # Si on QUITTE le 100% de serveurs UP
-                        if($poolData.percServersUp -eq 100)
-                        {
-                            $logHistory.addLineAndDisplay(">>> New status is now DEGRADED")
-                            $e2eStatusPriority = [E2EStatusPriority]::Degradation
-                        }
-                        # Si on REVIENT à 100% de serveurs UP
-                        elseif($runtime.percent_servers_up_total -eq 100)
-                        {
-                            $logHistory.addLineAndDisplay(">>> New status is now UP")
-                            $e2eStatusPriority = [E2EStatusPriority]::Up
-                        }
-                        else # On est à moins de 100% de UP et c'est simplement le pourcentage qui a changé
-                        {
-                            $logHistory.addLineAndDisplay(">>> Status is still DEGRADED")
-                            $e2eStatusPriority = [E2EStatusPriority]::DescriptionUpdate
-                        }
+                        # # Si on QUITTE le 100% de serveurs UP
+                        # if($poolData.percServersUp -eq 100)
+                        # {
+                        #     $logHistory.addLineAndDisplay(">>> New status is now DEGRADED")
+                        #     $e2eStatusPriority = [E2EStatusPriority]::Degradation
+                        # }
+                        # # Si on REVIENT à 100% de serveurs UP
+                        # elseif($runtime.percent_servers_up_total -eq 100)
+                        # {
+                        #     $logHistory.addLineAndDisplay(">>> New status is now UP")
+                        #     $e2eStatusPriority = [E2EStatusPriority]::Up
+                        # }
+                        # else # On est à moins de 100% de UP et c'est simplement le pourcentage qui a changé
+                        # {
+                        #     $logHistory.addLineAndDisplay(">>> Status is still DEGRADED")
+                        #     $e2eStatusPriority = [E2EStatusPriority]::DescriptionUpdate
+                        # }
 
-                        # Si on n'est pas UP, on fait une description un peu plus "élaborée"
-                        if($e2eStatusPriority -ne [E2EStatusPriority]::Up)
-                        {
-                            # Récupération des noms des serveurs qui ne sont pas OPER_UP 
-                            # On fait un "Sort-Object|Get-Unique" car pour une raison inconnue, les noms peuvent parfois être à double...
-                            $description = "Down servers: {0}" -f `
-                                ( ($servers | Where-Object { $_.oper_status.state -ne "OPER_DOWN" } | Select-Object -ExpandProperty hostname | Sort-Object | Get-Unique) -join ", ")
-                        }
-
-                        $logHistory.addLineAndDisplay((">>> Updating E2E with following information:`nStatus: {0}`nShort description: {1}`nDescription: {2}" -f `
-                                                        $e2eStatusPriority, $shortDescription, $description))
-                        #$e2e.setServiceStatus($serviceId, $e2eStatusPriority, $shortDescription, $description)
+                        # # Si on n'est pas UP, on fait une description un peu plus "élaborée"
+                        # if($e2eStatusPriority -ne [E2EStatusPriority]::Up)
+                        # {
+                        #     # Récupération des noms des serveurs qui ne sont pas OPER_UP 
+                        #     # On fait un "Sort-Object|Get-Unique" car pour une raison inconnue, les noms peuvent parfois être à double...
+                        #     $description = "Down servers: {0}" -f `
+                        #         ( ($servers | Where-Object { $_.oper_status.state -ne "OPER_DOWN" } | Select-Object -ExpandProperty hostname | Sort-Object | Get-Unique) -join ", ")
+                        # }
 
 
                         # Mise à jour des infos 
@@ -254,7 +280,12 @@ try
             $e2eData | ConvertTo-Json | Out-File $pathToE2EData -Encoding:UTF8
 
             $poolNo++
+
         }# FIN BOUCLE de parcours des pools
+
+        $logHistory.addLineAndDisplay((">>> Updating E2E with following information:`nStatus: {0}`nShort description: {1}`nDescription: {2}" -f `
+                                                        $e2eStatusPriority, $shortDescription, $description))
+        #$e2e.setServiceStatus($serviceId, $e2eStatusPriority, $shortDescription, $description)
 
         $tenantNo++
     }# FIN BOUCLE de parcours des tenants
