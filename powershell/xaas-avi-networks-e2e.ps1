@@ -107,13 +107,13 @@ try
     # Si le fichier n'existe pas, on le créé
     if(!(Test-Path $pathToE2EData))
     {
-        $logHistory.addLineAndDisplay(("Data file '{0}' doesn't exists, creating it..."))
+        $logHistory.addLineAndDisplay(("Data file '{0}' doesn't exists, creating it..." -f $pathToE2EData))
 
         # Création du fichier avec la date/heure actuelle
         @{
             lastCheckTime = (getUnixTimestamp)
             poolList = @()
-        } | ConvertTo-Json | Out-File -Path $pathToE2EData -Encoding:UTF8
+        } | ConvertTo-Json | Out-File $pathToE2EData -Encoding:UTF8
 
         # On fait en sorte que le fichier de données soit populé sans qu'aucune info ne soit remontée dans le End-2-End monitoring
         $initDataFile = $true
@@ -151,16 +151,19 @@ try
         # Recherche de l'id du service dans les custom labels
         $serviceId = ($tenant.suggested_object_labels | Where-Object { $_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID}).value
 
-        $logHistory.addLineAndDisplay(("[{0}/{1}] Tenant '{3}' (SVCID={4})" -f $tenantNo, $tenantList.count, $tenant.name, $serviceId))
+        $logHistory.addLineAndDisplay(("[{0}/{1}] Tenant '{2}' (SVCID={3})" -f $tenantNo, $tenantList.count, $tenant.name, $serviceId))
 
         # Récupération de la liste des pools
         $logHistory.addLineAndDisplay("> Getting Pool list...")
 
         $poolList = $aviNetWorks.getPoolList($tenant)
+
+        $logHistory.addLineAndDisplay(("> {0} Pool(s) found" -f $poolList.count))
+
         $poolNo = 1
         ForEach($pool in $poolList)
         {
-            $logHistory.addLineAndDisplay((">> [{0}/{1}] Pool '{3}'" -f $poolNo, $poolList.count, $pool.name))
+            $logHistory.addLineAndDisplay((">> [{0}/{1}] Pool '{2}'" -f $poolNo, $poolList.count, $pool.name))
 
             # Récupération du résumé de l'état
             $runtime = $aviNetWorks.getPoolRuntime($tenant, $pool)
@@ -183,6 +186,7 @@ try
 
                     $e2eData.poolList += @{
                         uuid = $pool.uuid
+                        name = $pool.name
                         percServersUp = $runtime.percent_servers_up_total
                     }
                 }
@@ -221,10 +225,13 @@ try
                             # Récupération des noms des serveurs qui ne sont pas OPER_UP 
                             # On fait un "Sort-Object|Get-Unique" car pour une raison inconnue, les noms peuvent parfois être à double...
                             $description = "Down servers: {0}" -f `
-                                ( (| Where-Object { $_.oper_status.state -ne "OPER_UP" } | Select-Object -ExpandProperty hostname | Sort-Object | Get-Unique) -join ", ")
+                                ( ($servers | Where-Object { $_.oper_status.state -ne "OPER_DOWN" } | Select-Object -ExpandProperty hostname | Sort-Object | Get-Unique) -join ", ")
                         }
 
-                        $e2e.setServiceStatus($serviceId, $e2eStatusPriority, $shortDescription, $description)
+                        $logHistory.addLineAndDisplay((">>> Updating E2E with following information:`nStatus: {0}`nShort description: {1}`nDescription: {2}" -f `
+                                                        $e2eStatusPriority, $shortDescription, $description))
+                        #$e2e.setServiceStatus($serviceId, $e2eStatusPriority, $shortDescription, $description)
+
 
                         # Mise à jour des infos 
                         ($e2eData.poolList | Where-Object { $_.uuid -eq $pool.uuid}).percServersUp = $runtime.percent_servers_up_total
@@ -235,9 +242,6 @@ try
                         $logHistory.addLineAndDisplay(">>> Status hasn't changed since last time")
                     }
 
-                    # Mise à jour du fichier de données
-                    $e2eData | ConvertTo-Json | Out-File -Path $pathToE2EData -Encoding:UTF8
-
                 }# FIN Si on a des infos sur le pool dans le fichier de données OU qu'il faut mettre à jour celui-ci
                 
             }
@@ -246,27 +250,8 @@ try
                 $logHistory.addLineAndDisplay(">>> No status change since last check")
             }
 
-            <#
-		/pool/{uuid}/runtime/ -> infos sur les serveurs
-{
-    "oper_status": {
-        "state": "OPER_UP",
-        "last_changed_time": {
-            "secs": 1616065373,
-            "usecs": 953533
-        }
-    },
-    "num_servers": 4,
-    "num_servers_enabled": 4,
-    "num_servers_up": 4,
-    "percent_servers_up_total": 100,
-    "percent_servers_up_enabled": 100
-    }
-
-
-
-
-	#>
+            # Mise à jour du fichier de données
+            $e2eData | ConvertTo-Json | Out-File $pathToE2EData -Encoding:UTF8
 
             $poolNo++
         }# FIN BOUCLE de parcours des pools
