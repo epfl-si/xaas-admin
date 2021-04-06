@@ -178,7 +178,7 @@ function chooseAppSVM([NetAppAPI]$netapp, [Array]$svmList, [NetAppProtocol]$prot
         # Si la SVM n'a pas été trouvée, il doit y avoir une erreur dans le fichier de données
         if($null -eq $svm)
         {
-            Throw ("Defined applicative SVM ({0}) not found. Please check 'data/xaas/nas/applicatives-svm.json' content")
+            Throw ("Defined applicative SVM ({0}) not found. Please check 'data/xaas/nas/applicatives-svm.json' content" -f $smvName)
         }
 
         # Recherche des IOPS de la SVM
