@@ -106,7 +106,9 @@ try
         {
             $logHistory.addLineAndDisplay(("--> VM '{0}'" -f $vm.name))
 
-            if($vm.parentResourceRef.label -like "*Windows*")
+            $bluePrint = getvRAObjectCustomPropValue -object $vm -customPropName "VirtualMachine.Cafe.Blueprint.Name"
+
+            if($bluePrint -like "*Windows*")
             {
                 $logHistory.addLineAndDisplay("--> Windows VM")
 
