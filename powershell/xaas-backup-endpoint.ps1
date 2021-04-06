@@ -302,7 +302,7 @@ try
         # Savoir si la VM a un snapshot en cours
         $ACTION_VM_HAS_RUNNING_SNAPSHOT {
 
-            $vm = $vra.getItem('Virtual Machine', $vmName)
+            $vm = $vra.getItem($global:VRA_ITEM_TYPE_VIRTUAL_MACHINE, $vmName)
 
             # Si pas trouvée 
             if($null -eq $vm)
