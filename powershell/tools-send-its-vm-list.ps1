@@ -88,6 +88,7 @@ try
 
     $bgList = $vra.getBGList()
 
+    $vmFound = $false
     Foreach($bg in $bgList)
     {
         $logHistory.addLineAndDisplay(("-> Processing BG '{0}'..." -f $bg.name))
@@ -105,26 +106,42 @@ try
         {
             $logHistory.addLineAndDisplay(("--> VM '{0}'" -f $vm.name))
 
-            $values = @($vm.name,
+            if($vm.parentResourceRef.label -like "*Windows*")
+            {
+                $logHistory.addLineAndDisplay("--> Windows VM")
+
+                $values = @($vm.name,
                         $bg.description,
                         $bgId,
                         $bg.name)
 
-            $values -join ";" | Out-File $outFile -Encoding:utf8 -Append
+                $values -join ";" | Out-File $outFile -Encoding:utf8 -Append
+
+                $vmFound = $true
+            }
+            else
+            {
+                $logHistory.addLineAndDisplay("--> NOT a Windows VM")
+            }
+            
 
         } # FIN BOUCLE de parcours des VM
 
     } # FIN BOUCLE de parcours des Business Groups
     
+    if($vmFound)
+    {
+        $logHistory.addLineAndDisplay(("Sending result mail to '{0}'..." -f $mail))
 
-    $logHistory.addLineAndDisplay(("Sending result mail to '{0}'..." -f $mail))
+        $mailFrom = ("noreply+{0}" -f $configGlobal.getConfigValue(@("mail", "admin")))
+        $mailSubject = "ITServices per BG VM List"
+        $mailMessage = "Bonjour,<br><br>Voici la liste des VM qui existent actuellement dans le tenant ITServices.<br><br>Salutations<br><br>vRA Bot"
 
-    $mailFrom = ("noreply+{0}" -f $configGlobal.getConfigValue(@("mail", "admin")))
-    $mailSubject = "ITServices per BG VM List"
-    $mailMessage = "Bonjour,<br><br>Voici la liste des VM qui existent actuellement dans le tenant ITServices.<br><br>Salutations<br><br>vRA Bot"
+        Send-MailMessage -From $mailFrom -To $mail -Subject $mailSubject -Attachments $outFile `
+                        -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8
+    }
 
-    Send-MailMessage -From $mailFrom -To $mail -Subject $mailSubject -Attachments $outFile `
-                    -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8
+    
 
     # Nettoyage
     Remove-Item -Path $outFile -Force
