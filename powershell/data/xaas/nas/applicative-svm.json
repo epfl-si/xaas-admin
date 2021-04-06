@@ -7,8 +7,7 @@
         ],
         "nfs3":
         [
-            "nas-mcc-t-test",
-            "nas-app-ma-test"
+            "nas-mcc-t-test"
         ]
     },
     "prod" :
