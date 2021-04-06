@@ -34,6 +34,12 @@
             "psEndpointServer": "",  // nom IP du serveur PowerShell endpoint, se terminant par .intranet.epfl.ch
             "user": "",
             "password": ""
+        },
+        "e2e":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
         }
     },
     "test": {
@@ -71,6 +77,12 @@
             "psEndpointServer": "",  // nom IP du serveur PowerShell endpoint, se terminant par .intranet.epfl.ch
             "user": "",
             "password": ""
+        },
+        "e2e":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
         }
     },
     "prod": {
@@ -106,6 +118,12 @@
         {
             "server": "",
             "psEndpointServer": "",  // nom IP du serveur PowerShell endpoint, se terminant par .intranet.epfl.ch
+            "user": "",
+            "password": ""
+        },
+        "e2e":
+        {
+            "server": "",
             "user": "",
             "password": ""
         }
