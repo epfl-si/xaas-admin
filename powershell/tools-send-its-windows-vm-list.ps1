@@ -137,8 +137,8 @@ try
         $logHistory.addLineAndDisplay(("Sending result mail to '{0}'..." -f $mail))
 
         $mailFrom = ("noreply+{0}" -f $configGlobal.getConfigValue(@("mail", "admin")))
-        $mailSubject = "ITServices per BG VM List"
-        $mailMessage = "Bonjour,<br><br>Voici la liste des VM qui existent actuellement dans le tenant ITServices.<br><br>Salutations<br><br>vRA Bot"
+        $mailSubject = "ITServices per BG Windows VM List"
+        $mailMessage = "Bonjour,<br><br>Voici la liste des VM Windows qui existent actuellement dans le tenant ITServices.<br><br>Salutations<br><br>vRA Bot"
 
         Send-MailMessage -From $mailFrom -To $mail -Subject $mailSubject -Attachments $outFile `
                         -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8
