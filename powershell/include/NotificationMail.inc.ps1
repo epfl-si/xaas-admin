@@ -109,7 +109,7 @@ class NotificationMail
     }
     [void] send([string] $mailSubject, [string]$templateName,  [System.Collections.IDictionary]$valToReplace)
     {
-        $this.send($mailSubject, $templateName, @{}, $false)
+        $this.send($mailSubject, $templateName, $valToReplace, $false)
     }
     [void] send([string] $mailSubject, [string]$templateName,  [System.Collections.IDictionary]$valToReplace, [bool]$disableFunnyQuote)
     {
