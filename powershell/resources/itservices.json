@@ -908,6 +908,14 @@
         },
         {
             "active": true,
+            "longName":  "Gestion énergie électrique",
+            "shortName":  "genelec",
+            "snowId":  "SVC1365",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
             "longName":  "Gestion des Alumni",
             "shortName":  "prjalumgmt",
             "snowId":  "PRJ0012151",
