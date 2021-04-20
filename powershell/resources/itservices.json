@@ -946,6 +946,14 @@
             "snowId":  "PRJ0011982",
             "additionalGroupsAdminSciperList": ["318457"],
             "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
+            "longName": "Gestion énergie électrique",
+            "shortName": "genelec",
+            "snowId": "SVC1365",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
         }
     ]
 }
