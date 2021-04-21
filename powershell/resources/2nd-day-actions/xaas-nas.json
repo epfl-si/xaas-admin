@@ -1,0 +1,76 @@
+[
+    {
+        "appliesTo": "NAS_Volume",
+        "_comment": "Actions sur les volumes NAS",
+        "actions": [
+            {
+                "name": "Request support (NAS)",
+                "approvals": []
+            },
+            {
+                "name": "Delete Volume",
+                "approvals": []
+            },
+            {
+                "name": "Modify Export Policies",
+                "approvals": [] 
+            },
+            {
+                "name": "Modify Notification Mail",
+                "approvals": [] 
+            },
+            {
+                "name": "Resize Volume",
+                "approvals": [
+                    {
+                        "tenant": "EPFL",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 2
+                    },
+                    {
+                        "tenant": "ITServices",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 1
+                    },
+                    {
+                        "tenant": "Research",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 2
+                    }
+                ]
+            },
+            {
+                "name": "Modify Snapshot Policy",
+                "approvals": [
+                    {
+                        "tenant": "EPFL",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 2
+                    },
+                    {
+                        "tenant": "ITServices",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 1
+                    },
+                    {
+                        "tenant": "Research",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 2
+                    }
+                ]
+            }
+        ]
+    }
+]
