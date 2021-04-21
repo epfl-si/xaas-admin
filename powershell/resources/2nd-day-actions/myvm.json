@@ -1,6 +1,6 @@
 [
     {
-        "appliesTo": "", 
+        "appliesTo": "Virtual Machine", 
         "_comment": "Custom EPFL action",
         "actions": [
             {
@@ -34,67 +34,7 @@
             {
                 "name": "[Backup] Restore",
                 "approvals": []
-            }
-        ]
-    },
-    {
-        "appliesTo": "csp.places.iaas",
-        "_comment": "Actions on VM",
-        "actions": [
-            {
-                "name": "Connect to Remote Console",
-                "approvals": []
             },
-            {
-                "name": "Connect using VMRC",
-                "approvals": []
-            }
-        ]
-    },
-    {
-        "appliesTo": "composition.resource",
-        "_comment": "Actions done on deployments",
-        "actions": [
-            {
-                "name": "Expire",
-                "approvals": []
-            },
-            {
-                "name": "Change Lease",
-                "approvals": [
-                    {
-                        "tenant": "EPFL",
-                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
-                        "JSONReplacements": {},
-                        "approvalLevels": 2
-                    },
-                    {
-                        "tenant": "ITServices",
-                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
-                        "JSONReplacements": {},
-                        "approvalLevels": 1
-                    },
-                    {
-                        "tenant": "Research",
-                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
-                        "JSONReplacements": {},
-                        "approvalLevels": 2
-                    }
-                ]
-            },
-            {
-                "name": "Change Owner",
-                "approvals": []
-            }
-        ]
-    },
-    {
-        "appliesTo": "Infrastructure.Virtual",
-        "_comment": "Actions for snapshots and VM",
-        "actions": [
             {
                 "name": "Create Snapshot",
                 "approvals": []
@@ -109,12 +49,19 @@
                 "approvals": []
             }
         ]
-    }
-    ,
+    },
     {
-        "appliesTo": "Infrastructure.Machine",
+        "appliesTo": "Machine",
         "_comment": "Actions on VM",
         "actions": [
+            {
+                "name": "Connect to Remote Console",
+                "approvals": []
+            },
+            {
+                "name": "Connect using VMRC",
+                "approvals": []
+            },
             {
                 "name": "Install Tools",
                 "approvals": []
@@ -171,6 +118,46 @@
             },
             {
                 "name": "Execute Reconfigure",
+                "approvals": []
+            }
+        ]
+    },
+    {
+        "appliesTo": "Deployment",
+        "_comment": "Actions done on deployments",
+        "actions": [
+            {
+                "name": "Expire",
+                "approvals": []
+            },
+            {
+                "name": "Change Lease",
+                "approvals": [
+                    {
+                        "tenant": "EPFL",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 2
+                    },
+                    {
+                        "tenant": "ITServices",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 1
+                    },
+                    {
+                        "tenant": "Research",
+                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                        "JSONReplacements": {},
+                        "approvalLevels": 2
+                    }
+                ]
+            },
+            {
+                "name": "Change Owner",
                 "approvals": []
             }
         ]
