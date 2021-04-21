@@ -1,7 +1,7 @@
 [
     {
-        "appliesTo": "",
-        "_comment": "S3_Bucket",
+        "appliesTo": "S3_Bucket",
+        "_comment": "Actions sur les buckets S3",
         "actions": [
             {
                 "name": "Request support (s3)",
