@@ -1052,7 +1052,7 @@ class vRAAPI: RESTAPICurl
 					
 					if($notFoundActions -notcontains $actionName)
 					{
-						$notFoundActions += $actionName
+						$notFoundActions += ("{0} &gt;&gt;&gt; {1}" -f $targetElementName, $actionName)
 					}
 					
 				}
