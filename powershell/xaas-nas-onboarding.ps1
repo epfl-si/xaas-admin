@@ -458,6 +458,7 @@ try
     $colOwner           = $colCounter++
     $colTargetBGName    = $colCounter++
     $colOnboardDate     = $colCounter++
+
     
     $excel = New-Object -ComObject excel.application 
     $excel.visible = $false
@@ -648,7 +649,17 @@ try
         $ACTION_IMPORT
         {
             
-            $catalogItemName = "Raw Onboard Volume"
+            Switch($volType) 
+            {
+                "col" { 
+                    $catalogItemName = "Raw Onboard NAS(C) Volume" 
+                    $startColCheck = $colVolNo
+                }
+                "app" { 
+                    $catalogItemName = "Raw Onboard NAS(A) Volume" 
+                    $startColCheck = $colNas2020VolName
+                }
+            }
         
             # Test de l'existence du fichier de données
             if(!(Test-Path $dataFile))
@@ -701,8 +712,9 @@ try
                     continue
                 }
 
+
                 # Check de la validité des données entrées dans le fichier Excel
-                for($colNo = $colVolNo; $colNo -lt $colOnboardDate; $colNo++ )
+                for($colNo = $startColCheck; $colNo -lt $colOnboardDate; $colNo++ )
                 {
                     if($excelSheet.Cells.Item($lineNo, $colNo).text -eq "")
                     {
