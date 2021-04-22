@@ -125,6 +125,14 @@
             "snowId":  "SVC0070",
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
+            "longName":  "MyPrint",
+            "shortName":  "mprntt",
+            "snowId":  "SVC0056",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
         }
         
     ],
@@ -914,12 +922,29 @@
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
+        
+        {
+            "active": true,
+            "longName":  "Data Center Monitoring",
+            "shortName":  "dcm",
+            "snowId":  "SVC1344",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
+        },
         {
             "active": true,
             "longName":  "SAM – Software Asset Management",
             "shortName":  "prjsam",
             "snowId":  "PRJ0011982",
             "additionalGroupsAdminSciperList": ["318457"],
+            "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
+            "longName": "Gestion énergie électrique",
+            "shortName": "genelec",
+            "snowId": "SVC1365",
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         }
     ]

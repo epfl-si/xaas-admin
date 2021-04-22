@@ -235,7 +235,7 @@ try
     $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new(@('xaas', 's3', 'endpoint'), $global:LOGS_FOLDER, 30)
+    $logHistory = [LogHistory]::new(@('xaas', 's3', 'endpoint'), $global:LOGS_FOLDER, 120)
     
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
@@ -317,6 +317,8 @@ try
             if($linkedTo -eq "")
             {
                 
+                $logHistory.addLine("Bucket is not linked to another")
+
                 # Parcours des types d'accès
                 ForEach($accessType in $global:XAAS_S3_ACCESS_TYPES)
                 {
@@ -355,9 +357,12 @@ try
             else # Le Bucket doit être link à un autre
             {
 
+                $logHistory.addLine(("Bucket has to be linked to '{0}'" -f $linkedTo))
+
                 # Parcours des types d'accès
                 ForEach($accessType in $global:XAAS_S3_ACCESS_TYPES)
                 {
+                    $logHistory.addLine(("-> Checking access type '{0}'..." -f $accessType))
                     $bucketInfos.access.$accessType = @{}
 
                     # Recherche de la policy pour le type d'accès courant
@@ -577,17 +582,26 @@ catch
     $output.error = "{0}`n`n{1}" -f $errorMessage, $errorTrace
     displayJSONOutput -output $output
 
+    $logHistory.addError(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
+
     # Si on était en train de créer un bucket et qu'on peut faire le cleaning
     if(($action -eq $ACTION_CREATE) -and $doCleaningIfError)
     {
         # On efface celui-ci pour ne rien garder qui "traine"
         $logHistory.addLine(("Error while creating Bucket '{0}', deleting it so everything is clean. Error was: {1}" -f $bucketInfos.bucketName, $errorMessage))
 
-        # Suppression du bucket
-        deleteBucket -scality $scality -bucketName $bucketInfos.bucketName
+        try
+        {
+            # Suppression du bucket
+            deleteBucket -scality $scality -bucketName $bucketInfos.bucketName
+        }
+        catch
+        {
+            $logHistory.addError(("Error while cleaning Bucket: `nError: {0}`nTrace: {1}" -f $_.Exception.Message, $_.ScriptStackTrace))
+        }
     }
 
-	$logHistory.addError(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
+	
     
     # On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
     $errorMessage = $errorMessage -replace "`n", "<br>"

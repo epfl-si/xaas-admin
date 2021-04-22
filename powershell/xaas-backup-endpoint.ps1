@@ -112,7 +112,7 @@ try
     $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new(@('xaas','backup', 'endpoint'), $global:LOGS_FOLDER, 30)
+    $logHistory = [LogHistory]::new(@('xaas','backup', 'endpoint'), $global:LOGS_FOLDER, 120)
 
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
@@ -302,7 +302,7 @@ try
         # Savoir si la VM a un snapshot en cours
         $ACTION_VM_HAS_RUNNING_SNAPSHOT {
 
-            $vm = $vra.getItem('Virtual Machine', $vmName)
+            $vm = $vra.getItem($global:VRA_ITEM_TYPE_VIRTUAL_MACHINE, $vmName)
 
             # Si pas trouvée 
             if($null -eq $vm)

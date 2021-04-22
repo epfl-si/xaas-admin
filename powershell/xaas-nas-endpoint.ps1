@@ -178,7 +178,7 @@ function chooseAppSVM([NetAppAPI]$netapp, [Array]$svmList, [NetAppProtocol]$prot
         # Si la SVM n'a pas été trouvée, il doit y avoir une erreur dans le fichier de données
         if($null -eq $svm)
         {
-            Throw ("Defined applicative SVM ({0}) not found. Please check 'data/xaas/nas/applicatives-svm.json' content")
+            Throw ("Defined applicative SVM ({0}) not found. Please check 'data/xaas/nas/applicatives-svm.json' content" -f $smvName)
         }
 
         # Recherche des IOPS de la SVM
@@ -485,7 +485,7 @@ try
     $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new(@('xaas','nas', 'endpoint'), $global:LOGS_FOLDER, 30)
+    $logHistory = [LogHistory]::new(@('xaas','nas', 'endpoint'), $global:LOGS_FOLDER, 120)
     
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))

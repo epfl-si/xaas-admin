@@ -100,12 +100,18 @@ class NotificationMail
                                     qui seront remplacés par une autre valeur définie par le tableau $valToReplace.
 
         IN  : $valToReplace     -> (Optionnel) tableau associatif avec les éléments à remplacer dans le template
+        IN  : $disableFunnyQuote-> (optionnel) $true|$false pour dire si on veut désactiver ou pas les citations 
+                                    humoristiques à la fin du mail
     #>
     [void] send([string] $mailSubject, [string]$templateName)
     {
         $this.send($mailSubject, $templateName, @{})
     }
     [void] send([string] $mailSubject, [string]$templateName,  [System.Collections.IDictionary]$valToReplace)
+    {
+        $this.send($mailSubject, $templateName, $valToReplace, $false)
+    }
+    [void] send([string] $mailSubject, [string]$templateName,  [System.Collections.IDictionary]$valToReplace, [bool]$disableFunnyQuote)
     {
         # On commence par contrôler l'existence des fichiers
         $this.checkTemplateFile("_header")
@@ -146,8 +152,13 @@ class NotificationMail
         # 3. Ajout du footer
         Get-Content -Path $this.getPathToTemplateFile("_footer") | Out-File $tmpMailFile -Encoding default -Append
 
-        # 4. Ajout de la quote de fin
-        ("<br>{0}" -f $this.getRandomHTMLQuote()) | Out-File $tmpMailFile -Encoding default -Append
+        # Si on peut laisser les citations humoristiques
+        if(!$disableFunnyQuote)
+        {
+            # 4. Ajout de la quote de fin
+            ("<br>{0}" -f $this.getRandomHTMLQuote()) | Out-File $tmpMailFile -Encoding default -Append
+        }
+        
 
         $mailMessage = Get-Content $tmpMailFile -Encoding UTF8 | Out-String
         Remove-Item $tmpMailFile -Force

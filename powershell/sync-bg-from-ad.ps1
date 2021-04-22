@@ -82,10 +82,10 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$r
 
 
 # Chargement des fichiers de configuration
-$configVra = [ConfigReader]::New("config-vra.json")
-$configGlobal = [ConfigReader]::New("config-global.json")
-$configNSX = [ConfigReader]::New("config-nsx.json")
-
+$configVra 		= [ConfigReader]::New("config-vra.json")
+$configGlobal 	= [ConfigReader]::New("config-global.json")
+$configNSX 		= [ConfigReader]::New("config-nsx.json")
+$configLdapAD 	= [ConfigReader]::New("config-ldap-ad.json")
 
 <#
 	-------------------------------------------------------------------------------------
@@ -1082,6 +1082,15 @@ function handleNotifications
 				}
 
 				# ---------------------------------------
+				# Groupes AD soudainement devenus vides...
+				'emptyADGroups'
+				{
+					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
+					$mailSubject = "Info - AD groups empty for Business Group"
+					$templateName = "empty-ad-groups"
+				}
+
+				# ---------------------------------------
 				# Groupes AD pour les rôles...
 				'adGroupsNotFound'
 				{
@@ -1159,15 +1168,14 @@ function handleNotifications
 		  cas où ce sont des groupes AD).
 		  Si un groupe n'est pas trouvé, il est ajouté à la liste dans les notifications
 
+	IN  : $ldap			-> Objet pour communiquer avec LDAP
 	IN  : $groupList	-> Liste des groupes à contrôler
 
 	RET : $true	-> Tous les groupes existent
 		  $false -> au moins un groupe n'existe pas.
 #>
-function checkIfADGroupsExists
+function checkIfADGroupsExists([EPFLLDAP]$ldap, [System.Collections.ArrayList]$groupList)
 {
-	param([System.Collections.ArrayList]$groupList)
-
 
 	$allOK = $true
 	Foreach($groupName in $groupList)
@@ -1183,18 +1191,22 @@ function checkIfADGroupsExists
 				# $groupShort = 'xyz' 
 				# $domain = 'intranet.epfl.ch'
 				$groupShort, $domain = $groupName.Split('@')
-				if($null -eq (getADGroup -groupName $groupShort))
+
+				try
+				{
+					$dummy = Get-ADGroup $groupShort
+
+					# Si on arrive jusqu'ici, c'est que le groupe existe, donc on l'enregistre pour ne plus avoir le à le contrôler par la suite 
+					$global:existingADGroups += $groupName
+				}
+				catch
 				{
 					$logHistory.addWarningAndDisplay(("Security group '{0}' not found in Active Directory" -f $groupName))
 					# Enregistrement du nom du groupe
 					$notifications.adGroupsNotFound += $groupName
 					$allOK = $false
 				}
-				else # Le groupe est OK
-				{
-					# On l'enregistre pour ne plus avoir le à le contrôler par la suite 
-					$global:existingADGroups += $groupName
-				}
+				
 
 			}# FIN Si le groupe ressemble à un groupe AD
 
@@ -1365,7 +1377,7 @@ try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$logPath = @('vra', ('sync-BG-from-AD-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()))
-	$logHistory =[LogHistory]::new($logPath, $global:LOGS_FOLDER, 30)
+	$logHistory =[LogHistory]::new($logPath, $global:LOGS_FOLDER, 120)
 
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
@@ -1471,6 +1483,9 @@ try
 	$nsx = [NSXAPI]::new($configNSX.getConfigValue(@($targetEnv, "server")), 
 						 $configNSX.getConfigValue(@($targetEnv, "user")), 
 						 $configNSX.getConfigValue(@($targetEnv, "password")))
+
+	# Pour faire les recherches dans LDAP
+	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))						 
 
 	$doneElementList = @()
 
@@ -1706,11 +1721,11 @@ try
 		}
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
-		if( ((checkIfADGroupsExists -groupList $managerGrpList) -eq $false) -or `
-			((checkIfADGroupsExists -groupList $supportGrpList) -eq $false) -or `
-			((checkIfADGroupsExists -groupList $sharedGrpList) -eq $false) -or `
-			((checkIfADGroupsExists -groupList $userGrpList) -eq $false) -or `
-			((checkIfADGroupsExists -groupList $approverGroupAtDomainList) -eq $false))
+		if( ((checkIfADGroupsExists -ldap $ldap -groupList $managerGrpList) -eq $false) -or `
+			((checkIfADGroupsExists -ldap $ldap -groupList $supportGrpList) -eq $false) -or `
+			((checkIfADGroupsExists -ldap $ldap -groupList $sharedGrpList) -eq $false) -or `
+			((checkIfADGroupsExists -ldap $ldap -groupList $userGrpList) -eq $false) -or `
+			((checkIfADGroupsExists -ldap $ldap -groupList $approverGroupAtDomainList) -eq $false))
 		{
 			$logHistory.addWarningAndDisplay(("Security groups for Business Group ({0}) roles not found in Active Directory, skipping it !" -f $bgName))
 

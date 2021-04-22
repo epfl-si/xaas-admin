@@ -2,7 +2,7 @@ config-billing.json
 config-global.json
 config-grants.json
 config-groups.json
-config-mynas.json
+config-ldap-ad.json
 config-nsx.json
 config-snow.json
 config-vra.json

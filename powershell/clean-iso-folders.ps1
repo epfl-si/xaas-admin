@@ -105,7 +105,7 @@ try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$logPath = @('vra', ('clean-iso-folders-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()))
-	$logHistory =[LogHistory]::new($logPath, $global:LOGS_FOLDER, 30)
+	$logHistory =[LogHistory]::new($logPath, $global:LOGS_FOLDER, 120)
 
 	# On contrôle le prototype d'appel du script
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
@@ -191,7 +191,7 @@ try
 		if($null -ne $bg)
 		{
 			# Recherche de la liste des VM existantes dans le Tenant
-			$vmList = $vra.getBGItemList($bg, 'Virtual Machine')
+			$vmList = $vra.getBGItemList($bg, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
 
 			$logHistory.addLineAndDisplay( ("Looking for VM in BG {0} to see if ISO file is mounted" -f $bgName) )
 			# Parcours des VM
