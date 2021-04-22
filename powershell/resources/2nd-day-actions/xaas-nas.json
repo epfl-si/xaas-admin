@@ -1,93 +1,26 @@
 [
     {
-        "appliesTo": "Virtual Machine", 
-        "_comment": "Custom EPFL action",
+        "appliesTo": "NAS_Volume",
+        "_comment": "Actions sur les volumes NAS",
         "actions": [
             {
-                "name": "[VM] Mount/Unmount CD-ROM (ISO)",
+                "name": "Request support (NAS)",
                 "approvals": []
             },
             {
-                "name": "[VM] Modify Notification Mail",
+                "name": "Delete Volume",
                 "approvals": []
             },
             {
-                "name": "[VM] DNS alias request",
+                "name": "Modify Export Policies",
                 "approvals": [] 
             },
             {
-                "name": "[DMZ] Reconfigure",
+                "name": "Modify Notification Mail",
                 "approvals": [] 
             },
             {
-                "name": "[DMZ] Scan Request",
-                "approvals": [] 
-            },
-            {
-                "name": "[VM] Request support",
-                "approvals": []
-            },
-            {
-                "name": "[Backup] Config",
-                "approvals": []
-            },
-            {
-                "name": "[Backup] Restore",
-                "approvals": []
-            },
-            {
-                "name": "Create Snapshot",
-                "approvals": []
-            },
-            {
-                "name": "Revert to Snapshot",
-                "approvals": []
-
-            },
-            {
-                "name": "Delete Snapshot",
-                "approvals": []
-            }
-        ]
-    },
-    {
-        "appliesTo": "Machine",
-        "_comment": "Actions on VM",
-        "actions": [
-            {
-                "name": "Connect to Remote Console",
-                "approvals": []
-            },
-            {
-                "name": "Connect using VMRC",
-                "approvals": []
-            },
-            {
-                "name": "Install Tools",
-                "approvals": []
-            },
-            {
-                "name": "Power Cycle",
-                "approvals": []
-            },
-            {
-                "name": "Power On",
-                "approvals":[]
-            },
-            {
-                "name": "Power Off",
-                "approvals": []
-            },
-            {
-                "name": "Reboot",
-                "approvals": []
-            },
-            {
-                "name": "Shutdown",
-                "approvals": []
-            },
-            {
-                "name": "Reconfigure",
+                "name": "Resize Volume",
                 "approvals": [
                     {
                         "tenant": "EPFL",
@@ -113,25 +46,7 @@
                 ]
             },
             {
-                "name": "Cancel Reconfigure",
-                "approvals": []
-            },
-            {
-                "name": "Execute Reconfigure",
-                "approvals": []
-            }
-        ]
-    },
-    {
-        "appliesTo": "Deployment",
-        "_comment": "Actions done on deployments",
-        "actions": [
-            {
-                "name": "Expire",
-                "approvals": []
-            },
-            {
-                "name": "Change Lease",
+                "name": "Modify Snapshot Policy",
                 "approvals": [
                     {
                         "tenant": "EPFL",
@@ -155,10 +70,6 @@
                         "approvalLevels": 2
                     }
                 ]
-            },
-            {
-                "name": "Change Owner",
-                "approvals": []
             }
         ]
     }
