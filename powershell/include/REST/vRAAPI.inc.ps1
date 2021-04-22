@@ -1303,11 +1303,9 @@ class vRAAPI: RESTAPICurl
 
 		IN  : $name			-> Le nom de l'action que l'on désire (c'est celui affiché dans la GUI)
 		IN  : $appliesTo	-> Chaîne de caractères avec l'ID du type de ressource auquel s'applique
-									cette action.
-									Ex: "Infrastructure.Virtual" pour une VM
-								Dans le cas où l'action aurait été développée en interne, ce paramètre
-								doit être mis à "" 
-
+								cette action.
+								Ex: "Virtual Machine" pour une VM, ou un nom de type dynamique
+								
 		RET : Objet contenant l'action
 				$null si n'existe pas
 
@@ -1319,22 +1317,25 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] getAction([string] $name, [string]$appliesTo)
 	{
-		# Si c'est une action développée en interne
-		if($appliesTo -eq "")
-		{
-			# On filtre sur les éléments étant définis comme XaaS car il peut y avoir un même nom d'action
-			# valable pour un élément XaaS et pour un élément défini par le système (BluePrint)
-			$appliesToFilter = "providerType eq 'com.vmware.csp.core.designer.service'"
-		}
-		else # Action prédéfinie
-		{
-			# Filtre
-			$appliesToFilter = "startswith(externalId, '{0}')" -f $appliesTo
-		}
+
+		<# Filtre. On veut filtrer sur la structure suivante
+		"targetResourceTypeRef": {
+                "id": "Infrastructure.Virtual",
+                "label": "Virtual Machine"
+            }
+
+		On doit cependant utiliser "targetResourceType/name" et pas "targetResourceTypeRef/label" pour arriver à nos fins... logique quand tu nous tiens...
+		#>
+		$appliesToFilter = "targetResourceType/name eq '{0}'" -f $appliesTo
+		
 
 		$list = $this.getActionListQuery(("`$filter={0}" -f $appliesToFilter)) | Where-Object { $_.name -eq $name }
 
 		if($list.Count -eq 0){return $null}
+		if($list.Count -gt 1)
+		{
+			Throw ("Multiple ({0}) 2nd day actions '{1}' found for element ''")
+		}
 		return $list[0]
 	}
 
