@@ -32,13 +32,18 @@ param ( [string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "SnowAPI.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
-$configGlobal = [ConfigReader]::New("config-global.json")
-$configVra = [ConfigReader]::New("config-vra.json")
+$configGlobal   = [ConfigReader]::New("config-global.json")
+$configVra      = [ConfigReader]::New("config-vra.json")
+$configVSphere  = [ConfigReader]::New("config-vsphere.json")
+$configSnow     = [ConfigReader]::New("config-snow.json")
 
 $targetTenant = "ITServices"
+
+$serviceManagerList = @{}
 
 try
 {
@@ -60,12 +65,32 @@ try
     $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
                                                 ($global:VRA_MAIL_SUBJECT_PREFIX_NO_TENANT -f $targetEnv), $valToReplace)
 
-    
 
+    $logHistory.addLineAndDisplay("Connecting to vSphere...")
+    # Chargement des modules 
+    loadPowerCliModules
+
+    # Pour éviter que le script parte en erreur si le certificat vCenter ne correspond pas au nom DNS primaire. On met le résultat dans une variable
+    # bidon sinon c'est affiché à l'écran.
+    Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
+
+    $credSecurePwd = $configVSphere.getConfigValue(@($targetEnv, "password")) | ConvertTo-SecureString -AsPlainText -Force
+    $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $configVSphere.getConfigValue(@($targetEnv, "user")), $credSecurePwd	
+
+    $vCenter = Connect-VIServer -Server $configVSphere.getConfigValue(@($targetEnv, "server")) -Credential $credObject
+
+    $logHistory.addLineAndDisplay("Connecting to vRA...")
     $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
                         $targetTenant, 
                         $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
                         $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+
+    # Pour accéder à ServiceNow
+    $logHistory.addLineAndDisplay("Connecting to ServiceNow...")
+	$snow = [snowAPI]::new($configSnow.getConfigValue(@("server")), 
+                            $configSnow.getConfigValue(@("user")), 
+                            $configSnow.getConfigValue(@("password")),
+                            $configSnow.getConfigValue(@("proxy")))
 
     # Fichier de sortie pour les informations extraites
     $outFolder = ([IO.Path]::Combine($global:RESULTS_FOLDER, "ITS-VM-List"))
@@ -77,8 +102,12 @@ try
 
     # Définition des noms des colonnes
     $cols = @("VM Name",
+            "Type",
+            "State",
+            "OS",
             "Svc longName",
             "BG snowId",
+            "Service manager",
             "Business Group")
 
     $cols -join ";" | Out-File $outFile -Encoding:utf8
@@ -93,6 +122,13 @@ try
     {
         $logHistory.addLineAndDisplay(("-> Processing BG '{0}'..." -f $bg.name))
 
+        # Si c'est un BG admin
+        if(($bgId -eq "SVC0000") -or ((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_TYPE) -eq "admin"))
+        {
+            $logHistory.addLineAndDisplay("-> Is admin BG, skipping!")
+            continue
+        }
+        
         # Recherche de l'ID
         $bgId = (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
         $logHistory.addLineAndDisplay(("-> Custom ID is '{0}'" -f $bgId))
@@ -106,16 +142,27 @@ try
         {
             $logHistory.addLineAndDisplay(("--> VM '{0}'" -f $vm.name))
 
-            # Récupération du Blueprint pour déterminer si c'est une VM Windows ou pas
-            $bluePrint = getvRAObjectCustomPropValue -object $vm -customPropName "VirtualMachine.Cafe.Blueprint.Name"
-
-            if($bluePrint -like "*Windows*")
+            # Récupération de la VM dans vSphere
+            $vSphereVM = Get-VM $vm.name
+            $vmView = $vSphereVM| Get-View
+       
+            if($vmView.Guest.GuestFamily -like "*Windows*")
             {
-                $logHistory.addLineAndDisplay("--> Windows VM")
+                $logHistory.addLineAndDisplay("---> Windows VM")
+
+                if($serviceManagerList.Keys -notcontains $bgId)
+                {
+                    $serviceManagerList.Add($bgId, $snow.getServiceManager($bgId))
+                }
+                $serviceManager = $serviceManagerList.Item($bgId).FullName
 
                 $values = @($vm.name,
+                        ($vSphereVM| Get-Annotation -customattribute "ch.epfl.deployment_tag").value,
+                        $vmView.Summary.Runtime.PowerState,
+                        $vmView.Guest.GuestFullName,
                         $bg.description,
                         $bgId,
+                        $serviceManager,
                         $bg.name)
 
                 $values -join ";" | Out-File $outFile -Encoding:utf8 -Append
@@ -124,7 +171,7 @@ try
             }
             else
             {
-                $logHistory.addLineAndDisplay("--> NOT a Windows VM")
+                $logHistory.addLineAndDisplay("---> NOT a Windows VM")
             }
             
 
