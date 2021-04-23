@@ -46,7 +46,6 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "XaaS", "NAS", "NameGeneratorNAS.inc.ps1"))
 
 # Chargement des fichiers de configuration
-$configGlobal   = [ConfigReader]::New("config-global.json")
 $configvRA      = [ConfigReader]::New("config-vra.json")
 $configNAS      = [ConfigReader]::New("config-xaas-nas.json")
 $configLdapAd   = [ConfigReader]::New("config-ldap-ad.json")
@@ -58,8 +57,6 @@ $configLdapAd   = [ConfigReader]::New("config-ldap-ad.json")
 # Liste des actions possibles
 $ACTION_GEN_DATA_FILE       = "genDataFile"
 $ACTION_IMPORT              = "import"
-
-$CSV_SEPARATOR = ";"
 
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
@@ -272,20 +269,10 @@ function getCorrectDeploymentTag([string] $deploymentTag)
 
 try
 {
-    # Création de l'objet pour l'affichage 
-    $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new(@('xaas','nas', 'onboarding'), $global:LOGS_FOLDER, 30)
     
-    # Objet pour pouvoir envoyer des mails de notification
-	$valToReplace = @{
-		targetEnv = $targetEnv
-		targetTenant = $targetTenant
-    }
-    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
-                                                    ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
-
     # Ajout d'informations dans le log
     $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
 
