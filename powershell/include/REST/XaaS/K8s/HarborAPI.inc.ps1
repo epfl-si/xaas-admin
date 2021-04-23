@@ -504,7 +504,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[PSObject] getUserGroup([string]$groupLDAPDN)
 	{
-		return ($this.getUserGroupList() | Where-Object { $_.group_name.toLower() -eq $groupLDAPDN.toLower()})
+		return ($this.getUserGroupList() | Where-Object { $_.ldap_group_dn.toLower() -eq $groupLDAPDN.toLower()})
 	}
 
 
