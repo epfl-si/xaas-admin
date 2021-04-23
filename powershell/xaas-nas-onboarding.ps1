@@ -448,7 +448,7 @@ try
 
     
     $excel = New-Object -ComObject excel.application 
-    $excel.visible = $false
+    $excel.visible = $true
 
     #$dataFile = ([IO.Path]::Combine("$PSScriptRoot", $dataFile))
     # -------------------------------------------------------------------------
@@ -547,20 +547,37 @@ try
 
                                 if($null -ne $reqInfos)
                                 {
+                                    # Suppression d'un éventuel "SNOW-" qui serait au début du nom
+                                    $userFullName = $reqInfos.act_log_user_name -replace "SNOW-" , "" 
                                     # Suppression d'une éventuelle première partie avec un ,
-                                    $userFullName = $reqInfos.act_log_user_name -replace ".*?," , "" 
+                                    $userFullName = $userFullName -replace ".*?," , "" 
                                     
+                                    $ldapOK = $true
                                     $person = $ldap.getPersonInfos($userFullName)
 
                                     # Si trouvé dans LDAP
                                     if($null -ne $person)
                                     {
-                                        $owner = "{0}@intranet.epfl.ch" -f ($person.uid | Where-Object { $_ -notlike "*@*"})
+                                        $uid = $person.uid | Where-Object { $_ -notlike "*@*"}
+                                        if($null -ne $uid)
+                                        {
+                                            $owner = "{0}@intranet.epfl.ch" -f $uid
+                                        }
+                                        else
+                                        {
+                                            $ldapOK = $false
+                                        }
+                                        
                                     }
-                                    else # Pas trouvé dans LDAP
+                                    else
+                                    {
+                                        $ldapOk = $false
+                                    }
+                                    
+                                    if(!$ldapOK)
                                     {
                                         # On met le nom FULL de la personne
-                                        $owner = $userFullName
+                                        $owner = $reqInfos.act_log_user_name
                                         # Mise du fond de la cellule en rouge pour dire de check l'info
                                         $excelSheet.Cells.Item($lineNo, $colNo).Interior.ColorIndex = 3
                                     }
