@@ -124,6 +124,8 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 			New-ADGroup -Name $groupName -Description $groupDesc -GroupScope DomainLocal -Path $OU
 		}
 		$counters.inc('ADGroupsCreated')
+
+		$alreadyExists = $false
 	}
 	else
 	{
