@@ -42,29 +42,39 @@ class SQLDB
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
         IN  : $port             -> No de port à utiliser. Sera ignoré pour une DB MSSQL donc on peut passer $null
+        IN  : $mysqlUseSSL      -> Dans le cas de MySQL, on doit dire si on veut faire du SSL ou pas
 
 		RET : Instance de l'objet
 	#>
-    SQLDB([DBType]$dbType, [string]$server, [string]$db, [string]$username, [string]$password, [int]$port)
+    SQLDB([DBType]$dbType, [string]$server, [string]$db, [string]$username, [string]$password, [int]$port, [bool]$mysqlUseSSL)
     {
         # Définition d'un nom de connexion pour pouvoir l'identifier et la fermer correctement dans le cas
         # où on aurait plusieurs instances de l'objet en même temps.
         $this.connectionName = "SQLDB{0}" -f (Get-Random)
-
-        # Sécurisation du mot de passe et du nom d'utilisateur
-        $credSecurePwd = $password | ConvertTo-SecureString -AsPlainText -Force
-        $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $username, $credSecurePwd	
 
         # En fonction du type de DB
         switch($dbType)
         {
             MySQL
             {
-                Open-MySQLConnection -server $server  -database $db  -port $port -credential $credObject -ConnectionName $this.connectionName
+                # On passe par une "connectionString" et non pas par la liste des arguments comme pour la partie MSSQL car
+                # pour certaines requêtes avec MySQL, on a des dates et il faut ajouter "Allow Zero Datetime = True" pour
+                # que ça fonctionne, et une connection string est le seul moyen de faire ça.
+                $connectionString = "Server={0};Port={1};Database={2};Uid={3};Pwd={4};Allow Zero Datetime = True;" -f `
+                                     $server, $port, $db, $username, $password
+                if(!$mysqlUseSSL)
+                {
+                    $connectionString = "{0}SslMode=None;" -f $connectionString
+                }
+                Open-MySQLConnection -connectionString $connectionString -ConnectionName $this.connectionName
             }
 
             MSSQL
             {
+                # Sécurisation du mot de passe et du nom d'utilisateur
+                $credSecurePwd = $password | ConvertTo-SecureString -AsPlainText -Force
+                $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $username, $credSecurePwd	
+                
                 Open-SqlConnection -Server $server -Database $db -Credential $credObject -ConnectionName $this.connectionName 
             }
         }
