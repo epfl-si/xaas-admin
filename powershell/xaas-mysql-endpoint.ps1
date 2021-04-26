@@ -177,6 +177,7 @@ try
                     $configMySQL.getConfigValue(@($targetEnv, "host")),
                     $configMySQL.getConfigValue(@($targetEnv, "user")),
                     $configMySQL.getConfigValue(@($targetEnv, "password")),
+                    $true,
                     $configMySQL.getConfigValue(@($targetEnv, "port")))
 
     # Si on doit activer le Debug,

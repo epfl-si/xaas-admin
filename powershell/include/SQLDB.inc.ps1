@@ -36,20 +36,21 @@ class SQLDB
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
         IN  : $port             -> No de port à utiliser. Sera ignoré pour une DB MSSQL donc on peut passer $null
+        IN  : $mysqlUseSSL      -> Dans le cas de MySQL, on doit dire si on veut faire du SSL ou pas
         IN  : $db               -> (optionel) Nom de la base de données à laquelle se connecter
 
 		RET : Instance de l'objet
     #>
-    SQLDB([DBType]$dbType, [string]$server, [string]$username, [string]$password, [int]$port)
+    SQLDB([DBType]$dbType, [string]$server, [string]$username, [string]$password, [int]$port, [bool]$mysqlUseSSL)
     {
         # Vu qu'on a 2 constructeurs avec 2 listes de paramètres, on est obligé de passer par une fonction 
         # "externe" pour faire l'initialisation, on ne peut pas appeler un constructeur depuis un autre.
         # Solution trouvée ici: https://stackoverflow.com/questions/44413206/constructor-chaining-in-powershell-call-other-constructors-in-the-same-class
-        $this.init($dbType, $server, $username, $password, $port, "")
+        $this.init($dbType, $server, $username, $password, $port, $mysqlUseSSL, "")
     }
-    SQLDB([DBType]$dbType, [string]$server, [string]$username, [string]$password, [int]$port, [string]$db)
+    SQLDB([DBType]$dbType, [string]$server, [string]$username, [string]$password, [int]$port, [bool]$mysqlUseSSL, [string]$db)
     {
-        $this.init($dbType, $server, $username, $password, $port, $db)
+        $this.init($dbType, $server, $username, $password, $port, $mysqlUseSSL, $db)
     }
 
     <#
@@ -61,41 +62,44 @@ class SQLDB
         IN  : $username         -> Nom d'utilisateur
         IN  : $password         -> Mot de passe
         IN  : $port             -> No de port à utiliser. Sera ignoré pour une DB MSSQL donc on peut passer $null
+        IN  : $mysqlUseSSL      -> Dans le cas de MySQL, on doit dire si on veut faire du SSL ou pas
         IN  : $db               -> Nom de la base de données à laquelle se connecter
 
 		RET : Instance de l'objet
     #>
-    hidden [void] init([DBType]$dbType, [string]$server, [string]$username, [string]$password, [int]$port, [string]$db)
+    hidden [void] init([DBType]$dbType, [string]$server, [string]$username, [string]$password, [int]$port, [bool]$mysqlUseSSL, [string]$db)
     {
         # Définition d'un nom de connexion pour pouvoir l'identifier et la fermer correctement dans le cas
         # où on aurait plusieurs instances de l'objet en même temps.
         $this.connectionName = "SQLDB{0}" -f (Get-Random)
-
-        # Sécurisation du mot de passe et du nom d'utilisateur
-        $credSecurePwd = $password | ConvertTo-SecureString -AsPlainText -Force
-        $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $username, $credSecurePwd	
 
         # En fonction du type de DB
         switch($dbType)
         {
             MySQL
             {
-                $cmd = 'Open-MySQLConnection -server $server -port $port -credential $credObject -ConnectionName $this.connectionName'
+                # On passe par une "connectionString" et non pas par la liste des arguments comme pour la partie MSSQL car
+                # pour certaines requêtes avec MySQL, on a des dates et il faut ajouter "Allow Zero Datetime = True" pour
+                # que ça fonctionne, et une connection string est le seul moyen de faire ça.
+                $connectionString = "Server={0};Port={1};Database={2};Uid={3};Pwd={4};Allow Zero Datetime = True;" -f `
+                                     $server, $port, $db, $username, $password
+                if(!$mysqlUseSSL)
+                {
+                    $connectionString = "{0}SslMode=None;" -f $connectionString
+                }
+                Open-MySQLConnection -connectionString $connectionString -ConnectionName $this.connectionName
             }
 
             MSSQL
             {
-                $cmd = 'Open-SqlConnection -Server $server -Credential $credObject -ConnectionName $this.connectionName'
+                # Sécurisation du mot de passe et du nom d'utilisateur
+                $credSecurePwd = $password | ConvertTo-SecureString -AsPlainText -Force
+                $credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $username, $credSecurePwd	
+                
+                Open-SqlConnection -Server $server -Database $db -Credential $credObject -ConnectionName $this.connectionName 
             }
         }
 
-        # Si on doit se connecter à une DB en particulier,
-        if($db != "")
-        {
-            $cmd = '{0} {1}' -f $cmd, '-Database $db'
-        }
-
-        Invoke-expression $cmd
     }
 
 

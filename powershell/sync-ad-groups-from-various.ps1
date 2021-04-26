@@ -124,6 +124,8 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 			New-ADGroup -Name $groupName -Description $groupDesc -GroupScope DomainLocal -Path $OU
 		}
 		$counters.inc('ADGroupsCreated')
+
+		$alreadyExists = $false
 	}
 	else
 	{
@@ -699,6 +701,7 @@ try
 							$configVra.getConfigValue(@($targetEnv, "db", "user")), 
 							$configVra.getConfigValue(@($targetEnv, "db", "password")),
 							$configVra.getConfigValue(@($targetEnv, "db", "port")),
+							$true,
 							$configVra.getConfigValue(@($targetEnv, "db", "dbName")))
 
 	# Pour faire les recherches dans LDAP
@@ -1414,6 +1417,7 @@ try
 										$configGrants.getConfigValue(@($targetEnv, "user")),
 										$configGrants.getConfigValue(@($targetEnv, "password")),
 										$configGrants.getConfigValue(@($targetEnv, "port")),
+										$true,
 										$configGrants.getConfigValue(@($targetEnv, "dbName")))
 
 			$projectList = $mysqlGrants.execute("SELECT * FROM v_gdb_iaas WHERE subsides_start_date <= DATE(NOW()) AND subsides_end_date > DATE(NOW())")
