@@ -167,7 +167,13 @@ class RESTAPICurl: RESTAPI
 		# Explication sur le @'...'@ ici : https://stackoverflow.com/questions/18116186/escaping-quotes-and-double-quotes
 		$this.curl.StartInfo.Arguments = "{0} {1} `"{2}`"" -f ( $this.getCurlHeaders() ), $curlArgs, ($uri -replace " ","%20")
 
-		$this.debugLog(("{0}`nBody:`n{1}" -f $this.curl.StartInfo.Arguments, $body))
+		# Création de la chaîne de debug
+		$debugStr = $this.curl.StartInfo.Arguments
+		if($null -ne $body)
+		{
+			$debugStr = "{0}`nBody:`n{1}" -f $debugStr, $body
+		}
+		$this.debugLog($debugStr)
 
 		$result = $null
 
