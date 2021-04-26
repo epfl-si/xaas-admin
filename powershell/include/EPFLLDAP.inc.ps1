@@ -370,7 +370,7 @@ class EPFLLDAP
 	-------------------------------------------------------------------------------------
 		BUT : Retourne les informations d'une personne
 
-		IN  : $sciper	-> Sciper de la personne
+		IN  : $sciperOrFullName	-> Sciper ou nom complet de la personne
 
 		RET : Objet avec les informations suivantes
 				- description
@@ -384,8 +384,18 @@ class EPFLLDAP
 				- objectclass
 				- gidnumber
 	#>
-	[PSObject] getPersonInfos([string]$sciper)
+	[PSObject] getPersonInfos([string]$sciperOrFullName)
 	{
+		# Si on nous a donné un numero Sciper
+		if($sciperOrFullName -match "^[0-9]+$")
+		{
+			$field = "uniqueidentifier"
+		}
+		else # C'est un nom complet
+		{
+			$field = "cn"
+		}
+
 
 		# Parcours des informations que l'on a
 		ForEach($ldapInfos in $this.LDAPconfig.facultyUnits.locations)
@@ -393,7 +403,7 @@ class EPFLLDAP
 
 			# Recherche des groupes de manière récursive
 			$person = $this.LDAPSearch($this.LDAPconfig.facultyUnits.server, $ldapInfos.rootDN, "subtree", `
-									("(&(objectClass=organizationalPerson)(uniqueidentifier={0}))" -f $sciper), @("*"))
+									("(&(objectClass=organizationalPerson)({0}={1}))" -f $field, $sciperOrFullName), @("*"))
 
 			if($person.count -gt 0)
 			{
