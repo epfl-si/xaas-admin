@@ -5,7 +5,7 @@
    DATE   : Février 2018
 
 	Des exemples d'utilsiation des API via Postman peuvent être trouvés ici :
-	https://github.com/vmwaresamples/vra-api-samples-for-postman
+	https://github.com/vmware-samples/vra-api-samples-for-postman
 
 
 	REMARQUES :
