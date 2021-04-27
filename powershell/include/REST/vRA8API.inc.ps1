@@ -174,7 +174,7 @@ class vRA8API: RESTAPICurl
 		RET : Objet représentant le projet
                 $null si pas trouvé
 	#>
-    [PSCustomObject] getProjectByName([string]$name)
+    [PSCustomObject] getProject([string]$name)
     {
         $res = $this.getProjectListQuery(("`$filter=name eq '{0}'" -f $name))
 
@@ -311,7 +311,142 @@ class vRA8API: RESTAPICurl
 		# Recherche et retour du Projet
 		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
 		# le fichier JSON template
-		return $this.getProjectByName($body.name)
+		return $this.getProject($body.name)
+	}
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Met à jour les infos d'un Projet.
+				Pour faire ceci, on met tout simplement à jour les informations de l'objet que l'on a
+				et on réencode ensuite celui-ci en JSON afin de le passer en BODY pour la mise à jour.
+				C'est l'ID qui sera utilisé pour faire le match et seules les informations qui auront
+				changé seront mises à jour. Du coup, en reprenant la totalité de celles-ci et en
+				changeant juste celles dont on a besoin, on est sûr de ne rien modifier qu'il ne
+				faudrait pas
+
+		IN  : $bg					-> Objet du BG à mettre à jour
+		IN  : $newName				-> (optionnel -> "") Nouveau nom
+		IN  : $newDesc				-> (optionnel -> "") Nouvelle description
+		IN  : $machinePrefixId  	-> (optionnel -> "") ID du prefix de machine à utiliser
+		IN  : $customProperties		-> (optionnel -> $null) La liste des "custom properties" (et leur valeur) à mettre à
+									   jour ou à ajouter. On n'a pas prévu de pouvoir supprimer des custom property
+        IN  : $zoneList             -> Liste des objets représentants les Zones à mettre pour le projet
+                                        $null si rien besoin de changer
+        IN  : $adminGroups          -> Liste des groupes AD à mettre comme Admins
+                                        $null si rien besoin de changer
+        IN  : $userGroups           -> Liste des groupes AD à mettre comme Users
+                                        $null si rien besoin de changer
+
+		RET : Objet contenant le Projet mis à jour
+	#>
+	[PSCustomObject] updateProject([PSCustomObject]$project, [string] $newName, [string] $newDesc, [string]$vmNamingTemplate, [Hashtable]$customProperties, [Array]$zoneList, [Array]$adminGroups, [Array]$userGroups)
+	{
+		$uri = "{0}/iaas/api/projects/{1}" -f $this.baseUrl, $project.id
+
+		$updateNeeded = $false
+
+		# S'il faut mettre le nom à jour,
+		if(($newName -ne "") -and ($project.name -ne $newName))
+		{
+			$project.name = $newName
+			$updateNeeded = $true
+		}
+
+		# S'il faut mettre la description à jour,
+		if(($newDesc -ne "") -and ($project.description -ne $newDesc))
+		{
+			$project.description = $newDesc
+			$updateNeeded = $true
+		}
+
+		if(($vmNamingTemplate -ne "") -and ($project.machineNamingTemplate -ne $vmNamingTemplate))
+		{
+			$project.machineNamingTemplate = $vmNamingTemplate
+			$updateNeeded = $true
+		}
+
+		# S'il faut mettre à jour une ou plusieurs "custom properties"
+		if($null -ne $customProperties)
+		{
+
+			# Parcour des custom properties à mettre à jour,
+			$customProperties.Keys | ForEach-Object {
+
+                $propValue = getProjectCustomPropValue -project $project -customPropName $_
+				# Si une entrée a été trouvée
+				if($null -ne $propValue)
+				{
+                    # Si la valeur a changé, 
+                    if($propValue -ne $customProperties.Item($_))
+                    {
+                        # Mise à jour de la valeur
+                        $project.customProperties.($_) = $customProperties.Item($_)
+                        $updateNeeded = $true
+                    }
+                    
+				}
+				else # Aucune entrée n'a été trouvée
+				{
+					# Ajout des infos avec le template présent dans le fichier JSON
+                    $project.customProperties | Add-Member -NotePropertyName $_ -NotePropertyValue $customProperties.Item($_)
+                    $updateNeeded = $true
+				}
+
+			} # FIN BOUCLE de parcours des "custom properties" à mettre à jour
+
+		}
+
+        # Si on doit mettre à jour les zones
+        if($null -ne $zoneList)
+        {
+            # On commence par vider la liste
+            $project.zones = @()
+
+            # Ajout des Zones
+            $zoneList | ForEach-Object {
+                $project.zones += $this.createObjectFromJSON("vra-project-zone.json", @{ zoneId = $_.id})
+            }
+            $updateNeeded = $true
+        }
+
+        # SI on doit mettre à jour les admins
+        if($null -ne $adminGroups)
+        {
+            $project.administrators = @()
+
+            # Ajout des admins
+            $adminGroups | ForEach-Object {
+                $project.administrators += $this.createObjectFromJSON("vra-project-right-group.json", @{ groupShortName = $_})
+            }
+            $updateNeeded = $true
+        }
+
+        # Si on doit mettre à jour les utilisateurs
+        if($null -ne $userGroups)
+        {
+            $project.members = @()
+
+            # Ajout des Utilisateurs
+            $userGroups | ForEach-Object {
+                $project.members += $this.createObjectFromJSON("vra-project-right-group.json", @{ groupShortName = $_})
+            }
+            $updateNeeded = $true
+        }
+
+
+		# Si on n'a pas besoin d'update quoi que ce soit, on ne le fait pas, sinon on risque de générer une erreur "(400) Bad Request" dans le cas où rien 
+		# n'a été changé (ouais, c'est con mais c'est comme ça que vRA réagit... )
+		if($updateNeeded -eq $false)
+		{
+			return $project
+		}
+
+		# Mise à jour des informations
+		$this.callAPI($uri, "PATCH", $project) | Out-Null
+		
+		# On recherche l'objet mis à jour
+		return $this.getProject($project.name)
 	}
 
 
