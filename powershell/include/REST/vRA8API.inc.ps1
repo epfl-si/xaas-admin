@@ -108,12 +108,50 @@ class vRA8API: RESTAPICurl
 
 
     <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie une liste d'objets (type défini en fonction du paramètre $uri) et qui 
+                correspondent à des critères de recherche donnés.
+
+		IN  : $uri		    -> URL à appeler
+		IN  : $queryParams  -> paramètres à ajouter à la requête. Peut être vide ""
+	#>	
+    hidden [Array] getObjectListQuery([string]$uri, [string]$queryParams)
+    {
+        $uri = "{0}{1}/?size=9999&page=0" -f $this.baseUrl, $uri
+
+        if($queryParams -ne "")
+        {
+            $uri = "{0}&{1}" -f $uri, $queryParams
+        }
+
+		return ($this.callAPI($uri, "Get", $null)).content
+    }
+
+    <#
         ------------------------------------------------------------------------------------------------------
         ------------------------------------------------------------------------------------------------------
                                                     PROJECTS
         ------------------------------------------------------------------------------------------------------
         ------------------------------------------------------------------------------------------------------
     #>
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des projets selon des critères passés
+
+        IN  : $queryParams  -> filtres à appliquer à la recherche
+
+		RET : La liste des projets
+	#>
+    hidden [Array] getProjectListQuery()
+    {
+        return $this.getProjectListQuery("")
+    }
+    hidden [Array] getProjectListQuery([string]$queryParams)
+    {
+        return $this.getObjectListQuery("/iaas/api/projects", $queryParams)
+    }
 
     <#
 		-------------------------------------------------------------------------------------
@@ -123,9 +161,7 @@ class vRA8API: RESTAPICurl
 	#>
     [Array] getProjectList()
     {
-        $uri = "{0}/iaas/api/projects/?size=9999&page=0" -f $this.baseUrl
-
-		return ($this.callAPI($uri, "Get", $null)).content
+        return $this.getProjectListQuery()
     }
 
 
@@ -140,9 +176,7 @@ class vRA8API: RESTAPICurl
 	#>
     [PSCustomObject] getProjectByName([string]$name)
     {
-        $uri = "{0}/iaas/api/projects/?`$filter=name eq '{1}'" -f $this.baseUrl, $name
-
-		$res = ($this.callAPI($uri, "Get", $null)).content
+        $res = $this.getProjectListQuery(("`$filter=name eq '{0}'" -f $name))
 
         if($res.count -eq 0)
         {
@@ -173,7 +207,7 @@ class vRA8API: RESTAPICurl
 		# On ne doit pas utiliser le cache
 		if( ($useCache -and ($null -eq $this.projectCustomIdMappingCache)) -or !$useCache)
 		{
-			$list = $this.getProjectList()
+			$list = $this.getProjectListQuery()
 
 			if($list.Count -eq 0){return $null}
 		}
@@ -266,6 +300,11 @@ class vRA8API: RESTAPICurl
             $body.members += $this.createObjectFromJSON("vra-project-right-group.json", @{ groupShortName = $_})
         }
 
+        # Ajout des Zones
+        $zoneList | ForEach-Object {
+            $body.zoneAssignmentConfigurations += $this.createObjectFromJSON("vra-project-zone.json", @{ zoneId = $_.id})
+        }
+
 		# Création du Projet
 		$this.callAPI($uri, "Post", $body) | Out-Null
 		
@@ -288,4 +327,44 @@ class vRA8API: RESTAPICurl
 
 		($this.callAPI($uri, "DELETE", $null)).content | Out-Null
     }
+
+
+    <#
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+                                                    ZONES
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+    #>
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Zones selon des critères passés
+
+        IN  : $queryParams  -> filtres à appliquer à la recherche
+
+		RET : La liste des Zones
+	#>
+    hidden [Array] getZoneListQuery()
+    {
+        return $this.getZoneListQuery("")
+    }
+    hidden [Array] getZoneListQuery([string]$queryParams)
+    {
+        return $this.getObjectListQuery("/iaas/api/zones", $queryParams)
+    }
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Zones
+
+		RET : La liste des Zones
+	#>
+    [Array] getZoneList()
+    {
+        return $this.getZoneListQuery()
+    }
+
+
 }
