@@ -233,7 +233,7 @@ class vRAAPI: RESTAPICurl
 				$this.bgCustomIdMappingCache = @{}
 				ForEach($bg in $list)
 				{
-					$bgId = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+					$bgId = getProjectCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
 					# Si on est bien sur un BG "correcte", qui a donc un ID
 					if($null -ne $bgId)
 					{

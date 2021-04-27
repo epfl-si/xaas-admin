@@ -1,0 +1,14 @@
+{
+	"viewers": [],
+	"machineNamingTemplate": "{{vmNamingTemplate}}",
+	"customProperties": {},
+	"sharedResources": true,
+	"operationTimeout": 0,
+	"members": [],
+	"zoneAssignmentConfigurations": [],
+	"name": "{{name}}",
+	"description": "{{description}}",
+	"placementPolicy": "DEFAULT",
+	"constraints": {},
+	"administrators": []
+  }

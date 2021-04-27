@@ -21,7 +21,7 @@
 class vRA8API: RESTAPICurl
 {
 	hidden [string]$token
-	hidden [Hashtable]$bgCustomIdMappingCache
+	hidden [Hashtable]$projectCustomIdMappingCache
 
 
     <#
@@ -42,7 +42,7 @@ class vRA8API: RESTAPICurl
 		$this.setJSONSubPath(@( (Get-PSCallStack)[0].functionName) )
 
 		# Cache pour le mapping entre l'ID custom d'un BG et celui-ci
-		$this.bgCustomIdMappingCache = $null
+		$this.projectCustomIdMappingCache = $null
 
 		$this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
@@ -60,7 +60,7 @@ class vRA8API: RESTAPICurl
 
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-        $refreshToken = (Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)).refresh_token
+        $refreshToken = ($this.callAPI($uri, "POST", $body)).refresh_token
         
 
         # --- Etape 2 de l'authentification
@@ -71,7 +71,7 @@ class vRA8API: RESTAPICurl
         # https://code.vmware.com/apis/978#/Login/retrieveAuthToken
         $uri = "{0}/iaas/api/login" -f $this.baseUrl
 
-		$this.token = (Invoke-RestMethod -Uri $uri -Method Post -Headers $this.headers -Body (ConvertTo-Json -InputObject $body -Depth 20)).token
+        $this.token = ($this.callAPI($uri, "POST", $body)).token
 
 		# Mise à jour des headers
 		$this.headers.Add('Authorization', ("Bearer {0}" -f $this.token))
@@ -92,7 +92,7 @@ class vRA8API: RESTAPICurl
 		RET : Retour de l'appel
 
 	#>	
-	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
+	hidden [PSCustomObject] callAPI([string]$uri, [string]$method, [System.Object]$body)
 	{
 		$response = ([RESTAPICurl]$this).callAPI($uri, $method, $body)
 
@@ -105,4 +105,187 @@ class vRA8API: RESTAPICurl
 
         return $response
 	}
+
+
+    <#
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+                                                    PROJECTS
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+    #>
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des projets
+
+		RET : La liste des projets
+	#>
+    [Array] getProjectList()
+    {
+        $uri = "{0}/iaas/api/projects/?size=9999&page=0" -f $this.baseUrl
+
+		return ($this.callAPI($uri, "Get", $null)).content
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie un projet donné par son nom
+
+        IN  : $name     -> Nom du projet
+
+		RET : Objet représentant le projet
+                $null si pas trouvé
+	#>
+    [PSCustomObject] getProjectByName([string]$name)
+    {
+        $uri = "{0}/iaas/api/projects/?`$filter=name eq '{1}'" -f $this.baseUrl, $name
+
+		$res = ($this.callAPI($uri, "Get", $null)).content
+
+        if($res.count -eq 0)
+        {
+            return $null
+        }
+        return $res[0]
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie un projet donné par son ID custom
+
+        IN  : $customId     -> ID custom du projet
+
+		RET : Objet représentant le projet
+                $null si pas trouvé
+	#>
+    [PSCustomObject] getProjectByCustomId([string] $customId)
+	{
+		return $this.getProjectByCustomId($customId, $false)
+	}
+	[PSCustomObject] getProjectByCustomId([string] $customId, [bool]$useCache)
+	{
+		$list = @()
+		# Si on doit utiliser le cache ET qu'il est vide
+		# OU 
+		# On ne doit pas utiliser le cache
+		if( ($useCache -and ($null -eq $this.projectCustomIdMappingCache)) -or !$useCache)
+		{
+			$list = $this.getProjectList()
+
+			if($list.Count -eq 0){return $null}
+		}
+		
+		# Si on doit utiliser le cache
+		if($useCache)
+		{
+			# Si on n'a pas encore initilisé le cache, on le fait, ce qui va prendre quelques secondes
+			if($null -eq $this.projectCustomIdMappingCache)
+			{
+				$this.projectCustomIdMappingCache = @{}
+
+                ForEach($project in $list)
+				{
+					$projectId = getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+					# Si on est bien sur un BG "correcte", qui a donc un ID
+					if($null -ne $projectId)
+					{
+						$this.projectCustomIdMappingCache.add($projectId, $project)
+					}
+				}        
+			}# FIN Si on n'a pas initialisé le cache
+
+			# Arrivé ici, le cache est initialisé donc on peut rechercher avec l'Id demandé
+			return $this.projectCustomIdMappingCache.item($customId)
+		}
+		else # On ne veut pas utiliser le cache (donc ça va prendre vraiment du temps!)
+		{
+			# Retour en cherchant avec le custom ID
+			return $list| Where-Object { 
+                # Check si la custom property existe
+                (($_.customProperties | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name) -contains $global:VRA_CUSTOM_PROP_EPFL_BG_ID) `
+                -and `
+                # Check de la valeur de la custom property
+                ($_.customProperties | Select-Object -ExpandProperty ch.epfl.vra.bg.id ) -eq $customId
+            }
+		}
+	
+	}
+
+    
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute un BG
+
+		IN  : $name					-> Nom du BG à ajouter
+		IN  : $desc					-> Description du BG
+		IN  : $vmNamingTemplate     -> Chaîne de caractères représentant le template pour le nommage des VM
+		IN  : $customProperties		-> Dictionnaire avec les propriétés custom à ajouter
+        IN  : $zoneList             -> Liste des objets représentants les Zones à mettre pour le projet
+        IN  : $adminGroups          -> Liste des groupes AD à mettre comme Admins
+        IN  : $userGroups           -> Liste des groupes AD à mettre comme Users
+
+		RET : Objet contenant le Projet
+	#>
+	[PSCustomObject] addProject([string]$name, [string]$desc, [string]$vmNamingTemplate, [Hashtable] $customProperties, [Array]$zoneList, [Array]$adminGroups, [Array]$userGroups)
+	{
+		$uri = "{0}/iaas/api/projects" -f $this.baseUrl
+
+		# Valeur à mettre pour la configuration du BG
+		$replace = @{
+            name = $name
+            description = $desc
+        }
+
+		# Si on a passé un template de nommage
+		if($vmNamingTemplate -ne "")						 
+		{
+			$replace.vmNamingTemplate = $vmNamingTemplate
+		}
+		else 
+		{
+			$replace.vmNamingTemplate = $null
+		}
+
+		$body = $this.createObjectFromJSON("vra-project.json", $replace)
+
+		# Ajout des éventuelles custom properties
+		$customProperties.Keys | ForEach-Object {
+            $body.customProperties | Add-Member -NotePropertyName $_ -NotePropertyValue $customProperties.Item($_)
+		}
+
+        # Ajout des admins
+        $adminGroups | ForEach-Object {
+            $body.administrators += $this.createObjectFromJSON("vra-project-right-group.json", @{ groupShortName = $_})
+        }
+
+        # Ajout des Utilisateurs
+        $userGroups | ForEach-Object {
+            $body.members += $this.createObjectFromJSON("vra-project-right-group.json", @{ groupShortName = $_})
+        }
+
+		# Création du Projet
+		$this.callAPI($uri, "Post", $body) | Out-Null
+		
+		# Recherche et retour du Projet
+		# On utilise $body.name et pas simplement $name dans le cas où il y aurait un préfixe ou suffixe de nom déjà hard-codé dans 
+		# le fichier JSON template
+		return $this.getProjectByName($body.name)
+	}
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Efface un projet
+
+        IN  : $project      -> Objet représentant le projet à effacer
+	#>
+    [void] deleteProject([PSCustomObject] $project)
+    {
+        $uri = "{0}/iaas/api/projects/{1}" -f $this.baseUrl, $project.id
+
+		($this.callAPI($uri, "DELETE", $null)).content | Out-Null
+    }
 }

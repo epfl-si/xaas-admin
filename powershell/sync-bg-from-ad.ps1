@@ -355,7 +355,7 @@ function createOrUpdateBG
 		$existingBg = $vra.getBG($bgName)
 		if($null -ne $existingBg)
 		{
-			$existingBgId = (getBGCustomPropValue -bg $existingBg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
+			$existingBgId = (getProjectCustomPropValue -bg $existingBg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
 			$logHistory.addWarningAndDisplay(("-> Impossible to create new BG with name '{0}' (ID={1}) because another one already exists with this name (ID={2})" -f `
 												$bgName, $bgEPFLID, $existingBgId))
 
@@ -385,7 +385,7 @@ function createOrUpdateBG
 		# ==========================================================================================
 
 		# Si le centre financier du BG a changé (ce qui peut arriver), on le met à jour
-		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER) -ne $financeCenter)
+		if((getProjectCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER) -ne $financeCenter)
 		{
 			# Mise à jour
 			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
@@ -394,14 +394,14 @@ function createOrUpdateBG
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
 		# les BG existants avec la nouvelle "Custom Property"
-		# if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME))
+		# if($null -eq (getProjectCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME))
 		# {
 		# 	# Ajout de la custom Property avec la valeur par défaut 
 		# 	$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
 		# }
 
 		# Si le nom de l'entité de facturation a changé (ce qui peut arriver), on la met à jour
-		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME) -ne $nameGenerator.getBillingEntityName())
+		if((getProjectCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME) -ne $nameGenerator.getBillingEntityName())
 		{
 			# Mise à jour
 			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
@@ -534,7 +534,7 @@ function createOrUpdateBGRoles
 		$logHistory.addLineAndDisplay("--> Updating 'Support role'...")
 
 		# Si le role est géré de manière manuelle pour le BG
-		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
+		if((getProjectCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
 		{
 			$logHistory.addLineAndDisplay("---> Role manually managed, skipping it...")	
 		}
@@ -845,7 +845,7 @@ function createOrUpdateBGReservations
 	param([vRAAPI]$vra, [PSCustomObject]$bg, [string]$resTemplatePrefix)
 
 	# Si les réservations sont gérées de manière manuelle pour le BG
-	if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
+	if((getProjectCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
 	{
 		$logHistory.addLineAndDisplay("-> Reservation are manually managed for BG, skipping this part...")	
 		return
@@ -1007,7 +1007,7 @@ function isBGAlive
 {
 	param([PSCustomObject]$bg)
 
-	$bgStatus = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS
+	$bgStatus = getProjectCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS
 
 	# Si la "Custom property" a été trouvée,
 	if($null -ne $bgStatus)
@@ -1922,7 +1922,7 @@ try
 		}
 		else # On a les infos sur le type de BG
 		{
-			$bgId = (getBGCustomPropValue -bg $_ -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
+			$bgId = (getProjectCustomPropValue -bg $_ -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
 			# Si on n'a pas trouvé de groupe AD qui correspondait au BG, on peut le mettre en "ghost"
 			if(($null -ne $bgId) -and  ($doneBGidList -notcontains $bgId))
 			{
