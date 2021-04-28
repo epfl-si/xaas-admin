@@ -475,30 +475,30 @@ class vRA8API: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-		BUT : Renvoie la liste des Zones selon des critères passés
+		BUT : Renvoie la liste des Cloud Zones selon des critères passés
 
         IN  : $queryParams  -> filtres à appliquer à la recherche
 
-		RET : La liste des Zones
+		RET : La liste des Cloud Zones
 	#>
-    hidden [Array] getZoneListQuery()
+    hidden [Array] getCloudZoneListQuery()
     {
-        return $this.getZoneListQuery("")
+        return $this.getCloudZoneListQuery("")
     }
-    hidden [Array] getZoneListQuery([string]$queryParams)
+    hidden [Array] getCloudZoneListQuery([string]$queryParams)
     {
         return $this.getObjectListQuery("/iaas/api/zones", $queryParams)
     }
 
     <#
 		-------------------------------------------------------------------------------------
-		BUT : Renvoie la liste des Zones
+		BUT : Renvoie la liste des Cloud Zones
 
-		RET : La liste des Zones
+		RET : La liste des Cloud Zones
 	#>
-    [Array] getZoneList()
+    [Array] getCloudZoneList()
     {
-        return $this.getZoneListQuery()
+        return $this.getCloudZoneListQuery()
     }
 
 
