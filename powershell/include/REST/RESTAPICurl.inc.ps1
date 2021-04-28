@@ -312,6 +312,7 @@ class RESTAPICurl: RESTAPI
 			Remove-Item -Path $headerFile -Force:$true -Confirm:$false
 		}
 
+		$this.debugLog("Returning result")
 		return $result
 
 	}
