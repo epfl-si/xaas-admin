@@ -262,6 +262,7 @@ class RESTAPICurl: RESTAPI
 			Remove-Item -Path $tmpFile -Force:$true -Confirm:$false
 		}
 
+		$this.debugLog("Returning result")
 		return $result
 
 	}

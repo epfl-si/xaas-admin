@@ -1201,6 +1201,8 @@ try
     # Ajout du résultat dans les logs 
     $logHistory.addLine(($output | ConvertTo-Json -Depth 100))
 
+    $logHistory.addLineAndDisplay($netapp.getFuncCallsDisplay("NetApp # func calls"))
+
 }
 catch
 {
