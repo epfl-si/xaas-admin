@@ -701,7 +701,8 @@ try
 							$configVra.getConfigValue(@($targetEnv, "db", "dbName")),
 							$configVra.getConfigValue(@($targetEnv, "db", "user")), 
 							$configVra.getConfigValue(@($targetEnv, "db", "password")),
-							$configVra.getConfigValue(@($targetEnv, "db", "port")))
+							$configVra.getConfigValue(@($targetEnv, "db", "port")), 
+							$true)
 
 	# Pour faire les recherches dans LDAP
 	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))
@@ -1416,7 +1417,8 @@ try
 										$configGrants.getConfigValue(@($targetEnv, "dbName")),
 										$configGrants.getConfigValue(@($targetEnv, "user")),
 										$configGrants.getConfigValue(@($targetEnv, "password")),
-										$configGrants.getConfigValue(@($targetEnv, "port")))
+										$configGrants.getConfigValue(@($targetEnv, "port")),
+										$true)
 
 			$projectList = $mysqlGrants.execute("SELECT * FROM v_gdb_iaas WHERE subsides_start_date <= DATE(NOW()) AND subsides_end_date > DATE(NOW())")
 			# Décommenter la ligne suivante et éditer l'ID pour simuler la disparition d'un projet
