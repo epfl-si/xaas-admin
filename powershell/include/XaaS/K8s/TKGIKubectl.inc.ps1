@@ -400,10 +400,10 @@ class TKGIKubectl
 
         IN  : $clusterName      -> Nom du cluster
         IN  : $namespace        -> Nom du namespace
-        IN  : $nsxEnv           -> environnement NSX (prod/test/dev)
+        IN  : $nsxEnv           -> environnement NSX (production/test/development)
         IN  : $userNamespace    -> $true|$false pour dire si Namespace utilisateur
     #>
-    [void] addClusterNamespace([string]$clusterName, [string]$namespace, [string]$nsxEnv, [bool]$userNamespace)
+    [void] addClusterNamespace([string]$clusterName, [string]$namespace, [DeploymentTag]$nsxEnv, [bool]$userNamespace)
     {
         if($userNamespace)
         {
@@ -416,7 +416,7 @@ class TKGIKubectl
 
         $replace = @{
             name = $namespace
-            nsxEnv = $nsxEnv
+            nsxEnv = $nsxEnv.toString().toLower()
         }
         $command = $this.generateKubectlCmdWithYaml($yamlFile, $replace)
 

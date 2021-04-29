@@ -14,6 +14,17 @@
 
 
 #>
+
+enum DeploymentTag 
+{
+    Production
+    Test
+    Development
+    # On n'a pas la possibilité de mettre $null à une variable de ce type pour dire qu'elle n'est pas 
+    # initialisée. Donc on ajoute cette possibilité au type
+    UnInitialized
+}
+
 class NameGeneratorBase
 {
     hidden [string]$tenant  # Tenant sur lequel on est en train de bosser 
@@ -23,6 +34,7 @@ class NameGeneratorBase
     # les informations en fonction des noms à générer.
     hidden [System.Collections.IDictionary]$details 
 
+    hidden [DeploymentTag]$deploymentTag
 
     <#
 		-------------------------------------------------------------------------------------
@@ -56,6 +68,38 @@ class NameGeneratorBase
         $this.env    = $env.ToLower()
 
         $this.details = @{}
+
+        $this.deploymentTag = [DeploymentTag]::UnInitialized
+    }
+
+
+    <#
+      -------------------------------------------------------------------------------------
+        BUT : Initialise le tag de déploiement
+
+        IN  : $deploymentTag -> Environnement du cluster, au niveau logique, pas au niveau 
+                              infrastructure
+                              prod|test|dev
+    #>
+    [void] initDeploymentTag([DeploymentTag]$deploymentTag)
+    {
+        $this.deploymentTag = $deploymentTag
+    }
+
+
+    <#
+      -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom court du tag de déploiement
+
+        RET : caractère représentant le nom court
+    #>
+    [string] getDeploymentTagShortname()
+    {
+        if($this.deploymentTag -eq [DeploymentTag]::UnInitialized)
+        {
+            Throw "DeploymentTag not initialized!"
+        }
+        return $this.deploymentTag.ToString().ToLower()[0]
     }
 
 

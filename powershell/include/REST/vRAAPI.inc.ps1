@@ -1010,12 +1010,13 @@ class vRAAPI: RESTAPICurl
 
 		IN  : $ent				-> Objet de l'entitlement auquel ajouter les actions
 		IN  : $secondDayActions	-> Objet de la classe SecondDayActions contenant la liste des actions à ajouter.
+		IN  : $targetTenant		-> Tenant pour lequel on veut préparer les actions
 
 		RET : Tableau associatif avec les éléments suivants:
 				.entitlement		-> Objet contenant l'Entitlement avec les actions passée.
 				.notFoundActions	-> Tableau avec la liste des actions non trouvées
 	#>
-	[Hashtable] prepareEntActions([PSCustomObject] $ent, [SecondDayActions]$secondDayActions)
+	[Hashtable] prepareEntActions([PSCustomObject] $ent, [SecondDayActions]$secondDayActions, [string]$targetTenant)
 	{
 		# Pour enregistrer la liste des actions non trouvées
 		$notFoundActions = @()
@@ -1026,8 +1027,8 @@ class vRAAPI: RESTAPICurl
 		# Parcours des éléments sur lesquels des actions vont s'appliquer. 
 		Foreach($targetElementName in $secondDayActions.getTargetElementList())
 		{
-			# Parcours des actions à ajouter pour l'élément
-			ForEach($actionName in $secondDayActions.getElementActionList($targetElementName))
+			# Parcours des actions à ajouter pour l'élément et le tenant courant
+			ForEach($actionName in $secondDayActions.getElementActionList($targetElementName, $targetTenant))
 			{
 				# Si on a trouvé des infos pour l'action demandée,
 				if($null -ne ($vRAAction = $this.getAction($actionName, $targetElementName)))
