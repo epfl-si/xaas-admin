@@ -767,7 +767,7 @@ try
             if($null -eq $harborProject)
             {
                 # Définition de la severity pour le projet
-                if($deploymentTag -eq "dev")
+                if($deploymentTag -eq [DeploymentTag]::Development)
                 {
                     $severity = [HarborProjectSeverity]::None
                 }
