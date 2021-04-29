@@ -65,6 +65,8 @@ class NameGeneratorBase
         $this.env    = $env.ToLower()
 
         $this.details = @{}
+
+        $this.deploymentTag = $null
     }
 
 
@@ -87,9 +89,13 @@ class NameGeneratorBase
         BUT : Renvoie le nom court du tag de déploiement
 
         RET : caractère représentant le nom court
-   #>
-    [string] getDeploymentTagShort()
+    #>
+    [string] getDeploymentTagShortname()
     {
+        if($null -eq $this.deploymentTag)
+        {
+            Throw "DeploymentTag not initialized!"
+        }
         return $this.deploymentTag.ToString().ToLower()[0]
     }
 
