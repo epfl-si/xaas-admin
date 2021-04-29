@@ -20,7 +20,6 @@ enum K8sDNSEntryType
 class NameGeneratorK8s: NameGeneratorBase
 {
    
-   hidden [string]$deploymentTag
    <#
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
@@ -38,37 +37,6 @@ class NameGeneratorK8s: NameGeneratorBase
 	#>
    NameGeneratorK8s([string]$env, [string]$tenant): base($env, $tenant) 
    { 
-      $this.deploymentTag = ""
-   }
-
-
-   <#
-      -------------------------------------------------------------------------------------
-      BUT : Initialise le tag de déploiement
-
-      IN  : $deploymentTag -> Environnement du cluster, au niveau logique, pas au niveau 
-                              infrastructure
-                              prod|test|dev
-   #>
-   [void] initDeploymentTag([string]$deploymentTag)
-   {
-      $this.deploymentTag = $deploymentTag.toLower()
-   }
-
-
-   <#
-      -------------------------------------------------------------------------------------
-      BUT : Renvoie la représentation courte du tag de déploiement
-
-      RET : Représentation courte du deploymentTag
-   #>
-   hidden [string] getDeploymentTagShortname()
-   {
-      if($this.deploymentTag -eq "")
-      {
-         Throw "deploymentTag not initialized"
-      }
-      return $this.deploymentTag[0]
    }
 
 
