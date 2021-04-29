@@ -5,48 +5,59 @@
         "actions": [
             {
                 "name": "[VM] Mount/Unmount CD-ROM (ISO)",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "[VM] Modify Notification Mail",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "[VM] DNS alias request",
-                "approvals": [] 
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "[DMZ] Reconfigure",
-                "approvals": [] 
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "[DMZ] Scan Request",
-                "approvals": [] 
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "[VM] Request support",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "[Backup] Config",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "[Backup] Restore",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Create Snapshot",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Revert to Snapshot",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
 
             },
             {
                 "name": "Delete Snapshot",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             }
         ]
     },
@@ -56,35 +67,43 @@
         "actions": [
             {
                 "name": "Connect to Remote Console",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Connect using VMRC",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Install Tools",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Power Cycle",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Power On",
-                "approvals":[]
+                "approvals":[],
+                "deniedTenants": []
             },
             {
                 "name": "Power Off",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Reboot",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Shutdown",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Reconfigure",
@@ -110,15 +129,18 @@
                         "JSONReplacements": {},
                         "approvalLevels": 2
                     }
-                ]
+                ],
+                "deniedTenants": []
             },
             {
                 "name": "Cancel Reconfigure",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Execute Reconfigure",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             }
         ]
     },
@@ -128,7 +150,8 @@
         "actions": [
             {
                 "name": "Expire",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Change Lease",
@@ -154,11 +177,13 @@
                         "JSONReplacements": {},
                         "approvalLevels": 2
                     }
-                ]
+                ],
+                "deniedTenants": []
             },
             {
                 "name": "Change Owner",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             }
         ]
     }

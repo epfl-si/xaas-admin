@@ -5,19 +5,23 @@
         "actions": [
             {
                 "name": "Request support (NAS)",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Delete Volume",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Modify Export Policies",
-                "approvals": [] 
+                "approvals": [] ,
+                "deniedTenants": []
             },
             {
                 "name": "Modify Notification Mail",
-                "approvals": [] 
+                "approvals": [] ,
+                "deniedTenants": []
             },
             {
                 "name": "Resize Volume",
@@ -43,7 +47,8 @@
                         "JSONReplacements": {},
                         "approvalLevels": 2
                     }
-                ]
+                ],
+                "deniedTenants": []
             },
             {
                 "name": "Modify Snapshot Policy",
@@ -69,7 +74,8 @@
                         "JSONReplacements": {},
                         "approvalLevels": 2
                     }
-                ]
+                ],
+                "deniedTenants": ["ITServices"]
             }
         ]
     }
