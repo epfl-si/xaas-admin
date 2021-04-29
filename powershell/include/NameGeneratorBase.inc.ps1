@@ -89,17 +89,29 @@ class NameGeneratorBase
 
     <#
       -------------------------------------------------------------------------------------
+        BUT : Renvoie le deployment tag en contrôlant s'il est initialisé
+
+        RET : valeur du deployment tag
+    #>
+    hidden [DeploymentTag] getDeploymentTag()
+    {
+        if($this.deploymentTag -eq [DeploymentTag]::UnInitialized)
+        {
+            Throw "DeploymentTag not initialized!"
+        }
+        return $this.deploymentTag
+    }
+
+
+    <#
+      -------------------------------------------------------------------------------------
         BUT : Renvoie le nom court du tag de déploiement
 
         RET : caractère représentant le nom court
     #>
     [string] getDeploymentTagShortname()
     {
-        if($this.deploymentTag -eq [DeploymentTag]::UnInitialized)
-        {
-            Throw "DeploymentTag not initialized!"
-        }
-        return $this.deploymentTag.ToString().ToLower()[0]
+        return $this.getDeploymentTag().ToString().ToLower()[0]
     }
 
 
