@@ -1803,7 +1803,7 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - 2nd day Actions
 		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
-		$result = $vra.prepareEntActions($ent, $secondDayActions)
+		$result = $vra.prepareEntActions($ent, $secondDayActions, $targetTenant)
 		$ent = $result.entitlement
 		# Mise à jour de la liste des actions non trouvées
 		$notifications.notFound2ndDayActions += $result.notFoundActions
