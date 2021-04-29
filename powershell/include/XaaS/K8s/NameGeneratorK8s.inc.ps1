@@ -341,7 +341,7 @@ class NameGeneratorK8s: NameGeneratorBase
    #>
    [string] getNetProfileName()
    {
-      return "np-vra-{0}" -f $this.deploymentTag.toString().toLower()
+      return "np-vra-{0}" -f $this.getDeploymentTag().toString().toLower()
    }
 
 
@@ -358,7 +358,7 @@ class NameGeneratorK8s: NameGeneratorBase
    #>
    [string] getEnvSecurityGroupName()
    {
-      return "sg.k8s.{0}" -f $this.deploymentTag.toString().toLower()
+      return "sg.k8s.{0}" -f $this.getDeploymentTag().toString().toLower()
    }
 
 
