@@ -20,6 +20,9 @@ enum DeploymentTag
     Production
     Test
     Development
+    # On n'a pas la possibilité de mettre $null à une variable de ce type pour dire qu'elle n'est pas 
+    # initialisée. Donc on ajoute cette possibilité au type
+    UnInitialized
 }
 
 class NameGeneratorBase
@@ -66,7 +69,7 @@ class NameGeneratorBase
 
         $this.details = @{}
 
-        $this.deploymentTag = $null
+        $this.deploymentTag = [DeploymentTag]::UnInitialized
     }
 
 
@@ -92,7 +95,7 @@ class NameGeneratorBase
     #>
     [string] getDeploymentTagShortname()
     {
-        if($null -eq $this.deploymentTag)
+        if($this.deploymentTag -eq [DeploymentTag]::UnInitialized)
         {
             Throw "DeploymentTag not initialized!"
         }
