@@ -199,6 +199,26 @@ class vRAAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie un BG donné par son ID
+
+		IN  : $id	-> ID du BG
+
+		RET : Objet contenant le BG
+				$null si n'existe pas
+	#>
+	[PSCustomObject] getBGById([string]$id)
+	{
+		$uri = "{0}/identity/api/tenants/{1}/subtenants/{2}" -f $this.baseUrl, $this.tenant, $id
+
+		$res = ($this.callAPI($uri, "Get", $null)).content
+
+		if($res.Count -eq 0){return $null}
+		return $res[0]
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie un BG donné par son ID custom, défini dans la custom property ch.epfl.vra.bg.id
 
 		IN  : $customId	-> ID custom du BG que l'on désire
@@ -1671,6 +1691,42 @@ class vRAAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Requêtes faites, selon les filtres passés
+
+		IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
+										de l'URI afin d'effectuer des opérations supplémentaires.
+										Pas besoin de mettre le ? au début des $queryParams
+
+		RET : Tableau des requêtes
+	#>
+	hidden [Array] getCatalogItemRequestListQuery([string] $queryParams)
+	{
+		$uri = "{0}/catalog-service/api/consumer/requests/?page=1&limit=9999" -f $this.baseUrl
+
+		# Si on doit ajouter des paramètres
+		if($queryParams -ne "")
+		{
+			$uri = "{0}&{1}" -f $uri, $queryParams
+		}
+
+		return ($this.callAPI($uri, "Get", $null)).content
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Requêtes en attente d'approbation
+
+		RET : Tableau des requêtes en attente d'approbation
+	#>
+	[Array] getWaitingCatalogItemRequest()
+	{
+		return $this.getCatalogItemRequestListQuery("`$filter=state eq 'PENDING_PRE_APPROVAL'")
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie les infos d'une demande de création pour un élément de catalogue donné
 			  
 		IN  : $requestId	-> ID de la requête dont on veut avoir les infos
@@ -1684,6 +1740,8 @@ class vRAAPI: RESTAPICurl
 
 		return ($this.callAPI($uri, "GET", $null))
 	}
+
+
 
 
 	<#
