@@ -99,8 +99,7 @@ class vRA8API: RESTAPICurl
         # Si une erreur a été renvoyée 
         if(objectPropertyExists -obj $response -propertyName 'errors')
         {
-			Throw ("vRA8API error: {0}" -f $response.serverMessage
-			)
+			Throw ("vRA8API error: {0}" -f $response.serverMessage)
         }
 
         return $response
@@ -501,5 +500,15 @@ class vRA8API: RESTAPICurl
         return $this.getCloudZoneListQuery()
     }
 
+
+    <#
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+                                                APPROVAL POLICIES
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+    #>
+
+	
 
 }
