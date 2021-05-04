@@ -701,7 +701,8 @@ try
 							$configVra.getConfigValue(@($targetEnv, "db", "dbName")),
 							$configVra.getConfigValue(@($targetEnv, "db", "user")), 
 							$configVra.getConfigValue(@($targetEnv, "db", "password")),
-							$configVra.getConfigValue(@($targetEnv, "db", "port")))
+							$configVra.getConfigValue(@($targetEnv, "db", "port")), 
+							$true)
 
 	# Pour faire les recherches dans LDAP
 	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))
@@ -1416,7 +1417,8 @@ try
 										$configGrants.getConfigValue(@($targetEnv, "dbName")),
 										$configGrants.getConfigValue(@($targetEnv, "user")),
 										$configGrants.getConfigValue(@($targetEnv, "password")),
-										$configGrants.getConfigValue(@($targetEnv, "port")))
+										$configGrants.getConfigValue(@($targetEnv, "port")),
+										$true)
 
 			$projectList = $mysqlGrants.execute("SELECT * FROM v_gdb_iaas WHERE subsides_start_date <= DATE(NOW()) AND subsides_end_date > DATE(NOW())")
 			# Décommenter la ligne suivante et éditer l'ID pour simuler la disparition d'un projet
@@ -1613,37 +1615,46 @@ try
 
 			$counters.inc('ADGroupsRemoved')
 
-			# Si on est dans le Tenant "Research",
-			if($targetTenant -eq $global:VRA_TENANT__RESEARCH)
-			{
-				$approveADGroupName = $nameGenerator.getApproveADGroupNameFromUserADGroups($_.name)
+			# Initialisation du générateur de nom depuis les infos présentes dans le groupe AD
+			$nameGenerator.initDetailsFromADGroup($_)
 
-				# On supprime aussi le groupe AD pour l'approbation (niveau 2)
-				$logHistory.addLineAndDisplay(("--> {0} doesn't exists anymore, removing AD approval group {1} " -f $element, $approveADGroupName))
-				if(-not $SIMULATION_MODE)
-				{	
-					Remove-ADGroup $approveADGroupName -Confirm:$false	
+			switch($targetTenant)
+			{
+				# -- EPFL
+				$global:VRA_TENANT__EPFL
+				{
+					$logHistory.addLineAndDisplay(("--> Removing rights for '{0}' role in vraUsers table for AD group {1}" -f [TableauRoles]::User.ToString(), $_.name))
+
+					if(-not $SIMULATION_MODE)
+					{
+						# Suppression des accès pour le business group correspondant au groupe AD courant.
+						updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+					}
 				}
 
-			}
-
-			if($targetTenant -eq $global:VRA_TENANT__EPFL)
-			{
-				$logHistory.addLineAndDisplay(("--> Removing rights for '{0}' role in vraUsers table for AD group {1}" -f [TableauRoles]::User.ToString(), $_.name))
-
-				# Extraction des informations
-				$descInfos = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
-
-				# Initialisation des détails pour le générateur de noms
-				$nameGenerator.initDetails(@{facultyName = $descInfos.faculty
-											facultyID = ''
-											unitName = $descInfos.unit
-											unitID = ''
-											financeCenter = ''})
-				if(-not $SIMULATION_MODE)
+				## -- ITServices
+				$global:VRA_TENANT__ITSERVICES
 				{
-					# Suppression des accès pour le business group correspondant au groupe AD courant.
-					updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+					$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
+					$logHistory.addLineAndDisplay(("--> Removing Groups group '{0}'..." -f $userSharedGroupNameGroups))
+					
+					if(-not $SIMULATION_MODE)
+					{
+						$groupsApp.deleteGroup($userSharedGroupNameGroups)
+					}
+				}
+
+				# -- Research
+				$global:VRA_TENANT__RESEARCH
+				{
+					$approveADGroupName = $nameGenerator.getApproveADGroupNameFromUserADGroups($_.name)
+
+					# On supprime aussi le groupe AD pour l'approbation (niveau 2)
+					$logHistory.addLineAndDisplay(("--> {0} doesn't exists anymore, removing AD approval group {1} " -f $element, $approveADGroupName))
+					if(-not $SIMULATION_MODE)
+					{	
+						Remove-ADGroup $approveADGroupName -Confirm:$false	
+					}
 				}
 			}
 			

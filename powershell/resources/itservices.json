@@ -946,6 +946,14 @@
             "snowId": "SVC1365",
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
+            "longName": "AZURE Microsoft cloud",
+            "shortName": "cmsazure",
+            "snowId": "SVC1211",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
         }
     ]
 }
