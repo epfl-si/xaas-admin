@@ -156,8 +156,18 @@ try
                 }
                 $serviceManager = $serviceManagerList.Item($bgId).FullName
 
+                # On commence par chercher le tag de déploiement dans vSphere
+                $deploymentTag = ($vSphereVM| Get-Annotation -customattribute $global:VRA_CUSTOM_PROP_EPFL_DEPLOYMENT_TAG).value
+                
+                # Si le tag de déploiement n'est pas présent dans vSphere
+                if($deploymentTag -eq "")
+                {
+                    # On regarde dans vRA
+                    $deploymentTag = getvRAObjectCustomPropValue -object $vm -customPropName $global:VRA_CUSTOM_PROP_EPFL_DEPLOYMENT_TAG
+                }
+
                 $values = @($vm.name,
-                        (getvRAObjectCustomPropValue -object $vm -customPropName $global:VRA_CUSTOM_PROP_EPFL_DEPLOYMENT_TAG),
+                        $deploymentTag,
                         $vmView.Summary.Runtime.PowerState,
                         $vmView.Guest.GuestFullName,
                         $bg.description,
