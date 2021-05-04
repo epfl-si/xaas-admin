@@ -279,9 +279,8 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 	
 	RET : Objet représentant la Business Group
 #>
-function createOrUpdateBG
+function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$financeCenter, [string]$capacityAlertsEmail)
 {
-	param([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$financeCenter, [string]$capacityAlertsEmail)
 
 	$logHistory.addLineAndDisplay(("-> Handling BG with custom ID {0}..." -f $bgEPFLID))
 	
@@ -381,6 +380,8 @@ function createOrUpdateBG
 
 		$logHistory.addLineAndDisplay(("-> BG '{0}' already exists" -f $bg.Name))
 
+		$bgUpdated = $false
+
 		$counters.inc('BGExisting')
 		# ==========================================================================================
 
@@ -389,6 +390,7 @@ function createOrUpdateBG
 		{
 			# Mise à jour
 			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
+			$bgUpdated = $true
 		}
 
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
@@ -405,6 +407,7 @@ function createOrUpdateBG
 		{
 			# Mise à jour
 			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
+			$bgUpdated = $true
 		}
 
 
@@ -473,6 +476,7 @@ function createOrUpdateBG
 				# Mise à jour de la custom property qui contient le nom du BG
 				$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $bgName})
 
+				$bgUpdated = $true
 				$counters.inc('BGRenamed')
 
 			}# Fin s'il y a eu changement de nom 
@@ -482,7 +486,8 @@ function createOrUpdateBG
 			# Mise à jour des informations
 			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
 
-			$counters.inc('BGUpdated')
+			$bgUpdated = $true
+			
 
 			# Si le BG était en Ghost, 
 			if(!(isBGAlive -bg $bg))
@@ -492,7 +497,13 @@ function createOrUpdateBG
 			}
 		}
 
-	}
+		# Mise à jour du compteur si besoin
+		if($bgUpdated)
+		{
+			$counters.inc('BGUpdated')
+		}
+
+	} # FIN SI le BG existe déjà
 
 	return $bg
 
@@ -514,9 +525,8 @@ function createOrUpdateBG
 									users. Si pas passé ou $null, on ne change rien dans la liste spécifiée
 	RET : Rien
 #>
-function createOrUpdateBGRoles
+function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$managerGrpList, [Array]$supportGrpList, [Array]$sharedGrpList, [Array]$userGrpList)
 {
-	param([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$managerGrpList, [Array]$supportGrpList, [Array]$sharedGrpList, [Array]$userGrpList)
 
 	$logHistory.addLineAndDisplay(("-> Updating roles for BG {0}..." -f $bg.name))
 
@@ -575,9 +585,8 @@ function createOrUpdateBGRoles
 
 	RET : Objet contenant l'Entitlement
 #>
-function createOrUpdateBGEnt
+function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc)
 {
-	param([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc)
 
 	# On recherche l'entitlement 
 	$logHistory.addLineAndDisplay(("-> Trying to get Entitlement for BG {0}..." -f $bg.name))
@@ -640,10 +649,8 @@ function createOrUpdateBGEnt
 	
 	RET : Objet Entitlement mis à jour
 #>
-function prepareAddMissingBGEntPublicServices
+function prepareAddMissingBGEntPublicServices([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices, [Array]$mandatoryItems, [string]$bgName)
 {
-	param([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices, [Array]$mandatoryItems, [string]$bgName)
-
 
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
 	$publicServiceList = $vra.getServiceListMatch($global:VRA_SERVICE_SUFFIX__PUBLIC)
@@ -840,9 +847,8 @@ function sendErrorMailNoResTemplateFound
 
 	RET : Rien
 #>
-function createOrUpdateBGReservations
+function createOrUpdateBGReservations([vRAAPI]$vra, [PSCustomObject]$bg, [string]$resTemplatePrefix)
 {
-	param([vRAAPI]$vra, [PSCustomObject]$bg, [string]$resTemplatePrefix)
 
 	# Si les réservations sont gérées de manière manuelle pour le BG
 	if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
@@ -938,16 +944,17 @@ function createOrUpdateBGReservations
 -------------------------------------------------------------------------------------
 	BUT : Met un BG en mode "ghost" dans le but qu'il soit effacé par la suite.
 			On change aussi les droits d'accès
-	IN  : $vra 		-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $bg		-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
-					   par un appel à une méthode de la classe vRAAPI
+
+	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $bg				-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
+					   			par un appel à une méthode de la classe vRAAPI
+	
 	RET : $true si mis en ghost
 		  $false si pas mis en ghost
 #>
-function setBGAsGhostIfNot
+function setBGAsGhostIfNot([vRAAPI]$vra, [PSObject]$bg)
 {
-	param([vRAAPI]$vra, [PSObject]$bg)
-
+	
 	# Si le BG est toujours actif
 	if(isBGAlive -bg $bg)
 	{
@@ -962,11 +969,11 @@ function setBGAsGhostIfNot
 		if($bg.tenant -eq $global:VRA_TENANT__EPFL )
 		{
 			
-				# Récupération du contenu du rôle des admins de faculté pour le BG
-				$facAdmins = $vra.getBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER") 
-				
-				# Ajout des admins de la faculté de l'unité du BG afin qu'ils puissent gérer les élments du BG.
-				createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $facAdmins
+			# Récupération du contenu du rôle des admins de faculté pour le BG
+			$facAdmins = $vra.getBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER") 
+			
+			# Ajout des admins de la faculté de l'unité du BG afin qu'ils puissent gérer les élments du BG.
+			createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $facAdmins
 		}
 		# ITServices ou Research
 		elseif( ($bg.tenant -eq $global:VRA_TENANT__ITSERVICES) -or ($bg.tenant -eq $global:VRA_TENANT__RESEARCH) )
@@ -974,6 +981,7 @@ function setBGAsGhostIfNot
 			$tenantAdmins = $vra.getTenantAdminGroupList($bg.tenant)
 			# Ajout des admins LOCAUX du tenant comme pouvant gérer les éléments du BG
 			createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $tenantAdmins
+
 		}
 		else
 		{
@@ -1003,9 +1011,8 @@ function setBGAsGhostIfNot
 
 	RET : Nom du groupe de sécurité à ajouter
 #>
-function isBGAlive
+function isBGAlive([PSCustomObject]$bg)
 {
-	param([PSCustomObject]$bg)
 
 	$bgStatus = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS
 
@@ -1034,9 +1041,8 @@ function isBGAlive
 	IN  : $targetEnv	-> Environnement courant
 	IN  : $targetTenant	-> Tenant courant
 #>
-function handleNotifications
+function handleNotifications([System.Collections.IDictionary] $notifications, [string]$targetEnv, [string]$targetTenant)
 {
-	param([System.Collections.IDictionary] $notifications, [string]$targetEnv, [string]$targetTenant)
 
 	# Parcours des catégories de notifications
 	ForEach($notif in $notifications.Keys)
@@ -1228,9 +1234,8 @@ function checkIfADGroupsExists([EPFLLDAP]$ldap, [System.Collections.ArrayList]$g
 
 	RET : Objet représentant le NSGroup
 #>
-function createNSGroupIfNotExists 
+function createNSGroupIfNotExists([NSXAPI]$nsx, [string]$nsxNSGroupName, [string]$nsxNSGroupDesc, [string]$nsxSecurityTag)
 {
-	param([NSXAPI]$nsx, [string]$nsxNSGroupName, [string]$nsxNSGroupDesc, [string]$nsxSecurityTag)
 
 	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName, $global:NSX_VM_MEMBER_TYPE)
 
@@ -1267,9 +1272,8 @@ function createNSGroupIfNotExists
 	
 	RET : Objet représentant la section de firewall
 #>
-function createFirewallSectionIfNotExists
+function createFirewallSectionIfNotExists([NSXAPI]$nsx, [string]$nsxFWSectionName, [string]$nsxFWSectionDesc, [psobject]$nsxNSGroup)
 {
-	param([NSXAPI]$nsx, [string]$nsxFWSectionName, [string]$nsxFWSectionDesc, [psobject]$nsxNSGroup)
 
 	$fwSection = $nsx.getFirewallSectionByName($nsxFWSectionName)
 
@@ -1315,9 +1319,8 @@ function createFirewallSectionIfNotExists
 	IN  : $nsxFWRuleNames	-> Tableau avec les noms des règles. Contient des tableaux associatifs,
 								un pour chaque règle, avec les infos de celle-ci
 #>
-function createFirewallSectionRulesIfNotExists
+function createFirewallSectionRulesIfNotExists([NSXAPI]$nsx, [PSObject]$nsxFWSection, [PSObject]$nsxNSGroup, [Array]$nsxFWRuleNames)
 {
-	param([NSXAPI]$nsx, [PSObject]$nsxFWSection, [PSObject]$nsxNSGroup, [Array]$nsxFWRuleNames)
 
 	$nbExpectedRules = 4
 	# On commence par check le nombre de noms qu'on a pour les règles
@@ -1541,23 +1544,20 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group
 		
+		# Initialisation du générateur de nom depuis les infos présentes dans le groupe AD
+		$nameGenerator.initDetailsFromADGroup($_)
+		
+		$descInfos = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
+
 		# ---- EPFL ----
 		if($targetTenant -eq $global:VRA_TENANT__EPFL )
 		{
+			
 			# Eclatement de la description et du nom pour récupérer le informations
-			$facultyID, $unitID = $nameGenerator.extractInfosFromADGroupName($_.Name)
-			$descInfos = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
-
-			$faculty = $descInfos.faculty
-			$unit = $descInfos.unit
+			$dummy, $bgEPFLID = $nameGenerator.extractInfosFromADGroupName($_.Name)
+			
 			$financeCenter = $descInfos.financeCenter
 			$deniedVRASvc = $descInfos.deniedVRASvc
-
-			# Initialisation des détails pour le générateur de noms
-			$nameGenerator.initDetails(@{facultyName = $faculty
-										 facultyID = $facultyID
-										 unitName = $unit
-										 unitID = $unitID})
 
 			# Création du nom/description du business group
 			$bgDesc = $nameGenerator.getBGDescription()
@@ -1573,49 +1573,27 @@ try
 			# Pas de centre financier pour le tenant ITServices
 			$financeCenter = ""
 
-			# Eclatement de la description et du nom pour récupérer le informations 
-			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
-			$descInfos  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
-
-			$serviceShortName = $descInfos.svcShortName
-			$serviceLongName = $descInfos.svcName
-			$snowServiceId = $descInfos.svcId
 			$deniedVRASvc = $descInfos.deniedVRASvc
 
-			# Initialisation des détails pour le générateur de noms
-			$nameGenerator.initDetails(@{serviceShortName = $serviceShortName
-										serviceName = $serviceLongName
-										snowServiceId = $snowServiceId})
-
 			# Création du nom/description du business group
-			$bgDesc = $serviceLongName
+			$bgDesc = $descInfos.svcName
 							
 			# Custom properties du Buisness Group
-			$bgEPFLID = $snowServiceId
-
+			$bgEPFLID = $descInfos.svcId
 		}
+
 
 		# ---- Research ----
 		elseif($targetTenant -eq $global:VRA_TENANT__RESEARCH)
 		{
-			# Eclatement de la description et du nom pour récupérer le informations 
-			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
-			$projectId = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
-			$descInfos  = $nameGenerator.extractInfosFromADGroupDesc($_.Description)
-
-			$projectAcronym = $descInfos.projectAcronym
 			$financeCenter = $descInfos.financeCenter
 
-			# Initialisation des détails pour le générateur de noms
-			$nameGenerator.initDetails(@{
-				projectId = $projectId
-				projectAcronym = $projectAcronym})
-
 			# Création du nom/description du business group
-			$bgDesc = $projectAcronym
+			$bgDesc = $descInfos.projectAcronym
 			
-			# Custom properties du Buisness Group
-			$bgEPFLID = $projectId
+			# Eclatement de la description et du nom pour récupérer le informations 
+			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
+			$bgEPFLID = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
 
 			# Aucun service de défendu
 			$deniedVRASvc = @()
@@ -1803,7 +1781,7 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - 2nd day Actions
 		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
-		$result = $vra.prepareEntActions($ent, $secondDayActions)
+		$result = $vra.prepareEntActions($ent, $secondDayActions, $targetTenant)
 		$ent = $result.entitlement
 		# Mise à jour de la liste des actions non trouvées
 		$notifications.notFound2ndDayActions += $result.notFoundActions
@@ -1929,7 +1907,6 @@ try
 				$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
 				setBGAsGhostIfNot -vra $vra -bg $_ | Out-Null
 			}
-			
 
 		}
 

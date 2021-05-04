@@ -495,7 +495,10 @@ class NetAppAPI: RESTAPICurl
             # Ajout d'une donnée membre au résultat qui sera renvoyé
             $result | Add-Member -NotePropertyName $_ -NotePropertyValue 0
         }
-        $uri = "/api/protocols/{0}/services/{1}/metrics?fields={2}&interval=1w" -f $protocolStr, $svm.uuid, ($metricWithTypeList -join ",")
+
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
+
+        $uri = "https://{0}/api/protocols/{1}/services/{2}/metrics?fields={3}&interval=1w" -f $targetServer, $protocolStr, $svm.uuid, ($metricWithTypeList -join ",")
         
         $stats = $this.callAPI($uri, "GET", $null, "records", $true)
         
@@ -1120,12 +1123,23 @@ class NetAppAPI: RESTAPICurl
         IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
+        IN  : $targetServer -> (optionnel) Serveur sur lequel faire la requête
         
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_policy_collection_get
 	#>
     hidden [Array] getExportPolicyListQuery([string]$queryParams)
     {
+        return $this.getExportPolicyListQuery($queryParams, "")
+    }
+    hidden [Array] getExportPolicyListQuery([string]$queryParams, [string]$targetServer)
+    {
         $uri = "/api/protocols/nfs/export-policies?max_records=9999"
+
+        # Si on doit interroger un serveur donné, on l'ajoute
+        if($targetServer -ne "")
+        {
+            $uri = "https://{0}{1}" -f $targetServer, $uri
+        }
 
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1203,7 +1217,10 @@ class NetAppAPI: RESTAPICurl
 	#>
     [PSObject] getExportPolicyByName([PSObject]$svm, [string]$name)
     {
-        $result = $this.getExportPolicyListQuery( ("svm.name={0}&name={1}" -f $svm.name, $name) )
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
+
+        $result = $this.getExportPolicyListQuery( ("svm.name={0}&name={1}" -f $svm.name, $name), $targetServer )
 
         if($result.count -eq 0)
         {
@@ -1228,7 +1245,9 @@ class NetAppAPI: RESTAPICurl
 	#>
     [PSObject] addExportPolicy([string]$name, [PSObject]$svm)
     {
-        $uri = "/api/protocols/nfs/export-policies"
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
+
+        $uri = "https://{0}/api/protocols/nfs/export-policies" -f $targetServer
 
         $replace = @{
             name = $name
@@ -1695,12 +1714,22 @@ class NetAppAPI: RESTAPICurl
         IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
+        IN  : $targetServer -> (optionnel) Serveur sur lequel faire la requête REST    
         
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_rule_collection_get
 	#>
     hidden [Array] getQuotaRuleListQuery([string]$queryParams)
     {
+        return $this.getQuotaRuleListQuery($queryParams, "")
+    }
+    hidden [Array] getQuotaRuleListQuery([string]$queryParams, [string]$targetServer)
+    {
         $uri = "/api/storage/quota/rules/?max_records=9999"
+
+        if($targetServer -ne "")
+        {
+            $uri = "https://{0}{1}" -f $targetServer, $uri
+        }
 
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1722,8 +1751,10 @@ class NetAppAPI: RESTAPICurl
 	#>
     [Array] getVolumeQuotaRuleList([PSObject]$volume)
     {
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
+
         # Bizarrement, on doit spécifiquement mettre les champs que l'on veut car ceux-ci ne sont pas retournés par défaut !?!
-        return $this.getQuotaRuleListQuery( ("volume.uuid={0}&fields=users,space,files" -f $volume.uuid) )
+        return $this.getQuotaRuleListQuery( ("volume.uuid={0}&fields=users,space,files" -f $volume.uuid), $targetServer )
     }
 
 
@@ -1740,7 +1771,9 @@ class NetAppAPI: RESTAPICurl
 	#>
     [PSObject] getUserQuotaRule([PSObject]$volume, [string]$username)
     {
-        $res = $this.getQuotaRuleListQuery( ("volume.uuid={0}&users.name={1}&fields=users,space,files" -f $volume.uuid, $username) )
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
+
+        $res = $this.getQuotaRuleListQuery( ("volume.uuid={0}&users.name={1}&fields=users,space,files" -f $volume.uuid, $username), $targetServer )
 
         if($res.count -eq 0)
         {
@@ -1893,12 +1926,22 @@ class NetAppAPI: RESTAPICurl
         IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
+        IN  : $targetServer -> (optionnel) Serveur sur lequel faire la requête    
         
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_report_collection_get
 	#>
     hidden [Array] getQuotaReportListQuery([string]$queryParams)
     {
+        return $this.getQuotaReportListQuery($queryParams, "")
+    }
+    hidden [Array] getQuotaReportListQuery([string]$queryParams, [string]$targetServer)
+    {
         $uri = "/api/storage/quota/reports/?max_records=9999"
+
+        if($targetServer -ne "")
+        {
+            $uri = "https://{0}{1}" -f $targetServer, $uri
+        }
 
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1920,8 +1963,10 @@ class NetAppAPI: RESTAPICurl
 	#>
     [Array] getVolumeQuotaReportList([PSObject]$volume)
     {
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
+
         # Bizarrement, on doit spécifiquement mettre les champs que l'on veut car ceux-ci ne sont pas retournés par défaut !?!
-        return $this.getQuotaReportListQuery( ("volume.uuid={0}&fields=users,space,files" -f $volume.uuid) )
+        return $this.getQuotaReportListQuery( ("volume.uuid={0}&fields=users,space,files" -f $volume.uuid), $targetServer )
     }
 
 
@@ -1936,7 +1981,9 @@ class NetAppAPI: RESTAPICurl
 	#>
     [PSObject] getUserQuotaReport([PSObject]$volume, [string]$username)
     {
-        $res = $this.getQuotaReportListQuery( ("volume.uuid={0}&users.name={1}" -f $volume.uuid, $username) )
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
+
+        $res = $this.getQuotaReportListQuery( ("volume.uuid={0}&users.name={1}" -f $volume.uuid, $username), $targetServer )
 
         if($res.count -eq 0)
         {

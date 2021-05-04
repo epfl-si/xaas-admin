@@ -264,7 +264,7 @@ function deleteVolume([NameGeneratorNAS]$nameGeneratorNAS, [NetAPPAPI]$netapp, [
         # Export Policy (on la supprime tout à la fin sinon on se prend une erreur "gnagna elles utilisée par le volume"
         # donc on vire le volume ET ENSUITE l'export policy)
         $exportPolicyName = $nameGeneratorNAS.getExportPolicyName($volumeName)
-        $logHistory.addLine(("Getting NFS export policy '{0}'", $exportPolicyName))
+        $logHistory.addLine(("Getting NFS export policy '{0}'" -f $exportPolicyName))
         $exportPolicy = $netapp.getExportPolicyByName($svmObj, $exportPolicyName)
         if($null -ne $exportPolicy)
         {
@@ -1201,6 +1201,8 @@ try
     # Ajout du résultat dans les logs 
     $logHistory.addLine(($output | ConvertTo-Json -Depth 100))
 
+    $logHistory.addLine($netapp.getFuncCallsDisplay("NetApp # func calls"))
+
 }
 catch
 {
@@ -1217,7 +1219,16 @@ catch
 
         # Suppression du dossier monté s'il existe
         unMountPSDrive -driveLetter $global:XAAS_NAS_TEMPORARY_DRIVE
-        deleteVolume -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -output $null
+
+        try
+        {
+            deleteVolume -nameGeneratorNAS $nameGeneratorNAS -netapp $netapp -volumeName $volName -output $null
+        }
+        catch
+        {
+            $logHistory.addError(("Error while cleaning Volume: `nError: {0}`nTrace: {1}" -f $_.Exception.Message, $_.ScriptStackTrace))
+        }
+        
     }
 
     # Ajout de l'erreur et affichage
