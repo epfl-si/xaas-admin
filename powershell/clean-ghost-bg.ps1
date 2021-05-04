@@ -397,7 +397,6 @@ try
 
 	$logHistory.addLineAndDisplay(("Executed with parameters: Environment={0}, Tenant={1}" -f $targetEnv, $targetTenant))
 
-
 	
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
@@ -424,10 +423,13 @@ try
 		$bgList = $bgList | Where-Object { $_.name -eq $bgName }
 	}
 
+	$logHistory.addLineAndDisplay(("{0} Business Group found" -f $bgList.count))
+	$bgNo = 1
+
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
 	$bgList | ForEach-Object {
 
-		$logHistory.addLineAndDisplay(("Checking Business Group '{0}'..." -f $_.name))
+		$logHistory.addLineAndDisplay(("[{0}/{1}] Checking Business Group '{2}'..." -f $bgNo, $bglist.count, $_.name))
 
 		# Si c'est un BG d'unité ou de service et s'il est déjà en Ghost
 		if((isBGOfType -bg $_ -typeList @($global:VRA_BG_TYPE__SERVICE, $global:VRA_BG_TYPE__UNIT, $global:VRA_BG_TYPE__PROJECT)) -and `
@@ -449,7 +451,15 @@ try
 				Remove-Item -Path $bgISOFolder -Recurse -Force
 			}
 
-		} # FIN si le BG peut être effacé
+			
+
+		} 
+		else # Pas encore possible d'effacer le BG
+		{
+			$logHistory.addLineAndDisplay("-> Not eligible to be deleted now")
+		}
+
+		$bgNo++
 
 	}# Fin BOUCLE parcours des business groups
 
