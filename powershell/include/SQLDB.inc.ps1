@@ -9,7 +9,7 @@
    DATE   : Mai 2018
 
    Prérequis:
-   Cette classe a besoin du module https://www.powershellgallery.com/packages/SimplySql/1.6.2 
+   Cette classe a besoin du module https://www.powershellgallery.com/packages/SimplySql/
 
 
 #>

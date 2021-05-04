@@ -419,11 +419,13 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["{\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\"}"],
+                "params": ["{\"deniedVRASvc\":[],\"faculty\":\"ENT-R\",\"financeCenter\":\"1907\",\"unit\":\"IDEV-ING\",\"hasApproval\":true}"],
                 "expected": {
+                    "deniedVRASvc": [],
                     "faculty":  "ENT-R",
                     "financeCenter":  "1907",
-                    "unit":  "IDEV-ING"
+                    "unit":  "IDEV-ING",
+                    "hasApproval": true
                 }
             }
         ]
