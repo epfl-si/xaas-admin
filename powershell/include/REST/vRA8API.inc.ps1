@@ -126,6 +126,28 @@ class vRA8API: RESTAPICurl
 		return ($this.callAPI($uri, "Get", $null)).content
     }
 
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie un objet simplement donné par son URI
+
+        IN  : $uri     -> URI de l'objet à renvoyer
+
+		RET : Objet demandé
+                $null si pas trouvé
+	#>
+    hidden [PSCustomObject] getObject([string]$uri)
+    {
+		$uri = "{0}{1}" -f $this.baseUrl, $uri
+        $res = ($this.callAPI($uri, "Get", $null)).content
+
+        if($res.count -eq 0)
+        {
+            return $null
+        }
+        return $res[0]
+    }
+
     <#
         ------------------------------------------------------------------------------------------------------
         ------------------------------------------------------------------------------------------------------
@@ -175,13 +197,7 @@ class vRA8API: RESTAPICurl
 	#>
     [PSCustomObject] getProject([string]$name)
     {
-        $res = $this.getProjectListQuery(("`$filter=name eq '{0}'" -f $name))
-
-        if($res.count -eq 0)
-        {
-            return $null
-        }
-        return $res[0]
+        return $this.getObject(("/iaas/api/projects/?`$filter=name eq '{0}'" -f $name))
     }
 
 
@@ -504,11 +520,162 @@ class vRA8API: RESTAPICurl
     <#
         ------------------------------------------------------------------------------------------------------
         ------------------------------------------------------------------------------------------------------
-                                                APPROVAL POLICIES
+                                                	ENTITLEMENTS
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+    #>
+	
+	
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des entitlements d'un projet (peuvent être trouvés dans "Service Broker > Content & Policies > Content Sources")
+				Cela représente en fait la liste des projets contenant des CloudTemplates partageables et qui sont
+				disponibles pour le projet passé en paramètre
+
+        IN  : $project 	-> objet représentant le projet pour lequel on veut les entitlements
+
+		RET : La liste des Centitlements
+	#>
+    [Array] getProjectEntitlementList([PSCustomObject]$project)
+    {
+        return $this.getObjectListQuery("/iaas/api/zones", ("projectId={0}" -f $project.id) )
+    }
+
+
+	<#
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+                                                CATALOG ITEMS
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+		FIXME: Pas forcément besoin de ces éléments. A priori on peut tout faire avec "content sources" en fait
+    #>
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des catalog items selon des critères passés
+
+        IN  : $queryParams  -> filtres à appliquer à la recherche
+
+		RET : La liste des catalog items
+	#>
+    hidden [Array] getCatalogItemListQuery()
+    {
+        return $this.getCatalogItemListQuery("")
+    }
+    hidden [Array] getCatalogItemListQuery([string]$queryParams)
+    {
+        return $this.getObjectListQuery("/catalog/api/items", $queryParams)
+    }
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Catalog Items disponibles
+
+		RET : La liste des catalog items
+	#>
+    [Array] getCatalogItemList()
+    {
+        return $this.getCatalogItemListQuery()
+    }
+
+
+	<#
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+                                                CONTENT SOURCE
         ------------------------------------------------------------------------------------------------------
         ------------------------------------------------------------------------------------------------------
     #>
 
-	
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des content sources selon des critères passés. Dans la GUI Web, il peuvent 
+				être trouvé dans "Service Broker > Content & Policies > Content Sources"
+
+        IN  : $queryParams  -> filtres à appliquer à la recherche
+
+		RET : La liste des Content Sources
+	#>
+    hidden [Array] getContentSourcesListQuery()
+    {
+        return $this.getContentSourcesListQuery("")
+    }
+    hidden [Array] getContentSourcesListQuery([string]$queryParams)
+    {
+        return $this.getObjectListQuery("/catalog/api/admin/sources", $queryParams)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Content Sources
+
+		RET : La liste des Content Sources
+	#>
+    [Array] getContentSourcesList()
+    {
+        return $this.getContentSourcesListQuery()
+    }
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie un Content Source donné par son nom
+
+		IN  : $name		-> Le nom du Content Source
+
+		RET : La liste des Content Sources
+	#>
+    [PSCustomObject] getContentSources([string]$name)
+    {
+		return $this.getContentSourcesList() | Where-Object { $_.name -eq $name }
+
+		# FIXME: On pourra utiliser la ligne suivante le jour où VMware aura corrigé le bug de l'API
+		# return $this.getObject(("/catalog/api/admin/sources/?`$filter=name eq '{0}'" -f $name))
+    }
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajout un Content Source
+
+		IN  : $name				-> Le nom du Content Source
+		IN  : $sourceProject	-> Objet représentant le projet content les items de catalog 
+									que l'on veut partager dans le Content Source1
+
+		RET : Le content source ajouté
+	#>
+    [PSCustomObject] addContentSources([string]$name, [PSCustomObject]$sourceProject)
+    {
+        $uri = "{0}/catalog/api/admin/sources" -f $this.baseUrl
+
+		$replace = @{
+            name = $name
+            sourceProjectId = $sourceProject.id
+        }
+
+		$body = $this.createObjectFromJSON("vra-content-source.json", $replace)
+
+		# Création du Content Source et retour
+		return $this.callAPI($uri, "Post", $body)
+    }
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Efface un Content Source
+
+		IN  : $contentSource	-> objet représentant le Content Source à effacer
+	#>
+	[void] deleteContentSource([PSCustomObject]$contentSource)
+	{
+		$uri = "{0}/catalog/api/admin/sources/{1}" -f $this.baseUrl, $contentSource.id
+
+		# Création du Content Source et retour
+		$this.callAPI($uri, "DELETE", $null) | Out-Null
+	}
+
 
 }
