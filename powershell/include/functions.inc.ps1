@@ -15,26 +15,18 @@
 
 <#
 	-------------------------------------------------------------------------------------
-	BUT : Renvoie la valeur d'une "Custom Property" donnée pour le Projet passé
+	BUT : Renvoie la valeur d'une "Custom Property" donnée pour le Business Group passé
 
-	IN  : $project			-> Objet représentant le Projet
+	IN  : $bg				-> Objet représentant le Business Group
 	IN  : $customPropName	-> Nom de la Custom property à chercher
 	
 	RET : Valeur de la custom property
 			$null si pas trouvé
 #>
-function getProjectCustomPropValue([object]$project, [string]$customPropName)
+function getBGCustomPropValue([object]$bg, [string]$customPropName)
 {
 	# Recherche de la valeur de la "Custom Property" en PowerShell "optmisé"
-	# On regarde si la custom property existe et si c'est le cas, on retourne sa valeur
-	if(($project.customProperties| Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name) -contains $customPropName)
-	{
-		return $project.customProperties | Select-Object -ExpandProperty $customPropName
-	}
-	else
-	{
-		return $null
-	}
+	return (($bg.ExtensionData.entries | Where-Object {$_.key -eq $customPropName}).value.values.entries | Where-Object {$_.key -eq "value"}).value.value
 
 }
 
@@ -52,7 +44,7 @@ function isBGOfType
 {
 	param([PSCustomObject]$bg, [Array] $typeList)
 
-	$bgType = getProjectCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_TYPE
+	$bgType = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_TYPE
 
 	# Si custom property PAS trouvée,
 	if($null -eq $bgType)
@@ -83,7 +75,7 @@ function isBGOfType
 function getBGWithCustomProp([Object] $fromList, [string] $customPropName, [string] $customPropValue )
 {
 	# Recherche dans la liste en utilisant la puissance de PowerShell
-	return $fromList | Where-Object {(getProjectCustomPropValue -bg $_ -customPropName $customPropName) -eq $customPropValue }
+	return $fromList | Where-Object {(getBGCustomPropValue -bg $_ -customPropName $customPropName) -eq $customPropValue }
 }
 
 
