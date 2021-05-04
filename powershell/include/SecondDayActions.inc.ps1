@@ -143,29 +143,37 @@ class SecondDayActions
             # Parcours des actions sur l'élément courant
             Foreach($actionInfos in $targetElement.actions)
             {
-                # Parcours des approvals définis (par tenant) s'il y en a
-                ForEach($tenantApproval in $actionInfos.approvals)
-                {
-                    # Si le tenant recherché correspond et si le fichier JSON à utiliser pour créer l'approval 
-                    # policy courante pour le Tenant sur lequel on doit le faire est déjà dans la liste de ceux à traiter.
-                    if(($tenantApproval.tenant -eq $targetTenant))
-                    {
-                        # Création d'une entrée dans la table de mapping pour ensuite stocker l'ID de la policies qui aura été créée
-                        # avec les informations contenues ici. Pour la clef de mapping, on va simplement crééer un hash unique qui 
-                        # sera composé du nom de l'élément auquel s'applique l'action suivi du nom de l'action.
-                        # On créé avec une valeur $null et ça sera ensuite rempli par l'intermédiaire de la fonction
-                        # setActionApprovalPolicyId()
-                        $uniqHash = $this.getElementActionUniqHash($targetElement.appliesTo, $actionInfos.name) 
-                        $this.actionToApprovalPolicyId.Add($uniqHash, $null)
 
-                        # Récupération de la structure telle quel
-                        $el = $tenantApproval
-                        # Ajout de l'information du hash unique 
-                        $el | Add-Member -NotePropertyName actionHash -NotePropertyValue $uniqHash
-                        $JSONList += $el
-                    }
-                }
-            }
+                # Si l'action est autorisée pour le tenant courant
+                if($actionInfos.deniedTenants -notcontains $targetTenant)
+                {
+                    # Parcours des approvals définis (par tenant) s'il y en a
+                    ForEach($tenantApproval in $actionInfos.approvals)
+                    {
+                        # Si le tenant recherché correspond et si le fichier JSON à utiliser pour créer l'approval 
+                        # policy courante pour le Tenant sur lequel on doit le faire est déjà dans la liste de ceux à traiter.
+                        if(($tenantApproval.tenant -eq $targetTenant))
+                        {
+                            # Création d'une entrée dans la table de mapping pour ensuite stocker l'ID de la policies qui aura été créée
+                            # avec les informations contenues ici. Pour la clef de mapping, on va simplement crééer un hash unique qui 
+                            # sera composé du nom de l'élément auquel s'applique l'action suivi du nom de l'action.
+                            # On créé avec une valeur $null et ça sera ensuite rempli par l'intermédiaire de la fonction
+                            # setActionApprovalPolicyId()
+                            $uniqHash = $this.getElementActionUniqHash($targetElement.appliesTo, $actionInfos.name) 
+                            $this.actionToApprovalPolicyId.Add($uniqHash, $null)
+
+                            # Récupération de la structure telle quel
+                            $el = $tenantApproval
+                            # Ajout de l'information du hash unique 
+                            $el | Add-Member -NotePropertyName actionHash -NotePropertyValue $uniqHash
+                            $JSONList += $el
+                        }
+                    }# FIN parcours des potentielles approval policies
+
+                } # FIN Si l'action est autorisée pour le tenant courant                
+
+            } # FIN Parcours des actions sur l'élément courant
+
         }
 
         return $JSONList
@@ -244,8 +252,9 @@ class SecondDayActions
         BUT : Retourne la liste des noms d'actions pour un élément donné.
 
         IN  : $elementName      -> Nom de l'élément pour lequel on veut les actions
+        IN  : $targetTenant     -> Nom du tenant pour lequel on veut les actions
     #>
-    [Array]getElementActionList([string]$elementName)
+    [Array]getElementActionList([string]$elementName, [string]$targetTenant)
     {
         $targetElementList = $this.getTargetElementList($elementName)
 
@@ -256,7 +265,12 @@ class SecondDayActions
         {
             ForEach($actionInfos in $targetElement.actions)
             {
-                $actionList += $actionInfos.name
+                # Si l'action est autorisée pour le tenant courant, 
+                if($actionInfos.deniedTenants -notcontains $targetTenant)
+                {
+                    $actionList += $actionInfos.name
+                }
+                
             }
         }
 

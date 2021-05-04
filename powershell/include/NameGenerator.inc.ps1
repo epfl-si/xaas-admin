@@ -306,6 +306,59 @@ class NameGenerator: NameGeneratorBase
         return @($groupName, $groupDesc)
     }
 
+    
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Initialise les détails à l'aide d'un objet représentant un groupe AD. On s'attend
+                à ce que l'objet contienne au moins les 2 propriétés suivantes:
+                - Name
+                - Description
+
+        IN  : $adGroup   -> Objet représentant le groupe AD
+    #>
+    [void] initDetailsFromADGroup([PSCustomObject]$adGroup)
+    {
+        # Extraction des infos depuis le nom du groupe et la description
+        $adGroupDescInfos = $this.extractInfosFromADGroupDesc($adGroup.Description)
+
+        $allDetails = @{}
+
+        # Consolidation de tous les détails
+        switch($this.tenant)
+        {
+            # -- EPFL
+            $global:VRA_TENANT__EPFL
+            {
+                $facultyID, $unitID = $this.extractInfosFromADGroupName($adGroup.Name)
+
+                $allDetails.facultyName = $adGroupDescInfos.faculty
+                $allDetails.facultyID = $facultyID
+                $allDetails.unitName = $adGroupDescInfos.unit
+                $allDetails.unitID = $unitID
+            }
+
+            # -- ITServices
+            $global:VRA_TENANT__ITSERVICES
+            {
+                $allDetails.serviceShortName = $adGroupDescInfos.svcShortName
+                $allDetails.serviceName = $adGroupDescInfos.svcName
+                $allDetails.snowServiceId = $adGroupDescInfos.svcId
+            }
+
+            # -- Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                $projectId, $dummy = $this.extractInfosFromADGroupName($adGroup.Name)
+
+                $allDetails.projectId = $projectId
+                $allDetails.projectAcronym = $adGroupDescInfos.projectAcronym
+
+            }
+        }
+
+        $this.initDetails($allDetails)
+    }
+
 
     <# 
         -------------------------------------------------------------------------------------
@@ -1467,13 +1520,20 @@ class NameGenerator: NameGeneratorBase
 
         RET : Objet avec un contenu différent selon le tenant
                 EPFL:
+                    .deniedVRASvc
                     .faculty
                     .unit
+                    .financeCenter
+                    .hasApproval
                 ITServices
-                    .svcId
+                    .deniedVRASvc
+                    .svcShortName
                     .svcName
+                    .svcId
+                    .hasApproval
                 Research
                     .projectAcronym
+                    .financeCenter
     #>
     [PSCustomObject] extractInfosFromADGroupDesc([string]$ADGroupDesc)
     {
@@ -1488,7 +1548,7 @@ class NameGenerator: NameGeneratorBase
         {
             $global:VRA_TENANT__EPFL
             {
-                if($nbElements -lt 3)
+                if($nbElements -lt 5)
                 {
                     Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
                 }
@@ -1496,7 +1556,7 @@ class NameGenerator: NameGeneratorBase
 
             $global:VRA_TENANT__ITSERVICES
             {
-                if($nbElements -lt 2)
+                if($nbElements -lt 5)
                 {
                     Throw ("Incorrect group description ({0}) for Tenant {1}" -f $ADGroupDesc, $this.tenant)
                 }
