@@ -5,27 +5,33 @@
         "actions": [
             {
                 "name": "Request support (s3)",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Bucket Usage Stats",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Regenerate Keys",
-                "approvals": [] 
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Modify Bucket",
-                "approvals": [] 
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Modify Notification Mail",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             },
             {
                 "name": "Delete Bucket",
-                "approvals": []
+                "approvals": [],
+                "deniedTenants": []
             }
         ]
     }
