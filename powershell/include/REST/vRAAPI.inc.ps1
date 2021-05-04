@@ -1127,7 +1127,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[Array] getResListMatch([string] $str, [bool]$allowCache)
 	{
-		return $this.getResListQuery(("`$filter=substringof('{0}', name)" -f $str), $allowCache)
+		return $this.getResListQuery(("`$filter=substringof('{0}clstr_', name)" -f $str), $allowCache)
 	}
 
 
