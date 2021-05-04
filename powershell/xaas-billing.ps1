@@ -276,7 +276,8 @@ try
                         $configVra.getConfigValue(@($targetEnv, "db", "dbName")),
                         $configVra.getConfigValue(@($targetEnv, "db", "user")),
                         $configVra.getConfigValue(@($targetEnv, "db", "password")),
-                        $configVra.getConfigValue(@($targetEnv, "db", "port")))
+                        $configVra.getConfigValue(@($targetEnv, "db", "port")),
+                        $true)
 
     $vraTenantList = @{}
 
