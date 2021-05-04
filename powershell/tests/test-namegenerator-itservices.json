@@ -41,19 +41,19 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", true],
-                "expected": "vra_t_vs@intranet.epfl.ch"
+                "expected": "vra_t_svc0007@intranet.epfl.ch"
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", false],
-                "expected": "vra_t_vs"
+                "expected": "vra_t_svc0007"
             },
             {
                 "params": ["CSP_CONSUMER", true],
-                "expected": "vra_t_vs@intranet.epfl.ch"
+                "expected": "vra_t_svc0007@intranet.epfl.ch"
             },
             {
                 "params": ["CSP_CONSUMER", false],
-                "expected": "vra_t_vs"
+                "expected": "vra_t_svc0007"
             }
         ]
     },
@@ -71,19 +71,19 @@
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "{\"svcId\":\"SVC0007\",\"svcName\":\"Virtualization Service\"}"
+                "expected": "{\"svcShortName\":\"vs\",\"svcName\":\"Virtualization Service\",\"svcId\":\"SVC0007\"}"
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "{\"svcId\":\"SVC0007\",\"svcName\":\"Virtualization Service\"}"
+                "expected": "{\"svcShortName\":\"vs\",\"svcName\":\"Virtualization Service\",\"svcId\":\"SVC0007\"}"
             },
             {
                 "params": ["CSP_CONSUMER", { "deniedVRASvc": [{"svc":"MyVM (Public)","items":[]}]}],
-                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"svcName\":\"Virtualization Service\",\"svcId\":\"SVC0007\"}"
+                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"svcShortName\":\"vs\",\"svcName\":\"Virtualization Service\",\"svcId\":\"SVC0007\"}"
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS", { "deniedVRASvc": [{"svc":"MyVM (Public)","items":[]}]}],
-                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"svcName\":\"Virtualization Service\",\"svcId\":\"SVC0007\"}"
+                "expected": "{\"deniedVRASvc\":[{\"svc\":\"MyVM (Public)\",\"items\":[]}],\"svcShortName\":\"vs\",\"svcName\":\"Virtualization Service\",\"svcId\":\"SVC0007\"}"
             }
         ]
     },
@@ -97,11 +97,11 @@
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "vra_t_vs"
+                "expected": "vra_t_svc0007"
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "vra_t_vs"
+                "expected": "vra_t_svc0007"
             },
             {
                 "params": ["CSP_SUPPORT"],
@@ -145,11 +145,11 @@
             },
             {
                 "params": ["CSP_CONSUMER"],
-                "expected": "vra_t_vs_AppGrpU"
+                "expected": "vra_t_svc0007_AppGrpU"
             },
             {
                 "params": ["CSP_CONSUMER_WITH_SHARED_ACCESS"],
-                "expected": "vra_t_vs_AppGrpU"
+                "expected": "vra_t_svc0007_AppGrpU"
             }
         ]
     },
@@ -412,10 +412,13 @@
         "name": "extractInfosFromADGroupDesc",
         "tests":[
             {
-                "params": ["{\"svcId\":\"SVC0007\",\"svcName\":\"Virtualization Service\"}"],
+                "params": ["{\"deniedVRASvc\":[],\"svcId\":\"SVC0007\",\"svcShortName\":\"vs\",\"svcName\":\"Virtualization Service\",\"hasApproval\":true}"],
                 "expected": {
+                    "deniedVRASvc": [],
                     "svcId":  "SVC0007",
-                    "svcName":  "Virtualization Service"
+                    "svcShortName": "vs",
+                    "svcName":  "Virtualization Service",
+                    "hasApproval": true                    
                 }
             }
         ]

@@ -448,7 +448,7 @@ try
 
     
     $excel = New-Object -ComObject excel.application 
-    $excel.visible = $true
+    $excel.visible = $false
 
     #$dataFile = ([IO.Path]::Combine("$PSScriptRoot", $dataFile))
     # -------------------------------------------------------------------------
