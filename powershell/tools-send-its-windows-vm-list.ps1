@@ -157,7 +157,7 @@ try
                 $serviceManager = $serviceManagerList.Item($bgId).FullName
 
                 $values = @($vm.name,
-                        ($vSphereVM| Get-Annotation -customattribute "ch.epfl.deployment_tag").value,
+                        (getvRAObjectCustomPropValue -object $vm -customPropName $global:VRA_CUSTOM_PROP_EPFL_DEPLOYMENT_TAG),
                         $vmView.Summary.Runtime.PowerState,
                         $vmView.Guest.GuestFullName,
                         $bg.description,
