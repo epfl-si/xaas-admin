@@ -381,6 +381,8 @@ function createOrUpdateBG
 
 		$logHistory.addLineAndDisplay(("-> BG '{0}' already exists" -f $bg.Name))
 
+		$bgUpdated = $false
+
 		$counters.inc('BGExisting')
 		# ==========================================================================================
 
@@ -389,6 +391,7 @@ function createOrUpdateBG
 		{
 			# Mise à jour
 			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
+			$bgUpdated = $true
 		}
 
 		# Si le BG n'a pas la custom property donnée, on l'ajoute
@@ -405,6 +408,7 @@ function createOrUpdateBG
 		{
 			# Mise à jour
 			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
+			$bgUpdated = $true
 		}
 
 
@@ -473,6 +477,7 @@ function createOrUpdateBG
 				# Mise à jour de la custom property qui contient le nom du BG
 				$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $bgName})
 
+				$bgUpdated = $true
 				$counters.inc('BGRenamed')
 
 			}# Fin s'il y a eu changement de nom 
@@ -482,7 +487,8 @@ function createOrUpdateBG
 			# Mise à jour des informations
 			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
 
-			$counters.inc('BGUpdated')
+			$bgUpdated = $true
+			
 
 			# Si le BG était en Ghost, 
 			if(!(isBGAlive -bg $bg))
@@ -492,7 +498,13 @@ function createOrUpdateBG
 			}
 		}
 
-	}
+		# Mise à jour du compteur si besoin
+		if($bgUpdated)
+		{
+			$counters.inc('BGUpdated')
+		}
+
+	} # FIN SI le BG existe déjà
 
 	return $bg
 
