@@ -262,6 +262,7 @@ class NameGeneratorBase
         $this.initDetails($withDetails)
     }
 
+
     <#
         -------------------------------------------------------------------------------------
         BUT : initialise les détails nécessaires pour utiliser les fonctions ci-dessous.
