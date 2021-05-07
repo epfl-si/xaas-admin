@@ -493,7 +493,7 @@ class NameGenerator: NameGeneratorBase
 
         NOTE 06.2018 : Pour le moment, on n'utilise pas le paramètre $type car c'est le même nom de groupe qui est utilisé pour AD et GROUPS.
         NOTE 02.2019 : On n'utilise maintenant plus le paramètre $serviceShortName car ce sont maintenant le service manager IaaS (level 1)
-                            et les chefs de service VPSI (level 2) qui approuvent les demandes.
+                            et les chefs de service DSI (level 2) qui approuvent les demandes.
         
 
         Mis en commentaire le 14.02.2019 (c'est la St-Valentin!) car plus utilisé pour le moment. Mais on garde au cas où.
