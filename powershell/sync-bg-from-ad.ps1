@@ -1463,6 +1463,7 @@ try
 					bgWithoutCustomPropType = @()
 					bgSetAsGhost = @()
 					bgNameDuplicate = @()
+					bgNameAlreadyTaken = @()
 					emptyADGroups = @()
 					adGroupsNotFound = @()
 					ISOFolderNotRenamed = @()
