@@ -132,7 +132,7 @@ Foreach($bg in $bgList)
                 $request = "UPDATE [xaas_prod].[dbo].[myvm_static_mac] SET myvm_static_mac_used_by = '{0}' WHERE [myvm_static_mac_address] LIKE '{1}'" -f $usedBy, $nic.mac_address
                 $logHistory.addLineAndDisplay((">> Incorrect found ({0} >> {1}), updating..." -f $macAddressInfos.myvm_static_mac_used_by, $usedBy))
 
-                # $sqldb.execute($request)
+                $sqldb.execute($request)
 
                 $counters.inc('nbDBUpdates')
 
