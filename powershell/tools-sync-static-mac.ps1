@@ -104,14 +104,17 @@ Foreach($bg in $bgList)
         $counters.inc('nbVM')
         $logHistory.addLineAndDisplay(("> VM {0}" -f $vm.name))
         
+        # Récupération de la liste des NICs de la VM
         $nicList = $vsphereApi.getVMFullDetails($vm.name).nics
 
         # Parcours des NICs de la VM
         Foreach($nic in $nicList)
         {
+            # Les informations étant dans $nic.value, on réaffecte simplement la variable
             $nic = $nic.value
             $counters.inc('nbVMNics')
             $logHistory.addLineAndDisplay((">> {0}" -f $nic.mac_address))
+            # Recherche de l'entrée sur l'adresse MAC en regardant aussi si le format est correct.
             $request = "SELECT * FROM [xaas_prod].[dbo].[myvm_static_mac] WHERE [myvm_static_mac_address] LIKE '{0}' AND [myvm_static_mac_used_by] NOT LIKE '%:{1}'" -f $nic.mac_address, $vm.name
             
             $macAddressInfos = $sqldb.execute($request)
