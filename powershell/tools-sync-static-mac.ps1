@@ -39,7 +39,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "SnowAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vSphereAPI.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
@@ -62,17 +62,9 @@ $targetEnv = $targetEnv.ToLower()
 $targetTenant = $targetTenant.ToLower()
 
 
-# Chargement des modules 
-loadPowerCliModules
-
-# Pour éviter que le script parte en erreur si le certificat vCenter ne correspond pas au nom DNS primaire. On met le résultat dans une variable
-# bidon sinon c'est affiché à l'écran.
-Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
-
-$credSecurePwd = $configVSphere.getConfigValue(@($targetEnv, "password")) | ConvertTo-SecureString -AsPlainText -Force
-$credObject = New-Object System.Management.Automation.PSCredential -ArgumentList $configVSphere.getConfigValue(@($targetEnv, "user")), $credSecurePwd	
-
-$vCenter = Connect-VIServer -Server $configVSphere.getConfigValue(@($targetEnv, "server")) -Credential $credObject
+$vsphereApi = [vSphereAPI]::new($configVSphere.getConfigValue(@($targetEnv, "server")), 
+                                    $configVSphere.getConfigValue(@($targetEnv , "user")), 
+									$configVSphere.getConfigValue(@($targetEnv, "password")))
 
 
 $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
@@ -112,12 +104,15 @@ Foreach($bg in $bgList)
         $counters.inc('nbVM')
         $logHistory.addLineAndDisplay(("> VM {0}" -f $vm.name))
         
+        $nicList = $vsphereApi.getVMFullDetails($vm.name).nics
+
         # Parcours des NICs de la VM
-        Foreach($nic in (Get-VM $vm.name | Get-NetworkAdapter))
+        Foreach($nic in $nicList)
         {
+            $nic = $nic.value
             $counters.inc('nbVMNics')
-            $logHistory.addLineAndDisplay((">> {0}" -f $nic.MacAddress))
-            $request = "SELECT * FROM [xaas_prod].[dbo].[myvm_static_mac] WHERE [myvm_static_mac_address] LIKE '{0}' AND [myvm_static_mac_used_by] NOT LIKE '%:{1}'" -f $nic.MacAddress, $vm.name
+            $logHistory.addLineAndDisplay((">> {0}" -f $nic.mac_address))
+            $request = "SELECT * FROM [xaas_prod].[dbo].[myvm_static_mac] WHERE [myvm_static_mac_address] LIKE '{0}' AND [myvm_static_mac_used_by] NOT LIKE '%:{1}'" -f $nic.mac_address, $vm.name
             
             $macAddressInfos = $sqldb.execute($request)
 
@@ -134,7 +129,7 @@ Foreach($bg in $bgList)
                     $prefix = "LegacyMyVM"
                 }
                 $usedBy = "{0}:{1}" -f $prefix, $vm.name
-                $request = "UPDATE [xaas_prod].[dbo].[myvm_static_mac] SET myvm_static_mac_used_by = '{0}' WHERE [myvm_static_mac_address] LIKE '{1}'" -f $usedBy, $nic.MacAddress
+                $request = "UPDATE [xaas_prod].[dbo].[myvm_static_mac] SET myvm_static_mac_used_by = '{0}' WHERE [myvm_static_mac_address] LIKE '{1}'" -f $usedBy, $nic.mac_address
                 $logHistory.addLineAndDisplay((">> Incorrect found ({0} >> {1}), updating..." -f $macAddressInfos.myvm_static_mac_used_by, $usedBy))
 
                 # $sqldb.execute($request)
@@ -153,3 +148,4 @@ $logHistory.addLineAndDisplay(($counters.getDisplay("Counters summary")))
 
 $sqldb.disconnect()
 $vra.disconnect()
+$vsphereApi.disconnect()
