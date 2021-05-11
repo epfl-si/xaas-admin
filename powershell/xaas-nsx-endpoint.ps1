@@ -283,7 +283,7 @@ try
             }
             $logHistory.addLine(("Current Tag list is:`n{0}" -f ( ($existingTags | ForEach-Object { ("{0}={1}" -f $_.tag, $_.scope) }) -join "`n")))
 
-            $logHistory.addLine(("Removing unwanted tags:`n{0}" -f (($tagList.keys | Foreach-Object { ("{0}={1}" -f $_, $tagList[$_])}) -join "`n")))
+            $logHistory.addLine(("Removing unwanted tags:`n{0}" -f ($tagList -join "`n")))
 
             # Liste des nouveau tags
             $newTags = [HashTable]@{}
