@@ -88,13 +88,22 @@ class NameGeneratorNAS: NameGeneratorBase
 		BUT : Renvoie le nom d'un volume collaboratif (vu qu'il y a le numéro passé en paramètre)
 
       IN  : $volNumber     -> Numéro du volume
-   I  IN  : $isNFSVolume   -> $true|$false pour dire si c'est un Volume accédé en NFS
+      IN  : $isNFSVolume   -> $true|$false pour dire si c'est un Volume accédé en NFS
       
       RET : Le nom du volume
 	#>
    [string] getVolName([int]$volNumber, [bool]$isNFSVolume)
    {
-      $volName = ("u{0}_{1}_{2}_{3}_files" -f $this.details.unitId, $this.details.faculty, $this.details.unitName, $volNumber)
+      # Pour avoir un 0 si le chiffre est plus petit que 10
+      if($volNumber -lt 10)
+      {
+         $volNum = "0{0}" -f $volNumber
+      }
+      else
+      {
+         $volNum = $volNumber.ToString()
+      }
+      $volName = ("u{0}_{1}_{2}_{3}_files" -f $this.details.unitId, $this.details.faculty, $this.details.unitName, $volNum)
 
       if($isNFSVolume)
       {
@@ -176,7 +185,7 @@ class NameGeneratorNAS: NameGeneratorBase
 	#>
    [string] getCollaborativeVolDetailedRegex([bool]$isNFS)
    {
-      $regex = ("u{0}_{1}_[a-z]+_[0-9]_files" -f $this.details.unitId, $this.details.faculty)
+      $regex = ("u{0}_{1}_[a-z]+_[0-9]{{2,2}}_files" -f $this.details.unitId, $this.details.faculty)
 
       if($isNFS)
       {

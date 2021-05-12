@@ -113,10 +113,8 @@ $ACTION_GET_VOL_INFOS       = "getVolInfos"
 $ACTION_SET_SNAPSHOTS       = "setSnapshots"
 $ACTION_GET_PRICE           = "getPrice"
 
-$global:APP_VOL_DEFAULT_FAC = "si"
-
 # Limites
-$global:MAX_VOL_PER_UNIT    = 9
+$global:MAX_VOL_PER_UNIT    = 99
 
 # Autre
 $global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"
