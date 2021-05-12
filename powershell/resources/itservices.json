@@ -291,14 +291,6 @@
         },
         {
             "active": true,
-            "longName":  "Project Cloud Microsoft AZURE",
-            "shortName":  "prjcma",
-            "snowId":  "PRJ0016078",
-            "additionalGroupsAdminSciperList": ["276200"],
-            "deniedVRAServiceList": []
-        },
-        {
-            "active": true,
             "longName":  "Stockage Objet-S3",
             "shortName":  "S3",
             "snowId":  "SVC1057",

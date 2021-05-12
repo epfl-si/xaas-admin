@@ -270,12 +270,19 @@ class vRAAPI: RESTAPICurl
 		{
 			# Retour en cherchant avec le custom ID, y'a pas mal de Where-Object imbriqués pour faire le job mais ça fonctionne. Par contre, 
 			# ça risque d'être un peu galère à debug par la suite ^^'
-			return $list| Where-Object { 
+			$result = $list| Where-Object { 
 				($_.extensionData.entries | Where-Object {
 					$null -ne ($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ( $null -ne ($_.value.values.entries | Where-Object { 
 						($null -ne $_.value.value) -and ($_.value.value -is [System.String]) -and ($_.value.value -eq $customId) } ) ) `
 														} `
 				)}
+
+			# Si par hasard il y a plusieurs BG avec les mêmes ID
+			if($result.count -gt 1)
+			{
+				Throw ("{0} BG found with same ID ({1}):`n{2}" -f $result.count, $customId, (($result | Select-Object -ExpandProperty name) -join "`n"))
+			}
+			return $result
 		}
 	
 	}
