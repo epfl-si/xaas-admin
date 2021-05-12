@@ -1563,8 +1563,6 @@ try
 			# Création du nom/description du business group
 			$bgDesc = $nameGenerator.getBGDescription()
 
-			# Custom properties du Buisness Group
-			$bgEPFLID = $unitID
 		}
 
 

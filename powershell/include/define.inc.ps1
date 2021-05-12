@@ -9,6 +9,14 @@
    1.0 - Version de base
 #>
 
+<#
+Ici, on met un bout de code qui s'occupe simplement d'attendre entre 0 et une seconde avant d'exécuter la suite. Pourquoi ?
+Simplement parce qu'il peut arriver dans de rares cas que 2 exécutions de scripts soient lancées par vRO pile au même moment..
+Donc ça fait conflit sur l'accès aux fichiers logs. Il y a même eu un cas où les 2 exécutions avaient le même fichier log, même
+si on avait fait en sorte de mettre le nombre de millisec du timestamp à la création du fichier!
+#>
+Start-Sleep -Milliseconds (Get-Random -Minimum 200 -Maximum 1000)
+
 
 # ---------------------------------------------------------
 # Global
