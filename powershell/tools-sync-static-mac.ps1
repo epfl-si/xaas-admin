@@ -74,11 +74,11 @@ $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server"))
 
 # Pour accéder à la base de données
 $sqldb = [SQLDB]::new([DBType]::MSSQL, 
-                        $configVra.getConfigValue(@($targetEnv, "db", "host")),
-                        $configVra.getConfigValue(@($targetEnv, "db", "dbName")),
-                        $configVra.getConfigValue(@($targetEnv, "db", "user")), 
-                        $configVra.getConfigValue(@($targetEnv, "db", "password")),
-                        $configVra.getConfigValue(@($targetEnv, "db", "port")), 
+                        $configVra.getConfigValue(@($global:TARGET_ENV__PROD, "db", "host")),
+                        $configVra.getConfigValue(@($global:TARGET_ENV__PROD, "db", "dbName")),
+                        $configVra.getConfigValue(@($global:TARGET_ENV__PROD, "db", "user")), 
+                        $configVra.getConfigValue(@($global:TARGET_ENV__PROD, "db", "password")),
+                        $configVra.getConfigValue(@($global:TARGET_ENV__PROD, "db", "port")), 
                         $true)
 
 $counters = [Counters]::new()                        
