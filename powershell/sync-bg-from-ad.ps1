@@ -1815,9 +1815,13 @@ try
 	
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
+		$logHistory.addLineAndDisplay(("-> Adding public Services to Entitlement for users..."))
 		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc `
 				-mandatoryItems $mandatoryEntItemsList -bgName $bgName
 
+		$logHistory.addLineAndDisplay(("-> Adding public Services to Entitlement for admins..."))
+		$entAdm = prepareAddMissingBGEntPublicServices -vra $vra -ent $entAdm -approvalPolicy $null -deniedServices $deniedVRASvc `
+				-mandatoryItems $mandatoryEntItemsList -bgName $bgName
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus
 		$logHistory.addLineAndDisplay("-> Updating Entitlement for users...")
