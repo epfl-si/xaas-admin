@@ -853,7 +853,7 @@ class vRAAPI: RESTAPICurl
 		if($onlyForGroups.count -gt 0)
 		{
 			# Création de la donnée membre si n'existe pas
-			if($null -eq ($ent | Get-Member -notePropertyName "principals"))
+			if($null -eq ($ent | Get-Member -Name "principals"))
 			{
 				$ent | Add-Member -notePropertyName "principals" -NotePropertyValue  @()
 			}
