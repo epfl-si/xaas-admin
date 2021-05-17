@@ -69,6 +69,29 @@ class vSphereAPI: RESTAPICurl
 
     }    
     
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Effectue un appel à l'API REST via Curl
+
+		IN  : $uri		-> URL à appeler
+		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
+		IN  : $body 	-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
+						 	Si $null, on ne passe rien.
+
+		RET : Retour de l'appel
+	#>
+	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body)
+	{
+		# On fait un "cast" pour être sûr d'appeler la fonction de la classe courante et pas une surcharge éventuelle
+		$res = ([RESTAPICurl]$this).callAPI($uri, $method, $body, "")
+
+		if($null -ne ($res | Get-Member -Name "error_type"))
+		{
+			Throw ($res.messages | ConvertTo-Json)
+		}
+		return $res
+	}
+
 
 	<#
 		-------------------------------------------------------------------------------------
@@ -356,6 +379,137 @@ class vSphereAPI: RESTAPICurl
 		return $this.callAPI($uri, "Get", $null)
 	}
 
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie les infos des storage policies définies pour une VM
+		
+		IN  : $vmName		-> Nom de la VM pour laquelle on veut la liste des storage policy.
+
+		RET : Objet avec les storages policies
+				$null si pas trouvé
+	#>
+	[PSCustomObject] getVMStoragePolicyInfos([string]$vmName)
+	{
+		$vm = $this.getVM($vmName)
+		if($null -eq $vm)
+		{
+			return $null
+		}
+
+		$uri = "{0}/vcenter/vm/{1}/storage/policy" -f $this.baseUrl, $vm.vm
+
+		return $this.callAPI($uri, "Get", $null)
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Met à jour la liste des storage policies définies pour une VM
+		
+		IN  : $vmName			-> Nom de la VM pour laquelle on veut mettre à jour les policies de stockage
+		IN  : $vmHomePolicyId	-> ID de la policy de stockage pour "VM Home"
+		IN  : $diskPolicies		-> Hashtable avec en clef les ID de disque et en valeur, l'ID de la policy à mettre
+	#>
+	[void] updateVMStoragePolicyList([string]$vmName, [string]$vmHomePolicyId, [Hashtable]$diskPolicies)
+	{
+		$vm = $this.getVM($vmName)
+		if($null -eq $vm)
+		{
+			Throw ("VM '{0}' doesn't exists" -f $vmName)
+		}
+
+		$uri = "{0}/vcenter/vm/{1}/storage/policy" -f $this.baseUrl, $vm.vm
+
+		$replace = @{vmHomePolicy = $vmHomePolicyId}
+
+		$body = $this.createObjectFromJSON("vsphere-vm-storage-policy.json", $replace)
+
+		# Ajout des infos sur les disques et leurs policies
+		ForEach($diskId in $diskPolicies.Keys)
+		{
+			$replace = @{ diskPolicyId = $diskPolicies.Item($diskId)}
+			$diskInfos = $this.createObjectFromJSON("vsphere-vm-storage-policy-disk.json", $replace)
+
+			$body.disks | Add-Member -NotePropertyName $diskId -NotePropertyValue $diskInfos
+		}
+
+		$this.callAPI($uri, "PATCH", $body) | Out-Null
+
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Recherche une storage policy par son nom
+		
+		IN  : $policyName		-> Nom de la policy dont on veut les infos
+
+		RET : Objet avec les infos de la storage policy
+				$null si pas trouvé
+	#>
+	[PSCustomObject] getStoragePolicyByName([string]$policyName)
+	{
+		$uri = "{0}/vcenter/storage/policies" -f $this.baseUrl
+
+		$res = $this.callAPI($uri, "Get", $null) | Where-Object { $_.name -eq $policyName}
+
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+		return $res[0]
+	}
+
+
+	
+
+
+	<#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des ID des disques d'une VM du système
+
+		IN  : $vmName	-> Nom de la VM
+		
+		RET : Tableau avec les ID des disques
+	#>
+	[Array] getVMDiskIdList([string]$vmName)
+	{
+		$vm = $this.getVM($vmName)
+		if($null -eq $vm)
+		{
+			return @()
+		}
+
+		$uri = "{0}/vcenter/vm/{1}/hardware/disk" -f $this.baseUrl, $vm.vm
+
+		return $this.callAPI($uri, "Get", $null) | Select-Object -ExpandProperty "disk"
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des ID des disques d'une VM du système
+
+		IN  : $vmName	-> Nom de la VM
+		IN  : $diskId	-> ID du disque
+		
+		RET : Tableau avec les ID des disques
+	#>
+	[PSCUstomObject] getVMDiskInfos([string] $vmName, [string]$diskId)
+	{
+		$vm = $this.getVM($vmName)
+		if($null -eq $vm)
+		{
+			return @()
+		}
+
+		$uri = "{0}/vcenter/vm/{1}/hardware/disk/{2}" -f $this.baseUrl, $vm.vm, $diskId
+
+		return $this.callAPI($uri, "Get", $null)
+	}
+
+	
 
 
 }
