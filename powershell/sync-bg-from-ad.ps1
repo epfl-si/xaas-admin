@@ -1534,7 +1534,8 @@ try
 	$newItemsApprovalList = loadFromCommentedJSON -jsonFile $newItemsApprovalFile
 
 	# Création de l'objet pour gérer les 2nd day actions
-	$secondDayActions = [SecondDayActions]::new()
+	$secondDayActions = [SecondDayActions]::new([EntitlementType]::User)
+	$secondDayActionsAdm = [SecondDayActions]::new([EntitlementType]::Admin)
 
 	# On détermine s'il est nécessaire de mettre à jour les ACLs des dossiers contenant les ISO
 	$forceACLsUpdateFile =  ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE))
@@ -1798,13 +1799,20 @@ try
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - 2nd day Actions
-		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
+		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for users...")
 		$result = $vra.prepareEntActions($ent, $secondDayActions, $targetTenant)
 		$ent = $result.entitlement
 		# Mise à jour de la liste des actions non trouvées
 		$notifications.notFound2ndDayActions += $result.notFoundActions
 
+		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for admins...")
+		$result = $vra.prepareEntActions($entAdm, $secondDayActionsAdm, $targetTenant)
+		$entAdm = $result.entitlement
+
+		# Mise à jour de la liste des actions non trouvées
+		$notifications.notFound2ndDayActions += $result.notFoundActions
 		
+	
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
 		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc `
@@ -1812,9 +1820,11 @@ try
 
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus
-		$logHistory.addLineAndDisplay("-> Updating Entitlement...")
+		$logHistory.addLineAndDisplay("-> Updating Entitlement for users...")
 		$ent = $vra.updateEnt($ent, $true)
 
+		$logHistory.addLineAndDisplay("-> Updating Entitlement for admins...")
+		$entAdm = $vra.updateEnt($entAdm, $true)
 
 
 		# ----------------------------------------------------------------------------------
