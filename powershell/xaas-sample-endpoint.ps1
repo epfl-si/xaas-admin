@@ -196,7 +196,8 @@ try
     if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
     {
         # Activation du debug
-        $scality.activateDebug($logHistory)    
+        # TODO: Adapter le nécessaire
+        #$scality.activateDebug($logHistory)    
     }
     
 
