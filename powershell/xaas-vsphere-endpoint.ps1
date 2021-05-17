@@ -1,6 +1,6 @@
 <#
 USAGES:
-    xaas-sap-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl -action updateStoragePolicies -vmName <vmName> -diskPoliciesJSON <diskPoliciesJSON>
+    xaas-vsphere-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl -action updateVMStoragePolicies -vmName <vmName> -diskPoliciesJSON <diskPoliciesJSON>
  
 #>
 <#
@@ -62,7 +62,7 @@ $configVSphere 	= [ConfigReader]::New("config-vsphere.json")
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
 # Liste des actions possibles
-$ACTION_UPDATE_STORAGE_POLICIES              = "updateStoragePolicies"
+$ACTION_UPDATE_STORAGE_POLICIES              = "updateVMStoragePolicies"
 
 
 
@@ -78,7 +78,7 @@ try
     $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new(@('xaas','sap', 'endpoint'), $global:LOGS_FOLDER, 120)
+    $logHistory = [LogHistory]::new(@('vsphere', 'endpoint'), $global:LOGS_FOLDER, 120)
     
     # Objet pour pouvoir envoyer des mails de notification
 	$valToReplace = @{
