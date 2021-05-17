@@ -1,0 +1,6 @@
+{
+    "tenantName": "{{tenantName}}",
+    "ref": "{{groupShortName}}@intranet.epfl.ch",
+    "type": "SSO_GROUP",
+    "value": "{{groupShortName}}"
+}

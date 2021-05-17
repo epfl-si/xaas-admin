@@ -428,10 +428,9 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 				$logHistory.addLineAndDisplay(("-> Renaming BG '{0}' to '{1}'" -f $bg.name, $bgName))
 
 				<# On commence par regarder s'il n'y aurait pas par hasard déjà un BG avec le nouveau nom.
-				 Ceci peut arriver si on supprime une unité/service IT et qu'on change le nom d'un autre en
-				 même temps pour reprendre le nom de ce qui a été supprimé. Etant donné que les BG passent
-				 en "ghost" sans être renommé dans le cas où ils doivent être supprimés, il y a toujours 
-				 conflit de noms
+				 Ceci peut arriver si on supprime une unité/service IT et qu'on change le nom d'un autre en même temps pour reprendre le nom de 
+				 ce qui a été supprimé. Etant donné que les BG passent en "ghost" sans être renommé dans le cas où ils doivent être supprimés, 
+				 il y a toujours conflit de noms
 				#>
 				if($null -ne $vra.getBG($bgName)) 
 				{
@@ -582,38 +581,52 @@ function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$manage
 	IN  : $bg			-> Objet BG auquel l'entitlement est attaché
 	IN  : $entName		-> Nom de l'entitlement
 	IN  : $entDesc		-> Description de l'entitlement.
+	IN  : $entType		-> Type d'entitlement
+	IN  : $nameGenerator-> Objet faisant office de générateur de noms
+	IN  : $onlyForGroups-> Tableau avec la liste des noms des groupes auquels donner accès.
+							Si vide, on ne limite à personne, open bar pour tous.
 
 	RET : Objet contenant l'Entitlement
 #>
-function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc)
+function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc, [EntitlementType]$entType, [NameGenerator]$nameGenerator, [Array]$onlyForGroups)
 {
 
 	# On recherche l'entitlement 
-	$logHistory.addLineAndDisplay(("-> Trying to get Entitlement for BG {0}..." -f $bg.name))
+	$logHistory.addLineAndDisplay(("-> Trying to get Entitlement for BG {0} (type: {1})..." -f $bg.name, $entType.ToString()))
 
-	$ent = $vra.getBGEnt($bg.id)
+	# Recherche de l'entitlement du BG du type donné. On recherche ceux du BG et on filtre ensuite avec une RegEx
+	$ent = @($vra.getBGEntList($bg.id) | Where-Object { $_.name -match $nameGenerator.getEntNameRegex($entType)})
 
-	if($null -eq $ent)
+	# Si on a trop de résultats
+	if($ent.count -gt 1)
 	{
-		$logHistory.addLineAndDisplay(("-> Entitlement not found... creating {0}..." -f $entName))
-		$ent = $vra.addEnt($entName, $entDesc, $bg.id, $bg.name)
+		Throw ("{0} Entitlements with same type ({1}) found for BG '{2}'" -f $ent.count, $entType.toString(), $bg.name)
+	}
+
+	if($ent.count -eq 0)
+	{
+		$logHistory.addLineAndDisplay(("-> Entitlement for type '{0} not found... creating {1}..." -f $entType.toString(), $entName))
+		$ent = $vra.addEnt($entName, $entDesc, $bg.id, $bg.name, $onlyForGroups)
 
 		$counters.inc('EntCreated')
 	}
 	else # L'entitlement existe
 	{
+		$ent = $ent[0]
+
 		# Si le nom a changé (car le nom du BG a changé) ou la description a changé 
-		if(($ent.name -ne $entName) -or ($ent.description -ne $entDesc))
+		if(($ent.name -ne $entName) -or ($ent.description -ne $entDesc) -or `
+			((!$ent.allUsers) -and ($null -ne (Compare-Object $onlyForGroups ($ent.principals | Select-Object -ExpandProperty "value")))))
 		{
-			$logHistory.addLineAndDisplay(("-> Updating Entitlement {0}..." -f $ent.name))
+			$logHistory.addLineAndDisplay(("-> Updating Entitlement {0} for type {1}..." -f $ent.name, $entType.toString()))
 			# Mise à jour du nom/description de l'entitlement courant et on force la réactivation
-			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true)
+			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true, $onlyForGroups)
 
 			$counters.inc('EntUpdated')
 		}
 		else
 		{
-			$logHistory.addLineAndDisplay(("-> Entitlement {0} is up-to-date" -f $ent.name))
+			$logHistory.addLineAndDisplay(("-> Entitlement {0} for type {1} is up-to-date" -f $ent.name, $entType.toString()))
 		}
 	}
 	return $ent
@@ -1630,7 +1643,8 @@ try
 		$logHistory.addLineAndDisplay(("[{0}/{1}] Current AD group: {2}" -f $counters.get('ADGroups'), $adGroupList.Count, $_.Name))
 
 		# Génération du nom et de la description de l'entitlement
-		$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
+		$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc([EntitlementType]::User)
+		$entNameAdm, $entDescAdm = $nameGenerator.getBGEntNameAndDesc([EntitlementType]::Admin)
 
 		# Groupes de sécurités AD pour les différents rôles du BG
 		$managerGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $true))
@@ -1775,7 +1789,12 @@ try
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement
-		$ent = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entName -entDesc $entDesc
+		# Pour les utilisateurs (toutes les actions)
+		$ent = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entName -entDesc $entDesc -entType ([EntitlementType]::User) -NameGenerator $nameGenerator `
+									-onlyForGroups @()
+		# Pour les admins (actions VIP)
+		$entAdm = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entNameAdm -entDesc $entDescAdm -entType ([EntitlementType]::Admin) -NameGenerator $nameGenerator `
+									-onlyForGroups $managerGrpList.split('@')[0]
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - 2nd day Actions
