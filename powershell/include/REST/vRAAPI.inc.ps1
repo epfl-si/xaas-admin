@@ -2243,6 +2243,23 @@ class vRAAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Exécute une action sur une ressource donnée.
+
+		IN  : $resource 	-> Objet représentant la ressource sur laquelle effectuer l'action
+		IN  : $form			-> Objet représentant le formulaire à soumettre pour l'action
+	#>
+	[void] doResourceActionRequest([PSCustomObject]$resource, [PSCustomObject]$form)
+	{
+		
+		# URL de recherche du template pour l'action que l'on désire effectuer
+		$uri = "{0}/catalog-service/api/consumer/resources/{1}/actions/{2}/requests" -f $this.baseUrl, $resource.id, $form.actionId
+
+		$this.callAPI($uri, "POST", $form) | Out-Null
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
 									Virtual Machines
 		-------------------------------------------------------------------------------------
