@@ -283,8 +283,12 @@
         "name": "getBGEntNameAndDesc",
         "tests": [
             {
-                "params":[],
-                "expected": ["its_vs", "Service: Virtualization Service"]
+                "params":["[EntitlementType]::User"],
+                "expected": ["its_vs", "Service: Virtualization Service\nType: User"]
+            },
+            {
+                "params":["[EntitlementType]::Admin"],
+                "expected": ["its_vs_adm", "Service: Virtualization Service\nType: Admin"]
             }
         ]
     },
@@ -382,8 +386,12 @@
         "name": "getEntName",
         "tests":[
             {
-                "params": [],
+                "params": ["[EntitlementType]::User"],
                 "expected": "its_vs"
+            },
+            {
+                "params": ["[EntitlementType]::Admin"],
+                "expected": "its_vs_adm"
             }
         ]
     },
@@ -392,8 +400,12 @@
         "name": "getEntDescription",
         "tests":[
             {
-                "params": [],
-                "expected": "Service: Virtualization Service"
+                "params": ["[EntitlementType]::User"],
+                "expected": "Service: Virtualization Service\nType: User"
+            },
+            {
+                "params": ["[EntitlementType]::Admin"],
+                "expected": "Service: Virtualization Service\nType: Admin"
             }
         ]
     },
