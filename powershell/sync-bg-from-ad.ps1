@@ -1629,6 +1629,24 @@ try
 			# passage au BG suivant
 			return
 		}
+
+		# Si on ne doit pas faire une synchro complète,
+		if(!$fullSync)
+		{
+			# Si le groupe a déjà été modifié
+			# ET
+			# Si la date de modification du groupe est plus vieille que le nombre de jour que l'on a défini,
+			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
+			{
+				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
+				$doneElementList += @{
+					adGroup = $_.name
+					bgName = $bgName
+				}
+				$counters.inc('BGExisting')
+				return
+			}
+		}
 		
 		#### Lorsque l'on arrive ici, c'est que l'on commence à exécuter le code pour les BG qui n'ont pas été "skipped" lors du 
 		#### potentiel '-resume' que l'on a passé au script.
@@ -1692,25 +1710,6 @@ try
 		$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
 		# Nom de règles de firewall
 		$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
-
-
-		# Si on ne doit pas faire une synchro complète,
-		if(!$fullSync)
-		{
-			# Si le groupe a déjà été modifié
-			# ET
-			# Si la date de modification du groupe est plus vieille que le nombre de jour que l'on a défini,
-			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
-			{
-				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
-				$doneElementList += @{
-					adGroup = $_.name
-					bgName = $bgName
-				}
-				$counters.inc('BGExisting')
-				return
-			}
-		}
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
 		if( ((checkIfADGroupsExists -ldap $ldap -groupList $managerGrpList) -eq $false) -or `
