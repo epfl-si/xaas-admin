@@ -1537,10 +1537,6 @@ try
 	$secondDayActions = [SecondDayActions]::new([EntitlementType]::User)
 	$secondDayActionsAdm = [SecondDayActions]::new([EntitlementType]::Admin)
 
-	# On détermine s'il est nécessaire de mettre à jour les ACLs des dossiers contenant les ISO
-	$forceACLsUpdateFile =  ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE))
-	$forceACLsUpdate = (Test-path $forceACLsUpdateFile)
-
 	# Chargement des informations sur les unités qui doivent être facturées sur une adresse mail
 	$mandatoryEntItemsFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "mandatory-entitled-items.json"))
 	$mandatoryEntItemsList = loadFromCommentedJSON -jsonFile $mandatoryEntItemsFile
@@ -1998,12 +1994,6 @@ try
 	if(Test-Path -Path $recreatePoliciesFile)
 	{
 		Remove-Item -Path $recreatePoliciesFile
-	}
-
-	# Si on a dû mettre à jour les ACLs des dossiers, 
-	if($forceACLsUpdate)
-	{
-		Remove-Item -Path $forceACLsUpdateFile
 	}
 
 	# Affichage des nombres d'appels aux fonctions des objets REST
