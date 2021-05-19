@@ -19,8 +19,12 @@
 
 	https://code.vmware.com/apis/39/vrealize-automation?p=vrealize-automation
 
+	OData Filters
+	https://vbombarded.wordpress.com/2017/09/20/rest-filters-in-vra/
+	https://oliverleach.wordpress.com/2017/04/08/vrealize-automation-orchestrator-api-odata-filters/
 
 #>
+
 class vRAAPI: RESTAPICurl
 {
 	hidden [string]$token
@@ -270,12 +274,19 @@ class vRAAPI: RESTAPICurl
 		{
 			# Retour en cherchant avec le custom ID, y'a pas mal de Where-Object imbriqués pour faire le job mais ça fonctionne. Par contre, 
 			# ça risque d'être un peu galère à debug par la suite ^^'
-			return $list| Where-Object { 
+			$result = $list| Where-Object { 
 				($_.extensionData.entries | Where-Object {
 					$null -ne ($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ( $null -ne ($_.value.values.entries | Where-Object { 
 						($null -ne $_.value.value) -and ($_.value.value -is [System.String]) -and ($_.value.value -eq $customId) } ) ) `
 														} `
 				)}
+
+			# Si par hasard il y a plusieurs BG avec les mêmes ID
+			if($result.count -gt 1)
+			{
+				Throw ("{0} BG found with same ID ({1}):`n{2}" -f $result.count, $customId, (($result | Select-Object -ExpandProperty name) -join "`n"))
+			}
+			return $result
 		}
 	
 	}
@@ -649,18 +660,35 @@ class vRAAPI: RESTAPICurl
 		BUT : Renvoie l'entitlement d'un BG
 
 		IN  : $BGID 	-> ID du BG pour lequel on veut l'entitlement
+		IN  : $entType	-> Type de l'entitlement
 
 		RET : L'entitlement ou $null si pas trouvé
 	#>
-	[PSCustomObject] getBGEnt([string]$BGID)
+	[PSCustomObject] getBGEnt([string]$BGID, [EntitlementType]$entType)
 	{
 		$uri = "{0}/catalog-service/api/entitlements/?page=1&limit=9999&`$filter=organization/subTenant/id eq '{1}'" -f $this.baseUrl, $BGID
 
-		$ent = ($this.callAPI($uri, "Get", $null)).content
+		$ent = ($this.callAPI($uri, "Get", $null)).content | Where-Object
 
 		if($ent.Count -eq 0){return $null}
 		return $ent[0]
 
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des entitlements d'un BG
+
+		IN  : $BGID 	-> ID du BG pour lequel on veut l'entitlement
+
+		RET : Liste des entitlements
+	#>
+	[Array] getBGEntList([string]$BGID)
+	{
+		$uri = "{0}/catalog-service/api/entitlements/?page=1&limit=9999&`$filter=organization/subTenant/id eq '{1}'" -f $this.baseUrl, $BGID
+
+		return ($this.callAPI($uri, "Get", $null)).content
 	}
 
 
@@ -713,14 +741,20 @@ class vRAAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
 		BUT : Ajoute un entitlement
 
-		IN  : $name		-> Nom
-		IN  : $desc		-> Description
-		IN  : $BGID		-> ID du Business Group auquel lier l'entitlement
-		IN  : $bgName	-> Nom du Business Group auquel lier l'entitlement
+		IN  : $name				-> Nom
+		IN  : $desc				-> Description
+		IN  : $BGID				-> ID du Business Group auquel lier l'entitlement
+		IN  : $bgName			-> Nom du Business Group auquel lier l'entitlement
+		IN  : $onlyForGroups	-> Tableau avec la liste des noms des groupes auquels donner accès.
+									Si vide, on ne limite à personne, open bar pour tous.
 
 		RET : L'entitlement ajouté
 	#>
 	[PSCustomObject] addEnt([string]$name, [string]$desc, [string]$BGID, [string]$bgName)
+	{
+		return $this.addEnt($name, $desc, $BGID, $bgName, @())
+	}
+	[PSCustomObject] addEnt([string]$name, [string]$desc, [string]$BGID, [string]$bgName, [Array]$onlyForGroups)
 	{
 		$uri = "{0}/catalog-service/api/entitlements" -f $this.baseUrl
 
@@ -729,9 +763,27 @@ class vRAAPI: RESTAPICurl
 						 description = $desc
 						 tenant = $this.tenant
 						 bgID = $BGID
-						 bgName = $bgName}
+						 bgName = $bgName
+						 allUsers = @(($onlyForGroups.count -eq 0), $true)}
 
 		$body = $this.createObjectFromJSON("vra-entitlement.json", $replace)
+
+		# Si on doit limiter à certains groupes AD
+		if($onlyForGroups.count -gt 0)
+		{
+			$body | Add-Member -notePropertyName "principals" -NotePropertyValue  @()
+
+			# Ajout des groupes
+			$onlyForGroups | Foreach-Object {
+				
+				$replace = @{
+					tenantName = $this.tenant
+					groupShortName = $_
+				}				
+
+				$body.principals += $this.createObjectFromJSON("vra-entitlement-principal.json", $replace)
+			}
+		}# FIN si on doit limiter à certains groupes AD
 
 		$this.callAPI($uri, "Post", $body) | Out-Null
 		
@@ -757,10 +809,16 @@ class vRAAPI: RESTAPICurl
 		IN  : $newName		-> (optionnel -> "") Nouveau nom
 		IN  : $newDesc		-> (optionnel -> "") Nouvelle description
 		IN  : $activated	-> Pour dire si l'Entitlement doit être activé ou pas.
+		IN  : $onlyForGroups	-> Tableau avec la liste des noms des groupes auquels donner accès.
+									Si vide, on ne limite à personne, open bar pour tous.
 
 		RET : Objet contenant l'entitlement mis à jour
 	#>
 	[PSCustomObject] updateEnt([PSCustomObject] $ent, [string] $newName, [string] $newDesc, [bool]$activated)
+	{
+		return $this.updateEnt($ent, $newName, $newDesc, $activated, @())
+	}
+	[PSCustomObject] updateEnt([PSCustomObject] $ent, [string] $newName, [string] $newDesc, [bool]$activated, [Array]$onlyForGroups)
 	{
 		$uri = "{0}/catalog-service/api/entitlements/{1}" -f $this.baseUrl, $ent.id
 
@@ -790,6 +848,32 @@ class vRAAPI: RESTAPICurl
 			$ent.statusName = "Inactive"
 
 		}
+
+		# Si on doit limiter à certains groupes AD
+		if($onlyForGroups.count -gt 0)
+		{
+			# Création de la donnée membre si n'existe pas
+			if($null -eq ($ent | Get-Member -Name "principals"))
+			{
+				$ent | Add-Member -notePropertyName "principals" -NotePropertyValue  @()
+			}
+			else # La donnée membre existe, on remet à zéro
+			{
+				$ent.principals = @()
+			}
+
+			# Ajout des groupes
+			$onlyForGroups | Foreach-Object {
+				
+				$replace = @{
+					tenantName = $this.tenant
+					groupShortName = $_
+				}				
+
+				$ent.principals += $this.createObjectFromJSON("vra-entitlement-principal.json", $replace)
+			}
+		}# FIN si on doit limiter à certains groupes AD
+
 
 		# Mise à jour des informations
 		$this.callAPI($uri, "Put", $ent) | Out-Null
@@ -2154,6 +2238,23 @@ class vRAAPI: RESTAPICurl
 		$uri = "{0}/catalog-service/api/consumer/resources/{1}/actions/{2}/requests/template/" -f $this.baseUrl, $forResource.id, $actionInfos.id
 
 		return $this.callAPI($uri, "Get", $null)
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Exécute une action sur une ressource donnée.
+
+		IN  : $resource 	-> Objet représentant la ressource sur laquelle effectuer l'action
+		IN  : $form			-> Objet représentant le formulaire à soumettre pour l'action
+	#>
+	[void] doResourceActionRequest([PSCustomObject]$resource, [PSCustomObject]$form)
+	{
+		
+		# URL de recherche du template pour l'action que l'on désire effectuer
+		$uri = "{0}/catalog-service/api/consumer/resources/{1}/actions/{2}/requests" -f $this.baseUrl, $resource.id, $form.actionId
+
+		$this.callAPI($uri, "POST", $form) | Out-Null
 	}
 
 

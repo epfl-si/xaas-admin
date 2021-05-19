@@ -26,8 +26,10 @@ class SecondDayActions
     <#
         -------------------------------------------------------------------------------------
         BUT : Charge les données du fichier JSON passé en paramètre
+
+        IN  : $entType  -> Type d'entitlement pour lequel on veut les actions day-2
     #>
-    SecondDayActions()
+    SecondDayActions([EntitlementType]$entType)
     {
         $this.actionToApprovalPolicyId = @{}
         
@@ -35,11 +37,14 @@ class SecondDayActions
         {
             $this.JSONData = @()
 
+            # Définition du dossier où aller chercher les infos en fonction du type d'entitlement pour lequel on doit ajouter des actions
+            $JSONFolder = ([IO.Path]::Combine($global:JSON_2ND_DAY_ACTIONS_FOLDER, $entType.toString().toLower()))
+
             # Parcours des fichier JSON qui sont dans le dossier des 2nd day actions
-            Get-ChildItem -Path $global:JSON_2ND_DAY_ACTIONS_FOLDER -Filter "*.json" | ForEach-Object {
+            Get-ChildItem -Path $JSONFolder -Filter "*.json" | ForEach-Object {
             
                 # Chargement de la liste des actions depuis le fichier JSON et ajout à la liste de toutes les actions
-                $this.JSONData += (Get-Content -Path (Join-Path $global:JSON_2ND_DAY_ACTIONS_FOLDER $_.name)) -join "`n" | ConvertFrom-Json
+                $this.JSONData += (Get-Content -Path (Join-Path $JSONFolder $_.name)) -join "`n" | ConvertFrom-Json
             }
             
         }

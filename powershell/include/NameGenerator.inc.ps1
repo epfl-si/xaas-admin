@@ -904,14 +904,16 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom et la description d'un Entitlement pour le tenant
 
+        IN  : $entType  -> Type de l'entitlement
+
         RET : Tableau avec :
                 - Nom de l'Entitlement
                 - Description de l'entitlement
     #>
-    [System.Collections.ArrayList] getBGEntNameAndDesc()
+    [System.Collections.ArrayList] getBGEntNameAndDesc([EntitlementType]$entType)
     {
-        $name = $this.getEntName()
-        $desc = $this.getEntDescription()
+        $name = $this.getEntName($entType)
+        $desc = $this.getEntDescription($entType)
 
         return @($name, $desc)
     }
@@ -1316,13 +1318,37 @@ class NameGenerator: NameGeneratorBase
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie l'expression régulière permettant d'isoler un nom d'entitlement d'un type donné
+
+        IN  : $entType  -> Type de l'entitlement
+
+		RET : Regex
+    #>
+    [string] getEntNameRegex([EntitlementType]$entType)
+    {
+       $reg = switch($entType)
+        {
+            User { '^.*?(?<!_adm)$' }
+
+            Admin { '^.*?_adm$' }
+        }
+
+        return $reg
+    }
+
+
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom d'un Entitlement en fonction du tenant défini. 
 
+        IN  : $entType  -> Type de l'entitlement
+
 		RET : Description du BG
     #>
-    [string] getEntName()
+    [string] getEntName([EntitlementType]$entType)
     {
         $name = ""
         switch($this.tenant)
@@ -1350,6 +1376,12 @@ class NameGenerator: NameGeneratorBase
             }
 
         }
+
+        if($entType -eq [EntitlementType]::Admin)
+        {
+            $name = "{0}_adm" -f $name
+        }
+
         return $name
     }    
 
@@ -1360,10 +1392,12 @@ class NameGenerator: NameGeneratorBase
     <#
         -------------------------------------------------------------------------------------
         BUT : Renvoie la description d'un Entitlement
-              
+        
+        IN  : $entType  -> Type de l'entitlement 
+
 		RET : Description de l'entitlement
     #>
-    [string] getEntDescription()
+    [string] getEntDescription([EntitlementType]$entType)
     {
         $desc = ""
         switch($this.tenant)
@@ -1390,6 +1424,9 @@ class NameGenerator: NameGeneratorBase
                 Throw ("Unsupported Tenant ({0})" -f $this.tenant)
             }
         }
+
+        $desc = "{0}`nType: {1}" -f $desc, $entType.toString()
+        
         return $desc
     }    
 

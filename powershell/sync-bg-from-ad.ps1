@@ -428,10 +428,9 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 				$logHistory.addLineAndDisplay(("-> Renaming BG '{0}' to '{1}'" -f $bg.name, $bgName))
 
 				<# On commence par regarder s'il n'y aurait pas par hasard déjà un BG avec le nouveau nom.
-				 Ceci peut arriver si on supprime une unité/service IT et qu'on change le nom d'un autre en
-				 même temps pour reprendre le nom de ce qui a été supprimé. Etant donné que les BG passent
-				 en "ghost" sans être renommé dans le cas où ils doivent être supprimés, il y a toujours 
-				 conflit de noms
+				 Ceci peut arriver si on supprime une unité/service IT et qu'on change le nom d'un autre en même temps pour reprendre le nom de 
+				 ce qui a été supprimé. Etant donné que les BG passent en "ghost" sans être renommé dans le cas où ils doivent être supprimés, 
+				 il y a toujours conflit de noms
 				#>
 				if($null -ne $vra.getBG($bgName)) 
 				{
@@ -582,38 +581,52 @@ function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$manage
 	IN  : $bg			-> Objet BG auquel l'entitlement est attaché
 	IN  : $entName		-> Nom de l'entitlement
 	IN  : $entDesc		-> Description de l'entitlement.
+	IN  : $entType		-> Type d'entitlement
+	IN  : $nameGenerator-> Objet faisant office de générateur de noms
+	IN  : $onlyForGroups-> Tableau avec la liste des noms des groupes auquels donner accès.
+							Si vide, on ne limite à personne, open bar pour tous.
 
 	RET : Objet contenant l'Entitlement
 #>
-function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc)
+function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc, [EntitlementType]$entType, [NameGenerator]$nameGenerator, [Array]$onlyForGroups)
 {
 
 	# On recherche l'entitlement 
-	$logHistory.addLineAndDisplay(("-> Trying to get Entitlement for BG {0}..." -f $bg.name))
+	$logHistory.addLineAndDisplay(("-> Trying to get Entitlement for BG {0} (type: {1})..." -f $bg.name, $entType.ToString()))
 
-	$ent = $vra.getBGEnt($bg.id)
+	# Recherche de l'entitlement du BG du type donné. On recherche ceux du BG et on filtre ensuite avec une RegEx
+	$ent = @($vra.getBGEntList($bg.id) | Where-Object { $_.name -match $nameGenerator.getEntNameRegex($entType)})
 
-	if($null -eq $ent)
+	# Si on a trop de résultats
+	if($ent.count -gt 1)
 	{
-		$logHistory.addLineAndDisplay(("-> Entitlement not found... creating {0}..." -f $entName))
-		$ent = $vra.addEnt($entName, $entDesc, $bg.id, $bg.name)
+		Throw ("{0} Entitlements with same type ({1}) found for BG '{2}'" -f $ent.count, $entType.toString(), $bg.name)
+	}
+
+	if($ent.count -eq 0)
+	{
+		$logHistory.addLineAndDisplay(("-> Entitlement for type '{0} not found... creating {1}..." -f $entType.toString(), $entName))
+		$ent = $vra.addEnt($entName, $entDesc, $bg.id, $bg.name, $onlyForGroups)
 
 		$counters.inc('EntCreated')
 	}
 	else # L'entitlement existe
 	{
+		$ent = $ent[0]
+
 		# Si le nom a changé (car le nom du BG a changé) ou la description a changé 
-		if(($ent.name -ne $entName) -or ($ent.description -ne $entDesc))
+		if(($ent.name -ne $entName) -or ($ent.description -ne $entDesc) -or `
+			((!$ent.allUsers) -and ($null -ne (Compare-Object $onlyForGroups ($ent.principals | Select-Object -ExpandProperty "value")))))
 		{
-			$logHistory.addLineAndDisplay(("-> Updating Entitlement {0}..." -f $ent.name))
+			$logHistory.addLineAndDisplay(("-> Updating Entitlement {0} for type {1}..." -f $ent.name, $entType.toString()))
 			# Mise à jour du nom/description de l'entitlement courant et on force la réactivation
-			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true)
+			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true, $onlyForGroups)
 
 			$counters.inc('EntUpdated')
 		}
 		else
 		{
-			$logHistory.addLineAndDisplay(("-> Entitlement {0} is up-to-date" -f $ent.name))
+			$logHistory.addLineAndDisplay(("-> Entitlement {0} for type {1} is up-to-date" -f $ent.name, $entType.toString()))
 		}
 	}
 	return $ent
@@ -1521,7 +1534,8 @@ try
 	$newItemsApprovalList = loadFromCommentedJSON -jsonFile $newItemsApprovalFile
 
 	# Création de l'objet pour gérer les 2nd day actions
-	$secondDayActions = [SecondDayActions]::new()
+	$secondDayActions = [SecondDayActions]::new([EntitlementType]::User)
+	$secondDayActionsAdm = [SecondDayActions]::new([EntitlementType]::Admin)
 
 	# On détermine s'il est nécessaire de mettre à jour les ACLs des dossiers contenant les ISO
 	$forceACLsUpdateFile =  ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE))
@@ -1563,8 +1577,6 @@ try
 			# Création du nom/description du business group
 			$bgDesc = $nameGenerator.getBGDescription()
 
-			# Custom properties du Buisness Group
-			$bgEPFLID = $unitID
 		}
 
 
@@ -1617,6 +1629,24 @@ try
 			# passage au BG suivant
 			return
 		}
+
+		# Si on ne doit pas faire une synchro complète,
+		if(!$fullSync)
+		{
+			# Si le groupe a déjà été modifié
+			# ET
+			# Si la date de modification du groupe est plus vieille que le nombre de jour que l'on a défini,
+			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
+			{
+				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
+				$doneElementList += @{
+					adGroup = $_.name
+					bgName = $bgName
+				}
+				$counters.inc('BGExisting')
+				return
+			}
+		}
 		
 		#### Lorsque l'on arrive ici, c'est que l'on commence à exécuter le code pour les BG qui n'ont pas été "skipped" lors du 
 		#### potentiel '-resume' que l'on a passé au script.
@@ -1632,7 +1662,8 @@ try
 		$logHistory.addLineAndDisplay(("[{0}/{1}] Current AD group: {2}" -f $counters.get('ADGroups'), $adGroupList.Count, $_.Name))
 
 		# Génération du nom et de la description de l'entitlement
-		$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc()
+		$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc([EntitlementType]::User)
+		$entNameAdm, $entDescAdm = $nameGenerator.getBGEntNameAndDesc([EntitlementType]::Admin)
 
 		# Groupes de sécurités AD pour les différents rôles du BG
 		$managerGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $true))
@@ -1679,25 +1710,6 @@ try
 		$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
 		# Nom de règles de firewall
 		$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
-
-
-		# Si on ne doit pas faire une synchro complète,
-		if(!$fullSync)
-		{
-			# Si le groupe a déjà été modifié
-			# ET
-			# Si la date de modification du groupe est plus vieille que le nombre de jour que l'on a défini,
-			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
-			{
-				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
-				$doneElementList += @{
-					adGroup = $_.name
-					bgName = $bgName
-				}
-				$counters.inc('BGExisting')
-				return
-			}
-		}
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
 		if( ((checkIfADGroupsExists -ldap $ldap -groupList $managerGrpList) -eq $false) -or `
@@ -1777,27 +1789,45 @@ try
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement
-		$ent = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entName -entDesc $entDesc
+		# Pour les utilisateurs (toutes les actions)
+		$ent = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entName -entDesc $entDesc -entType ([EntitlementType]::User) -NameGenerator $nameGenerator `
+									-onlyForGroups @()
+		# Pour les admins (actions VIP)
+		$entAdm = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entNameAdm -entDesc $entDescAdm -entType ([EntitlementType]::Admin) -NameGenerator $nameGenerator `
+									-onlyForGroups $managerGrpList.split('@')[0]
 		
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - 2nd day Actions
-		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement...")
+		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for users...")
 		$result = $vra.prepareEntActions($ent, $secondDayActions, $targetTenant)
 		$ent = $result.entitlement
 		# Mise à jour de la liste des actions non trouvées
 		$notifications.notFound2ndDayActions += $result.notFoundActions
 
+		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for admins...")
+		$result = $vra.prepareEntActions($entAdm, $secondDayActionsAdm, $targetTenant)
+		$entAdm = $result.entitlement
+
+		# Mise à jour de la liste des actions non trouvées
+		$notifications.notFound2ndDayActions += $result.notFoundActions
 		
+	
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Business Group Entitlement - Services
+		$logHistory.addLineAndDisplay(("-> Adding public Services to Entitlement for users..."))
 		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc `
 				-mandatoryItems $mandatoryEntItemsList -bgName $bgName
 
+		$logHistory.addLineAndDisplay(("-> Adding public Services to Entitlement for admins..."))
+		$entAdm = prepareAddMissingBGEntPublicServices -vra $vra -ent $entAdm -approvalPolicy $null -deniedServices $deniedVRASvc `
+				-mandatoryItems $mandatoryEntItemsList -bgName $bgName
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus
-		$logHistory.addLineAndDisplay("-> Updating Entitlement...")
+		$logHistory.addLineAndDisplay("-> Updating Entitlement for users...")
 		$ent = $vra.updateEnt($ent, $true)
 
+		$logHistory.addLineAndDisplay("-> Updating Entitlement for admins...")
+		$entAdm = $vra.updateEnt($entAdm, $true)
 
 
 		# ----------------------------------------------------------------------------------
@@ -1813,6 +1843,7 @@ try
 		# Recherche de l'UNC jusqu'au dossier où mettre les ISO pour le BG
 		$bgISOFolder = $nameGenerator.getNASPrivateISOPath($bgName)
 
+		$ISOFolderCreated = $false
 		# Si on a effectivement un dossier où mettre les ISO et qu'il n'existe pas encore,
 		# NOTE: Si on est sur le DEV, on a fait en sorte que $bgISOFolder soit vide ("") donc
 		# on n'entrera jamais dans ce IF
@@ -1822,35 +1853,74 @@ try
 			# On le créé
 			New-Item -Path $bgISOFolder -ItemType:Directory | Out-Null
 
-			# Pour faire en sorte que les ACLs soient mises à jour.
 			$ISOFolderCreated = $true
-
 			# On attend 1 seconde que le dossier se créée bien car si on essaie trop rapidement d'y accéder, on ne va pas pouvoir
 			# récuprer les ACL correctement...
 			Start-sleep -Seconds 1
 		} # FIN S'il faut créer un dossier pour les ISO et qu'il n'existe pas encore.
 
-		
-		# Si on a créé un dossier où qu'on doit mettre à jour les ACLs
-		if($ISOFolderCreated -or $forceACLsUpdate)
+
+		# Si on a créé un dossier 
+		# OU 
+		# qu'on doit mettre à jour les ACLs
+		# OU
+		# que c'est un BG avec le groupe de support qui est managé
+		if($ISOFolderCreated -or $forceACLsUpdate -or `
+			(getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -ne $global:VRA_BG_RES_MANAGE__AUTO)
 		{
-			$logHistory.addLineAndDisplay(("--> Applying ACLs on ISO folder '{0}'..." -f $bgISOFolder))
+			$logHistory.addLineAndDisplay(("--> Preparing ACLs for ISO folder '{0}'..." -f $bgISOFolder))
 			# Récupération et modification des ACL pour ajouter les groupes AD qui sont pour le Role "Shared" dans le BG
 			$acl = Get-Acl $bgISOFolder
-			ForEach($sharedGrp in $sharedGrpList)
+	
+			# On détermine qui a accès. Par défaut, tous les utilisateurs du BG
+			$grantsToGroups = $sharedGrpList
+			# Ajout des groupes de support
+			$grantsToGroups += $vra.getBGRoleContent($bg.id, "CSP_SUPPORT")
+	
+			# Extraction des noms des groupes présents dans les ACLs du dossier, seulement ceux qui ne sont pas (et on les met au format <item>@intranet.epfl.ch)
+			$aclGroups = @($acl.Access | Where-Object { !$_.IsInherited } | ForEach-Object { "{0}@intranet.epfl.ch" -f $_.IdentityReference.Value.Split('\')[1]} )
+	
+			<# Note:
+				On pourrait simplement virer toutes les ACLs et les réappliquer mais dans le cas éventuel où une entrée aurait été modifiée 
+				(par exemple avec un peu plus de droits, vu que nécessaire depuis OSX), elle serait supprimée et recréée "faux". Donc là, 
+				on ne nettoie que ce qui ne devrait plus être là en fait.
+			#>
+	
+			# On détermine ce qui doit être ajouté ou supprimé
+			$diff = Compare-Object -ReferenceObject $grantsToGroups -DifferenceObject $aclGroups
+	
+			# Si on a des différences entre ce qui est appliqué comme ACL et ce qui devrait être appliqué
+			if($null -ne $diff)
 			{
-				$logHistory.addLineAndDisplay(("---> Group '{0}'..." -f $sharedGrp))
-				# On fait en sorte de créer le dossier sans donner les droits de création de sous-dossier à l'utilisateur, histoire qu'il ne puisse pas décompresser une ISO
-				# NOTE: Si l'ACL existe déjà, elle sera écrasée avec la nouvelle qu'on a ici
-				$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($sharedGrp,  "CreateFiles, WriteExtendedAttributes, WriteAttributes, Delete, ReadAndExecute, Synchronize", "ContainerInherit,ObjectInherit",  "None", "Allow")
-				$acl.SetAccessRule($ar)
+				# Parcours de ce qui doit être supprimé
+				ForEach($toRemove in ($diff | Where-Object { $_.SideIndicator -eq "=>"} | Select-Object -ExpandProperty InputObject ))
+				{
+					$logHistory.addLineAndDisplay(("---> Removing incorrect Group/User '{0}'..." -f $toRemove))
+					$acl.RemoveAccessRule( ($acl.Access | Where-Object { !$_.IsInherited -and $_.IdentityReference -like ('*\{0}' -f $toRemove)}) )
+				}
+	
+				# Parcours de ce qui doit être ajouté
+				ForEach($toAdd in ($diff | Where-Object { $_.SideIndicator -eq "<="} | Select-Object -ExpandProperty InputObject))
+				{
+					$logHistory.addLineAndDisplay(("---> Adding Group/User '{0}'..." -f $toAdd))
+					# On fait en sorte de créer le dossier sans donner les droits de création de sous-dossier à l'utilisateur, histoire qu'il ne puisse pas décompresser une ISO
+					$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($toAdd,  "CreateFiles, WriteExtendedAttributes, WriteAttributes, Delete, ReadAndExecute, Synchronize", "ContainerInherit,ObjectInherit",  "None", "Allow")
+					$acl.SetAccessRule($ar)
+				}
+	
+				$logHistory.addLineAndDisplay(("--> Applying ACLs on ISO folder '{0}'..." -f $bgISOFolder))
+				Set-Acl $bgISOFolder $acl
 			}
-			Set-Acl $bgISOFolder $acl
+			else # Les ACLs sont à jour
+			{
+				$logHistory.addLineAndDisplay(("--> ACLs on ISO folder '{0}' is up-to-date" -f $bgISOFolder))
+			}
 
-			# Pour ne pas retomber dans la condition à la prochaine itération de la boucle
-			$ISOFolderCreated = $false
 		}
-
+		else # Si on n'a pas besoin de mettre à jour les ACLs
+		{
+			$logHistory.addLineAndDisplay(("--> No need to update ACLs on ISO folder '{0}'" -f $bgISOFolder))
+		}
 
 
 		# ----------------------------------------------------------------------------------
