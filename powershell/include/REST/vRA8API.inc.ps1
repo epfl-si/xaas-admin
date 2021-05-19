@@ -548,7 +548,7 @@ class vRA8API: RESTAPICurl
                                                 CATALOG ITEMS
         ------------------------------------------------------------------------------------------------------
         ------------------------------------------------------------------------------------------------------
-		FIXME: Pas forcément besoin de ces éléments. A priori on peut tout faire avec "content sources" en fait
+		FIXME: Pas forcément besoin de ces éléments. A priori on peut tout faire avec "content sources" en fait  (quelques lignes plus bas) 
     #>
 
 	<#
