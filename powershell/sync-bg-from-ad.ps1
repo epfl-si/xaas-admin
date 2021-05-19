@@ -1629,6 +1629,24 @@ try
 			# passage au BG suivant
 			return
 		}
+
+		# Si on ne doit pas faire une synchro complète,
+		if(!$fullSync)
+		{
+			# Si le groupe a déjà été modifié
+			# ET
+			# Si la date de modification du groupe est plus vieille que le nombre de jour que l'on a défini,
+			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
+			{
+				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
+				$doneElementList += @{
+					adGroup = $_.name
+					bgName = $bgName
+				}
+				$counters.inc('BGExisting')
+				return
+			}
+		}
 		
 		#### Lorsque l'on arrive ici, c'est que l'on commence à exécuter le code pour les BG qui n'ont pas été "skipped" lors du 
 		#### potentiel '-resume' que l'on a passé au script.
@@ -1692,25 +1710,6 @@ try
 		$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
 		# Nom de règles de firewall
 		$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
-
-
-		# Si on ne doit pas faire une synchro complète,
-		if(!$fullSync)
-		{
-			# Si le groupe a déjà été modifié
-			# ET
-			# Si la date de modification du groupe est plus vieille que le nombre de jour que l'on a défini,
-			if(($null -ne $_.whenChanged) -and ([DateTime]::Parse($_.whenChanged.toString()) -lt $aMomentInThePast))
-			{
-				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
-				$doneElementList += @{
-					adGroup = $_.name
-					bgName = $bgName
-				}
-				$counters.inc('BGExisting')
-				return
-			}
-		}
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
 		if( ((checkIfADGroupsExists -ldap $ldap -groupList $managerGrpList) -eq $false) -or `
@@ -1844,6 +1843,7 @@ try
 		# Recherche de l'UNC jusqu'au dossier où mettre les ISO pour le BG
 		$bgISOFolder = $nameGenerator.getNASPrivateISOPath($bgName)
 
+		$ISOFolderCreated = $false
 		# Si on a effectivement un dossier où mettre les ISO et qu'il n'existe pas encore,
 		# NOTE: Si on est sur le DEV, on a fait en sorte que $bgISOFolder soit vide ("") donc
 		# on n'entrera jamais dans ce IF
@@ -1853,35 +1853,74 @@ try
 			# On le créé
 			New-Item -Path $bgISOFolder -ItemType:Directory | Out-Null
 
-			# Pour faire en sorte que les ACLs soient mises à jour.
 			$ISOFolderCreated = $true
-
 			# On attend 1 seconde que le dossier se créée bien car si on essaie trop rapidement d'y accéder, on ne va pas pouvoir
 			# récuprer les ACL correctement...
 			Start-sleep -Seconds 1
 		} # FIN S'il faut créer un dossier pour les ISO et qu'il n'existe pas encore.
 
-		
-		# Si on a créé un dossier où qu'on doit mettre à jour les ACLs
-		if($ISOFolderCreated -or $forceACLsUpdate)
+
+		# Si on a créé un dossier 
+		# OU 
+		# qu'on doit mettre à jour les ACLs
+		# OU
+		# que c'est un BG avec le groupe de support qui est managé
+		if($ISOFolderCreated -or $forceACLsUpdate -or `
+			(getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -ne $global:VRA_BG_RES_MANAGE__AUTO)
 		{
-			$logHistory.addLineAndDisplay(("--> Applying ACLs on ISO folder '{0}'..." -f $bgISOFolder))
+			$logHistory.addLineAndDisplay(("--> Preparing ACLs for ISO folder '{0}'..." -f $bgISOFolder))
 			# Récupération et modification des ACL pour ajouter les groupes AD qui sont pour le Role "Shared" dans le BG
 			$acl = Get-Acl $bgISOFolder
-			ForEach($sharedGrp in $sharedGrpList)
+	
+			# On détermine qui a accès. Par défaut, tous les utilisateurs du BG
+			$grantsToGroups = $sharedGrpList
+			# Ajout des groupes de support
+			$grantsToGroups += $vra.getBGRoleContent($bg.id, "CSP_SUPPORT")
+	
+			# Extraction des noms des groupes présents dans les ACLs du dossier, seulement ceux qui ne sont pas (et on les met au format <item>@intranet.epfl.ch)
+			$aclGroups = @($acl.Access | Where-Object { !$_.IsInherited } | ForEach-Object { "{0}@intranet.epfl.ch" -f $_.IdentityReference.Value.Split('\')[1]} )
+	
+			<# Note:
+				On pourrait simplement virer toutes les ACLs et les réappliquer mais dans le cas éventuel où une entrée aurait été modifiée 
+				(par exemple avec un peu plus de droits, vu que nécessaire depuis OSX), elle serait supprimée et recréée "faux". Donc là, 
+				on ne nettoie que ce qui ne devrait plus être là en fait.
+			#>
+	
+			# On détermine ce qui doit être ajouté ou supprimé
+			$diff = Compare-Object -ReferenceObject $grantsToGroups -DifferenceObject $aclGroups
+	
+			# Si on a des différences entre ce qui est appliqué comme ACL et ce qui devrait être appliqué
+			if($null -ne $diff)
 			{
-				$logHistory.addLineAndDisplay(("---> Group '{0}'..." -f $sharedGrp))
-				# On fait en sorte de créer le dossier sans donner les droits de création de sous-dossier à l'utilisateur, histoire qu'il ne puisse pas décompresser une ISO
-				# NOTE: Si l'ACL existe déjà, elle sera écrasée avec la nouvelle qu'on a ici
-				$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($sharedGrp,  "CreateFiles, WriteExtendedAttributes, WriteAttributes, Delete, ReadAndExecute, Synchronize", "ContainerInherit,ObjectInherit",  "None", "Allow")
-				$acl.SetAccessRule($ar)
+				# Parcours de ce qui doit être supprimé
+				ForEach($toRemove in ($diff | Where-Object { $_.SideIndicator -eq "=>"} | Select-Object -ExpandProperty InputObject ))
+				{
+					$logHistory.addLineAndDisplay(("---> Removing incorrect Group/User '{0}'..." -f $toRemove))
+					$acl.RemoveAccessRule( ($acl.Access | Where-Object { !$_.IsInherited -and $_.IdentityReference -like ('*\{0}' -f $toRemove)}) )
+				}
+	
+				# Parcours de ce qui doit être ajouté
+				ForEach($toAdd in ($diff | Where-Object { $_.SideIndicator -eq "<="} | Select-Object -ExpandProperty InputObject))
+				{
+					$logHistory.addLineAndDisplay(("---> Adding Group/User '{0}'..." -f $toAdd))
+					# On fait en sorte de créer le dossier sans donner les droits de création de sous-dossier à l'utilisateur, histoire qu'il ne puisse pas décompresser une ISO
+					$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($toAdd,  "CreateFiles, WriteExtendedAttributes, WriteAttributes, Delete, ReadAndExecute, Synchronize", "ContainerInherit,ObjectInherit",  "None", "Allow")
+					$acl.SetAccessRule($ar)
+				}
+	
+				$logHistory.addLineAndDisplay(("--> Applying ACLs on ISO folder '{0}'..." -f $bgISOFolder))
+				Set-Acl $bgISOFolder $acl
 			}
-			Set-Acl $bgISOFolder $acl
+			else # Les ACLs sont à jour
+			{
+				$logHistory.addLineAndDisplay(("--> ACLs on ISO folder '{0}' is up-to-date" -f $bgISOFolder))
+			}
 
-			# Pour ne pas retomber dans la condition à la prochaine itération de la boucle
-			$ISOFolderCreated = $false
 		}
-
+		else # Si on n'a pas besoin de mettre à jour les ACLs
+		{
+			$logHistory.addLineAndDisplay(("--> No need to update ACLs on ISO folder '{0}'" -f $bgISOFolder))
+		}
 
 
 		# ----------------------------------------------------------------------------------
