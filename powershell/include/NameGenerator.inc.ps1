@@ -1396,11 +1396,11 @@ class NameGenerator: NameGeneratorBase
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom à utiliser pour un BG en fonction des paramètres passés.
+        BUT : Renvoie le nom à utiliser pour un Projet en fonction des paramètres passés.
 
         RET : Le nom du BG à utiliser
     #>
-    [string] getBGName()
+    [string] getProjectName()
     {
         $name = ""
         switch($this.tenant)
