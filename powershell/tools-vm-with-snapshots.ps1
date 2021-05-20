@@ -1,6 +1,8 @@
 <#
 USAGES:
-    tools-vm-with-snapshots.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices|research [-bgList <bgList>]
+    tools-vm-with-snapshots.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices|research
+    tools-vm-with-snapshots.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices|research [-sendNotifMail -maxAgeDays <maxAgeDays>]
+    tools-vm-with-snapshots.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices|research -bgList <bgList>
     tools-vm-with-snapshots.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices|research -bgRegex <bgRegex>
 #>
 <#
@@ -22,7 +24,9 @@ USAGES:
 param([string]$targetEnv, 
       [string]$targetTenant,
       [string]$bgList, # Liste des BG, séparés par des virgules. Il faut mettre cette liste entre simple quotes ''
-      [string]$bgRegex) # Expression régulière pour le filtre des noms de BG. Il faut mettre entre simple quotes ''
+      [string]$bgRegex, # Expression régulière pour le filtre des noms de BG. Il faut mettre entre simple quotes ''
+      [int]$maxAgeDays, # Âge maximum des snapshots (en jours) à partir duquel on envoie un mail
+      [switch]$sendNotifMail)
 
 
 # Inclusion des fichiers nécessaires (génériques)
@@ -48,82 +52,178 @@ param([string]$targetEnv,
 $configGlobal   = [ConfigReader]::New("config-global.json")
 $configVra 		= [ConfigReader]::New("config-vra.json")
 
-
-# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-$logHistory = [LogHistory]::new(@('tools','vm-with-snapshots'), $global:LOGS_FOLDER, 120)
-    
-# On commence par contrôler le prototype d'appel du script
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
-
-# Ajout d'informations dans le log
-$logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
-
-# On met en minuscules afin de pouvoir rechercher correctement dans le fichier de configuration (vu que c'est sensible à la casse)
-$targetEnv = $targetEnv.ToLower()
-$targetTenant = $targetTenant.ToLower()
-
-
-$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-                $targetTenant, 
-                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
-                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
-
-# Recherche de la liste des BG en fonction des noms donnés
-$targetBgList = $vra.getBGList()
-
-# Si on doit filtrer sur des BG,
-if($bgList -ne "") 
+try
 {
-    # On transforme le paramètre en tableau
-    $bgListNames = $bgList.split(",")
 
-    $targetBgList = $targetBgList | Where-Object { $bgListNames -contains $_.name }
-}
-# Si on a passé une regex
-elseif($bgRegex -ne "")
-{
-    $targetBgList = $targetBgList | Where-Object { $_.name -match $bgRegex }
-}
+    # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+    $logHistory = [LogHistory]::new(@('tools','vm-with-snapshots'), $global:LOGS_FOLDER, 120)
+        
+    # On commence par contrôler le prototype d'appel du script
+    . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+
+    # Ajout d'informations dans le log
+    $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
+
+    # Objet pour pouvoir envoyer des mails de notification
+    $valToReplace = @{
+        targetEnv = $targetEnv
+    }
+
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
+                                                ($global:VRA_MAIL_SUBJECT_PREFIX_NO_TENANT -f $targetEnv), $valToReplace)
+
+    # On met en minuscules afin de pouvoir rechercher correctement dans le fichier de configuration (vu que c'est sensible à la casse)
+    $targetEnv = $targetEnv.ToLower()
+    $targetTenant = $targetTenant.ToLower()
 
 
-[System.Collections.ArrayList]$vmWithSnap = @()
+    $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
+                    $targetTenant, 
+                    $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
+                    $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
-$now = Get-Date
+    # Recherche de la liste des BG en fonction des noms donnés
+    $targetBgList = $vra.getBGList()
 
-# Parcours des BG
-Foreach($bg in $targetBgList)
-{
-    
-    $logHistory.addLineAndDisplay(("Processing BG '{0}'..." -f $bg.name))
-    $vmList = $vra.getBGItemList($bg, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
-
-    # Parcours des VM
-    ForEach($vm in $vmList)
+    # Si on doit filtrer sur des BG,
+    if($bgList -ne "") 
     {
-        # Parcours des snapshots de la VM courante
-        ForEach($snap in ($vm.resourceData.entries | Where-Object { $_.key -eq "SNAPSHOT_LIST"}).value.items)
+        # On transforme le paramètre en tableau
+        $bgListNames = $bgList.split(",")
+
+        $targetBgList = $targetBgList | Where-Object { $bgListNames -contains $_.name }
+    }
+    # Si on a passé une regex
+    elseif($bgRegex -ne "")
+    {
+        $targetBgList = $targetBgList | Where-Object { $_.name -match $bgRegex }
+    }
+
+
+    [System.Collections.ArrayList]$vmWithSnap = @()
+
+    $now = Get-Date
+
+    # Parcours des BG
+    Foreach($bg in $targetBgList)
+    {
+        
+        $logHistory.addLineAndDisplay(("Processing BG '{0}'..." -f $bg.name))
+        $vmList = $vra.getBGItemList($bg, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
+
+        # Pour la liste des VM avec 
+        $bgVMTooOldSnap = @()
+
+        # Parcours des VM
+        ForEach($vm in $vmList)
         {
+            # Parcours des snapshots de la VM courante
+            ForEach($snap in ($vm.resourceData.entries | Where-Object { $_.key -eq "SNAPSHOT_LIST"}).value.items)
+            {
 
-            # Récupération de la date de création
-            $createDate = [DateTime]::parse(($snap.values.entries | Where-Object { $_.key -eq "SNAPSHOT_CREATION_DATE"}).value.value)
-            # Calcul de l'âge du snapshot 
-            $dateDiff = New-Timespan -start $createDate -end $now
+                # Récupération de la date de création
+                $createDate = [DateTime]::parse(($snap.values.entries | Where-Object { $_.key -eq "SNAPSHOT_CREATION_DATE"}).value.value)
+                # Calcul de l'âge du snapshot 
+                $dateDiff = New-Timespan -start $createDate -end $now
 
-            # Ajout au tableau pour un affichage propre à la fin
-            $vmWithSnap.add([PSCustomObject]@{
-                    bgName = $bg.name
-                    VM = $vm.name
-                    snapshotDate = $createDate.toString("dd.MM.yyyy HH:mm:ss")
-                    ageDays = $dateDiff.days
-                }) | Out-Null
+                # Si on est en mode "notification"
+                if(!$sendNotifMail -or ($sendNotifMail -and ($dateDiff.days -ge $maxAgeDays)))
+                {
 
-            $logHistory.addLineAndDisplay(("-> VM '{0}' has snapshot since {1} ({2} days)" -f $vm.name, $createDate.toString("dd.MM.yyyy HH:mm:ss"), $dateDiff.days))
+                    $logHistory.addLineAndDisplay(("-> VM '{0}' has snapshot since {1} ({2} days)" -f $vm.name, $createDate.toString("dd.MM.yyyy HH:mm:ss"), $dateDiff.days))
 
-        }# FIN BOUCLE de parcours des snap de la VM
+                    # Ajout au tableau pour un affichage propre à la fin
+                    $vmWithSnap.add([PSCustomObject]@{
+                        bgName = $bg.name
+                        VM = $vm.name
+                        snapshotDate = $createDate.toString("dd.MM.yyyy HH:mm:ss")
+                        ageDays = $dateDiff.days
+                    }) | Out-Null
+                }
+                
 
-    }# FIN BOUCLE de parcours de VM du BG
+            }# FIN BOUCLE de parcours des snap de la VM
 
-}# FIN BOUCLE de parcours des BG
+        }# FIN BOUCLE de parcours de VM du BG
 
-# Affichage du résultat
-$vmWithSnap
+    }# FIN BOUCLE de parcours des BG
+
+
+    # Si on doit envoyer des notifications
+    if($sendNotifMail)
+    {
+
+        $logHistory.addLineAndDisplay("Sending notification mails...")
+
+        $mailFrom = ("noreply+{0}" -f $configGlobal.getConfigValue(@("mail", "admin")))
+        $mailMessageTemplate = (Get-Content -Raw -Path ( Join-Path $global:MAIL_TEMPLATE_FOLDER "vm-with-old-snap.html" ))
+        
+        # Parcours des noms de BG pour lequels on a des VM avec des snapshots "âgés"
+        ForEach($bgName in ($vmWithSnap | Select-Object -ExpandProperty bgName | Sort-Object | Get-Unique))
+        {
+            $logHistory.addLineAndDisplay(("-> Processing BG '{0}'..." -f $bgName))
+            $bg = $vra.getBG($bgName)
+
+            # Formatage des VM avec les snaps
+            $detailList = $vmWithSnap | Where-Object { $_.bgName -eq $bgName } | ForEach-Object { "<b>{0}:</b> {1} days old" -f $_.VM, $_.ageDays}
+
+            $mailTo = @()
+            $groupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER_WITH_SHARED_ACCESS")
+        
+            # Parcours des groupes définis
+            ForEach($group in $groupList)
+            {
+                $groupName, $domain = $group.Split("@")
+
+                # Récupération des adresses mails de chaque membre
+                $mailTo += (Get-ADGroupMember -Recursive $groupName | ForEach-Object { Get-ADUser $_  -Properties "mail"} | Select-Object -ExpandProperty mail)
+            }
+
+            # Détails du mail
+            $mailSubject = ("[IaaS] VM with old snapshots for Business Group {0}" -f $bgName)
+            $mailMessage = $mailMessageTemplate -f $bgName, ($detailList -join "</li><li>")
+
+            # Envoi des mails un par un
+            $mailTo | Sort-Object | Get-Unique | Foreach-Object {
+
+                $logHistory.addLineAndDisplay(("--> Sending mail to {0}..." -f $_))
+                Send-MailMessage -From $mailFrom -to $_ -Subject $mailSubject  `
+                                    -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8
+
+                # Pour ne pas faire de spam
+                Start-Sleep -Milliseconds 500
+            }
+
+        }# FIN BOUCLE de parcours des noms de BG
+    }
+    else
+    {
+        # Affichage du résultat
+        $vmWithSnap
+    }
+
+    $logHistory.addLineAndDisplay("Script execution done")
+}
+catch
+{
+    
+    # Récupération des infos
+    $errorMessage = $_.Exception.Message
+    $errorTrace = $_.ScriptStackTrace
+
+    $logHistory.addErrorAndDisplay(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
+    
+    # On ajoute les retours à la ligne pour l'envoi par email, histoire que ça soit plus lisible
+    $errorMessage = $errorMessage -replace "`n", "<br>"
+    
+    # Création des informations pour l'envoi du mail d'erreur
+    $valToReplace = @{
+                        scriptName = $MyInvocation.MyCommand.Name
+                        computerName = $env:computername
+                        parameters = (formatParameters -parameters $PsBoundParameters )
+                        error = $errorMessage
+                        errorTrace =  [System.Net.WebUtility]::HtmlEncode($errorTrace)
+                    }
+    # Envoi d'un message d'erreur aux admins 
+    $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace)
+}
