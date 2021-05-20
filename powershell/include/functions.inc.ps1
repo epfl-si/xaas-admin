@@ -367,3 +367,31 @@ function PSCustomObjectToHashtable([PSCustomObject]$obj)
 	return $result
 }
 
+
+<#
+    -------------------------------------------------------------------------------------
+	BUT : Renvoie un tableau avec la liste des adresses mail de contact d'une VM donnée
+    
+    IN  : $vRAvm		-> Objet représentant la VM vRA
+
+    RET : Tableau avec la liste des mails
+#>
+function getVMNotifMailList([PSCUstomObject]$vRAvm)
+{
+	# Recherche des adresses mail de notification
+	$notifMailList = getvRAObjectCustomPropValue -object $vRAvm -customPropName "ch.epfl.owner_mail"
+
+	# Si custom property pas renseignée, 
+	if($null -eq $notifMailList)
+	{
+		# Définition de la liste des mail de notification en prenant l'adresse du Owner
+		$notifMailList = $vRAvm.owners | Where-Object { $_.type -eq "USER" } | ForEach-Object { get-adUser $_.ref.split("@")[0] -Properties mail | Select-Object -ExpandProperty mail }
+	}
+	else
+	{
+		# Vu que c'est une chaîne de caractères, on explose en liste
+		$notifMailList = $notifMailList -split ","
+	}
+
+	return $notifMailList
+}

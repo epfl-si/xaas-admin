@@ -99,10 +99,17 @@ try
         $targetBgList = $targetBgList | Where-Object { $_.name -match $bgRegex }
     }
 
-
+    # Liste des VM avec des snapshots
     [System.Collections.ArrayList]$vmWithSnap = @()
-
+    
     $now = Get-Date
+
+    if($sendNotifMail)
+    {
+        $mailFrom = ("noreply+{0}" -f $configGlobal.getConfigValue(@("mail", "admin")))
+        $mailMessageTemplate = (Get-Content -Raw -Path ( Join-Path $global:MAIL_TEMPLATE_FOLDER "vm-with-old-snap.html" ))
+    }
+    
 
     # Parcours des BG
     Foreach($bg in $targetBgList)
@@ -127,9 +134,32 @@ try
                 $dateDiff = New-Timespan -start $createDate -end $now
 
                 # Si on est en mode "notification"
-                if(!$sendNotifMail -or ($sendNotifMail -and ($dateDiff.days -ge $maxAgeDays)))
+                if($sendNotifMail)
                 {
 
+                    # Si le snapshot est trop âgé
+                    if($dateDiff.days -ge $maxAgeDays)
+                    {
+                        $logHistory.addLineAndDisplay(("-> VM '{0}' has snapshot since {1} ({2} days)" -f $vm.name, $createDate.toString("dd.MM.yyyy HH:mm:ss"), $dateDiff.days))
+
+                        # Recherche des adresses mail de notification et ajout d'une entrée par personne dans la liste
+                        getVMNotifMailList -vRAvm $vm | Foreach-Object {
+                            
+                            # Ajout au tableau avec les infos nécessaires pour envoyer les mails par la suite
+                            $vmWithSnap.add([PSCustomObject]@{
+                                bgName = $bg.name
+                                VM = $vm.name
+                                snapshotDate = $createDate.toString("dd.MM.yyyy HH:mm:ss")
+                                ageDays = $dateDiff.days
+                                mail = $_
+                            }) | Out-Null
+                            
+                        }
+                    }
+
+                }
+                else # On n'est pas en mode "notification"
+                {
                     $logHistory.addLineAndDisplay(("-> VM '{0}' has snapshot since {1} ({2} days)" -f $vm.name, $createDate.toString("dd.MM.yyyy HH:mm:ss"), $dateDiff.days))
 
                     # Ajout au tableau pour un affichage propre à la fin
@@ -140,7 +170,6 @@ try
                         ageDays = $dateDiff.days
                     }) | Out-Null
                 }
-                
 
             }# FIN BOUCLE de parcours des snap de la VM
 
@@ -155,44 +184,32 @@ try
 
         $logHistory.addLineAndDisplay("Sending notification mails...")
 
-        $mailFrom = ("noreply+{0}" -f $configGlobal.getConfigValue(@("mail", "admin")))
-        $mailMessageTemplate = (Get-Content -Raw -Path ( Join-Path $global:MAIL_TEMPLATE_FOLDER "vm-with-old-snap.html" ))
-        
-        # Parcours des noms de BG pour lequels on a des VM avec des snapshots "âgés"
-        ForEach($bgName in ($vmWithSnap | Select-Object -ExpandProperty bgName | Sort-Object | Get-Unique))
+        # Parcours des adresses mail de notification pour les VMs qui on des "vieux" snapshots. Cela permet d'envoyer
+        # un seul mail par personne, avec la liste des VM
+        ForEach($mailTo in ($vmWithSnap | Select-Object -ExpandProperty mail | Sort-Object | Get-Unique))
         {
-            $logHistory.addLineAndDisplay(("-> Processing BG '{0}'..." -f $bgName))
-            $bg = $vra.getBG($bgName)
-
+            $logHistory.addLineAndDisplay(("-> Processing mail '{0}'..." -f $mailTo))
+            
             # Formatage des VM avec les snaps
-            $detailList = $vmWithSnap | Where-Object { $_.bgName -eq $bgName } | ForEach-Object { "<b>{0}:</b> {1} days old" -f $_.VM, $_.ageDays}
-
-            $mailTo = @()
-            $groupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER_WITH_SHARED_ACCESS")
-        
-            # Parcours des groupes définis
-            ForEach($group in $groupList)
-            {
-                $groupName, $domain = $group.Split("@")
-
-                # Récupération des adresses mails de chaque membre
-                $mailTo += (Get-ADGroupMember -Recursive $groupName | ForEach-Object { Get-ADUser $_  -Properties "mail"} | Select-Object -ExpandProperty mail)
+            $detailList = $vmWithSnap | Where-Object { $_.mail -eq $mailTo } | ForEach-Object { 
+                "<td>{0}</td><td>{1}</td><td>{2}</td><td>{3} days</td>" -f $_.VM, $_.bgName, $_.snapshotDate, $_.ageDays
             }
+
+            $logHistory.addLineAndDisplay(("-> {0} VM associated to mail '{1}'..." -f $detailList.count, $mailTo))
 
             # Détails du mail
-            $mailSubject = ("[IaaS] VM with old snapshots for Business Group {0}" -f $bgName)
-            $mailMessage = $mailMessageTemplate -f $bgName, ($detailList -join "</li><li>")
+            $mailSubject = "[IaaS] VMs with old snapshots"
+            $mailMessage = $mailMessageTemplate -f ($detailList -join "</tr>`n<tr>")
 
-            # Envoi des mails un par un
-            $mailTo | Sort-Object | Get-Unique | Foreach-Object {
+            # Envoi du mail
+            $logHistory.addLineAndDisplay(("-> Sending mail to {0}..." -f $mailTo))
+            
+            Send-MailMessage -From $mailFrom -to $mailTo -Subject $mailSubject  `
+                                -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8
 
-                $logHistory.addLineAndDisplay(("--> Sending mail to {0}..." -f $_))
-                Send-MailMessage -From $mailFrom -to $_ -Subject $mailSubject  `
-                                    -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8
-
-                # Pour ne pas faire de spam
-                Start-Sleep -Milliseconds 500
-            }
+            # Pour ne pas faire de spam
+            Start-Sleep -Milliseconds 500
+            
 
         }# FIN BOUCLE de parcours des noms de BG
     }
