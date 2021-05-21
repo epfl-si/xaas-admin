@@ -93,16 +93,12 @@ class NSXAPI: RESTAPICurl
             On fait ensuite une nouvelle requête avec l'ID pour récupérer uniquement le NSGroup mais cette fois-ci avec les références.
 
         IN  : $name         -> Nom du NS Group recherché
-        IN  : $memberType   -> Ce à quoi s'applique le NSGroup:
-                                VirtualMachine
-                                LogicalSwitch
 
 		RET : Le NS group 
     #>
-    [PSObject] getNSGroupByName([string]$name, [NSXNSGroupMemberType]$memberType)
+    [PSObject] getNSGroupByName([string]$name)
     {
-        # Note: On filtre exprès avec 'member_types=VirtualMachine' car sinon tous les NSGroup attendus ne sont pas renvoyés... 
-        $uri = "{0}/ns-groups/?populate_references=false&member_types={1}" -f $this.baseUrl, $memberType.ToString()
+        $uri = "{0}/ns-groups/?populate_references=false" -f $this.baseUrl
 
         $id =  ($this.callAPI($uri, "Get", $null).results | Where-Object {$_.display_name -eq $name}).id
      
@@ -152,7 +148,7 @@ class NSXAPI: RESTAPICurl
         $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
-        return $this.getNSGroupByName($name, $memberType)
+        return $this.getNSGroupByName($name)
     }
 
 
@@ -209,7 +205,7 @@ class NSXAPI: RESTAPICurl
         $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
-        return $this.getNSGroupByName($name, [NSXNSGroupMemberType]::LogicalSwitch)
+        return $this.getNSGroupByName($name)
     }
 
 

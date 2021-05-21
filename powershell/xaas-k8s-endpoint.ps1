@@ -93,7 +93,6 @@ param([string]$targetEnv,
 $configGlobal   = [ConfigReader]::New("config-global.json")
 $configVra      = [ConfigReader]::New("config-vra.json")
 $configK8s      = [ConfigReader]::New("config-xaas-k8s.json")
-$configNSX      = [ConfigReader]::New("config-nsx.json")
 $configLdapAD   = [ConfigReader]::New("config-ldap-ad.json")
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
@@ -206,7 +205,7 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     $nsGroupName, $nsGroupDesc = $nameGeneratorK8s.getSecurityGroupNameAndDesc($clusterName)
     $logHistory.addLine("Some cleaning in NSX...")
 
-    $nsGroup = $nsx.getNSGroupByName($nsGroupName, [NSXNSGroupMemberType]::LogicalSwitch)
+    $nsGroup = $nsx.getNSGroupByName($nsGroupName)
     # Si le NSGroup existe
     if($null -ne $nsGroup)
     {
@@ -521,9 +520,9 @@ try
             $ldap)
 
     # Connexion à NSX pour pouvoir allouer/restituer des adresses IP
-    $nsx = [NSXAPI]::new($configNSX.getConfigValue(@($targetEnv, "server")),
-                            $configNSX.getConfigValue(@($targetEnv, "user")),
-                            $configNSX.getConfigValue(@($targetEnv, "password")))
+    $nsx = [NSXAPI]::new($configK8s.getConfigValue(@($targetEnv, "nsx", "server")),
+                            $configK8s.getConfigValue(@($targetEnv, "nsx", "user")),
+                            $configK8s.getConfigValue(@($targetEnv, "nsx", "password")))
 
     # Création du nécessaire pour interagir avec le DNS EPFL
 	$EPFLDNS = [EPFLDNS]::new($configK8s.getConfigValue(@($targetEnv, "dns", "server")),
@@ -584,7 +583,7 @@ try
 
         $envNSGroupName = $nameGeneratorK8s.getEnvSecurityGroupName()
         $logHistory.addLine(("Looking for environement NSX NSGroup '{0}'" -f $envNSGroupName))
-        $envNSGroup = $nsx.getNSGroupByName($envNSGroupName, [NSXNSGroupMemberType]::LogicalSwitch)
+        $envNSGroup = $nsx.getNSGroupByName($envNSGroupName)
 
         if($null -eq $envNSGroup)
         {
@@ -809,7 +808,7 @@ try
             $nsGroupName, $nsGroupDesc = $nameGeneratorK8s.getSecurityGroupNameAndDesc($clusterName)
 
             $logHistory.addLine(("Checking if 'old' NSX NSGroup '{0}' exists (maybe a cleaning process that failed in the past...)" -f $nsGroupName))
-            $nsGroup = $nsx.getNSGroupByName($nsGroupName, [NSXNSGroupMemberType]::LogicalSwitch)
+            $nsGroup = $nsx.getNSGroupByName($nsGroupName)
             if($null -ne $nsGroup)
             {
                 $logHistory.addLine(("Deleting old NSX NSGroup '{0}'" -f $nsGroupName))
@@ -831,7 +830,7 @@ try
                     project = $harborProjectName
                     robot = @{
                         name = $robot.name
-                        token = $robot.token
+                        token = $robot.secret
                         validityDays = $ROBOT_NB_DAYS_LIFETIME
                     }
                 }
@@ -1195,7 +1194,7 @@ try
             # Résultat
             $output.results += @{
                 name = $robot.name
-                token = $robot.token
+                token = $robot.secret
                 validityDays = $ROBOT_NB_DAYS_LIFETIME
             }
         }
