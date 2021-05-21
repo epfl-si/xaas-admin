@@ -40,6 +40,11 @@
             "server": "",
             "user": "",
             "password": ""
+        },
+        "nsx": {
+            "server": "",
+            "user":"",
+            "password":""
         }
     },
     "test": {
@@ -83,6 +88,11 @@
             "server": "",
             "user": "",
             "password": ""
+        },
+        "nsx": {
+            "server": "",
+            "user":"",
+            "password":""
         }
     },
     "prod": {
@@ -126,6 +136,11 @@
             "server": "",
             "user": "",
             "password": ""
+        },
+        "nsx": {
+            "server": "",
+            "user":"",
+            "password":""
         }
     }
 } 
