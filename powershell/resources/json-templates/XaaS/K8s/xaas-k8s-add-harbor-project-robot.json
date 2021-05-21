@@ -3,6 +3,10 @@
       {
         "action": "push",
         "resource": "/project/{{projectId}}/repository"
+      },
+      {
+        "action": "pull",
+        "resource": "/project/{{projectId}}/repository"
       }
     ],
     "name": "{{name}}",
