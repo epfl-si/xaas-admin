@@ -107,11 +107,11 @@ Foreach($bg in $bgList)
         # Récupération de la liste des NICs de la VM
         $nicList = $vsphereApi.getVMFullDetails($vm.name).nics
 
-        # Parcours des NICs de la VM
-        Foreach($nic in $nicList)
+        # Parcours des ID NICs de la VM
+        Foreach($nicId in ($nicList | Get-Member -MemberType noteProperty | Select-Object -ExpandProperty name))
         {
-            # Les informations étant dans $nic.value, on réaffecte simplement la variable
-            $nic = $nic.value
+            # Recherche des infos du NIC courant
+            $nic = $nicList.$nicId
             $counters.inc('nbVMNics')
             $logHistory.addLineAndDisplay((">> {0}" -f $nic.mac_address))
             # Recherche de l'entrée sur l'adresse MAC en regardant aussi si le format est correct.
