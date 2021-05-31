@@ -277,8 +277,12 @@
         "name": "getBGEntNameAndDesc",
         "tests": [
             {
-                "params":[],
-                "expected": ["rsrch_123456", "Project: 123456"]
+                "params":["[EntitlementType]::User"],
+                "expected": ["rsrch_123456", "Project: 123456\nType: User"]
+            },
+            {
+                "params":["[EntitlementType]::Admin"],
+                "expected": ["rsrch_123456_adm", "Project: 123456\nType: Admin"]
             }
         ]
     },
@@ -376,8 +380,12 @@
         "name": "getEntName",
         "tests":[
             {
-                "params": [],
+                "params": ["[EntitlementType]::User"],
                 "expected": "rsrch_123456"
+            },
+            {
+                "params": ["[EntitlementType]::Admin"],
+                "expected": "rsrch_123456_adm"
             }
         ]
     },
@@ -386,8 +394,12 @@
         "name": "getEntDescription",
         "tests":[
             {
-                "params": [],
-                "expected": "Project: 123456"
+                "params": ["[EntitlementType]::User"],
+                "expected": "Project: 123456\nType: User"
+            },
+            {
+                "params": ["[EntitlementType]::Admin"],
+                "expected": "Project: 123456\nType: Admin"
             }
         ]
     },

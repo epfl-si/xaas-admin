@@ -1,0 +1,13 @@
+[
+    {
+        "appliesTo": "Virtual Machine", 
+        "_comment": "Admin actions",
+        "actions": [
+            {
+                "name": "[Adm] Remove DMZ transit tag",
+                "approvals": [],
+                "deniedTenants": []
+            }
+        ]
+    }
+]
