@@ -660,15 +660,14 @@ class vRAAPI: RESTAPICurl
 		BUT : Renvoie l'entitlement d'un BG
 
 		IN  : $BGID 	-> ID du BG pour lequel on veut l'entitlement
-		IN  : $entType	-> Type de l'entitlement
 
 		RET : L'entitlement ou $null si pas trouvé
 	#>
-	[PSCustomObject] getBGEnt([string]$BGID, [EntitlementType]$entType)
+	[PSCustomObject] getBGEnt([string]$BGID)
 	{
 		$uri = "{0}/catalog-service/api/entitlements/?page=1&limit=9999&`$filter=organization/subTenant/id eq '{1}'" -f $this.baseUrl, $BGID
 
-		$ent = ($this.callAPI($uri, "Get", $null)).content | Where-Object
+		$ent = ($this.callAPI($uri, "Get", $null)).content
 
 		if($ent.Count -eq 0){return $null}
 		return $ent[0]
