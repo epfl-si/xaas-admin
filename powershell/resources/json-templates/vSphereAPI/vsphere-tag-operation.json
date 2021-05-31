@@ -1,5 +1,4 @@
 {
-    "tag_id": "{{tagId}}",
     "object_id": {
       "type": "{{objectType}}",
       "id": "{{objectId}}"

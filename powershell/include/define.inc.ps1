@@ -143,3 +143,10 @@ enum BillingEntityType
     Project
     NotSupported # Pour les éléments non supportés
 }
+
+# Types d'entitlement possibles
+enum EntitlementType
+{
+    User
+    Admin
+}
