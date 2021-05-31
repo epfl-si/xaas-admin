@@ -279,8 +279,12 @@
         "name": "getBGEntNameAndDesc",
         "tests": [
             {
-                "params":[],
-                "expected": ["epfl_entr_idev_ing", "Faculty: ENT-R\nUnit: IDEV-ING"]
+                "params":["[EntitlementType]::User"],
+                "expected": ["epfl_entr_idev_ing", "Faculty: ENT-R\nUnit: IDEV-ING\nType: User"]
+            },
+            {
+                "params":["[EntitlementType]::Admin"],
+                "expected": ["epfl_entr_idev_ing_adm", "Faculty: ENT-R\nUnit: IDEV-ING\nType: Admin"]
             }
         ]
     },
@@ -384,13 +388,17 @@
             }
         ]
     },
-
+    
     {
         "name": "getEntName",
         "tests":[
             {
-                "params": [],
+                "params": ["[EntitlementType]::User"],
                 "expected": "epfl_entr_idev_ing"
+            },
+            {
+                "params": ["[EntitlementType]::Admin"],
+                "expected": "epfl_entr_idev_ing_adm"
             }
         ]
     },
@@ -399,8 +407,12 @@
         "name": "getEntDescription",
         "tests":[
             {
-                "params": [],
-                "expected": "Faculty: ENT-R\nUnit: IDEV-ING"
+                "params": ["[EntitlementType]::User"],
+                "expected": "Faculty: ENT-R\nUnit: IDEV-ING\nType: User"
+            },
+            {
+                "params": ["[EntitlementType]::Admin"],
+                "expected": "Faculty: ENT-R\nUnit: IDEV-ING\nType: Admin"
             }
         ]
     },

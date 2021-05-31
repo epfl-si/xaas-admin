@@ -114,17 +114,17 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 
 		# --------------
 		# Entitlement
-		# Si le BG a un entitlement,
-		$bgEnt = $vra.getBGEnt($bg.id)
-		if($null -ne $bgEnt)
-		{
+
+		# Listing des entitlements et effacement
+		$vra.getBGEnt($bg.id) | Foreach-Object {
 
 			# Suppression de l'entitlement (on le désactive au préalable)
-			$logHistory.addLineAndDisplay(("--> Deleting Entitlement '{0}'..." -f $bgEnt.name))
+			$logHistory.addLineAndDisplay(("--> Deleting Entitlement '{0}'..." -f $_.name))
 			# Désactivation
-			$vra.updateEnt($bgEnt, $false) | Out-Null
-			$vra.deleteEnt($bgEnt.id)
+			$vra.updateEnt($_, $false) | Out-Null
+			$vra.deleteEnt($_.id)
 		}
+		
 
 		
 		$notifications.bgDeleted += $bg.name

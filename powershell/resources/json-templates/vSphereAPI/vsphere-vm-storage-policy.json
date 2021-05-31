@@ -1,0 +1,7 @@
+{
+    "disks": { },
+    "vm_home": {
+        "policy": "{{vmHomePolicy}}",
+        "type": "USE_SPECIFIED_POLICY"
+    }
+}

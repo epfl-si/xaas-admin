@@ -1,19 +1,13 @@
 <#
-    Fichier script d'exemple pour "endpoint" à adapter au besoin. 
-    TODO: Virer ce bloc de commentaires
-
-    TODO: Suivre les todo ci-dessous et les virer une fois qu'ils auront été traité
-#>
-<#
 USAGES:
-    xaas-sample-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -friendlyName <friendlyName> [-linkedTo <linkedTo>] [-bucketTag <bucketTag>]
+    xaas-vsphere-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl -action updateVMStoragePolicies -vmName <vmName> -diskPoliciesJSON <diskPoliciesJSON>
  
 #>
 <#
-    BUT 		: TODO:
+    BUT 		: Permet d'effectuer des opérations sur les éléments faisant partie de l'infrastructure SAP
 
-	DATE 	: TODO:
-    AUTEUR 	: TODO:
+	DATE 	: Mai 2021
+    AUTEUR 	: Lucien Chaboudez
     
     REMARQUES : 
     - Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy via Set-ExecutionPolicy. 
@@ -36,17 +30,12 @@ USAGES:
     DOCUMENTATION: TODO:
 
 #>
-
-# TODO: adapter les paramètres en fonction de l'utilisation
 param([string]$targetEnv, 
       [string]$targetTenant, 
       [string]$action, 
-      [string]$bgId,
-      [string]$bucketTag,
-      [switch]$status)
+      [string]$vmName,
+      [string]$diskPoliciesJSON) # Tableau associatif avec en ID les noms de disque et en valeur, la policy à mettre
 
-# Chargement du module PowerShell
-# TODO: si besoin
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -63,81 +52,18 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-
-# Chargement des fichiers propres à XaaS TODO: inclure les fichiers spécifiques
-
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vSphereAPI.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
-$configGlobal = [ConfigReader]::New("config-global.json")
-# TODO: Fichier de config XAAS
+$configGlobal   = [ConfigReader]::New("config-global.json")
+$configVSphere 	= [ConfigReader]::New("config-vsphere.json")
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
 # Liste des actions possibles
-$ACTION_CREATE              = "create"
-$ACTION_DELETE              = "delete"
-# TODO: Compléter la liste des actions
+$ACTION_UPDATE_STORAGE_POLICIES              = "updateVMStoragePolicies"
 
-
-<#
--------------------------------------------------------------------------------------
-	BUT : Parcours les différentes notification qui ont été ajoutées dans le tableau
-		  durant l'exécution et effectue un traitement si besoin.
-
-		  La liste des notifications possibles peut être trouvée dans la déclaration
-		  de la variable $notifications plus bas dans le code.
-
-	IN  : $notifications-> Dictionnaire
-	IN  : $targetEnv	-> Environnement courant
-	IN  : $targetTenant	-> Tenant courant
-#>
-function handleNotifications
-{
-	param([System.Collections.IDictionary] $notifications, [string]$targetEnv, [string]$targetTenant)
-
-	# Parcours des catégories de notifications
-	ForEach($notif in $notifications.Keys)
-	{
-		# S'il y a des notifications de ce type
-		if($notifications.$notif.count -gt 0)
-		{
-			# Suppression des doublons 
-			$uniqueNotifications = $notifications.$notif | Sort-Object| Get-Unique
-
-			$valToReplace = @{}
-
-			switch($notif)
-			{
-
-                # TODO: Créer les différentes notifications
-				# ---------------------------------------
-				# Erreur dans la récupération de stats d'utilisation pour un Bucket
-				# 'bucketUsageError'
-				# {
-                #     $valToReplace.bucketList = ($uniqueNotifications -join "</li>`n<li>")
-                #     $valToReplace.nbBuckets = $uniqueNotifications.count
-				# 	$mailSubject = "Warning - S3 - Usage info not found for {{nbBuckets}} Buckets"
-				# 	$templateName = "xaas-s3-bucket-usage-error"
-				# }
-			
-
-				default
-				{
-					# Passage à l'itération suivante de la boucle
-					$logHistory.addWarningAndDisplay(("Notification '{0}' not handled in code !" -f $notif))
-					continue
-				}
-
-			}
-
-			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
-			$notificationMail.send($mailSubject, $templateName, $valToReplace)
-
-		} # FIN S'il y a des notifications pour la catégorie courante
-
-	}# FIN BOUCLE de parcours des catégories de notifications
-}
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -152,8 +78,7 @@ try
     $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    # TODO: Adapter la ligne suivante
-    #$logHistory = [LogHistory]::new(@('xaas','s3', 'endpoint'), $global:LOGS_FOLDER, 120)
+    $logHistory = [LogHistory]::new(@('vsphere', 'endpoint'), $global:LOGS_FOLDER, 120)
     
     # Objet pour pouvoir envoyer des mails de notification
 	$valToReplace = @{
@@ -168,36 +93,21 @@ try
 
     # Ajout d'informations dans le log
     $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
-    
-    <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
-	aux administrateurs du service
-	!! Attention !!
-	A chaque fois qu'un élément est ajouté dans le IDictionnary ci-dessous, il faut aussi penser à compléter la
-	fonction 'handleNotifications()'
 
-	(cette liste sera accédée en variable globale même si c'est pas propre XD)
-    #>
-    # TODO: A adapter en ajoutant des clefs pointant sur des listes
-	$notifications=@{
-                    }
                                                 
     # On met en minuscules afin de pouvoir rechercher correctement dans le fichier de configuration (vu que c'est sensible à la casse)
     $targetEnv = $targetEnv.ToLower()
     $targetTenant = $targetTenant.ToLower()
 
-    # TODO: Ajouter ici la création des éléments d'accès au backend. Voir Exemple
-    # $scality = [ScalityAPI]::new($configXaaSS3.getConfigValue(@($targetEnv, "server")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "credentialProfile")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "webConsoleUser")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, $targetTenant, "webConsolePassword")),
-    #                              $configXaaSS3.getConfigValue(@($targetEnv, "isScality")))
+    $vsphereApi = [vSphereAPI]::new($configVSphere.getConfigValue(@($targetEnv, "server")), 
+                                    $configVSphere.getConfigValue(@($targetEnv , "user")), 
+                                    $configVSphere.getConfigValue(@($targetEnv, "password")))
 
     # Si on doit activer le Debug,
     if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
     {
         # Activation du debug
-        # TODO: Adapter le nécessaire
-        #$scality.activateDebug($logHistory)    
+        $vsphereApi.activateDebug($logHistory)    
     }
     
 
@@ -205,24 +115,70 @@ try
     switch ($action)
     {
 
-        # -- Création d'un nouveau bucket 
-        $ACTION_CREATE {
+        # -- Mise à jour des storages policies
+        $ACTION_UPDATE_STORAGE_POLICIES {
+            
+            $logHistory.addLine(("Getting Storage Policies for VM '{0}'..." -f $vmName))
 
-            $doCleaningIfError = $true
+            $vmStoragePolicieInfos = $vsphereApi.getVMStoragePolicyInfos($vmName)
 
-        }# FIN Action Create
+            # Si pas trouvé
+            if($null -eq $vmStoragePolicieInfos)
+            {
+                Throw ("No Storage Policies found for VM '{0}'" -f $vmName)
+            }
 
+            $logHistory.addLine(("Preparing new storage policies for disks..."))
 
-        # -- Effacement d'un bucket
-        $ACTION_DELETE {
+            # Pour enregistrer les nouvelles policies à mettre pour les disques
+            $disksNewPolicies = @{}
 
-        }
+            # Création d'un objet avec les infos pour les disques à mettre à jour
+            $diskPoliciesToUpdate = $diskPoliciesJSON | ConvertFrom-Json
+
+            $vmDiskIdList = $vsphereApi.getVMDiskIdList($vmName)
+            ForEach($diskId in $vmDiskIdList)
+            {
+                # Recherche des infos du disque
+                $diskInfos = $vsphereApi.getVMDiskInfos($vmName, $diskId)
+
+                $logHistory.addLine(("> Found disk '{0}' with ID '{1}'" -f $diskInfos.label, $diskId))
+
+                # On regarde si on a une storage Policy à changer pour le disque courant
+                $diskNewPolName = $diskPoliciesToUpdate.($diskInfos.label)
+
+                # Si on doit changer la policy de stockage pour le disque
+                if($null -ne $diskNewPolName)
+                {
+                    $logHistory.addLine((">> Change to policy '{0}'" -f $diskNewPolName))
+
+                    $newStoragePolicy = $vsphereApi.getStoragePolicyByName($diskNewPolName)
+
+                    if($null -eq $newStoragePolicy)
+                    {
+                        Throw ("Storage Policy '{0}' doesn't exists" -f $diskNewPolName)
+                    }
+
+                    $disksNewPolicies.$diskId = $newStoragePolicy.policy
+                }
+                else # Pas besoin de changer la policy de stockage
+                {
+                    $logHistory.addLine(">> Keeps its policy (ID={0})" -f $vmStoragePolicieInfos.disks.$diskId)
+                    $disksNewPolicies.$diskId = $vmStoragePolicieInfos.disks.$diskId
+                }
+                
+            }# FIN BOUCLE de parcours des disques de la VM
+
+            $logHistory.addLine(("Updating VM '{0}' storage policies..." -f $vmName))
+            $vsphereApi.updateVMStoragePolicyList($vmName, $vmStoragePolicieInfos.vm_home, $disksNewPolicies)
+
+        }# FIN Action mise à jour des storages policies
+
 
         default {
             Throw ("Action '{0}' not supported" -f $action)
         }
 
-        # TODO: Compléter avec la liste des actions définies précédemment
     }
 
     $logHistory.addLine("Script execution done!")
@@ -234,10 +190,6 @@ try
     # Ajout du résultat dans les logs 
     $logHistory.addLine(($output | ConvertTo-Json -Depth 100))
 
-    # Gestion des erreurs s'il y en a
-    handleNotifications -notifications $notifications -targetEnv $targetEnv -targetTenant $targetTenant
-    
-
 }
 catch
 {
@@ -248,18 +200,6 @@ catch
     # Ajout de l'erreur et affichage
     $output.error = "{0}`n`n{1}" -f $errorMessage, $errorTrace
     displayJSONOutput -output $output
-
-    # Si on était en train de créer un bucket et qu'on peut faire le cleaning
-    if(($action -eq $ACTION_CREATE) -and $doCleaningIfError)
-    {
-        # TODO: Adapter le contenu
-
-        # On efface celui-ci pour ne rien garder qui "traine"
-        #$logHistory.addLine(("Error while creating Bucket '{0}', deleting it so everything is clean. Error was: {1}" -f $bucketInfos.bucketName, $errorMessage))
-
-        # Suppression du bucket
-        #deleteBucket -scality $scality -bucketName $bucketInfos.bucketName
-    }
 
 	$logHistory.addError(("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace))
     

@@ -1,0 +1,4 @@
+{
+    "policy": "{{diskPolicyId}}",
+    "type": "USE_SPECIFIED_POLICY"
+}
