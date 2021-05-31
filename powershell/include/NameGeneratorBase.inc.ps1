@@ -208,11 +208,11 @@ class NameGeneratorBase
                 - getApprovalPolicyNameAndDesc
 
         IN  : $bg           -> Objet représentant le BG
-        IN  : $bgCustomId   -> ID personnalisé du BG affecté par les admins. Ne correspond pas
-                                au "vrai" ID de BG défini dans vRA
     #>
-    [void] initDetailsFromBG([PSCustomObject]$bg, $bgCustomId)
+    [void] initDetailsFromBG([PSCustomObject]$bg)
     {
+        $bgCustomId = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+
         $bgDetails = $this.getDetailsFromBGName($bg.name)
 
         $withDetails = @{}

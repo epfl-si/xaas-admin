@@ -129,7 +129,6 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 		
 		# On initialise les détails depuis le nom du BG, cela nous permettra de récupérer
 		# le nom du préfix de machine.
-		$bgCustomId = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
 		$nameGenerator.initDetailsFromBG($bg, $bgCustomId)
 
 		# Seulement pour certains tenants et on doit obligatoirement le faire APRES avoir effacé le BG car sinon 
