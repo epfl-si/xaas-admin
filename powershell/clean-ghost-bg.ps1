@@ -127,17 +127,10 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 		
 
 		
-		$notifications.bgDeleted += $bg.name
-
-		# --------------
-		# Business Group
-		$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}'..." -f $bg.name))
-		$vra.deleteBG($bg.id)
-
 		# On initialise les détails depuis le nom du BG, cela nous permettra de récupérer
 		# le nom du préfix de machine.
 		$bgCustomId = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
-		$nameGenerator.initDetailsFromBG($bg.name, $bgCustomId)
+		$nameGenerator.initDetailsFromBG($bg, $bgCustomId)
 
 		# Seulement pour certains tenants et on doit obligatoirement le faire APRES avoir effacé le BG car sinon 
 		# y'a une monstre exception sur plein de lignes qui nous insulte et elle ferait presque peur.
@@ -246,16 +239,38 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 			$nsxFWSectionName, $nsxFWSectionDesc = $nameGenerator.getFirewallSectionNameAndDesc()
 			$nsxSection  = $nsx.getFirewallSectionByName($nsxFWSectionName)
 
-			$logHistory.addLineAndDisplay(("--> Deleting NSX Firewall section '{0}'..." -f $nsxFWSectionName))
-			$nsx.deleteFirewallSection($nsxSection.id)
-
+			if($null -ne $nsxSection)
+			{
+				$logHistory.addLineAndDisplay(("--> Deleting NSX Firewall section '{0}'..." -f $nsxFWSectionName))
+				$nsx.deleteFirewallSection($nsxSection.id)
+			}
+			else
+			{
+				$logHistory.addLineAndDisplay(("--> NSX Firewall section '{0}' already deleted" -f $nsxFWSectionName))
+			}
+			
 
 			# Security Group
 			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bg.name)
 			$nsxNSGroup = $nsx.getNSGroupByName($nsxNSGroupName)
-			$logHistory.addLineAndDisplay(("--> Deleting NSX NS Group '{0}'..." -f $nsxNSGroupName))
-			$nsx.deleteNSGroup($nsxNSGroup)
+			if($null -ne $nsxNSGroup)
+			{
+				$logHistory.addLineAndDisplay(("--> Deleting NSX NS Group '{0}'..." -f $nsxNSGroupName))
+				$nsx.deleteNSGroup($nsxNSGroup)
+			}
+			else
+			{
+				$logHistory.addLineAndDisplay(("--> NSX NS Group '{0}' already deleted" -f $nsxNSGroupName))
+			}
+			
 		}
+
+		$notifications.bgDeleted += $bg.name
+
+		# --------------
+		# Business Group
+		$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}'..." -f $bg.name))
+		$vra.deleteBG($bg.id)
 
 		# Incrémentation du compteur
 		$counters.inc('BGDeleted')
@@ -443,12 +458,19 @@ try
 			# ISO ne pouvait être montée nulle part.
 			if($deleted)
 			{	
-				$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}' ISO folder '{1}'... " -f $_.name, $bgISOFolder))
 				# Recherche de l'UNC jusqu'au dossier où se trouvent les ISO pour le BG
 				$bgISOFolder = $nameGenerator.getNASPrivateISOPath($_.name)
 				
-				# Suppression du dossier
-				Remove-Item -Path $bgISOFolder -Recurse -Force
+				if(Test-Path $bgISOFolder)
+				{
+					$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}' ISO folder '{1}'... " -f $_.name, $bgISOFolder))
+					# Suppression du dossier
+					Remove-Item -Path $bgISOFolder -Recurse -Force
+				}
+				else 
+				{
+					$logHistory.addLineAndDisplay(("--> ISO folder '{0}' for Business Group '{1}' already deleted" -f $bgISOFolder, $_.name))	
+				}
 			}
 
 			
