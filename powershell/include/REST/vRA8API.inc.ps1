@@ -534,7 +534,7 @@ class vRA8API: RESTAPICurl
 
         IN  : $project 	-> objet représentant le projet pour lequel on veut les entitlements
 
-		RET : La liste des Centitlements
+		RET : La liste des entitlements
 	#>
     [Array] getProjectEntitlementList([PSCustomObject]$project)
     {
