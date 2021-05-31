@@ -98,9 +98,21 @@ class NSXAPI: RESTAPICurl
     #>
     [PSObject] getNSGroupByName([string]$name)
     {
+        # On commence par chercher les groupes "de base"
         $uri = "{0}/ns-groups/?populate_references=false" -f $this.baseUrl
+        $results = ($this.callAPI($uri, "Get", $null)).results
 
-        $id =  ($this.callAPI($uri, "Get", $null).results | Where-Object {$_.display_name -eq $name}).id
+        <# Recherche d'une autre manière, en prenant aussi les NSGroup pouvant contenir un certain type d'éléments.
+        On est obligé de faire comme ça parce que NSX renvoie les NSGroup de manière un peu foireuse... il faut par
+        exemple qu'un groupe ait contenu au moins un type d'élément avant de pouvoir être retourné par l'API #>
+        [enum]::getvalues([NSXNSGroupMemberType]) | Foreach-Object {
+            $uri = "{0}/ns-groups/?populate_references=false&member_types={1}" -f $this.baseUrl, $_.ToString()
+
+            $results += ($this.callAPI($uri, "Get", $null)).results
+        }
+        
+
+        $id =  ($results | Where-Object {$_.display_name -eq $name}).id | Sort-Object| Get-Unique
      
         if($null -eq $id)
         {
