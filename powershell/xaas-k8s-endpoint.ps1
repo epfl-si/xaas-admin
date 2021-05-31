@@ -569,7 +569,7 @@ try
         $logHistory.addLine(("Business Group found, name={0}" -f $bg.name))
 
         # Initialisation pour récupérer les noms des éléments
-        $nameGeneratorK8s.initDetailsFromBG($bg.name, $bgId)
+        $nameGeneratorK8s.initDetailsFromBG($bg, $bgId)
     }
 
     # On efface le cache DNS pour ne pas avoir de surprise par la suite
