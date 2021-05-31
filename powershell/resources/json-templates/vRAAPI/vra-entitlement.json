@@ -7,7 +7,7 @@
         "subtenantRef": "{{bgID}}",
         "subtenantLabel": "{{bgName}}"
     },
-    "allUsers": true,
+    "allUsers": "{{allUsers}}",
     "status": "ACTIVE",
     "statusName": "Active",
     "localScopeForActions": true
