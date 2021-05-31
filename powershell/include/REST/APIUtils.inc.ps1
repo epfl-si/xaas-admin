@@ -206,6 +206,11 @@ class APIUtils
 				{
 					# Extraction des informations 
 					$replaceWith, $removeDoubleQuotes = $valToReplace.Item($search)	
+
+					if($replaceWith -is [bool])
+					{
+						$replaceWith = $replaceWith | ConvertTo-Json
+					}
 				}
 				else # On a juste la chaîne de caractères 
 				{
