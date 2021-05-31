@@ -11,6 +11,11 @@
    DATE   : Mai 2019
 
 #>
+enum NSXNSGroupMemberType {
+    VirtualMachine
+    LogicalSwitch
+}
+
 class NSXAPI: RESTAPICurl
 {
     hidden [string]$authInfos
@@ -76,7 +81,7 @@ class NSXAPI: RESTAPICurl
     }
 
     
-    <#
+       <#
 		-------------------------------------------------------------------------------------
         BUT : Renvoie un NS Group donné par son nom
 
@@ -86,18 +91,26 @@ class NSXAPI: RESTAPICurl
             On fait ensuite une nouvelle requête avec l'ID pour récupérer uniquement le NSGroup mais cette fois-ci avec les références.
 
         IN  : $name         -> Nom du NS Group recherché
-        IN  : $memberType   -> Ce à quoi s'applique le NSGroup:
-                                VirtualMachine
-                                LogicalSwitch
 
 		RET : Le NS group 
     #>
-    [PSObject] getNSGroupByName([string]$name, [string]$memberType)
+    [PSObject] getNSGroupByName([string]$name)
     {
-        # Note: On filtre exprès avec 'member_types=VirtualMachine' car sinon tous les NSGroup attendus ne sont pas renvoyés... 
-        $uri = "{0}/ns-groups/?populate_references=false&member_types={1}" -f $this.baseUrl, $memberType
+        # On commence par chercher les groupes "de base"
+        $uri = "{0}/ns-groups/?populate_references=false" -f $this.baseUrl
+        $results = ($this.callAPI($uri, "Get", $null)).results
 
-        $id =  ($this.callAPI($uri, "Get", $null).results | Where-Object {$_.display_name -eq $name}).id
+        <# Recherche d'une autre manière, en prenant aussi les NSGroup pouvant contenir un certain type d'éléments.
+        On est obligé de faire comme ça parce que NSX renvoie les NSGroup de manière un peu foireuse... il faut par
+        exemple qu'un groupe ait contenu au moins un type d'élément avant de pouvoir être retourné par l'API #>
+        [enum]::getvalues([NSXNSGroupMemberType]) | Foreach-Object {
+            $uri = "{0}/ns-groups/?populate_references=false&member_types={1}" -f $this.baseUrl, $_.ToString()
+
+            $results += ($this.callAPI($uri, "Get", $null)).results
+        }
+        
+
+        $id =  ($results | Where-Object {$_.display_name -eq $name}).id | Sort-Object| Get-Unique
      
         if($null -eq $id)
         {
@@ -127,7 +140,7 @@ class NSXAPI: RESTAPICurl
 
 		RET : Le NS group créé
 	#>
-    [PSObject] addNSGroup([string]$name, [string]$desc, [string] $tag, [string]$memberType)
+    [PSObject] addNSGroup([string]$name, [string]$desc, [string] $tag, [NSXNSGroupMemberType]$memberType)
     {
 		$uri = "{0}/ns-groups" -f $this.baseUrl
 
@@ -136,7 +149,7 @@ class NSXAPI: RESTAPICurl
             name = $name
             description = $desc
             tag = $tag
-            memberType = $memberType
+            memberType = $memberType.toString()
         }
 
         $body = $this.createObjectFromJSON("nsx-nsgroup.json", $replace)
@@ -145,7 +158,7 @@ class NSXAPI: RESTAPICurl
         $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
-        return $this.getNSGroupByName($name, $memberType)
+        return $this.getNSGroupByName($name)
     }
 
 
