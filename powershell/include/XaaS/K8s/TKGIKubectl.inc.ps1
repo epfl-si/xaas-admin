@@ -619,20 +619,6 @@ class TKGIKubectl
 
     <#
 	-------------------------------------------------------------------------------------
-		BUT : Ajoute un RoleBinding dans un cluster, pour les comptes de service
-
-        IN  : $clusterName      -> Nom du cluster
-    #>
-    [void] addClusterRoleBindingServiceAccounts([string]$clusterName)
-    {
-        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding-serviceAccounts.yaml", @{})
-
-        $this.exec($clusterName, $command) | Out-Null
-    }
-
-
-    <#
-	-------------------------------------------------------------------------------------
 		BUT : Effectue la configuration de la partie "Contour". Il s'agit de plusieurs commandes
                 qui sont passées à la suite.
 
