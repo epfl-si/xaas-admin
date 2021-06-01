@@ -220,16 +220,16 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 			# --------------
 			# Groupe "groups" pour les demandes
 
-			$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
-			$logHistory.addLineAndDisplay(("--> Deleting customer groups group '{0}'..." -f $userSharedGroupNameGroups))
+			$userGroupNameGroups = $nameGenerator.getRoleGroupsGroupName([UserRole]::User)
+			$logHistory.addLineAndDisplay(("--> Deleting customer groups group '{0}'..." -f $userGroupNameGroups))
 			try
 			{
-				$groupsApp.deleteGroup($userSharedGroupNameGroups)
+				$groupsApp.deleteGroup($userGroupNameGroups)
 			}
 			catch
 			{
 				# Si exception, c'est qu'on n'a probablement pas les droits d'effacer parce que le owner du groupe n'est pas le bon
-				$notifications.groupsGroupsNotDeleted += $userSharedGroupNameGroups
+				$notifications.groupsGroupsNotDeleted += $userGroupNameGroups
 				$logHistory.addWarningAndDisplay("--> Cannot delete groups group maybe because not owner by correct person")
 			}
 

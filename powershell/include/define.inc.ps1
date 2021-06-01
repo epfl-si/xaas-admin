@@ -150,3 +150,11 @@ enum EntitlementType
     User
     Admin
 }
+
+# Type de rôles
+enum UserRole
+{
+    Admin
+    User
+    Support
+}

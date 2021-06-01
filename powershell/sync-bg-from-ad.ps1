@@ -527,6 +527,7 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$managerGrpList, [Array]$supportGrpList, [Array]$sharedGrpList, [Array]$userGrpList)
 {
 
+	# FIXME: Remplacer les CSP_* avec le nécessaire. Voir les rôles définis au début du define.inc.ps1
 	$logHistory.addLineAndDisplay(("-> Updating roles for BG {0}..." -f $bg.name))
 
 	# S'il faut faire des modifs
@@ -1652,6 +1653,7 @@ try
 		#### potentiel '-resume' que l'on a passé au script.
 
 		# Pour repartir "propre" pour le groupe AD courant
+		# FIXME: voir si c'est encore utile
 		$secondDayActions.clearApprovalPolicyMapping()
 
 		# Génération du nom du groupe avec le domaine
@@ -1661,13 +1663,10 @@ try
 		# groupes qui ont potentiellement déjà été traités si on fait un "resume"
 		$logHistory.addLineAndDisplay(("[{0}/{1}] Current AD group: {2}" -f $counters.get('ADGroups'), $adGroupList.Count, $_.Name))
 
-		# Génération du nom et de la description de l'entitlement
-		$entName, $entDesc = $nameGenerator.getBGEntNameAndDesc([EntitlementType]::User)
-		$entNameAdm, $entDescAdm = $nameGenerator.getBGEntNameAndDesc([EntitlementType]::Admin)
-
+		# FIXME: Modifier le nécessaire
 		# Groupes de sécurités AD pour les différents rôles du BG
-		$managerGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $true))
-		$supportGrpList = @($nameGenerator.getRoleADGroupName("CSP_SUPPORT", $true))
+		$managerGrpList = @($nameGenerator.getRoleADGroupName([UserRole]::Admin, $true))
+		$supportGrpList = @($nameGenerator.getRoleADGroupName([UserRole]::Support, $true))
 		# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
 		# créés par le script "sync-ad-groups-from-ldap.ps1"
 		$sharedGrpList  = @($ADFullGroupName)

@@ -859,16 +859,16 @@ try
 				
 				# --------------------------------- ROLES
 				
-				# Il faut créer les groupes pour les Roles CSP_SUBTENANT_MANAGER et CSP_SUPPORT s'ils n'existent pas
+				# Il faut créer les groupes pour les Roles Admin et Support s'ils n'existent pas
 
 				# Génération des noms des groupes dont on va avoir besoin.
-				$adminGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
-				$adminGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
-				$adminGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
+				$adminGroupNameAD = $nameGenerator.getRoleADGroupName([UserRole]::Admin, $false)
+				$adminGroupDescAD = $nameGenerator.getRoleADGroupDesc([UserRole]::Admin)
+				$adminGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName([UserRole]::Admin)
 
-				$supportGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUPPORT", $false)
-				$supportGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUPPORT")
-				$supportGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUPPORT")
+				$supportGroupNameAD = $nameGenerator.getRoleADGroupName([UserRole]::Support, $false)
+				$supportGroupDescAD = $nameGenerator.getRoleADGroupDesc([UserRole]::Support)
+				$supportGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName([UserRole]::Support)
 
 				# Création des groupes + gestion des groupes prérequis 
 				if((createADGroupWithContent -groupName $adminGroupNameAD -groupDesc $adminGroupDescAD -groupMemberGroup $adminGroupNameGroups `
@@ -979,13 +979,13 @@ try
 												unitID = $unit.uniqueidentifier})
 
 						# Création du nom du groupe AD et de la description
-						$adGroupName = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+						$adGroupName = $nameGenerator.getRoleADGroupName([UserRole]::User, $false)
 						$additionalDetails = @{
 							deniedVRASvc = $vRAServicesToDeny
 							financeCenter = $financeCenter
 							hasApproval = $hasApproval
 						}
-						$adGroupDesc = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
+						$adGroupDesc = $nameGenerator.getRoleADGroupDesc([UserRole]::User, $additionalDetails)
 
 						try
 						{
@@ -1151,7 +1151,7 @@ try
 
 			###### Roles pour Tableau --> Admin du service
 			# Recherche du nom du groupe AD d'approbation pour la faculté
-			$adminGroup = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
+			$adminGroup = $nameGenerator.getRoleADGroupName([UserRole]::Admin, $false)
 
 			# Recherche de la liste des membres
 			$adminMembers = Get-ADGroupMember $adminGroup -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique 
@@ -1320,11 +1320,9 @@ try
 					# --------------------------------- ROLES
 		
 					# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
-					# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
-					# sera le même
-					$admSupGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
-					$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
-					$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
+					$admSupGroupNameAD = $nameGenerator.getRoleADGroupName([UserRole]::Admin, $false)
+					$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc([UserRole]::Admin)
+					$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName([UserRole]::Admin)
 		
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $admSupGroupNameAD -groupDesc $admSupGroupDescAD -groupMemberGroup $admSupGroupNameGroups `
@@ -1338,43 +1336,41 @@ try
 					$doneADGroupList += $admSupGroupNameAD
 		
 					# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
-					# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
-					# sera le même
-					$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+					$userGroupNameAD = $nameGenerator.getRoleADGroupName([UserRole]::User, $false)
 					$additionalDetails = @{
 						deniedVRASvc = $deniedVRAServiceList
 						hasApproval = $hasApproval
 					}
-					$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
-					$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
+					$userGroupDescAD = $nameGenerator.getRoleADGroupDesc([UserRole]::User, $additionalDetails)
+					$userGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName([UserRole]::User)
 		
 					# Récupération des infos du groupe dans Groups
-					$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
-					$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
+					$userGroupNameGroups = $nameGenerator.getRoleGroupsGroupName([UserRole]::User)
+					$userGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc([UserRole]::User)
 
 					# Création du groupe dans Groups s'il n'existe pas
-					$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
+					$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userGroupNameGroups -desc $userGroupDescGroups `
 																		-memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin -allowAdminUpdate `
 																		-simulation $SIMULATION_MODE
 
 					# Création des groupes + gestion des groupes prérequis 
-					if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
+					if((createADGroupWithContent -groupName $userGroupNameAD -groupDesc $userGroupDescAD -groupMemberGroup $userGroupNameGroupsAD `
 						-OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -simulation $SIMULATION_MODE -updateExistingContent) -eq $false)
 					{
 						# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-						if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
+						if($notifications.missingADGroups -notcontains $userGroupNameGroupsAD)
 						{
-							$notifications.missingADGroups += $userSharedGroupNameGroupsAD
+							$notifications.missingADGroups += $userGroupNameGroupsAD
 						}
 					}
 					else
 					{
 						# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-						$doneADGroupList += $userSharedGroupNameAD
+						$doneADGroupList += $userGroupNameAD
 					}
 
 					# ###### Roles pour Tableau --> Utilisateurs dans les Business Groups
-					# if(($groupsUsernameList = Get-ADGroupMember $userSharedGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
+					# if(($groupsUsernameList = Get-ADGroupMember $userGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
 					# {
 					# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $groupsUsernameList.Count, [TableauRoles]::User.ToString() ))
 					# 	updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
@@ -1506,11 +1502,9 @@ try
 				# # --------------------------------- ROLES
 	
 				# Génération de nom du groupe dont on va avoir besoin pour les rôles "Admin" et "Support" (même groupe). 
-				# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_SUBTENANT_MANAGER ou CSP_SUPPORT aux fonctions, le résultat
-				# sera le même
-				$admSupGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_SUBTENANT_MANAGER", $false)
-				$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_SUBTENANT_MANAGER")
-				$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName("CSP_SUBTENANT_MANAGER")
+				$admSupGroupNameAD = $nameGenerator.getRoleADGroupName([UserRole]::Admin, $false)
+				$admSupGroupDescAD = $nameGenerator.getRoleADGroupDesc([UserRole]::Admin)
+				$admSupGroupNameGroups = $nameGenerator.getRoleGroupsADGroupName([UserRole]::Admin)
 	
 				$roleAdmSupGroupOK = $true
 				# Création des groupes + gestion des groupes prérequis 
@@ -1528,42 +1522,40 @@ try
 				}
 	
 	
-				# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
-				# Vu que c'est le même groupe pour les 2 rôles, on peut passer CSP_CONSUMER_WITH_SHARED_ACCESS ou CSP_CONSUMER aux fonctions, le résultat
-				# sera le même
-				$userSharedGroupNameAD = $nameGenerator.getRoleADGroupName("CSP_CONSUMER", $false)
+				# Génération de nom du groupe dont on va avoir besoin pour les rôles "Member"
+				$userGroupNameAD = $nameGenerator.getRoleADGroupName([UserRole]::User, $false)
 				$additionalDetails = @{
 					financeCenter = $project.labo_no
 					hasApproval = $true
 				}
-				$userSharedGroupDescAD = $nameGenerator.getRoleADGroupDesc("CSP_CONSUMER", $additionalDetails)
-				$userSharedGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName("CSP_CONSUMER")
+				$userGroupDescAD = $nameGenerator.getRoleADGroupDesc([UserRole]::User, $additionalDetails)
+				$userGroupNameGroupsAD = $nameGenerator.getRoleGroupsADGroupName([UserRole]::User)
 	
 				# Récupération des infos du groupe dans Groups
-				$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
-				$userSharedGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc("CSP_CONSUMER")
+				$userGroupNameGroups = $nameGenerator.getRoleGroupsGroupName([UserRole]::User)
+				$userGroupDescGroups = $nameGenerator.getRoleGroupsGroupDesc([UserRole]::User)
 				
 				# Création du groupe dans Groups s'il n'existe pas
-				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
+				$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userGroupNameGroups -desc $userGroupDescGroups `
 																	 -memberSciperList @($projectAdminSciper) -adminSciperList @($projectAdminSciper) `
 																	 -simulation $SIMULATION_MODE
 
 				$roleSharedGroupOk = $true
 				# Création des groupes + gestion des groupes prérequis 
-				if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
+				if((createADGroupWithContent -groupName $userGroupNameAD -groupDesc $userGroupDescAD -groupMemberGroup $userGroupNameGroupsAD `
 					 -OU $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -simulation $SIMULATION_MODE -updateExistingContent) -eq $false)
 				{
 					# Enregistrement du nom du groupe qui pose problème et passage au service suivant car on ne peut pas créer celui-ci
-					if($notifications.missingADGroups -notcontains $userSharedGroupNameGroupsAD)
+					if($notifications.missingADGroups -notcontains $userGroupNameGroupsAD)
 					{
-						$notifications.missingADGroups += $userSharedGroupNameGroupsAD
+						$notifications.missingADGroups += $userGroupNameGroupsAD
 					}
 					$roleSharedGroupOk = $false
 				}
 				else
 				{
 					# Enregistrement du groupe créé pour ne pas le supprimer à la fin du script...
-					$doneADGroupList += $userSharedGroupNameAD
+					$doneADGroupList += $userGroupNameAD
 				}
 
 
@@ -1635,12 +1627,12 @@ try
 				## -- ITServices
 				$global:VRA_TENANT__ITSERVICES
 				{
-					$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
-					$logHistory.addLineAndDisplay(("--> Removing Groups group '{0}'..." -f $userSharedGroupNameGroups))
+					$userGroupNameGroups = $nameGenerator.getRoleGroupsGroupName([UserRole]::User)
+					$logHistory.addLineAndDisplay(("--> Removing Groups group '{0}'..." -f $userGroupNameGroups))
 					
 					if(-not $SIMULATION_MODE)
 					{
-						$groupsApp.deleteGroup($userSharedGroupNameGroups)
+						$groupsApp.deleteGroup($userGroupNameGroups)
 					}
 				}
 

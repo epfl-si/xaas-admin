@@ -114,11 +114,7 @@ class NameGenerator: NameGeneratorBase
         REMARQUE : ATTENTION A BIEN PASSER DES [int] POUR CERTAINS PARAMETRES !! SI CE N'EST PAS FAIT, C'EST LE 
                    MAUVAIS PROTOTYPE DE FONCTION QUI RISQUE D'ETRE PRIS EN COMPTE.
 
-        IN  : $role                 -> Nom du rôle pour lequel on veut le groupe. 
-                                        "CSP_SUBTENANT_MANAGER"
-                                        "CSP_SUPPORT"
-                                        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                        "CSP_CONSUMER"
+        IN  : $role                 -> Le rôle
         IN  : $type                 -> Type du nom du groupe:
                                         $this.GROUP_TYPE_AD
                                         $this.GROUP_TYPE_GROUPS
@@ -132,7 +128,7 @@ class NameGenerator: NameGeneratorBase
             - Nom du groupe à utiliser pour le rôle.
             - Description du groupe (si $type == 'ad', sinon, "")
     #>
-    hidden [System.Collections.ArrayList] getRoleGroupNameAndDesc([string]$role, [string]$type, [bool]$fqdn, [Hashtable]$additionalDetails)
+    hidden [System.Collections.ArrayList] getRoleGroupNameAndDesc([UserRole]$role, [string]$type, [bool]$fqdn, [Hashtable]$additionalDetails)
     {
         # On initialise à vide car la description n'est pas toujours générée. 
         $groupDesc = ""
@@ -153,7 +149,7 @@ class NameGenerator: NameGeneratorBase
             $global:VRA_TENANT__EPFL 
             {
                 # Admin
-                if($role -eq "CSP_SUBTENANT_MANAGER")
+                if($role -eq [UserRole]::Admin)
                 {
                     # Même nom de groupe (court) pour AD et "groups"
                     # vra_<envShort>_adm_<tenantShort>
@@ -161,7 +157,7 @@ class NameGenerator: NameGeneratorBase
                     $groupDesc = "Administrators for Tenant {0} on Environment {1}" -f $this.tenant.ToUpper(), $this.env.ToUpper()
                 }
                 # Support
-                elseif($role -eq "CSP_SUPPORT")
+                elseif($role -eq [UserRole]::Support)
                 {
                     # Même nom de groupe (court) pour AD et "groups"
                     # vra_<envShort>_sup_<facultyName>
@@ -169,8 +165,7 @@ class NameGenerator: NameGeneratorBase
                     $groupDesc = "Support for Faculty {0} on Tenant {1} on Environment {2}" -f $this.getDetail('facultyName').toUpper(), $this.tenant.ToUpper(), $this.env.ToUpper()
                 }
                 # Shared, Users
-                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
-                        $role -eq "CSP_CONSUMER")
+                elseif($role -eq [UserRole]::User)
                 {
                     # Groupe AD
                     if($type -eq $this.GROUP_TYPE_AD)
@@ -202,8 +197,7 @@ class NameGenerator: NameGeneratorBase
             $global:VRA_TENANT__ITSERVICES
             {
                 # Admin, Support
-                if($role -eq "CSP_SUBTENANT_MANAGER" -or `
-                    $role -eq "CSP_SUPPORT")
+                if($role -eq [UserRole]::Admin -or $role -eq [UserRole]::Support)
                 {
                     # vra_<envShort>_adm_sup_its
                     $groupName = "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
@@ -211,8 +205,7 @@ class NameGenerator: NameGeneratorBase
                     
                 }
                 # Shared, Users
-                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
-                        $role -eq "CSP_CONSUMER")
+                elseif($role -eq [UserRole]::User)
                 {
                     # vra_<envShort>_<serviceId>
                     $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('snowServiceId').toLower())
@@ -249,8 +242,7 @@ class NameGenerator: NameGeneratorBase
             $global:VRA_TENANT__RESEARCH
             {
                 # Admin, Support
-                if($role -eq "CSP_SUBTENANT_MANAGER" -or `
-                    $role -eq "CSP_SUPPORT")
+                if($role -eq [UserRole]::Admin -or $role -eq [UserRole]::Support)
                 {
                     # vra_<envShort>_adm_sup_rsrch
                     $groupName = "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
@@ -258,8 +250,7 @@ class NameGenerator: NameGeneratorBase
                     
                 }
                 # Shared, Users
-                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
-                        $role -eq "CSP_CONSUMER")
+                elseif($role -eq [UserRole]::User)
                 {
                     # vra_<envShort>_<projectId>
                     $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('projectId'))
@@ -364,16 +355,12 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom du groupe AD pour les paramètres passés 
               
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-							        "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
+        IN  : $role             -> Le rôle
         IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
                                     $true|$false  
                                     Si pas passé => $false      
     #>
-    [string] getRoleADGroupName([string]$role, [bool]$fqdn)
+    [string] getRoleADGroupName([UserRole]$role, [bool]$fqdn)
     {   
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn, @{})
         return $groupName
@@ -384,19 +371,15 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie la description du groupe AD pour les paramètres passés 
 
-        IN  : $role                 -> Nom du rôle pour lequel on veut le groupe. 
-                                        "CSP_SUBTENANT_MANAGER"
-                                        "CSP_SUPPORT"
-                                        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                        "CSP_CONSUMER"
+        IN  : $role                 -> Le rôle
         IN  : $additionalDetails    -> (optionel) tableau associatif avec les détails additionnels
                                         à ajouter au format JSON à la description du groupe
     #>
-    [string] getRoleADGroupDesc([string]$role)
+    [string] getRoleADGroupDesc([UserRole]$role)
     {
         return $this.getRoleADGroupDesc($role, @{})
     }
-    [string] getRoleADGroupDesc([string]$role, [Hashtable]$additionalDetails)
+    [string] getRoleADGroupDesc([UserRole]$role, [Hashtable]$additionalDetails)
     {
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $false, $additionalDetails)
         return $groupDesc
@@ -407,13 +390,9 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom du groupe "GROUPS" pour les paramètres passés 
 
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
+        IN  : $role             -> Le rôle
     #>
-    [string] getRoleGroupsGroupName([string]$role)
+    [string] getRoleGroupsGroupName([UserRole]$role)
     {
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false, @{})
         return $groupName
@@ -424,13 +403,9 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie la description du groupe "GROUPS" pour les paramètres passés 
 
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
+        IN  : $role             -> Le rôle
     #>
-    [string] getRoleGroupsGroupDesc([string]$role)
+    [string] getRoleGroupsGroupDesc([UserRole]$role)
     {
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false, @{})
         return $groupDesc
@@ -441,11 +416,9 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom du groupe "GROUPS" dans Active Directory pour les paramètres passés 
 
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUPPORT"
-                                    "CSP_MANAGER"
+        IN  : $role             -> Le rôle
     #>
-    [string] getRoleGroupsADGroupName([string]$role)
+    [string] getRoleGroupsADGroupName([UserRole]$role)
     {
         $groupName = $this.getRoleGroupsGroupName($role)
         return $groupName + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
