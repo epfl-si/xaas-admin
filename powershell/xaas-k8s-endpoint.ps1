@@ -720,10 +720,11 @@ try
                     
             $logHistory.addLine("> Service Accounts")
             # Pour les services accounts
-            $tkgiKubectl.addClusterRoleBinding($clusterName, 
-                                                   $nameGeneratorK8s.getClusterRoleName(), 
-                                                   $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $true), 
-                                                   "system:serviceaccounts")
+            $tkgiKubectl.addClusterRoleBindingServiceAccounts($clusterName)
+            # $tkgiKubectl.addClusterRoleBinding($clusterName, 
+            #                                        $nameGeneratorK8s.getClusterRoleName(), 
+            #                                        $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $true), 
+            #                                        "system:serviceaccounts")
 
             # ------------
             # ---- Contour

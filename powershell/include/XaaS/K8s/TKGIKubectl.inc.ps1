@@ -622,17 +622,10 @@ class TKGIKubectl
 		BUT : Ajoute un RoleBinding dans un cluster, pour les comptes de service
 
         IN  : $clusterName      -> Nom du cluster
-        IN  : $roleName         -> nom du Role 
-        IN  : $roleBindingName  -> Nom du Role Binding
     #>
-    [void] addClusterRoleBindingServiceAccounts([string]$clusterName, [string]$roleName, [string]$roleBindingName)
+    [void] addClusterRoleBindingServiceAccounts([string]$clusterName)
     {
-        $replace = @{
-            name = $roleBindingName
-            clusterRoleName = $roleName
-        }
-
-        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding-serviceAccounts.yaml", $replace)
+        $command = $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-clusterRoleBinding-serviceAccounts.yaml", @{})
 
         $this.exec($clusterName, $command) | Out-Null
     }
@@ -649,9 +642,8 @@ class TKGIKubectl
     {
         # -- Première partie définie par l'EFPL
 
-        $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-podSecurityPolicy.yaml")) | Out-Null
         $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-clusterRole.yaml")) | Out-Null
-        $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-serviceAccount.yaml")) | Out-Null
+        $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-podSecurityPolicy.yaml")) | Out-Null
         $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-roleBinding.yaml")) | Out-Null
 
         <# -- Partie "officielle". Tirée du fichier https://projectcontour.io/quickstart/contour.yaml 
