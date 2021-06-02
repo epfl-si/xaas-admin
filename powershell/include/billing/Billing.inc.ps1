@@ -357,7 +357,7 @@ class Billing
     {
         # Recherche du BG avec son ID unique. 
         # NOTE: On utilise le cache pour faire cette action car on est dans un script qui ne modifie pas la liste des BG
-        $bg = $this.vraTenantList.$targetTenant.getBGByCustomId($bgId, $true)
+        $bg = $this.vraTenantList.$targetTenant.getProjectByCustomId($bgId, $true)
 
         # Si le BG n'est pas trouvé dans vRA, c'est qu'il a été supprimé
         if($null -eq $bg)

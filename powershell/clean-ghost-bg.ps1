@@ -135,7 +135,7 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 		$vra.deleteBG($bg.id)
 
 		# On initialise les détails depuis le nom du BG, cela nous permettra de récupérer
-		# le nom du préfix de machine.
+		# le Template de nommage de VM.
 		$nameGenerator.initDetailsFromBGName($bg.name)
 
 		# Seulement pour certains tenants et on doit obligatoirement le faire APRES avoir effacé le BG car sinon 
@@ -146,9 +146,9 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 			# Préfixe de VM
 
 
-			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
+			$machineNameTemplate = $nameGenerator.getVMNameTemplate()
 
-			$machinePrefix = $vra.getMachinePrefix($machinePrefixName)
+			$machinePrefix = $vra.getMachinePrefix($machineNameTemplate)
 
 			# Si on a trouvé un ID de machine
 			if($null -ne $machinePrefix)

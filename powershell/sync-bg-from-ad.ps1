@@ -3,7 +3,7 @@ USAGES:
 	sync-bg-from-ad.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research [-fullSync] [-resume]
 #>
 <#
-	BUT 		: Crée/met à jour les Business groupes en fonction des groupes AD existant
+	BUT 		: Crée/met à jour les Projectes en fonction des groupes AD existant
 
 	DATE 		: Février 2018
 	AUTEUR 	: Lucien Chaboudez
@@ -265,29 +265,31 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Créé (si inexistant) ou met à jour un Business Group (si existant)
+	BUT : Créé (si inexistant) ou met à jour un Project (si existant)
 
 	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $tenantName			-> Nom du tenant sur lequel on bosse
-	IN  : $bgEPFLID				-> ID du BG défini par l'EPFL et pas vRA. Valable pour les BG qui sont sur tous les tenants
-	IN  : $bgName				-> Nom du BG
-	IN  : $bgDesc				-> Description du BG
-	IN  : $machinePrefixName	-> Nom du préfixe de machine à utiliser.
-								   Peut être "" si le BG doit être créé dans le tenant ITServices.
+	IN  : $projectEPFLID				-> ID du Project défini par l'EPFL et pas vRA. Valable pour les Project qui sont sur tous les tenants
+	IN  : $projectName				-> Nom du BG
+	IN  : $projectDesc				-> Description du BG
+	IN  : $machineNameTemplate	-> Nom du préfixe de machine à utiliser.
+								   Peut être "" si le Project doit être créé dans le tenant ITServices.
 	IN  : $financeCenter		-> Centre financier
 	IN  : $capacityAlertsEmail	-> Adresse mail où envoyer les mails de "capacity alert"
 	
-	RET : Objet représentant la Business Group
+	RET : Objet représentant la Project
 #>
-function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, [string]$bgName, [string]$bgDesc, [string]$machinePrefixName, [string]$financeCenter, [string]$capacityAlertsEmail)
+function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$projectEPFLID, [string]$projectName, [string]$projectDesc, [string]$machineNameTemplate, [string]$financeCenter, [string]$capacityAlertsEmail)
 {
 
-	$logHistory.addLineAndDisplay(("-> Handling BG with custom ID {0}..." -f $bgEPFLID))
+	$logHistory.addLineAndDisplay(("-> Handling Project with custom ID {0}..." -f $projectEPFLID))
 	
-	# Recherche du BG par son no identifiant (no d'unité, no de service Snow, etc... ).
-	$bg = $vra.getBGByCustomId($bgEPFLID, $true)
+	# Recherche du Project par son no identifiant (no d'unité, no de service Snow, etc... ).
+	# FIXME:
+	
+	$bg = $vra.getProjectByCustomId($projectEPFLID, $true)
 
-
+	# TODO: Continuer depuis ici
 	# ---- EPFL ---- ou ---- Research ----
 	if( ($tenantName -eq $global:VRA_TENANT__EPFL) -or ($tenantName -eq $global:VRA_TENANT__RESEARCH))
 	{
@@ -302,13 +304,13 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 		}
 		
 		# Tentative de recherche du préfix de machine
-		$machinePrefix = $vra.getMachinePrefix($machinePrefixName)
+		$machinePrefix = $vra.getMachinePrefix($machineNameTemplate)
 
 		# Si on ne trouve pas de préfixe de machine pour le nouveau BG,
 		if($null -eq $machinePrefix)
 		{
-			$logHistory.addLineAndDisplay(("-> Machine prefix {0} doesn't exists, creating..." -f $machinePrefixName))
-			$machinePrefix = $vra.addMachinePrefix($machinePrefixName, $global:VRA_MACHINE_PREFIX_NB_DIGITS)
+			$logHistory.addLineAndDisplay(("-> Machine prefix {0} doesn't exists, creating..." -f $machineNameTemplate))
+			$machinePrefix = $vra.addMachinePrefix($machineNameTemplate, $global:VRA_MACHINE_PREFIX_NB_DIGITS)
 		}
 		$machinePrefixId = $machinePrefix.id
 	
@@ -326,7 +328,7 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 		Throw ("Incorrect value given for tenant name ({0})" -f $tenantName)
 	}
 
-	<# Si le BG n'existe pas, ce qui peut arriver dans les cas suivants :
+	<# Si le Project n'existe pas, ce qui peut arriver dans les cas suivants :
 		Tenant EPFL:
 		- nouvelle unité (avec éventuellement nouvelle faculté)
 		Tenant ITServices
@@ -339,53 +341,53 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] 				= $global:VRA_BG_STATUS__ALIVE
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE"] 			= $global:VRA_BG_RES_MANAGE__AUTO
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
-		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BG_ID"] 				= $bgEPFLID
+		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BG_ID"] 				= $projectEPFLID
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] 				= $bgType
 		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER"]= $financeCenter
 		
 
-		# Ajout aussi des informations sur le Tenant et le BG car les mettre ici, c'est le seul moyen que l'on pour récupérer cette information
+		# Ajout aussi des informations sur le Tenant et le Project car les mettre ici, c'est le seul moyen que l'on pour récupérer cette information
 		# pour la génération des mails personnalisée... 
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME"] = $tenantName
-		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_NAME"] = $bgName
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_NAME"] = $projectName
 		
-		# Vu qu'on a cherché le BG par son ID et qu'on n'a pas trouvé, on regarde quand même si un BG portant le nom de celui qu'on doit
+		# Vu qu'on a cherché le Project par son ID et qu'on n'a pas trouvé, on regarde quand même si un Project portant le nom de celui qu'on doit
 		# créer n'existe pas déjà (si si, ça se peut #facepalm)
-		$existingBg = $vra.getBG($bgName)
+		$existingBg = $vra.getBG($projectName)
 		if($null -ne $existingBg)
 		{
 			$existingBgId = (getBGCustomPropValue -bg $existingBg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
-			$logHistory.addWarningAndDisplay(("-> Impossible to create new BG with name '{0}' (ID={1}) because another one already exists with this name (ID={2})" -f `
-												$bgName, $bgEPFLID, $existingBgId))
+			$logHistory.addWarningAndDisplay(("-> Impossible to create new Project with name '{0}' (ID={1}) because another one already exists with this name (ID={2})" -f `
+												$projectName, $projectEPFLID, $existingBgId))
 
-			$notifications.bgNameAlreadyTaken += ("Existing BG {0} ,ID={1}. New BG ID={1}" -f $bgName, $existingBgId, $bgEPFLID)
+			$notifications.projectNameAlreadyTaken += ("Existing Project {0} ,ID={1}. New Project ID={1}" -f $projectName, $existingBgId, $projectEPFLID)
 
 			$counters.inc('BGNotCreated')
-			# On sort et on renvoie $null pour qu'on n'aille pas plus loin dans le traitement de ce BG pour le moment.
+			# On sort et on renvoie $null pour qu'on n'aille pas plus loin dans le traitement de ce Project pour le moment.
 			return $null
 		}
 		else # Le Nom est libre, on peut aller de l'avant
 		{
-			$logHistory.addLineAndDisplay(("-> BG '{0}' (ID={1}) doesn't exists, creating..." -f $bgName, $bgEPFLID))
+			$logHistory.addLineAndDisplay(("-> Project '{0}' (ID={1}) doesn't exists, creating..." -f $projectName, $projectEPFLID))
 			# Création du BG
-			$bg = $vra.addBG($bgName, $bgDesc, $capacityAlertsEmail, $machinePrefixId, $customProperties)
+			$bg = $vra.addBG($projectName, $projectDesc, $capacityAlertsEmail, $machinePrefixId, $customProperties)
 
 			$counters.inc('BGCreated')
 		}
 		
 	}
-	# Si le BG existe,
+	# Si le Project existe,
 	else
 	{
 
-		$logHistory.addLineAndDisplay(("-> BG '{0}' already exists" -f $bg.Name))
+		$logHistory.addLineAndDisplay(("-> Project '{0}' already exists" -f $bg.Name))
 
 		$bgUpdated = $false
 
 		$counters.inc('BGExisting')
 		# ==========================================================================================
 
-		# Si le centre financier du BG a changé (ce qui peut arriver), on le met à jour
+		# Si le centre financier du Project a changé (ce qui peut arriver), on le met à jour
 		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER) -ne $financeCenter)
 		{
 			# Mise à jour
@@ -393,13 +395,13 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 			$bgUpdated = $true
 		}
 
-		# Si le BG n'a pas la custom property donnée, on l'ajoute
+		# Si le Project n'a pas la custom property donnée, on l'ajoute
 		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
-		# les BG existants avec la nouvelle "Custom Property"
+		# les Project existants avec la nouvelle "Custom Property"
 		# if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME))
 		# {
 		# 	# Ajout de la custom Property avec la valeur par défaut 
-		# 	$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
+		# 	$bg = $vra.updateBG($bg, $projectName, $projectDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
 		# }
 
 		# Si le nom de l'entité de facturation a changé (ce qui peut arriver), on la met à jour
@@ -413,39 +415,39 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 
 		# ==========================================================================================
 
-		# Si le nom du BG est incorrect, (par exemple si le nom de l'unité ou celle de la faculté a changé)
+		# Si le nom du Project est incorrect, (par exemple si le nom de l'unité ou celle de la faculté a changé)
 		# Note: Dans le cas du tenant ITServices, vu qu'on fait une recherche avec le nom, ce test ne retournera
 		# 		jamais $true
 		# OU
-		# Si le BG est désactivé
-		if(($bg.name -ne $bgName) -or ($bg.description -ne $bgDesc) -or (!(isBGAlive -bg $bg)))
+		# Si le Project est désactivé
+		if(($bg.name -ne $projectName) -or ($bg.description -ne $projectDesc) -or (!(isBGAlive -bg $bg)))
 		{
-			$logHistory.addLineAndDisplay(("-> BG '{0}' has changed" -f $bg.name))
+			$logHistory.addLineAndDisplay(("-> Project '{0}' has changed" -f $bg.name))
 
 			# S'il y a eu changement de nom,
-			if($bg.name -ne $bgName)
+			if($bg.name -ne $projectName)
 			{
-				$logHistory.addLineAndDisplay(("-> Renaming BG '{0}' to '{1}'" -f $bg.name, $bgName))
+				$logHistory.addLineAndDisplay(("-> Renaming Project '{0}' to '{1}'" -f $bg.name, $projectName))
 
-				<# On commence par regarder s'il n'y aurait pas par hasard déjà un BG avec le nouveau nom.
+				<# On commence par regarder s'il n'y aurait pas par hasard déjà un Project avec le nouveau nom.
 				 Ceci peut arriver si on supprime une unité/service IT et qu'on change le nom d'un autre en même temps pour reprendre le nom de 
-				 ce qui a été supprimé. Etant donné que les BG passent en "ghost" sans être renommé dans le cas où ils doivent être supprimés, 
+				 ce qui a été supprimé. Etant donné que les Project passent en "ghost" sans être renommé dans le cas où ils doivent être supprimés, 
 				 il y a toujours conflit de noms
 				#>
-				if($null -ne $vra.getBG($bgName)) 
+				if($null -ne $vra.getBG($projectName)) 
 				{
-					$logHistory.addWarningAndDisplay(("-> Impossible to rename BG '{0}' to '{1}'. A BG with the new name already exists" -f $bg.name, $bgName))
-					$notifications.bgNameDuplicate += ("{0} &gt;&gt; {1}" -f $bg.name, $bgName)
+					$logHistory.addWarningAndDisplay(("-> Impossible to rename Project '{0}' to '{1}'. A Project with the new name already exists" -f $bg.name, $projectName))
+					$notifications.projectNameDuplicate += ("{0} &gt;&gt; {1}" -f $bg.name, $projectName)
 					$counters.inc('BGNotRenamed')
 
-					# On sort et on renvoie $null pour qu'on n'aille pas plus loin dans le traitement de ce BG pour le moment.
+					# On sort et on renvoie $null pour qu'on n'aille pas plus loin dans le traitement de ce Project pour le moment.
 					return $null
 				}
 				
 				# Recherche du nom actuel du dossier où se trouvent les ISO du BG
 				$bgISOFolderCurrent = $nameGenerator.getNASPrivateISOPath($bg.name)
 				# Recherche du nouveau nom du dossier où devront se trouver les ISO
-				$bgISOFolderNew = $nameGenerator.getNASPrivateISOPath($bgName)
+				$bgISOFolderNew = $nameGenerator.getNASPrivateISOPath($projectName)
 
 				$logHistory.addLineAndDisplay(("-> Renaming ISO folder for BG: '{0}' to '{1}'" -f $bgISOFolderCurrent, $bgISOFolderNew))
 				
@@ -473,22 +475,22 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 				}
 				
 				# Mise à jour de la custom property qui contient le nom du BG
-				$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $bgName})
+				$bg = $vra.updateBG($bg, $projectName, $projectDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $projectName})
 
 				$bgUpdated = $true
 				$counters.inc('BGRenamed')
 
 			}# Fin s'il y a eu changement de nom 
 
-			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating BG '{0}' to '{1}'" -f $bg.name, $bgName))
+			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating Project '{0}' to '{1}'" -f $bg.name, $projectName))
 
 			# Mise à jour des informations
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
+			$bg = $vra.updateBG($bg, $projectName, $projectDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
 
 			$bgUpdated = $true
 			
 
-			# Si le BG était en Ghost, 
+			# Si le Project était en Ghost, 
 			if(!(isBGAlive -bg $bg))
 			{
 				# on compte juste la chose
@@ -502,7 +504,7 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 			$counters.inc('BGUpdated')
 		}
 
-	} # FIN SI le BG existe déjà
+	} # FIN SI le Project existe déjà
 
 	return $bg
 
@@ -510,32 +512,30 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Créé (si inexistants) ou met à jour les roles d'un Business Group (si existants)
+	BUT : Créé (si inexistants) ou met à jour les roles d'un Project (si existants)
 
 	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $bg					-> Objet contenant le BG à mettre à jour
+	IN  : $bg					-> Objet contenant le Project à mettre à jour
 	IN  : $manageGrpList		-> (optionnel) Tableau avec la liste des adresses mail à mettre pour les
 								   managers. Si pas passé ou $null, on ne change rien dans la liste spécifiée
 	IN  : $supportGrpList		-> (optionnel) Tableau avec la liste des adresses mail à mettre pour les
 								   personnes du support. Si pas passé ou $null, on ne change rien dans la liste spécifiée
-	IN  : $sharedGrpList		-> (optionnel) Tableau avec la liste des adresses mail à mettre pour les
+	IN  : $userGrpList		-> (optionnel) Tableau avec la liste des adresses mail à mettre pour les
 									"Share users". Si pas passé ou $null, on ne change rien dans la liste spécifiée
-	IN  : $userGrpList			-> (optionnel) Tableau avec la liste des adresses mail à mettre pour les
-									users. Si pas passé ou $null, on ne change rien dans la liste spécifiée
 	RET : Rien
 #>
-function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$managerGrpList, [Array]$supportGrpList, [Array]$sharedGrpList, [Array]$userGrpList)
+function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$adminGrpList, [Array]$supportGrpList, [Array]$userGrpList)
 {
 
 	# FIXME: Remplacer les CSP_* avec le nécessaire. Voir les rôles définis au début du define.inc.ps1
-	$logHistory.addLineAndDisplay(("-> Updating roles for BG {0}..." -f $bg.name))
+	$logHistory.addLineAndDisplay(("-> Updating roles for Project {0}..." -f $bg.name))
 
 	# S'il faut faire des modifs
-	if($managerGrpList.count -gt 0)
+	if($adminGrpList.count -gt 0)
 	{
 		$logHistory.addLineAndDisplay("--> Updating 'Group manager role'...")
 		$vra.deleteBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER")
-		$managerGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_SUBTENANT_MANAGER", $_) }
+		$adminGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_SUBTENANT_MANAGER", $_) }
 	}
 
 	# S'il faut faire des modifs
@@ -556,19 +556,11 @@ function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$manage
 	}
 
 	# S'il faut faire des modifs
-	if($sharedGrpList.Count -gt 0)
+	if($userGrpList.Count -gt 0)
 	{
 		$logHistory.addLineAndDisplay("--> Updating 'Shared access role'...")
 		$vra.deleteBGRoleContent($bg.id, "CSP_CONSUMER_WITH_SHARED_ACCESS")
-		$sharedGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_CONSUMER_WITH_SHARED_ACCESS", $_) }
-	}
-
-	# S'il faut faire des modifs
-	if($userGrpList.Count -gt 0)
-	{
-		$logHistory.addLineAndDisplay("--> Updating 'User role'...")
-		$vra.deleteBGRoleContent($bg.id, "CSP_CONSUMER")
-		$userGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_CONSUMER", $_) }
+		$userGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_CONSUMER_WITH_SHARED_ACCESS", $_) }
 	}
 
 }
@@ -576,10 +568,10 @@ function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$manage
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Créé (si inexistant) ou met à jour un Entitlement de Business Group (si existant)
+	BUT : Créé (si inexistant) ou met à jour un Entitlement de Project (si existant)
 
 	IN  : $vra 			-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $bg			-> Objet BG auquel l'entitlement est attaché
+	IN  : $bg			-> Objet Project auquel l'entitlement est attaché
 	IN  : $entName		-> Nom de l'entitlement
 	IN  : $entDesc		-> Description de l'entitlement.
 	IN  : $entType		-> Type d'entitlement
@@ -593,15 +585,15 @@ function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName
 {
 
 	# On recherche l'entitlement 
-	$logHistory.addLineAndDisplay(("-> Trying to get Entitlement for BG {0} (type: {1})..." -f $bg.name, $entType.ToString()))
+	$logHistory.addLineAndDisplay(("-> Trying to get Entitlement for Project {0} (type: {1})..." -f $bg.name, $entType.ToString()))
 
-	# Recherche de l'entitlement du BG du type donné. On recherche ceux du BG et on filtre ensuite avec une RegEx
+	# Recherche de l'entitlement du Project du type donné. On recherche ceux du Project et on filtre ensuite avec une RegEx
 	$ent = @($vra.getBGEntList($bg.id) | Where-Object { $_.name -match $nameGenerator.getEntNameRegex($entType)})
 
 	# Si on a trop de résultats
 	if($ent.count -gt 1)
 	{
-		Throw ("{0} Entitlements with same type ({1}) found for BG '{2}'" -f $ent.count, $entType.toString(), $bg.name)
+		Throw ("{0} Entitlements with same type ({1}) found for Project '{2}'" -f $ent.count, $entType.toString(), $bg.name)
 	}
 
 	if($ent.count -eq 0)
@@ -615,7 +607,7 @@ function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName
 	{
 		$ent = $ent[0]
 
-		# Si le nom a changé (car le nom du BG a changé) ou la description a changé 
+		# Si le nom a changé (car le nom du Project a changé) ou la description a changé 
 		if(($ent.name -ne $entName) -or ($ent.description -ne $entDesc) -or `
 			((!$ent.allUsers) -and ($null -ne (Compare-Object $onlyForGroups ($ent.principals | Select-Object -ExpandProperty "value")))))
 		{
@@ -636,7 +628,7 @@ function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Ajoute les Services "Public" à un Entitlement de Business Group s'il n'y
+	BUT : Ajoute les Services "Public" à un Entitlement de Project s'il n'y
 			sont pas déjà. Tous les services "Private" ne sont pas touchés, ils restent 
 			présents s'il y en avait.
 			Pour le moment, on ne fait que préparer l'objet pour ensuite réellement le
@@ -659,11 +651,11 @@ function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName
 											sont présents dans la liste
 	IN  : $mandatoryItems	-> Tableau avec la liste des items de catalogue à ajouter obligatoirement
 								à la liste des "Entitled items"	
-	IN  : $bgName			-> Le nom du BG auquel l'entitlement est lié	
+	IN  : $projectName			-> Le nom du Project auquel l'entitlement est lié	
 	
 	RET : Objet Entitlement mis à jour
 #>
-function prepareAddMissingBGEntPublicServices([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices, [Array]$mandatoryItems, [string]$bgName)
+function prepareAddMissingBGEntPublicServices([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices, [Array]$mandatoryItems, [string]$projectName)
 {
 
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
@@ -684,9 +676,9 @@ function prepareAddMissingBGEntPublicServices([vRAAPI]$vra, [PSCustomObject]$ent
 		# Parcours et ajout
 		$mandatoryItems | ForEach-Object {
 
-			# On regarde si on peut bien ajouter l'élément de catalogue pour le BG courant
+			# On regarde si on peut bien ajouter l'élément de catalogue pour le Project courant
 			if(($_.onlyForBG.count -eq 0) -or `
-				(($_.onlyForBG.count -gt 0) -and ($_.onlyForBG -contains $bgName)))
+				(($_.onlyForBG.count -gt 0) -and ($_.onlyForBG -contains $projectName)))
 			{
 				$catalogItem = $vra.getCatalogItem($_.name)
 
@@ -714,9 +706,9 @@ function prepareAddMissingBGEntPublicServices([vRAAPI]$vra, [PSCustomObject]$ent
 				}
 
 			}
-			else # L'élément de catalogue n'est pas autorisé pour le BG courant
+			else # L'élément de catalogue n'est pas autorisé pour le Project courant
 			{
-				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not allowed for BG '{1}'" -f $_.name, $bgName))
+				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not allowed for Project '{1}'" -f $_.name, $projectName))
 			}
 			
 		}# FIN BOUCLE de parcours des éléments de catalogue obligatoires
@@ -851,12 +843,12 @@ function sendErrorMailNoResTemplateFound
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Ajoute les Reservations nécessaires à un Business Group si elles n'existent
+	BUT : Ajoute les Reservations nécessaires à un Project si elles n'existent
 			pas encore. Ces réservations sont ajoutées selont les Templates qui existent.
 			Si les Reservations existent, on les mets à jour si besoin.
 
 	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $bg				-> Objet BG auquel ajouter les réservations
+	IN  : $bg				-> Objet Project auquel ajouter les réservations
 	IN  : $resTemplatePrefix-> Préfix des templates de réservation pour rechercher celles-ci.
 
 	RET : Rien
@@ -899,13 +891,13 @@ function createOrUpdateBGReservations([vRAAPI]$vra, [PSCustomObject]$bg, [string
 
 		$doneResList += $resName
 
-		# Parcours des Reservations déjà existantes pour le BG afin de voir s'il faut ajouter
+		# Parcours des Reservations déjà existantes pour le Project afin de voir s'il faut ajouter
 		# depuis $resTemplate ou pas. Pour ce faire, on se base sur le nom du Cluster auquel
 		# la réservation est liée
 		$matchingRes = $null
 		ForEach($bgRes in $bgResList)
 		{
-			# Si la Reservation courante du BG est pour le Cluster de la template
+			# Si la Reservation courante du Project est pour le Cluster de la template
 			if( (getResClusterName -reservation $bgRes) -eq $templateClusterName)
 			{
 				$matchingRes = $bgRes
@@ -956,11 +948,11 @@ function createOrUpdateBGReservations([vRAAPI]$vra, [PSCustomObject]$bg, [string
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Met un BG en mode "ghost" dans le but qu'il soit effacé par la suite.
+	BUT : Met un Project en mode "ghost" dans le but qu'il soit effacé par la suite.
 			On change aussi les droits d'accès
 
 	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $bg				-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
+	IN  : $bg				-> Objet contenant le Project a effacer. Cet objet aura été renvoyé
 					   			par un appel à une méthode de la classe vRAAPI
 	
 	RET : $true si mis en ghost
@@ -968,13 +960,13 @@ function createOrUpdateBGReservations([vRAAPI]$vra, [PSCustomObject]$bg, [string
 #>
 function setBGAsGhostIfNot([vRAAPI]$vra, [PSObject]$bg)
 {
-	
-	# Si le BG est toujours actif
+	# FIXME:
+	# Si le Project est toujours actif
 	if(isBGAlive -bg $bg)
 	{
 		$notifications.bgSetAsGhost += $bg.name
 
-		# On marque le BG comme "Ghost"
+		# On marque le Project comme "Ghost"
 		$vra.updateBG($bg, $null, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__GHOST})
 
 		$counters.inc('BGGhost')
@@ -986,7 +978,8 @@ function setBGAsGhostIfNot([vRAAPI]$vra, [PSObject]$bg)
 			# Récupération du contenu du rôle des admins de faculté pour le BG
 			$facAdmins = $vra.getBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER") 
 			
-			# Ajout des admins de la faculté de l'unité du BG afin qu'ils puissent gérer les élments du BG.
+			# Ajout des admins de la faculté de l'unité du Project afin qu'ils puissent gérer les élments du BG.
+			# FIXME: 
 			createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $facAdmins
 		}
 		# ITServices ou Research
@@ -994,6 +987,7 @@ function setBGAsGhostIfNot([vRAAPI]$vra, [PSObject]$bg)
 		{
 			$tenantAdmins = $vra.getTenantAdminGroupList($bg.tenant)
 			# Ajout des admins LOCAUX du tenant comme pouvant gérer les éléments du BG
+			# FIXME:
 			createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $tenantAdmins
 
 		}
@@ -1005,7 +999,7 @@ function setBGAsGhostIfNot([vRAAPI]$vra, [PSObject]$bg)
 		$setAsGhost = $true
 
 	} 
-	else # Le BG est déjà en "ghost"
+	else # Le Project est déjà en "ghost"
 	{
 		$setAsGhost = $false
 
@@ -1019,9 +1013,9 @@ function setBGAsGhostIfNot([vRAAPI]$vra, [PSObject]$bg)
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Permet de savoir si le Business Group passé est vivant ou voué à disparaitre
+	BUT : Permet de savoir si le Project passé est vivant ou voué à disparaitre
 
-	IN  : $bg		-> Business Group dont on veut savoir s'il est vivant
+	IN  : $bg		-> Project dont on veut savoir s'il est vivant
 
 	RET : Nom du groupe de sécurité à ajouter
 #>
@@ -1037,7 +1031,7 @@ function isBGAlive([PSCustomObject]$bg)
 	}
 
 	<# Si on arrive ici, c'est qu'on n'a pas défini de clef (pour une raison inconnue) pour enregistrer le statut
-	   On enregistre donc la chose et on dit que le BG est "vivant"
+	   On enregistre donc la chose et on dit que le Project est "vivant"
 	#>
 	$notifications.bgWithoutCustomPropStatus += $bg.name
 	return $true
@@ -1073,31 +1067,31 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 			{
 
 				# ---------------------------------------
-				# BG sans "custom property" permettant de définir le statut
+				# Project sans "custom property" permettant de définir le statut
 				'bgWithoutCustomPropStatus'
 				{
 					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
 					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_BG_STATUS
-					$mailSubject = "Warning - Business Group without '{{customProperty}}' custom property"
+					$mailSubject = "Warning - Project without '{{customProperty}}' custom property"
 					$templateName = "bg-without-custom-prop"
 				}
 
 				# ---------------------------------------
-				# BG sans "custom property" permettant de définir le type
+				# Project sans "custom property" permettant de définir le type
 				'bgWithoutCustomPropType'
 				{
 					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
 					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_BG_TYPE
-					$mailSubject = "Warning - Business Group without '{{customProperty}}' custom property"
+					$mailSubject = "Warning - Project without '{{customProperty}}' custom property"
 					$templateName = "bg-without-custom-prop"
 				}
 
 				# ---------------------------------------
-				# BG marqué comme étant des 'ghost'
+				# Project marqué comme étant des 'ghost'
 				'bgSetAsGhost'
 				{
 					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
-					$mailSubject = "Info - Business Group marked as 'ghost'"
+					$mailSubject = "Info - Project marked as 'ghost'"
 					$templateName = "bg-set-as-ghost"
 				}
 
@@ -1106,7 +1100,7 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				'emptyADGroups'
 				{
 					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
-					$mailSubject = "Info - AD groups empty for Business Group"
+					$mailSubject = "Info - AD groups empty for Project"
 					$templateName = "empty-ad-groups"
 				}
 
@@ -1115,7 +1109,7 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				'adGroupsNotFound'
 				{
 					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
-					$mailSubject = "Error - AD groups not found for Business Group"
+					$mailSubject = "Error - AD groups not found for Project"
 					$templateName = "ad-groups-not-found-for-bg"
 				}
 
@@ -1147,20 +1141,20 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				}
 
 				# ---------------------------------------
-				# Pas possible de renommer un BG car le nouveau nom existe déjà
-				'bgNameDuplicate'
+				# Pas possible de renommer un Project car le nouveau nom existe déjà
+				'projectNameDuplicate'
 				{
 					$valToReplace.bgRenameList = ($uniqueNotifications -join "</li>`n<li>")
-					$mailSubject = "Error - BG cannot be renamed because of duplicate name"
+					$mailSubject = "Error - Project cannot be renamed because of duplicate name"
 					$templateName = "bg-rename-duplicate"
 				}
 
 				# ---------------------------------------
-				# Pas possible de créer un BG car le nom existe déjà
-				'bgNameAlreadyTaken'
+				# Pas possible de créer un Project car le nom existe déjà
+				'projectNameAlreadyTaken'
 				{
 					$valToReplace.bgCreateList = ($uniqueNotifications -join "</li>`n<li>")
-					$mailSubject = "Error - BG cannot be created because of duplicate name"
+					$mailSubject = "Error - Project cannot be created because of duplicate name"
 					$templateName = "bg-create-duplicate"
 				}
 
@@ -1426,16 +1420,16 @@ try
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
 	$counters.add('ADGroups', '# AD group processed')
-	$counters.add('BGCreated', '# Business Group created')
-	$counters.add('BGNotCreated', '# Business Group NOT created')
-	$counters.add('BGUpdated', '# Business Group updated')
-	$counters.inc('BGExisting', '# Business Group already existing')
-	$counters.add('BGNotCreated', '# Business Group not created (because of an error)')
-	$counters.add('BGNotRenamed', '# Business Group not renamed')
-	$counters.add('BGResumeSkipped', '# Business Group skipped because of resume')
-	$counters.add('BGGhost',	'# Business Group set as "ghost"')
-	$counters.add('BGRenamed',	'# Business Group renamed')
-	$counters.add('BGResurrected', '# Business Group set alive again')
+	$counters.add('BGCreated', '# Project created')
+	$counters.add('BGNotCreated', '# Project NOT created')
+	$counters.add('BGUpdated', '# Project updated')
+	$counters.inc('BGExisting', '# Project already existing')
+	$counters.add('BGNotCreated', '# Project not created (because of an error)')
+	$counters.add('BGNotRenamed', '# Project not renamed')
+	$counters.add('ProjectResumeSkipped', '#Project skipped because of resume')
+	$counters.add('BGGhost',	'# Project set as "ghost"')
+	$counters.add('BGRenamed',	'# Project renamed')
+	$counters.add('BGResurrected', '# Project set alive again')
 	# Entitlements
 	$counters.add('EntCreated', '# Entitlements created')
 	$counters.add('EntUpdated', '# Entitlements updated')
@@ -1476,8 +1470,8 @@ try
 	$notifications=@{bgWithoutCustomPropStatus = @()
 					bgWithoutCustomPropType = @()
 					bgSetAsGhost = @()
-					bgNameDuplicate = @()
-					bgNameAlreadyTaken = @()
+					projectNameDuplicate = @()
+					projectNameAlreadyTaken = @()
 					emptyADGroups = @()
 					adGroupsNotFound = @()
 					ISOFolderNotRenamed = @()
@@ -1515,7 +1509,7 @@ try
 		if($null -ne $progress)
 		{
 			$doneElementList = $progress
-			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} BG already processed. Skipping to unprocessed (could take some time)..." -f $doneElementList.Count))
+			$logHistory.addLineAndDisplay(("Progress file found, using it! {0} Project already processed. Skipping to unprocessed (could take some time)..." -f $doneElementList.Count))
 		}
 		else
 		{
@@ -1531,8 +1525,9 @@ try
 	$adGroupList = Get-ADGroup -Filter ("Name -like '*'") -Server ad2.epfl.ch -SearchBase $nameGenerator.getADGroupsOUDN($true, [ADSubOUType]::User) -Properties Description,whenChanged 
 
 	# Création de l'objet pour récupérer les informations sur les approval policies à créer pour les demandes de nouveaux éléments
-	$newItemsApprovalFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "new-items-approval.json"))
-	$newItemsApprovalList = loadFromCommentedJSON -jsonFile $newItemsApprovalFile
+	# FIXME: 
+	# $newItemsApprovalFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "new-items-approval.json"))
+	# $newItemsApprovalList = loadFromCommentedJSON -jsonFile $newItemsApprovalFile
 
 	# Création de l'objet pour gérer les 2nd day actions
 	$secondDayActions = [SecondDayActions]::new([EntitlementType]::User)
@@ -1558,7 +1553,7 @@ try
 		$counters.inc('ADGroups')
 
 		# ----------------------------------------------------------------------------------
-		# --------------------------------- Business Group
+		# --------------------------------- Project
 		
 		# Initialisation du générateur de nom depuis les infos présentes dans le groupe AD
 		$nameGenerator.initDetailsFromADGroup($_)
@@ -1570,13 +1565,13 @@ try
 		{
 			
 			# Eclatement de la description et du nom pour récupérer le informations
-			$dummy, $bgEPFLID = $nameGenerator.extractInfosFromADGroupName($_.Name)
+			$dummy, $projectEPFLID = $nameGenerator.extractInfosFromADGroupName($_.Name)
 			
 			$financeCenter = $descInfos.financeCenter
 			$deniedVRASvc = $descInfos.deniedVRASvc
 
-			# Création du nom/description du business group
-			$bgDesc = $nameGenerator.getBGDescription()
+			# Création du nom/description du Project
+			$projectDesc = $nameGenerator.getProjectDescription()
 
 		}
 
@@ -1589,11 +1584,11 @@ try
 
 			$deniedVRASvc = $descInfos.deniedVRASvc
 
-			# Création du nom/description du business group
-			$bgDesc = $descInfos.svcName
+			# Création du nom/description du Project
+			$projectDesc = $descInfos.svcName
 							
-			# Custom properties du Buisness Group
-			$bgEPFLID = $descInfos.svcId
+			# Custom properties du Project
+			$projectEPFLID = $descInfos.svcId
 		}
 
 
@@ -1602,12 +1597,12 @@ try
 		{
 			$financeCenter = $descInfos.financeCenter
 
-			# Création du nom/description du business group
-			$bgDesc = $descInfos.projectAcronym
+			# Création du nom/description du Project
+			$projectDesc = $descInfos.projectAcronym
 			
 			# Eclatement de la description et du nom pour récupérer le informations 
 			# Vu qu'on reçoit un tableau à un élément, on prend le premier (vu que les autres... n'existent pas)
-			$bgEPFLID = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
+			$projectEPFLID = $nameGenerator.extractInfosFromADGroupName($_.Name)[0]
 
 			# Aucun service de défendu
 			$deniedVRASvc = @()
@@ -1619,15 +1614,15 @@ try
 		}
 		
 		# Récupération du nom du BG
-		$bgName = $nameGenerator.getBGName()
-		# Nom du préfix de machine
-		$machinePrefixName = $nameGenerator.getVMMachinePrefix()
+		$projectName = $nameGenerator.getProjectName()
+		# Template de nommage de VM
+		$machineNameTemplate = $nameGenerator.getVMNameTemplate()
 
 		# Si on a déjà traité le groupe AD
 		if( ($doneElementList | Foreach-Object { $_.adGroup } ) -contains $_.name)
 		{
-			$counters.inc('BGResumeSkipped')
-			# passage au BG suivant
+			$counters.inc('ProjectResumeSkipped')
+			# passage au Project suivant
 			return
 		}
 
@@ -1642,14 +1637,14 @@ try
 				$logHistory.addLineAndDisplay(("--> Skipping group, modification date older than {0} day(s) ago ({1})" -f $global:AD_GROUP_MODIFIED_LAST_X_DAYS, $_.whenChanged))
 				$doneElementList += @{
 					adGroup = $_.name
-					bgName = $bgName
+					projectName = $projectName
 				}
 				$counters.inc('BGExisting')
 				return
 			}
 		}
 		
-		#### Lorsque l'on arrive ici, c'est que l'on commence à exécuter le code pour les BG qui n'ont pas été "skipped" lors du 
+		#### Lorsque l'on arrive ici, c'est que l'on commence à exécuter le code pour les Project qui n'ont pas été "skipped" lors du 
 		#### potentiel '-resume' que l'on a passé au script.
 
 		# Pour repartir "propre" pour le groupe AD courant
@@ -1665,44 +1660,48 @@ try
 
 		# FIXME: Modifier le nécessaire
 		# Groupes de sécurités AD pour les différents rôles du BG
-		$managerGrpList = @($nameGenerator.getRoleADGroupName([UserRole]::Admin, $true))
+		$adminGrpList = @($nameGenerator.getRoleADGroupName([UserRole]::Admin, $true))
 		$supportGrpList = @($nameGenerator.getRoleADGroupName([UserRole]::Support, $true))
 		# Pas besoin de "générer" le nom du groupe ici car on le connaît déjà vu qu'on est en train de parcourir les groupes AD
 		# créés par le script "sync-ad-groups-from-ldap.ps1"
-		$sharedGrpList  = @($ADFullGroupName)
-		$userGrpList    = @($ADFullGroupName)
+		$userGrpList  = @($ADFullGroupName, $supportGrpList)
 
 		# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG. On prend le niveau 1 car c'est celui de EXHEB
 		# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
 		#$capacityAlertMails += $nameGenerator.getApproveGroupsEmail(1)
 		
 		# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
-		$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ITEM_REQ)
-		$actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ACTION_REQ)
 
-		# Tableau pour les approbateurs des différents niveaux
-		$approverGroupAtDomainList = @()
-		$level = 0
-		# on fait une boucle infine et on sortira quand on n'aura plus d'infos
-		While($true)
-		{
-			$level += 1
-			$levelGroupInfos = $nameGenerator.getApproveADGroupName($level, $true)
-			# Si on n'a plus de groupe pour le level courant, on sort
-			if($null -eq $levelGroupInfos)
-			{
-				break
-			}
-			$approverGroupAtDomainList += $levelGroupInfos.name
-		}
+		# FIXME: Voir comment faire en temps voulu avec les approval policies
+		# FIXME: APPROVAL POLICIES --->
+		# $itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ITEM_REQ)
+		# $actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ACTION_REQ)
 
-		# Vu qu'il y aura des quotas pour les demandes sur le tenant EPFL, on utilise une policy du type "Event Subscription", ceci afin d'appeler un Workflow défini
-		# qui se chargera de contrôler le quota.
-		$newItemApprovalInfos = $newItemsApprovalList | Where-Object { $_.tenant -eq $targetTenant}
+		# # Tableau pour les approbateurs des différents niveaux
+		# $approverGroupAtDomainList = @()
+		# $level = 0
+		# # on fait une boucle infine et on sortira quand on n'aura plus d'infos
+		# While($true)
+		# {
+		# 	$level += 1
+		# 	$levelGroupInfos = $nameGenerator.getApproveADGroupName($level, $true)
+		# 	# Si on n'a plus de groupe pour le level courant, on sort
+		# 	if($null -eq $levelGroupInfos)
+		# 	{
+		# 		break
+		# 	}
+		# 	$approverGroupAtDomainList += $levelGroupInfos.name
+		# }
+
+		# # Vu qu'il y aura des quotas pour les demandes sur le tenant EPFL, on utilise une policy du type "Event Subscription", ceci afin d'appeler un Workflow défini
+		# # qui se chargera de contrôler le quota.
+		# $newItemApprovalInfos = $newItemsApprovalList | Where-Object { $_.tenant -eq $targetTenant}
 		
+		# FIXME: <--- APPROVAL POLICIES 
+
 		# -- NSX --
 		# Nom et description du NSGroup
-		$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bgName)
+		$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($projectName)
 		# Nom du security Tag
 		$nsxSTName = $nameGenerator.getSecurityTagName()
 		# Nom et description de la section de firewall
@@ -1711,19 +1710,18 @@ try
 		$nsxFWRuleNames = $nameGenerator.getFirewallRuleNames()
 
 		# Contrôle de l'existance des groupes. Si l'un d'eux n'existe pas dans AD, une exception est levée.
-		if( ((checkIfADGroupsExists -ldap $ldap -groupList $managerGrpList) -eq $false) -or `
+		if( ((checkIfADGroupsExists -ldap $ldap -groupList $adminGrpList) -eq $false) -or `
 			((checkIfADGroupsExists -ldap $ldap -groupList $supportGrpList) -eq $false) -or `
-			((checkIfADGroupsExists -ldap $ldap -groupList $sharedGrpList) -eq $false) -or `
 			((checkIfADGroupsExists -ldap $ldap -groupList $userGrpList) -eq $false) -or `
 			((checkIfADGroupsExists -ldap $ldap -groupList $approverGroupAtDomainList) -eq $false))
 		{
-			$logHistory.addWarningAndDisplay(("Security groups for Business Group ({0}) roles not found in Active Directory, skipping it !" -f $bgName))
+			$logHistory.addWarningAndDisplay(("Security groups for Project ({0}) roles not found in Active Directory, skipping it !" -f $projectName))
 
-			# On enregistre quand même le nom du Business Group, même si on n'a pas pu continuer son traitement. Si on ne fait pas ça et qu'il existe déjà,
+			# On enregistre quand même le nom du Project, même si on n'a pas pu continuer son traitement. Si on ne fait pas ça et qu'il existe déjà,
 			# il sera supprimé à la fin du script, chose qu'on ne désire pas.
 			$doneElementList += @{
 				adGroup = $_.name
-				bgName = $bgName
+				projectName = $projectName
 			}
 
 			# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
@@ -1735,25 +1733,25 @@ try
 		if((Get-ADGroupMember $_.Name).Count -eq 0)
 		{
 			# On enregistre l'info pour notification
-			$notifications.emptyADGroups += ("{0} ({1})" -f $_.Name, $bgName)
+			$notifications.emptyADGroups += ("{0} ({1})" -f $_.Name, $projectName)
 		}
 
 		
 		
 		# ----------------------------------------------------------------------------------
-		# --------------------------------- Business Group 
+		# --------------------------------- Project 
 
-		# Création ou mise à jour du Business Group
-		$bg = createOrUpdateBG -vra $vra -bgEPFLID $bgEPFLID -tenantName $targetTenant -bgName $bgName -bgDesc $bgDesc `
-									-machinePrefixName $machinePrefixName -financeCenter $financeCenter -capacityAlertsEmail ($capacityAlertMails -join ",") 
+		# Création ou mise à jour du Project
+		$bg = createOrUpdateProject -vra $vra -bgEPFLID $projectEPFLID -tenantName $targetTenant -projectName $projectName -bgDesc $projectDesc `
+									-machinePrefixName $machineNameTemplate -financeCenter $financeCenter -capacityAlertsEmail ($capacityAlertMails -join ",") 
 
-		# Si BG pas créé, on passe au s	uivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
+		# Si Project pas créé, on passe au s	uivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
 		if($null -eq $bg)
 		{
-			# On note quand même le BG comme pas traité
+			# On note quand même le Project comme pas traité
 			$doneElementList += @{
 				adGroup = $_.name
-				bgName = $bgName
+				projectName = $projectName
 			}
 			# Note: Pour passer à l'élément suivant dans un ForEach-Object, il faut faire "return" et non pas "continue" comme dans une boucle standard
 			return
@@ -1781,22 +1779,22 @@ try
 		}
 		
 		# ----------------------------------------------------------------------------------
-		# --------------------------------- Business Group Roles
-		createOrUpdateBGRoles -vra $vra -bg $bg -managerGrpList $managerGrpList -supportGrpList $supportGrpList `
-									-sharedGrpList $sharedGrpList -userGrpList $userGrpList
+		# --------------------------------- Project Roles
+		createOrUpdateBGRoles -vra $vra -bg $bg -managerGrpList $adminGrpList -supportGrpList $supportGrpList `
+									-userGrpList $userGrpList 
 
 
 		# ----------------------------------------------------------------------------------
-		# --------------------------------- Business Group Entitlement
+		# --------------------------------- Project Entitlement
 		# Pour les utilisateurs (toutes les actions)
 		$ent = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entName -entDesc $entDesc -entType ([EntitlementType]::User) -NameGenerator $nameGenerator `
 									-onlyForGroups @()
 		# Pour les admins (actions VIP)
 		$entAdm = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entNameAdm -entDesc $entDescAdm -entType ([EntitlementType]::Admin) -NameGenerator $nameGenerator `
-									-onlyForGroups $managerGrpList.split('@')[0]
+									-onlyForGroups $adminGrpList.split('@')[0]
 		
 		# ----------------------------------------------------------------------------------
-		# --------------------------------- Business Group Entitlement - 2nd day Actions
+		# --------------------------------- Project Entitlement - 2nd day Actions
 		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for users...")
 		$result = $vra.prepareEntActions($ent, $secondDayActions, $targetTenant)
 		$ent = $result.entitlement
@@ -1812,14 +1810,14 @@ try
 		
 	
 		# ----------------------------------------------------------------------------------
-		# --------------------------------- Business Group Entitlement - Services
+		# --------------------------------- Project Entitlement - Services
 		$logHistory.addLineAndDisplay(("-> Adding public Services to Entitlement for users..."))
 		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc `
-				-mandatoryItems $mandatoryEntItemsList -bgName $bgName
+				-mandatoryItems $mandatoryEntItemsList -projectName $projectName
 
 		$logHistory.addLineAndDisplay(("-> Adding public Services to Entitlement for admins..."))
 		$entAdm = prepareAddMissingBGEntPublicServices -vra $vra -ent $entAdm -approvalPolicy $null -deniedServices $deniedVRASvc `
-				-mandatoryItems $mandatoryEntItemsList -bgName $bgName
+				-mandatoryItems $mandatoryEntItemsList -projectName $projectName
 
 		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus
 		$logHistory.addLineAndDisplay("-> Updating Entitlement for users...")
@@ -1840,7 +1838,7 @@ try
 		# --------------------------------- Dossier pour les ISO privées
 		
 		# Recherche de l'UNC jusqu'au dossier où mettre les ISO pour le BG
-		$bgISOFolder = $nameGenerator.getNASPrivateISOPath($bgName)
+		$bgISOFolder = $nameGenerator.getNASPrivateISOPath($projectName)
 
 		$ISOFolderCreated = $false
 		# Si on a effectivement un dossier où mettre les ISO et qu'il n'existe pas encore,
@@ -1863,7 +1861,7 @@ try
 		# OU 
 		# qu'on doit mettre à jour les ACLs
 		# OU
-		# que c'est un BG avec le groupe de support qui est managé
+		# que c'est un Project avec le groupe de support qui est managé
 		if($ISOFolderCreated -or $forceACLsUpdate -or `
 			(getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -ne $global:VRA_BG_RES_MANAGE__AUTO)
 		{
@@ -1872,7 +1870,7 @@ try
 			$acl = Get-Acl $bgISOFolder
 	
 			# On détermine qui a accès. Par défaut, tous les utilisateurs du BG
-			$grantsToGroups = $sharedGrpList
+			$grantsToGroups = $userGrpList
 			# Ajout des groupes de support
 			$grantsToGroups += $vra.getBGRoleContent($bg.id, "CSP_SUPPORT")
 	
@@ -1939,34 +1937,34 @@ try
 
 		$doneElementList += @{
 			adGroup = $_.name
-			bgName = $bgName
+			projectName = $projectName
 		}
 		# On sauvegarde l'avancement dans le cas où on arrêterait le script au milieu manuellement
 		$resumeOnFail.save($doneElementList)	
 
 	}# Fin boucle de parcours des groupes AD pour l'environnement/tenant donnés
 
-	$logHistory.addLineAndDisplay("Business Groups created from AD!")
+	$logHistory.addLineAndDisplay("Projects created from AD!")
 
 	# ----------------------------------------------------------------------------------------------------------------------
 	# ----------------------------------------------------------------------------------------------------------------------
 
-	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")
+	$logHistory.addLineAndDisplay("Cleaning 'old' Projects")
 	
 	# Extraction de la liste des ID "custom" des éléments qui ont été traités. Cela sera donc les SVCxxxx ou ID d'unité suivant le tenant)
 	$doneBGidList = ($doneElementList | ForEach-Object { ($nameGenerator.extractInfosFromADGroupName($_.adGroup))[-1] } )
 
-	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
+	# Recherche et parcours de la liste des Project commençant par le bon nom pour le tenant
 	$vra.getBGList() | ForEach-Object {
 
-		# Recherche si le BG est d'un des types donné, pour ne pas virer des BG "admins"
+		# Recherche si le Project est d'un des types donné, pour ne pas virer des Project "admins"
 		$isBGOfType = isBGOfType -bg $_ -typeList @($global:VRA_BG_TYPE__SERVICE, $global:VRA_BG_TYPE__UNIT, $global:VRA_BG_TYPE__PROJECT)
 
 		# Si la custom property qui donne les infos n'a pas été trouvée
 		if($null -eq $isBGOfType)
 		{
 			$notifications.bgWithoutCustomPropType += $_.name
-			$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Business Group '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, $_.name))
+			$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Project '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, $_.name))
 		}
 		else # On a les infos sur le type de BG
 		{
@@ -1974,7 +1972,7 @@ try
 			# Si on n'a pas trouvé de groupe AD qui correspondait au BG, on peut le mettre en "ghost"
 			if(($null -ne $bgId) -and  ($doneBGidList -notcontains $bgId))
 			{
-				$logHistory.addLineAndDisplay(("-> Setting Business Group '{0}' as Ghost..." -f $_.name))
+				$logHistory.addLineAndDisplay(("-> Setting Project '{0}' as Ghost..." -f $_.name))
 				setBGAsGhostIfNot -vra $vra -bg $_ | Out-Null
 			}
 
@@ -2031,7 +2029,7 @@ try
 catch # Dans le cas d'une erreur dans le script
 {
 	# Sauvegarde de la progression en cas d'erreur
-	$logHistory.addLineAndDisplay(("Saving progress for future resume ({0} BG processed)" -f $doneElementList.Count))
+	$logHistory.addLineAndDisplay(("Saving progress for future resume ({0} Project processed)" -f $doneElementList.Count))
 	$resumeOnFail.save($doneElementList)	
 
 	# Récupération des infos

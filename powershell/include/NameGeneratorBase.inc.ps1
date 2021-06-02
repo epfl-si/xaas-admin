@@ -203,7 +203,7 @@ class NameGeneratorBase
                 dans cette classe car d'autres détails manqueront. A la base, on peut initialiser
                 les détails depuis le nom du BG pour pouvoir utiliser les fonctions suivante 
                 mais peut-être que d'autres peuvent aussi fonctionner:
-                - getVMMachinePrefix 
+                - getVMNameTemplate 
                 - getApprovalPolicyNameAndDesc
 
         IN  : $bgName   -> Nom du BG

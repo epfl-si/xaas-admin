@@ -257,7 +257,7 @@ class vRA8API: RESTAPICurl
                 (($_.customProperties | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name) -contains $global:VRA_CUSTOM_PROP_EPFL_BG_ID) `
                 -and `
                 # Check de la valeur de la custom property
-                ($_.customProperties | Select-Object -ExpandProperty ch.epfl.vra.bg.id ) -eq $customId
+                ($_.customProperties | Select-Object -ExpandProperty $global:VRA_CUSTOM_PROP_EPFL_BG_ID ) -eq $customId
             }
 		}
 	

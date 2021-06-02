@@ -530,7 +530,7 @@ try
     {
         $logHistory.addLine(("Business group ID given ({0}), looking for object in vRA..." -f $bgId))
         # Récupération de l'objet représentant le BG dans vRA
-        $bg = $vra.getBGByCustomId($bgId)
+        $bg = $vra.getProjectByCustomId($bgId)
 
         # On check si pas trouvé (on ne sait jamais...)
         if($null -eq $bg)

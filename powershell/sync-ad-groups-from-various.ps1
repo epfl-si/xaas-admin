@@ -1099,7 +1099,7 @@ try
 						if($ldapMemberList.Count -gt 0)
 						{
 							$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
-							updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+							updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getProjectName() -targetTenant $targetTenant
 						}
 
 						# Mise à jour des compteurs
@@ -1373,7 +1373,7 @@ try
 					# if(($groupsUsernameList = Get-ADGroupMember $userGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
 					# {
 					# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $groupsUsernameList.Count, [TableauRoles]::User.ToString() ))
-					# 	updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+					# 	updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getProjectName() -targetTenant $targetTenant
 					# }
 					
 					# # ###### Roles pour Tableau --> Admin du service
@@ -1620,7 +1620,7 @@ try
 					if(-not $SIMULATION_MODE)
 					{
 						# Suppression des accès pour le business group correspondant au groupe AD courant.
-						updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getBGName() -targetTenant $targetTenant
+						updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getProjectName() -targetTenant $targetTenant
 					}
 				}
 

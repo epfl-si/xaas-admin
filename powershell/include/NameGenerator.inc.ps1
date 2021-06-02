@@ -1173,12 +1173,14 @@ class NameGenerator: NameGeneratorBase
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie le préfixe de machine à utiliser pour une faculté ou un service
+        BUT : Renvoie le template pour générer un nom de machine pour une faculté ou un service
 
-		RET : Préfixe de machine
+		RET : Template pour générer le nom
     #>
-    [string] getVMMachinePrefix()
+    [string] getVMNameTemplate()
     {
+        $suffix = "`${####}"
+
         $detailToUse = ""
         switch($this.tenant)
         {
@@ -1191,53 +1193,15 @@ class NameGenerator: NameGeneratorBase
             # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES 
             { 
-                # On ne créé pas de préfixe de VM pour ce tenant, c'est vRA qui s'occupera de faire le job
-                # en utilisant le nom du BG comme base pour le préfixe de VM
-                return ""
+                # On utilise le nom du tenant (court) suivi du nom court du service
+                # its<serviceShortName>
+                $detailToUse = "{0}{1}" -f $this.getTenantShortName, $this.getDetail('svcShortName')
             }
 
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
                 $detailToUse = $this.getDetail('projectId')
-            }
-        }
-
-        # Suppression de tous les caractères non alpha numériques
-        $detailToUse = $detailToUse -replace '[^a-z0-9]', ''
-
-        # On raccourci à 6 caractères pour ne pas avoir des préfixes trop longs
-        $detailToUse = $detailToUse.Substring(0, [System.Math]::Min(6, $detailToUse.length))
-
-        # Pour l'ID court de l'environnement 
-        $envId = ""
-        
-        switch($this.tenant)
-        {
-            $global:VRA_TENANT__EPFL 
-            { 
-                # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
-                if($this.env -ne $global:TARGET_ENV__PROD)
-                {
-                    $envId = $this.getEnvShortName()
-                }
-                return "{0}{1}vm" -f $this.transformFacultyForGroupName($detailToUse), $envId
-            }
-            
-            $global:VRA_TENANT__ITSERVICES 
-            { 
-                # Pas besoin de traiter les choses ici car on a déjà fait un "return" précédemment pour sortir de la fonction                
-            }
-
-            # Tenant Research
-            $global:VRA_TENANT__RESEARCH
-            {
-                # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
-                if($this.env -ne $global:TARGET_ENV__PROD)
-                {
-                    $envId = $this.getEnvShortName()
-                }
-                return "{0}{1}vm" -f $this.transformForGroupName($detailToUse) , $envId
             }
 
             # Tenant pas géré
@@ -1246,7 +1210,31 @@ class NameGenerator: NameGeneratorBase
                 Throw ("Unsupported Tenant ({0})" -f $this.tenant)
             }
         }
-        return ""
+
+        # Suppression de tous les caractères non alpha numériques
+        $detailToUse = $detailToUse -replace '[^a-z0-9]', ''
+
+        # On raccourci à 6 caractères pour ne pas avoir des préfixes trop longs
+        $detailToUse = $detailToUse.Substring(0, [System.Math]::Min(6, $detailToUse.length)).toLower()
+
+        # Pour l'ID court de l'environnement 
+        $envId = ""
+        
+        if($this.tenant -eq $global:VRA_TENANT__EPFL -or `
+            $this.tenant -eq $global:VRA_TENANT__RESEARCH )
+        {
+            # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
+            if($this.env -ne $global:TARGET_ENV__PROD)
+            {
+                $envId = $this.getEnvShortName()
+            }
+            return "{0}{1}vm{2}" -f $detailToUse, $envId, $suffix
+        }
+        elseif($this.env -eq $global:VRA_TENANT__ITSERVICES)
+        {
+            return "{0}{1}{2}" -f $detailToUse, $envId, $suffix
+        }
+        
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
@@ -1254,11 +1242,11 @@ class NameGenerator: NameGeneratorBase
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie la description d'un BG du tenant EPFL
+        BUT : Renvoie la description d'un Project du tenant courant
 
-		RET : Description du BG
+		RET : Description du Project
     #>
-    [string] getBGDescription()
+    [string] getProjectDescription()
     {
         $desc = ""
         switch($this.tenant)
@@ -1270,7 +1258,7 @@ class NameGenerator: NameGeneratorBase
 
             $global:VRA_TENANT__ITSERVICES 
             {
-                $desc = "" 
+                $desc = $this.getDetail('svcName')
             }
 
             # Tenant Research
@@ -1408,7 +1396,7 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom à utiliser pour un Projet en fonction des paramètres passés.
 
-        RET : Le nom du BG à utiliser
+        RET : Le nom du Project à utiliser
     #>
     [string] getProjectName()
     {
