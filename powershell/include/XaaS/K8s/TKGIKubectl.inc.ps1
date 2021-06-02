@@ -628,8 +628,8 @@ class TKGIKubectl
     {
         # -- Première partie définie par l'EFPL
 
-        $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-clusterRole.yaml")) | Out-Null
         $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-podSecurityPolicy.yaml")) | Out-Null
+        $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-clusterRole.yaml")) | Out-Null
         $this.exec($clusterName,  $this.generateKubectlCmdWithYaml("xaas-k8s-cluster-contour-roleBinding.yaml")) | Out-Null
 
         <# -- Partie "officielle". Tirée du fichier https://projectcontour.io/quickstart/contour.yaml 
