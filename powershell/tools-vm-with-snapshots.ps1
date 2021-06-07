@@ -273,25 +273,19 @@ try
 
             # Envoi du mail
             $logHistory.addLineAndDisplay(("-> Sending mail to {0}..." -f $mailTo))
-            
-            try
+
+            Send-MailMessage -From $mailFrom -to $mailTo -Subject $mailSubject  `
+                            -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8 -ErrorVariable 'errorVar'
+
+            # Si l'adresse mail n'existe pas
+            if($errorVar.count -gt 0 -and $errorVar[0].Exception.Message -like "*Mailbox unavailable*")
             {
-                Send-MailMessage -From $mailFrom -to $mailTo -Subject $mailSubject  `
-                                -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8
-            }
-            catch
-            {
-                # Si l'adresse mail n'existe pas
-                if($_.Exception.Message -like "*Mailbox unavailable*")
-                {
-                    $notifications.unknownMailboxes += ("<b>Mail: </b>{0}<br><b>VMs: </b> {1}" -f $mailTo, ( ($vmWithSnap | Where-Object { $_.mail -eq $mailTo } | ForEach-Object{ $_.VM }) -join ", "))
-                }
+                $notifications.unknownMailboxes += ("<b>Mail: </b>{0}<br><b>VMs: </b> {1}" -f $mailTo, ( ($vmWithSnap | Where-Object { $_.mail -eq $mailTo } | ForEach-Object{ $_.VM }) -join ", "))
             }
             
             # Pour ne pas faire de spam
             Start-Sleep -Milliseconds 500
             
-
         }# FIN BOUCLE de parcours des noms de BG
     }
     else
