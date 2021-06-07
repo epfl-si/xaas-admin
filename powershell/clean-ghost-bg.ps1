@@ -251,9 +251,9 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 
 			# Security Group
 			$nsxNSGroupName, $nsxNSGroupDesc = $nameGenerator.getSecurityGroupNameAndDesc($bg.name)
-			$nsxNSGroup = $nsx.getNSGroupByName($nsxNSGroupName, $global:NSX_VM_MEMBER_TYPE)
+			$nsxNSGroup = $nsx.getNSGroupByName($nsxNSGroupName, $global:NSX_VM_MEMBER_TYPE, [NSXAPIEndpoint]::Manager)
 			$logHistory.addLineAndDisplay(("--> Deleting NSX NS Group '{0}'..." -f $nsxNSGroupName))
-			$nsx.deleteNSGroup($nsxNSGroup)
+			$nsx.deleteNSGroup($nsxNSGroup, [NSXAPIEndpoint]::Manager)
 		}
 
 		# Incrémentation du compteur

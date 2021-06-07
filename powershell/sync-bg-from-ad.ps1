@@ -1250,7 +1250,7 @@ function checkIfADGroupsExists([EPFLLDAP]$ldap, [System.Collections.ArrayList]$g
 function createNSGroupIfNotExists([NSXAPI]$nsx, [string]$nsxNSGroupName, [string]$nsxNSGroupDesc, [string]$nsxSecurityTag)
 {
 
-	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName, $global:NSX_VM_MEMBER_TYPE)
+	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName, $global:NSX_VM_MEMBER_TYPE, [NSXAPIEndpoint]::Manager)
 
 	# Si le NSGroup n'existe pas,
 	if($null -eq $nsGroup)
@@ -1258,7 +1258,7 @@ function createNSGroupIfNotExists([NSXAPI]$nsx, [string]$nsxNSGroupName, [string
 		$logHistory.addLineAndDisplay(("-> Creating NSX NS Group '{0}'... " -f $nsxNSGroupName))
 
 		# Création de celui-ci
-		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag, $global:NSX_VM_MEMBER_TYPE)
+		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag, $global:NSX_VM_MEMBER_TYPE, [NSXAPIEndpoint]::Manager)
 
 		$counters.inc('NSXNSGroupCreated')
 	}
