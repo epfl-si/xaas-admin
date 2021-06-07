@@ -118,9 +118,6 @@ try
         $logHistory.addLineAndDisplay(("Processing BG '{0}'..." -f $bg.name))
         $vmList = $vra.getBGItemList($bg, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
 
-        # Pour la liste des VM avec 
-        $bgVMTooOldSnap = @()
-
         # Parcours des VM
         ForEach($vm in $vmList)
         {
@@ -145,16 +142,23 @@ try
                         # Recherche des adresses mail de notification et ajout d'une entrée par personne dans la liste
                         getVMNotifMailList -vRAvm $vm | Foreach-Object {
                             
-                            # Ajout au tableau avec les infos nécessaires pour envoyer les mails par la suite
-                            $vmWithSnap.add([PSCustomObject]@{
-                                bgName = $bg.name
-                                VM = $vm.name
-                                snapshotDate = $createDate.toString("dd.MM.yyyy HH:mm:ss")
-                                ageDays = $dateDiff.days
-                                mail = $_
-                            }) | Out-Null
-                            
-                        }
+                            # Si pas trouvé le mail
+                            if($null -eq $_ -or $_ -eq "")
+                            {
+                                $logHistory.addWarningAndDisplay(("--> Empty mail found for VM '{0}'" -f $vm.name))
+                            }
+                            else
+                            {
+                                # Ajout au tableau avec les infos nécessaires pour envoyer les mails par la suite
+                                $vmWithSnap.add([PSCustomObject]@{
+                                    bgName = $bg.name
+                                    VM = $vm.name
+                                    snapshotDate = $createDate.toString("dd.MM.yyyy HH:mm:ss")
+                                    ageDays = $dateDiff.days
+                                    mail = $_
+                                }) | Out-Null
+                            }
+                        }# FIN BOUCLE de parcours des mails
                     }
 
                 }
