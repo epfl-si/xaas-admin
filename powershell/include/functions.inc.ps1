@@ -379,7 +379,7 @@ function PSCustomObjectToHashtable([PSCustomObject]$obj)
 function getVMNotifMailList([PSCUstomObject]$vRAvm)
 {
 	# Recherche des adresses mail de notification
-	$notifMailList = getvRAObjectCustomPropValue -object $vRAvm -customPropName "ch.epfl.owner_mail"
+	$notifMailList = getvRAObjectCustomPropValue -object $vRAvm -customPropName $global:VRA_CUSTOM_PROP_EPFL_VM_NOTIFICATION_MAIL
 
 	# Si custom property pas renseignée, 
 	if($null -eq $notifMailList)

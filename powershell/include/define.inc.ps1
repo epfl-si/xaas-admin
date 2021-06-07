@@ -77,6 +77,7 @@ $global:VRA_CUSTOM_PROP_VRA_BG_NAME                 = "ch.epfl.vra.bg.name"
 $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER = "ch.epfl.billing.financecenter"
 $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME    = "ch.epfl.billing.entity.name"
 $global:VRA_CUSTOM_PROP_EPFL_DEPLOYMENT_TAG         = "ch.epfl.deployment_tag"
+$global:VRA_CUSTOM_PROP_EPFL_VM_NOTIFICATION_MAIL   = "ch.epfl.owner_mail"
 
 
 # Types de Business Group possibles
