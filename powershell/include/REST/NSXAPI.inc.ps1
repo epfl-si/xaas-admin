@@ -16,6 +16,12 @@ enum NSXNSGroupMemberType {
     LogicalSwitch
 }
 
+enum NSXAPIEndpoint 
+{
+    Manager
+    Policy
+}
+
 class NSXAPI: RESTAPICurl
 {
     hidden [string]$authInfos
@@ -50,6 +56,26 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
+        BUT : Renvoie l'URL de base en fonction du type de endpoint que l'on veut atteindre
+
+		IN  : $endpoint -> Type du endpoint
+
+		RET : URL de base
+    #>
+    hidden [string] getEndpointBaseUrl([NSXAPIEndPoint]$endpoint)
+    {
+        if($endpoint -eq [NSXAPIEndpoint]::Policy)
+        {
+            return "{0}/policy" -f $this.baseUrl
+        }
+        else
+        {
+            return $this.baseUrl
+        }
+    }
+
+    <#
+		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
 	    									NS GROUP
 		-------------------------------------------------------------------------------------
@@ -60,13 +86,14 @@ class NSXAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
         BUT : Renvoie un NS Group donné par son ID
 
-		IN  : $id   -> ID du NS Group recherché
+		IN  : $id           -> ID du NS Group recherché
+        IN  : $endpoint     -> le type de endpoint sur lequel on veut faire la requête
 
 		RET : Le NS group 
     #>
-    [PSObject] getNSGroupById([string]$id)
+    [PSObject] getNSGroupById([string]$id, [NSXAPIEndpoint]$endpoint)
     {
-        $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $id
+        $uri = "{0}/ns-groups/{1}" -f $this.getEndpointBaseUrl($endpoint), $id
 
         $nsGroup = $this.callAPI($uri, "Get", $null)
 
@@ -81,7 +108,7 @@ class NSXAPI: RESTAPICurl
     }
 
     
-       <#
+    <#
 		-------------------------------------------------------------------------------------
         BUT : Renvoie un NS Group donné par son nom
 
@@ -91,10 +118,11 @@ class NSXAPI: RESTAPICurl
             On fait ensuite une nouvelle requête avec l'ID pour récupérer uniquement le NSGroup mais cette fois-ci avec les références.
 
         IN  : $name         -> Nom du NS Group recherché
+        IN  : $endpoint     -> le type de endpoint sur lequel on veut faire la requête
 
 		RET : Le NS group 
     #>
-    [PSObject] getNSGroupByName([string]$name)
+    [PSObject] getNSGroupByName([string]$name, [NSXAPIEndpoint]$endpoint)
     {
         # On commence par chercher les groupes "de base"
         $uriList = @()
@@ -103,10 +131,10 @@ class NSXAPI: RESTAPICurl
         On est obligé de faire comme ça parce que NSX renvoie les NSGroup de manière un peu foireuse... il faut par
         exemple qu'un groupe ait contenu au moins un type d'élément avant de pouvoir être retourné par l'API #>
         [enum]::getvalues([NSXNSGroupMemberType]) | Foreach-Object {
-            $uriList += "{0}/ns-groups/?populate_references=false&member_types={1}" -f $this.baseUrl, $_.ToString()
+            $uriList += "{0}/ns-groups/?populate_references=false&member_types={1}" -f $this.getEndpointBaseUrl($endpoint), $_.ToString()
         }
 
-        $uriList += ("{0}/ns-groups/?populate_references=false" -f $this.baseUrl)
+        $uriList += ("{0}/ns-groups/?populate_references=false" -f $this.getEndpointBaseUrl($endpoint))
         
         $id = $null
 
@@ -133,7 +161,7 @@ class NSXAPI: RESTAPICurl
         }
 
         # Recherche par ID
-        return $this.getNSGroupById($id)
+        return $this.getNSGroupById($id, $endpoint)
     }
 
     
@@ -147,12 +175,13 @@ class NSXAPI: RESTAPICurl
         IN  : $memberType   -> Ce à quoi s'applique le NSGroup:
                                 VirtualMachine
                                 LogicalSwitch
+        IN  : $endpoint     -> le type de endpoint sur lequel on veut faire la requête    
 
 		RET : Le NS group créé
 	#>
-    [PSObject] addNSGroup([string]$name, [string]$desc, [string] $tag, [NSXNSGroupMemberType]$memberType)
+    [PSObject] addNSGroup([string]$name, [string]$desc, [string] $tag, [NSXNSGroupMemberType]$memberType, [NSXAPIEndpoint]$endpoint)
     {
-		$uri = "{0}/ns-groups" -f $this.baseUrl
+		$uri = "{0}/ns-groups" -f $this.getEndpointBaseUrl($endpoint)
 
 		# Valeur à mettre pour la configuration du NS Group
 		$replace = @{
@@ -168,7 +197,7 @@ class NSXAPI: RESTAPICurl
         $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
-        return $this.getNSGroupByName($name)
+        return $this.getNSGroupByName($name, $endpoint)
     }
 
 
@@ -180,12 +209,13 @@ class NSXAPI: RESTAPICurl
 		IN  : $nnewNameame  -> Le nouveau nom du groupe
 		IN  : $newDesc	    -> La nouvelle description description
 		IN  : $newTag	    -> Le nouveau nom du tag pour le membership
+        IN  : $endpoint     -> le type de endpoint sur lequel on veut faire la requête
 
 		RET : Le NS group mis à jour
 	#>
-    [PSObject] updateNSGroup([PSObject]$nsGroup, [string]$newName, [string]$newDesc, [string]$newTag)
+    [PSObject] updateNSGroup([PSObject]$nsGroup, [string]$newName, [string]$newDesc, [string]$newTag, [NSXAPIEndpoint]$endpoint)
     {
-        $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $nsGroup.id
+        $uri = "{0}/ns-groups/{1}" -f $this.getEndpointBaseUrl($endpoint), $nsGroup.id
 
 		# Valeur à mettre pour la configuration du NS Group
 		$nsGroup.display_name = $newName
@@ -196,7 +226,7 @@ class NSXAPI: RESTAPICurl
         $this.callAPI($uri, "PUT", $nsGroup) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
-        return $this.getNSGroupById($nsGroup.id)
+        return $this.getNSGroupById($nsGroup.id, $endpoint)
     }
 
 
@@ -205,10 +235,11 @@ class NSXAPI: RESTAPICurl
 		BUT : Efface un NS Group
 
 		IN  : $nsGroup  -> Objet représentant le NS Group à effacer
+        IN  : $endpoint -> le type de endpoint sur lequel on veut faire la requête
 	#>
-    [void] deleteNSGroup([PSObject]$nsGroup)
+    [void] deleteNSGroup([PSObject]$nsGroup, [NSXAPIEndpoint]$endpoint)
     {
-        $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $nsGroup.id
+        $uri = "{0}/ns-groups/{1}" -f $this.getEndpointBaseUrl($endpoint), $nsGroup.id
 
         $this.callAPI($uri, "Delete", $null) | Out-Null
     }
