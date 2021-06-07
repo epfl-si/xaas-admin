@@ -12,7 +12,16 @@
             "user": "",
             "password": ""
         },
-        "alertSyslogConfigName": ""
+        "elements": {
+            "alertSyslogConfigName": "",
+            "serviceEngineGroupName": "",
+            "vrfContextName": "",
+            "applicationProfileName": "",
+            "cloudType": "",
+            "stringGroupName": "",
+            "networkPrivateVIPName": "",
+            "networkPublicVIPName": ""
+        }
     },
     "test": {
         "infra": {
@@ -26,7 +35,16 @@
             "user": "",
             "password": ""
         },
-        "alertSyslogConfigName": ""
+        "elements": {
+            "alertSyslogConfigName": "",
+            "serviceEngineGroupName": "",
+            "vrfContextName": "",
+            "applicationProfileName": "",
+            "cloudType": "",
+            "stringGroupName": "",
+            "networkPrivateVIPName": "",
+            "networkPublicVIPName": ""
+        }
     },
     "prod": {
         "infra": {
@@ -40,7 +58,15 @@
             "user": "",
             "password": ""
         },
-        "alertSyslogConfigName": ""
+        "elements": {
+            "alertSyslogConfigName": "",
+            "serviceEngineGroupName": "",
+            "vrfContextName": "",
+            "applicationProfileName": "",
+            "cloudType": "",
+            "stringGroupName": "",
+            "networkPrivateVIPName": "",
+            "networkPublicVIPName": ""
+        }
     }
 }
-        

@@ -177,6 +177,43 @@ class AviNetworksAPI: RESTAPICurl
         return $result
 	}
 
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Récupère un objet à l'URI donnée et le renvoie. 
+
+		IN  : $uri			-> URI où faire la requête
+        IN  : $tenant		-> (optionnel) Objet représentant le tenant sur lequel faire la requête
+		
+		RET : Objet si trouvé
+				$null si pas trouvé
+	#>
+	hidden [PSCustomObject] getObject([string]$uri)
+	{
+		return $this.getObject($uri, $null)
+	}
+	hidden [PSCustomObject] getObject([string]$uri, [PSCustomObject]$tenant)
+	{
+		if($null -ne $tenant)
+		{
+			$this.setActiveTenant($tenant.name)
+		}
+
+		$res = $this.callAPI($uri, "GET", $null).results
+
+		if($null -ne $tenant)
+		{
+			$this.setDefaultTenant()
+		}
+
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+
+		return $res[0]
+	}
+
     <# --------------------------------------------------------------------------------------------------------- 
                                                     TENANTS
        --------------------------------------------------------------------------------------------------------- #>
@@ -227,14 +264,13 @@ class AviNetworksAPI: RESTAPICurl
 		BUT : Ajoute un tenant
 
         IN  : $name         -> Nom du tenant
-        IN  : $description  -> Description du tenant
-		IN  : $labels		-> Tableau associatif avec les labels à mettre au tenant
+        IN  : $labels		-> Tableau associatif avec les labels à mettre au tenant
 
         RET : Objet représentant le tenant
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_tenant
 	#>
-    [PSObject] addTenant([string]$name, [string]$description, [Hashtable]$labels)
+    [PSCustomObject] addTenant([string]$name, [Hashtable]$labels)
     {
         $uri = "{0}/tenant" -f $this.baseUrl
 
@@ -245,17 +281,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		$body = $this.createObjectFromJSON("xaas-avi-networks-tenant.json", $replace)
 
-		# # Ajout des labels
-		# $labels.Keys | ForEach-Object {
-		# 	$replace = @{
-		# 		key = $_
-		# 		value = $labels.item($_)
-		# 	}
-		# 	$body.suggested_object_labels += $this.createObjectFromJSON("xaas-avi-networks-tenant-label.json", $replace)
-		# }
-
         return $this.callAPI($uri, "POST", $body) 
-
     }
 
 
@@ -270,7 +296,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_tenant__uuid_
 	#>
-    [PSObject] getTenantById([string]$id)
+    [PSCustomObject] getTenantById([string]$id)
     {
         $uri = "{0}/tenant/{1}" -f $this.baseUrl, $id
 
@@ -308,17 +334,11 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_tenant
 	#>
-    [PSObject] getTenantByName([string]$name)
+    [PSCustomObject] getTenantByName([string]$name)
     {
-        $uri = "{0}/tenant?name={1}" -f $this.baseUrl, $name
+		$uri = "{0}/tenant?name={1}" -f $this.baseUrl, $name
+		return $this.getObject($uri)
 
-        $res = $this.callAPI($uri, "GET", $null).results
-
-        if($res.count -eq 0)
-        {
-            return $null
-        }
-        return $res[0]
     }
 
 
@@ -334,7 +354,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/patch_tenant__uuid_
 	#>
-	[PSObject] updateTenant([PSObject]$tenant, [string]$newName, [string]$newDesc)
+	[PSCustomObject] updateTenant([PSCustomObject]$tenant, [string]$newName, [string]$newDesc)
 	{
 		$uri = "{0}/tenant/{1}" -f $this.baseUrl, $tenant.uuid
 
@@ -355,7 +375,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/delete_tenant__uuid_
 	#>
-    [void] deleteTenant([PSObject]$tenant)
+    [void] deleteTenant([PSCustomObject]$tenant)
     {
         $uri = "{0}/tenant/{1}" -f $this.baseUrl, $tenant.uuid
 
@@ -378,17 +398,11 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_role
 	#>
-	[PSObject] getRoleByName([string]$name)
+	[PSCustomObject] getRoleByName([string]$name)
 	{
 		$uri = "{0}/role?name={1}" -f $this.baseUrl, $name
+		return $this.getObject($uri)
 
-		$res = $this.callAPI($uri, "GET", $null).results
-
-        if($res.count -eq 0)
-        {
-            return $null
-        }
-        return $res[0]
 	}
 
 	<# --------------------------------------------------------------------------------------------------------- 
@@ -403,7 +417,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_systemconfiguration
 	#>
-	hidden [psobject] getSystemConfiguration()
+	hidden [PSCustomObject] getSystemConfiguration()
 	{
 		$uri = "{0}/systemconfiguration" -f $this.baseUrl
 
@@ -492,7 +506,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		Dans le WebUI, c'est dans "Adminitration" > "Settings" > "Authentication/Authorization"
 	#>
-	[Array] addAdminAuthRule([Array]$tenantList, [PSObject]$role, [String]$adGroup)
+	[Array] addAdminAuthRule([Array]$tenantList, [PSCustomObject]$role, [String]$adGroup)
 	{
 		return $this.addOrUpdateAdminAuthRule(@($tenantList | Select-Object -ExpandProperty url), $role.url, $adGroup, -1)
 	}
@@ -508,7 +522,7 @@ class AviNetworksAPI: RESTAPICurl
         RET : Tableau avec la liste des références (URL) sur les tenants qui sont dans
 				la règle après modification
 	#>
-	[Array] addTenantsToAdminAuthRule([PSObject]$rule, [Array]$tenantList)
+	[Array] addTenantsToAdminAuthRule([PSCustomObject]$rule, [Array]$tenantList)
 	{
 		$updateNeeded = $false
 
@@ -543,7 +557,7 @@ class AviNetworksAPI: RESTAPICurl
 
         RET : Bool pour dire si la règle est maintenant exempte de tout tenant ou pas.
 	#>
-	[bool] removeTenantFromAdminAuthRule([PSObject]$rule, [PSObject]$tenant)
+	[bool] removeTenantFromAdminAuthRule([PSCustomObject]$rule, [PSCustomObject]$tenant)
 	{
 		if($rule.tenant_refs -contains $tenant.url)
 		{
@@ -570,7 +584,7 @@ class AviNetworksAPI: RESTAPICurl
 		- Les règles en question sont peut être aussi utilisées pour d'autres tenants
 		- La règle "SuperUser" n'est pas retournée
 	#>
-	[Array] getTenantAdminAuthRuleList([PSObject]$forTenant)
+	[Array] getTenantAdminAuthRuleList([PSCustomObject]$forTenant)
 	{
 		return @($this.getAdminAuthRuleList() | Where-Object { 
 			$null -ne $forTenant.url -and ` # On check que pas $null car si n'existe pas, c'est qu'on est peut-être dans la règle "SuperUser"
@@ -587,7 +601,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/patch_systemconfiguration
 	#>
-	[void] deleteAdminAuthRule([PSObject]$rule)
+	[void] deleteAdminAuthRule([PSCustomObject]$rule)
 	{
 		$uri = "{0}/systemconfiguration" -f $this.baseUrl
 
@@ -617,7 +631,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_alertemailconfig
 	#>
-	[PSObject] addAlertMailConfig([PSObject]$tenant, [Array]$mailList)
+	[PSCustomObject] addAlertMailConfig([PSCustomObject]$tenant, [Array]$mailList)
 	{
 		$this.setActiveTenant($tenant.name)
 		$uri = "{0}/alertemailconfig" -f $this.baseUrl
@@ -646,7 +660,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertemailconfig
 	#>
-	[Array] getAlertMailConfigList([PSObject]$tenant)
+	[Array] getAlertMailConfigList([PSCustomObject]$tenant)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -670,7 +684,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/delete_alertemailconfig__uuid_
 	#>
-	[void] deleteAlertMailConfig([PSObject]$tenant, [PSObject]$alertMailConfig)
+	[void] deleteAlertMailConfig([PSCustomObject]$tenant, [PSCustomObject]$alertMailConfig)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -701,7 +715,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_actiongroupconfig
 	#>
-	[PSObject] addActionGroupConfig([PSObject]$tenant, [PSObject]$alertMailConfig, [PSObject]$sysLogConfig, [string]$alertName, [string]$levelName)
+	[PSCustomObject] addActionGroupConfig([PSCustomObject]$tenant, [PSCustomObject]$alertMailConfig, [PSCustomObject]$sysLogConfig, [string]$alertName, [string]$levelName)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -734,7 +748,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_actiongroupconfig
 	#>
-	[Array] getActionGroupConfigList([PSObject]$tenant)
+	[Array] getActionGroupConfigList([PSCustomObject]$tenant)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -761,21 +775,11 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_actiongroupconfig
 	#>
-	[PSObject] getActionGroupConfig([PSObject]$tenant, [string]$name)
+	[PSCustomObject] getActionGroupConfig([PSCustomObject]$tenant, [string]$name)
 	{
-		$this.setActiveTenant($tenant.name)
-
 		$uri = "{0}/actiongroupconfig?name={1}" -f $this.baseUrl, $name
 
-		$res = $this.callAPI($uri, "GET", $null).results
-		$this.setDefaultTenant()
-
-		if($res.count -eq 0)
-		{
-			return $null
-		}
-
-		return $res[0]
+		return $this.getObject($uri, $tenant)
 	}
 
 
@@ -788,7 +792,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/delete_actiongroupconfig__uuid_
 	#>
-	[void] deleteActionGroupConfig([PSObject]$tenant, [PSObject]$alertActionLevel)
+	[void] deleteActionGroupConfig([PSCustomObject]$tenant, [PSCustomObject]$alertActionLevel)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -817,7 +821,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_alertconfig
 	#>
-	[PSObject] addAlertConfig([PSObject]$tenant, [PSObject]$alertActionLevel, [XaaSAviNetworksMonitoredElements]$element, [XaaSAviNetworksMonitoredStatus]$status, [string]$name)
+	[PSCustomObject] addAlertConfig([PSCustomObject]$tenant, [PSCustomObject]$alertActionLevel, [XaaSAviNetworksMonitoredElements]$element, [XaaSAviNetworksMonitoredStatus]$status, [string]$name)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -851,7 +855,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertconfig
 	#>
-	[Array] getAlertConfigList([PSObject]$tenant)
+	[Array] getAlertConfigList([PSCustomObject]$tenant)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -878,21 +882,10 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertconfig
 	#>
-	[PSObject] getAlertConfig([PSObject]$tenant, [string]$name)
+	[PSCustomObject] getAlertConfig([PSCustomObject]$tenant, [string]$name)
 	{
-		$this.setActiveTenant($tenant.name)
-
 		$uri = "{0}/alertconfig?name={1}" -f $this.baseUrl, $name
-
-		$res = $this.callAPI($uri, "GET", $null).results
-		$this.setDefaultTenant()
-
-		if($res.count -eq 0)
-		{
-			return $null
-		}
-
-		return $res[0]
+		return $this.getObject($uri, $tenant)
 	}
 
 
@@ -907,7 +900,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertconfig
 	#>
-	[Array] getAlertConfigList([PSObject]$tenant, [XaaSAviNetworksMonitoredElements]$forElement)
+	[Array] getAlertConfigList([PSCustomObject]$tenant, [XaaSAviNetworksMonitoredElements]$forElement)
 	{
 		return @($this.getAlertConfigList($tenant) | Where-Object { $_.object_type -eq $forElement.toString()})
 	}
@@ -922,7 +915,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/delete_alertconfig__uuid_
 	#>
-	[void] deleteAlertConfig([PSObject]$tenant, [PSObject]$alertConfig)
+	[void] deleteAlertConfig([PSCustomObject]$tenant, [PSCustomObject]$alertConfig)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -947,7 +940,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertsyslogconfig
 	#>
-	[Array] getAlertSyslogConfigList([PSObject]$tenant)
+	[Array] getAlertSyslogConfigList([PSCustomObject]$tenant)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -973,18 +966,11 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertsyslogconfig
 	#>
-	[PSObject] getAlertSyslogConfig([string]$name)
+	[PSCustomObject] getAlertSyslogConfig([string]$name)
 	{
 		$uri = "{0}/alertsyslogconfig?name={1}" -f $this.baseUrl, $name
 
-		$res = $this.callAPI($uri, "GET", $null).results
-		
-		if($res.count -eq 0)
-		{
-			return $null
-		}
-
-		return $res[0]
+		return $this.getObject($uri)
 	}
 
 
@@ -1003,7 +989,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_pool
 	#>
-	[Array] getPoolList([PSObject]$tenant)
+	[Array] getPoolList([PSCustomObject]$tenant)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -1029,26 +1015,16 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_pool
 	#>
-	[PSObject] getPool([PSObject]$tenant, [string]$name)
+	[PSCustomObject] getPool([PSCustomObject]$tenant, [string]$name)
 	{
-		$this.setActiveTenant($tenant.name)
-
 		$uri = "{0}/pool?name={1}" -f $this.baseUrl, $name
 
-		$res = $this.callAPI($uri, "GET", $null).results
-		$this.setDefaultTenant()
-
-		if($res.count -eq 0)
-		{
-			return $null
-		}
-
-		return $res[0]
+		return $this.getObject($uri, $tenant)
 	}
 
 
 
-	# [PSObject] addPool([PSObject]$tenant)
+	# [PSCustomObject] addPool([PSCustomObject]$tenant)
 	# {
 	# 	$this.setActiveTenant($tenant.name)
 
@@ -1078,11 +1054,11 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_pool__uuid__runtime_
 	#>
-	[PSObject] getPoolRuntime([PSObject]$tenant, [PSObject]$pool)
+	[PSCustomObject] getPoolRuntime([PSCustomObject]$tenant, [PSCustomObject]$pool)
 	{
 		return $this.getPoolRuntime($tenant, $pool, $false)
 	}
-	[PSObject] getPoolRuntime([PSObject]$tenant, [PSObject]$pool, [bool]$serverDetails)
+	[PSCustomObject] getPoolRuntime([PSCustomObject]$tenant, [PSCustomObject]$pool, [bool]$serverDetails)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -1121,7 +1097,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_virtualservice
 	#>
-	[Array] getVirtualServiceList([PSObject]$tenant)
+	[Array] getVirtualServiceList([PSCustomObject]$tenant)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -1146,21 +1122,10 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_virtualservice
 	#>
-	[PSObject] getVirtualService([PSObject]$tenant, [string]$name)
+	[PSCustomObject] getVirtualService([PSCustomObject]$tenant, [string]$name)
 	{
-		$this.setActiveTenant($tenant.name)
-
 		$uri = "{0}/virtualservice?name={1}" -f $this.baseUrl, $name
-
-		$res = $this.callAPI($uri, "GET", $null).results
-		$this.setDefaultTenant()
-
-		if($res.count -eq 0)
-		{
-			return $null
-		}
-
-		return $res[0]
+		return $this.getObject($uri, $tenant)
 	}
 
 
@@ -1179,7 +1144,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_cloud
 	#>
-	[Array] getCloudList([PSObject]$tenant)
+	[Array] getCloudList([PSCustomObject]$tenant)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -1189,6 +1154,26 @@ class AviNetworksAPI: RESTAPICurl
 		$this.setDefaultTenant()
 
 		return @($res)
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un cloud qui est sur un tenant donné, par son nom
+
+		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le cloud
+		IN  : $type		-> Le type du cloud
+
+		RET : Objet avec le cloud
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_cloud
+	#>
+	[PSCustomObject] getCloudByType([PSCustomObject]$tenant, [string]$type)
+	{
+		$uri = "{0}/healthmonitor?vtype={1}" -f $this.baseUrl, $type
+		return $this.getObject($uri, $tenant)
+		
 	}
 
 
@@ -1207,7 +1192,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_healthmonitor
 	#>
-	[Array] getHealthMonitorList([PSObject]$tenant)
+	[Array] getHealthMonitorList([PSCustomObject]$tenant)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -1232,22 +1217,129 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_healthmonitor
 	#>
-	[PSObject] getHealthMonitor([PSObject]$tenant, [string]$name)
+	[PSCustomObject] getHealthMonitor([PSCustomObject]$tenant, [string]$name)
 	{
-		$this.setActiveTenant($tenant.name)
-
 		$uri = "{0}/healthmonitor?name={1}" -f $this.baseUrl, $name
-
-		$res = $this.callAPI($uri, "GET", $null).results
-		$this.setDefaultTenant()
-
-		if($res.count -eq 0)
-		{
-			return $null
-		}
-
-		return $res[0]
+		return $this.getObject($uri, $tenant)
 	}
 
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            	APPLICATION PROFILE
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un application profile donné par son nom
+
+		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le application profile
+		IN  : $name		-> Nom du application profile
+
+		RET : Objet avec le application profile
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_applicationprofile
+	#>
+	[PSCustomObject] getApplicationProfile([PSCustomObject]$tenant, [string]$name)
+	{
+		$uri = "{0}/applicationprofile?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri, $tenant)
+	}
 	
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            	STRING GROUP
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un string group donné par son nom
+
+		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le string group
+		IN  : $name		-> Nom du application profile
+
+		RET : Objet avec le application profile
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_applicationprofile
+	#>
+	[PSCustomObject] getStringGroup([PSCustomObject]$tenant, [string]$name)
+	{
+		$uri = "{0}/stringgroup?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri, $tenant)
+	}
+	
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            	VRF Context
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un VRF Context donné par son nom
+
+		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le string group
+		IN  : $name		-> Nom du application profile
+
+		RET : Objet avec le application profile
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_vrfcontext
+	#>
+	[PSCustomObject] geVRFContext([PSCustomObject]$tenant, [string]$name)
+	{
+		$uri = "{0}/vrfcontext?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri, $tenant)
+	}	
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+                                            SERVICE ENGINE GROUP
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un service engine group donné par son nom
+
+		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le service engine group
+		IN  : $name		-> Nom du service engine group
+
+		RET : Objet avec le service engine group
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_serviceenginegroup
+	#>
+	[PSCustomObject] geVRFContext([PSCustomObject]$tenant, [string]$name)
+	{
+		$uri = "{0}/serviceenginegroup?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri, $tenant)
+	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+												NETWORK
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un network donné par son nom
+
+		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le network
+		IN  : $name		-> Nom du network
+
+		RET : Objet avec le network
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_network
+	#>
+	[PSCustomObject] geVRFContext([PSCustomObject]$tenant, [string]$name)
+	{
+		$uri = "{0}/network?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri, $tenant)
+	}
 }
