@@ -458,7 +458,7 @@ try
                     $tenantLabels = $initialLabels.Clone()
                     # Ajout du label spécifique pour le type de tenant
 		            $tenantLabels.add($global:XAAS_AVI_NETWORKS_TENANT_TYPE, $_.toString())
-                    $tenant = $aviNetworks.addTenant($name, $desc, $tenantLabels)
+                    $tenant = $aviNetworks.addTenant($name, $tenantLabels)
                 }
                 else
                 {

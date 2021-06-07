@@ -240,19 +240,19 @@ class AviNetworksAPI: RESTAPICurl
 
         $replace = @{
 			name = $name
-			description = $description
+			description = (ConvertTo-json $labels -Compress) -replace '"','\"'
 		}
 
 		$body = $this.createObjectFromJSON("xaas-avi-networks-tenant.json", $replace)
 
-		# Ajout des labels
-		$labels.Keys | ForEach-Object {
-			$replace = @{
-				key = $_
-				value = $labels.item($_)
-			}
-			$body.suggested_object_labels += $this.createObjectFromJSON("xaas-avi-networks-tenant-label.json", $replace)
-		}
+		# # Ajout des labels
+		# $labels.Keys | ForEach-Object {
+		# 	$replace = @{
+		# 		key = $_
+		# 		value = $labels.item($_)
+		# 	}
+		# 	$body.suggested_object_labels += $this.createObjectFromJSON("xaas-avi-networks-tenant-label.json", $replace)
+		# }
 
         return $this.callAPI($uri, "POST", $body) 
 
