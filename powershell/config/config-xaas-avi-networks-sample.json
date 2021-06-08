@@ -15,7 +15,6 @@
         "elements": {
             "alertSyslogConfigName": "",
             "serviceEngineGroupName": "",
-            "vrfContextName": "",
             "applicationProfileName": "",
             "cloudType": "",
             "stringGroupName": "",
@@ -38,7 +37,6 @@
         "elements": {
             "alertSyslogConfigName": "",
             "serviceEngineGroupName": "",
-            "vrfContextName": "",
             "applicationProfileName": "",
             "cloudType": "",
             "stringGroupName": "",
@@ -61,7 +59,6 @@
         "elements": {
             "alertSyslogConfigName": "",
             "serviceEngineGroupName": "",
-            "vrfContextName": "",
             "applicationProfileName": "",
             "cloudType": "",
             "stringGroupName": "",
