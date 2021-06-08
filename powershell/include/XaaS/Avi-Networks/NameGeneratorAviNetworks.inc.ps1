@@ -101,9 +101,9 @@ class NameGeneratorAviNetworks: NameGeneratorBase
 
 		RET : Nom du virtual service
 	#>
-    [string] getVirtualServiceName([string]$friendlyName, [string]$deploymentTag)
+    [string] getVirtualServiceName([string]$friendlyName, [DeploymentTag]$deploymentTag)
     {
-        return "{0}-{1}" -f $friendlyName, $this.getDeploymentTagShort($deploymentTag)
+        return "{0}-{1}" -f $friendlyName, $this.getDeploymentTagShort($deploymentTag.toString())
     }
 
 
@@ -118,6 +118,26 @@ class NameGeneratorAviNetworks: NameGeneratorBase
     [string] getPoolName([string]$virtualServiceName)
     {
         return "{0}-pool" -f $virtualServiceName
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le nom du VRF Context pour un virtual service donné.
+
+        IN  : $deploymentTag    -> tag de déploiement
+
+		RET : Nom du VRF Context
+	#>
+    [string] getVRFContextName([DeploymentTag]$deploymentTag)
+    {
+        $tenant = switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL { "EPFL" }
+            $global:VRA_TENANT__ITSERVICES { "ITServices"}
+        }   
+
+        return "{0}-{1}" -f $tenant, $deploymentTag.toString()
     }
 
 }

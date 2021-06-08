@@ -195,16 +195,12 @@ class AviNetworksAPI: RESTAPICurl
 	}
 	hidden [PSCustomObject] getObject([string]$uri, [PSCustomObject]$tenant)
 	{
-		return $this.getObject($uri, $tenant, "GET")
-	}
-	hidden [PSCustomObject] getObject([string]$uri, [PSCustomObject]$tenant, [string]$method)
-	{
 		if($null -ne $tenant)
 		{
 			$this.setActiveTenant($tenant.name)
 		}
 
-		$res = $this.callAPI($uri, $method, $null).results
+		$res = $this.callAPI($uri, "GET", $null).results
 
 		if($null -ne $tenant)
 		{
@@ -290,7 +286,7 @@ class AviNetworksAPI: RESTAPICurl
 				{
 					$result += $tenant
 				}
-				
+
 			}# FIN SI on a trouvé des labels pour le tenant courant
 			
 		}# FIN BOUCLE parcours des tenants existants
@@ -1201,7 +1197,6 @@ class AviNetworksAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
 		BUT : Renvoie un cloud qui est sur un tenant donné, par son nom
 
-		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le cloud
 		IN  : $type		-> Le type du cloud
 
 		RET : Objet avec le cloud
@@ -1209,10 +1204,10 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_cloud
 	#>
-	[PSCustomObject] getCloudByType([PSCustomObject]$tenant, [string]$type)
+	[PSCustomObject] getCloudByType([string]$type)
 	{
-		$uri = "{0}/healthmonitor?vtype={1}" -f $this.baseUrl, $type
-		return $this.getObject($uri, $tenant)
+		$uri = "{0}/cloud?vtype={1}" -f $this.baseUrl, $type
+		return $this.getObject($uri)
 		
 	}
 
@@ -1272,7 +1267,6 @@ class AviNetworksAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
 		BUT : Renvoie un application profile donné par son nom
 
-		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le application profile
 		IN  : $name		-> Nom du application profile
 
 		RET : Objet avec le application profile
@@ -1280,11 +1274,11 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_applicationprofile
 	#>
-	[PSCustomObject] getApplicationProfile([PSCustomObject]$tenant, [string]$name)
+	[PSCustomObject] getApplicationProfile([string]$name)
 	{
 		$uri = "{0}/applicationprofile?name={1}" -f $this.baseUrl, $name
 
-		return $this.getObject($uri, $tenant)
+		return $this.getObject($uri)
 	}
 	
 
@@ -1304,11 +1298,11 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_applicationprofile
 	#>
-	[PSCustomObject] getStringGroup([PSCustomObject]$tenant, [string]$name)
+	[PSCustomObject] getStringGroup([string]$name)
 	{
 		$uri = "{0}/stringgroup?name={1}" -f $this.baseUrl, $name
 
-		return $this.getObject($uri, $tenant)
+		return $this.getObject($uri)
 	}
 	
 
@@ -1320,7 +1314,6 @@ class AviNetworksAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
 		BUT : Renvoie un VRF Context donné par son nom
 
-		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le string group
 		IN  : $name		-> Nom du application profile
 
 		RET : Objet avec le application profile
@@ -1328,11 +1321,11 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_vrfcontext
 	#>
-	[PSCustomObject] getVRFContext([PSCustomObject]$tenant, [string]$name)
+	[PSCustomObject] getVRFContext([string]$name)
 	{
 		$uri = "{0}/vrfcontext?name={1}" -f $this.baseUrl, $name
 
-		return $this.getObject($uri, $tenant)
+		return $this.getObject($uri)
 	}
 
 
@@ -1344,7 +1337,6 @@ class AviNetworksAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
 		BUT : Renvoie un service engine group donné par son nom
 
-		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le service engine group
 		IN  : $name		-> Nom du service engine group
 
 		RET : Objet avec le service engine group
@@ -1352,11 +1344,11 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_serviceenginegroup
 	#>
-	[PSCustomObject] getServiceEngineGroup([PSCustomObject]$tenant, [string]$name)
+	[PSCustomObject] getServiceEngineGroup([string]$name)
 	{
 		$uri = "{0}/serviceenginegroup?name={1}" -f $this.baseUrl, $name
 
-		return $this.getObject($uri, $tenant)
+		return $this.getObject($uri)
 	}
 
 
@@ -1368,7 +1360,6 @@ class AviNetworksAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
 		BUT : Renvoie un network donné par son nom
 
-		IN  : $tenant	-> Objet représentant le tenant sur lequel se trouve le network
 		IN  : $name		-> Nom du network
 
 		RET : Objet avec le network
@@ -1376,11 +1367,11 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_network
 	#>
-	[PSCustomObject] getNetwork([PSCustomObject]$tenant, [string]$name)
+	[PSCustomObject] getNetwork([string]$name)
 	{
 		$uri = "{0}/network?name={1}" -f $this.baseUrl, $name
 
-		return $this.getObject($uri, $tenant)
+		return $this.getObject($uri)
 	}
 
 	
@@ -1392,7 +1383,6 @@ class AviNetworksAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
 		BUT : Renvoie un tier de cloud donné par son nom
 
-		IN  : $tenant		-> Objet représentant le tenant sur lequel se trouve le cloud
 		IN  : $vrfContext	-> Objet réprésentant le cloud
 		IN  : $name			-> Le nom du tier que l'on cherche
 
@@ -1401,10 +1391,23 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_network
 	#>
-	[PSCustomObject] getTier([PSCustomObject]$tenant, [PSCustomObject]$cloud, [string]$name)
+	[PSCustomObject] getTier([PSCustomObject]$cloud, [string]$name)
 	{
-		$uri = "{0}/nsxt/tier1s?name={1}" -f $this.baseUrl, $name
+		$uri = "{0}/nsxt/tier1s" -f $this.baseUrl
 
-		return $this.getObject($uri, $tenant, "POST")
+		$replace = @{
+			cloudUUID = $cloud.uuid
+		}
+
+		$body = $this.createObjectFromJSON("xaas-avi-networks-tier.json", $replace)
+
+        $res = $this.callAPI($uri, "POST", $body)
+
+		if($null -ne $res)
+		{
+			$res = $res.resource.nsxt_tier1routers | Where-Object { $_.name -eq $name }
+		}
+		return $res
+
 	}
 }
