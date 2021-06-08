@@ -184,6 +184,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		IN  : $uri			-> URI où faire la requête
         IN  : $tenant		-> (optionnel) Objet représentant le tenant sur lequel faire la requête
+		IN  : $method		-> (optinonel) la méthode à utiliser (POST|GET)
 		
 		RET : Objet si trouvé
 				$null si pas trouvé
@@ -194,12 +195,16 @@ class AviNetworksAPI: RESTAPICurl
 	}
 	hidden [PSCustomObject] getObject([string]$uri, [PSCustomObject]$tenant)
 	{
+		return $this.getObject($uri, $tenant, "GET")
+	}
+	hidden [PSCustomObject] getObject([string]$uri, [PSCustomObject]$tenant, [string]$method)
+	{
 		if($null -ne $tenant)
 		{
 			$this.setActiveTenant($tenant.name)
 		}
 
-		$res = $this.callAPI($uri, "GET", $null).results
+		$res = $this.callAPI($uri, $method, $null).results
 
 		if($null -ne $tenant)
 		{
@@ -231,7 +236,7 @@ class AviNetworksAPI: RESTAPICurl
     {
 		# On fait en sorte de retourner les "custom labels" mais on doit aussi ajouter à nouveau les "config_settings" car ils 
 		# sont du coup supprimés quand on utilise le paramètre "fields"
-        $uri = "{0}/tenant?fields=suggested_object_labels,config_settings" -f $this.baseUrl
+        $uri = "{0}/tenant?fields=config_settings" -f $this.baseUrl
 
         return ($this.callAPI($uri, "Get", $null)).results
     }
@@ -248,14 +253,49 @@ class AviNetworksAPI: RESTAPICurl
 	#>
     [Array] getTenantList([Hashtable]$labelFilters)
     {
-        $list = $this.getTenantList() 
+        $result = @()
 
-		ForEach($labelKey in $labelFilters.keys)
-		{
-			$list = $list | Where-Object { $null -ne ($_.suggested_object_labels | Where-Object { $_.key -eq $labelKey -and $_.value -eq $labelFilters.item($labelKey) } ) }
-		}
+		# Parcours des tenants existants
+		$this.getTenantList() | ForEach-Object {
 
-		return @($list)
+			$tenant = $this.getTenantById($_.uuid)
+
+			try
+			{
+				$tenantLabels = $tenant.description | ConvertFrom-Json | ConvertTo-Hashtable
+			}
+			catch
+			{
+				$this.debugLog(("Tenant '{0}' doesn't have JSON in description field" -f $tenant.name))
+				# On passe à l'élément suivant
+				return 
+			}
+			
+			# Si on a trouvé des labels pour le tenant courant
+			if($null -ne $tenantLabels)
+			{
+				$match = $true
+				ForEach($labelKey in $labelFilters.keys)
+				{
+					# Si on ne trouve pas le label courant pour le tenant courant
+					if($tenantLabels.Item($labelKey) -ne $labelFilters.Item($labelKey))
+					{
+						# C'est qu'il ne correspond pas
+						$match = $false
+						break
+					}
+				}
+
+				if($match)
+				{
+					$result += $tenant
+				}
+				
+			}# FIN SI on a trouvé des labels pour le tenant courant
+			
+		}# FIN BOUCLE parcours des tenants existants
+
+		return @($result)
     }
 
 
@@ -1288,12 +1328,12 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_vrfcontext
 	#>
-	[PSCustomObject] geVRFContext([PSCustomObject]$tenant, [string]$name)
+	[PSCustomObject] getVRFContext([PSCustomObject]$tenant, [string]$name)
 	{
 		$uri = "{0}/vrfcontext?name={1}" -f $this.baseUrl, $name
 
 		return $this.getObject($uri, $tenant)
-	}	
+	}
 
 
 	<# --------------------------------------------------------------------------------------------------------- 
@@ -1312,7 +1352,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_serviceenginegroup
 	#>
-	[PSCustomObject] geVRFContext([PSCustomObject]$tenant, [string]$name)
+	[PSCustomObject] getServiceEngineGroup([PSCustomObject]$tenant, [string]$name)
 	{
 		$uri = "{0}/serviceenginegroup?name={1}" -f $this.baseUrl, $name
 
@@ -1336,10 +1376,35 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_network
 	#>
-	[PSCustomObject] geVRFContext([PSCustomObject]$tenant, [string]$name)
+	[PSCustomObject] getNetwork([PSCustomObject]$tenant, [string]$name)
 	{
 		$uri = "{0}/network?name={1}" -f $this.baseUrl, $name
 
 		return $this.getObject($uri, $tenant)
+	}
+
+	
+	<# --------------------------------------------------------------------------------------------------------- 
+												TIERS
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un tier de cloud donné par son nom
+
+		IN  : $tenant		-> Objet représentant le tenant sur lequel se trouve le cloud
+		IN  : $vrfContext	-> Objet réprésentant le cloud
+		IN  : $name			-> Le nom du tier que l'on cherche
+
+		RET : Objet avec le tier
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_network
+	#>
+	[PSCustomObject] getTier([PSCustomObject]$tenant, [PSCustomObject]$cloud, [string]$name)
+	{
+		$uri = "{0}/nsxt/tier1s?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri, $tenant, "POST")
 	}
 }
