@@ -901,9 +901,9 @@
         {
             "active": true,
             "longName":  "Gestion des Alumni",
-            "shortName":  "prjalumgmt",
-            "snowId":  "PRJ0012151",
-            "additionalGroupsAdminSciperList": ["296747"],
+            "shortName":  "alumni",
+            "snowId":  "SVC1375",
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
