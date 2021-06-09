@@ -819,6 +819,9 @@ try
             $logHistory.addLine(("Creating NSX NSGroup '{0}'" -f $nsGroupName))
             $nsGroup = $nsx.addNSGroupK8sCluster($nsGroupName, $nsGroupDesc, $cluster.uuid)
             $logHistory.addLine(("Adding NSGroup '{0}' to environement NSGroup '{1}'" -f $nsGroupName, $envNSGroupName))
+            # On récupère à nouveau le NSGroup de l'environnement même si ça a été fait au début du script (juste pour contrôler qu'il existait déjà)
+            # car s'il y a exécution concurrente de scripts, il peut avoir changé entre temps.
+            $envNSGroup = $nsx.getNSGroupByName($envNSGroupName)
             $envNSGroup = $nsx.addNSGroupMemberNSGroup($envNSGroup, $nsGroup)
 
             # Résultat

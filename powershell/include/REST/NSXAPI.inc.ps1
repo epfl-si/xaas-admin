@@ -101,13 +101,6 @@ class NSXAPI: RESTAPICurl
 
         $nsGroup = $this.callAPI($uri, "Get", $null)
 
-        # Si le NS group existe (il devrait vu qu'on l'a cherché par ID)
-        if($null -ne $nsGroup)
-        {
-            # on l'ajoute au cache
-            $this.addInCache($nsGroup, $uri)
-        }
-
         return $nsGroup
     }
 
