@@ -205,7 +205,7 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     $nsGroupName, $nsGroupDesc = $nameGeneratorK8s.getSecurityGroupNameAndDesc($clusterName)
     $logHistory.addLine("Some cleaning in NSX...")
 
-    $nsGroup = $nsx.getNSGroupByName($nsGroupName)
+    $nsGroup = $nsx.getNSGroupByName($nsGroupName, [NSXAPIEndpoint]::Manager)
     # Si le NSGroup existe
     if($null -ne $nsGroup)
     {
@@ -583,7 +583,7 @@ try
 
         $envNSGroupName = $nameGeneratorK8s.getEnvSecurityGroupName()
         $logHistory.addLine(("Looking for environement NSX NSGroup '{0}'" -f $envNSGroupName))
-        $envNSGroup = $nsx.getNSGroupByName($envNSGroupName)
+        $envNSGroup = $nsx.getNSGroupByName($envNSGroupName, [NSXAPIEndpoint]::Manager)
 
         if($null -eq $envNSGroup)
         {
@@ -808,7 +808,7 @@ try
             $nsGroupName, $nsGroupDesc = $nameGeneratorK8s.getSecurityGroupNameAndDesc($clusterName)
 
             $logHistory.addLine(("Checking if 'old' NSX NSGroup '{0}' exists (maybe a cleaning process that failed in the past...)" -f $nsGroupName))
-            $nsGroup = $nsx.getNSGroupByName($nsGroupName)
+            $nsGroup = $nsx.getNSGroupByName($nsGroupName, [NSXAPIEndpoint]::Manager)
             if($null -ne $nsGroup)
             {
                 $logHistory.addLine(("Deleting old NSX NSGroup '{0}'" -f $nsGroupName))
@@ -821,7 +821,7 @@ try
             $logHistory.addLine(("Adding NSGroup '{0}' to environement NSGroup '{1}'" -f $nsGroupName, $envNSGroupName))
             # On récupère à nouveau le NSGroup de l'environnement même si ça a été fait au début du script (juste pour contrôler qu'il existait déjà)
             # car s'il y a exécution concurrente de scripts, il peut avoir changé entre temps.
-            $envNSGroup = $nsx.getNSGroupByName($envNSGroupName)
+            $envNSGroup = $nsx.getNSGroupByName($envNSGroupName, [NSXAPIEndpoint]::Manager)
             $envNSGroup = $nsx.addNSGroupMemberNSGroup($envNSGroup, $nsGroup)
 
             # Résultat
