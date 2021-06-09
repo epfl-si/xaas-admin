@@ -263,16 +263,17 @@ class NSXAPI: RESTAPICurl
                 arriver quand du nettoyage "forcé" est fait dans NSX.
 
 		IN  : $nsGroup          -> Objet représentant le NSGroup à nettoyer
+        IN  : $endpoint     -> le type de endpoint sur lequel on veut faire la requête
 		
 		RET : Le NS group nettoyé
 	#>
-    hidden [PSObject] removeIncorrectNSGroupMembers([PSObject]$nsGroup)
+    hidden [PSObject] removeIncorrectNSGroupMembers([PSObject]$nsGroup, [NSXAPIEndpoint]$endpoint)
     {
         $membersOK = @()
         ForEach($member in $nsGroup.members)
         {
             # Si le groupe courant existe dans NSX
-            if($null -ne $this.getNSGroupById($member.value))
+            if($null -ne $this.getNSGroupById($member.value, $endpoint))
             {
                 $membersOK += $member
             }
@@ -289,14 +290,15 @@ class NSXAPI: RESTAPICurl
 
 		IN  : $nsGroup          -> Objet représentant le NSGroup auquel ajouter le membre
 		IN  : $nsGroupToAdd     -> Objet représentant le NSGroup à ajouter
+        IN  : $endpoint     -> le type de endpoint sur lequel on veut faire la requête
 
 		RET : Le NS group modifié
 	#>
-    [PSObject] addNSGroupMemberNSGroup([PSObject]$nsGroup, [PSObject]$nsGroupToAdd)
+    [PSObject] addNSGroupMemberNSGroup([PSObject]$nsGroup, [PSObject]$nsGroupToAdd, [NSXAPIEndpoint]$endpoint)
     {
         # Nettoyage des potentiels NSGroup incorrects dans les membres. Si on ne le fait pas, on ne pourrait pas faire
         # de PUT dessus, ça retournera une erreur dans le cas où des membres inexistant seraient contenus
-        $nsGroup = $this.removeIncorrectNSGroupMembers($nsGroup)
+        $nsGroup = $this.removeIncorrectNSGroupMembers($nsGroup, $endpoint)
 
         # Si le membre n'est pas encore présent
         if($null -eq ($nsGroup.members | Where-Object { $_.value -eq $nsGroupToAdd.id}))

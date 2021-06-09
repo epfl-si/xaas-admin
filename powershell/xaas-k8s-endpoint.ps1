@@ -822,7 +822,7 @@ try
             # On récupère à nouveau le NSGroup de l'environnement même si ça a été fait au début du script (juste pour contrôler qu'il existait déjà)
             # car s'il y a exécution concurrente de scripts, il peut avoir changé entre temps.
             $envNSGroup = $nsx.getNSGroupByName($envNSGroupName, [NSXAPIEndpoint]::Manager)
-            $envNSGroup = $nsx.addNSGroupMemberNSGroup($envNSGroup, $nsGroup)
+            $envNSGroup = $nsx.addNSGroupMemberNSGroup($envNSGroup, $nsGroup, [NSXAPIEndpoint]::Manager)
 
             # Résultat
             $output.results += @{
