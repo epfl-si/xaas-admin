@@ -706,17 +706,17 @@ try
             # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au BG dans vRA
             $logHistory.addLine(("> For group '{0}'" -f $accessGroupList[0]))
             
-            # $tkgiKubectl.addClusterRoleBinding($clusterName, 
-            #                                     $nameGeneratorK8s.getClusterRoleName(), 
-            #                                     $nameGeneratorK8s.getClusterRoleBindingName($clusterName), 
-            #                                     ("oidc:{0}" -f $accessGroupList[0]))
+            $tkgiKubectl.addClusterRoleBinding($clusterName, 
+                                                $nameGeneratorK8s.getClusterRoleName(), 
+                                                $nameGeneratorK8s.getClusterRoleBindingName($clusterName), 
+                                                ("oidc:{0}" -f $accessGroupList[0]))
 
-            # $logHistory.addLine("> C2C Gentlemen agreement")
-            # # Pour que C2C puisse accéder au cluster via Prometheus et ArgoCD
-            # $tkgiKubectl.addClusterRoleBinding($clusterName, 
-            #                                     "cluster-admin", 
-            #                                     "crb-gentleman-agreement", 
-            #                                     "oidc:vra_t_svc1219_AppGrpU")
+            $logHistory.addLine("> C2C Gentlemen agreement")
+            # Pour que C2C puisse accéder au cluster via Prometheus et ArgoCD
+            $tkgiKubectl.addClusterRoleBinding($clusterName, 
+                                                "cluster-admin", 
+                                                "crb-gentleman-agreement", 
+                                                "oidc:vra_t_svc1219_AppGrpU")
                     
             $logHistory.addLine("> Service Accounts")
             # Pour les services accounts
