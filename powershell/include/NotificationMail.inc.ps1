@@ -134,17 +134,8 @@ class NotificationMail
         # Ajout des infos sur le tenant et environnement
         $valToReplace += $this.defaultValToReplace
 
-        # Parcours des remplacements à faire
-        foreach($search in $valToReplace.Keys)
-        {
-            $replaceWith = $valToReplace.Item($search)
-
-            $search = "{{$($search)}}"
-
-            # Mise à jour dans le mail
-            $mailMessage =  $mailMessage -replace $search, $replaceWith
-            $mailSubject =  $mailSubject -replace $search, $replaceWith
-        }
+        # Remplacement des valeurs dans le mail et le sujet
+        $mailMessage, $mailSubject = replaceInStrings -stringList @($mailMessage, $mailSubject) -valToReplace $valToReplace
         
         $mailMessage | Out-File $tmpMailFile -Encoding default -Append
 
@@ -159,7 +150,6 @@ class NotificationMail
             ("<br>{0}" -f $this.getRandomHTMLQuote()) | Out-File $tmpMailFile -Encoding default -Append
         }
         
-
         $mailMessage = Get-Content $tmpMailFile -Encoding UTF8 | Out-String
         Remove-Item $tmpMailFile -Force
 
