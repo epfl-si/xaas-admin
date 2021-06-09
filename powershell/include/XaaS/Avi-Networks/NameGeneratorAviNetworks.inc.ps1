@@ -24,12 +24,33 @@ class NameGeneratorAviNetworks: NameGeneratorBase
                                 $VRA_TENANT_DEFAULT
                                 $VRA_TENANT_EPFL
                                 $VRA_TENANT_ITSERVICES
+        IN  : $deploymentTag -> Le tag de déploiement    
 
 		RET : Instance de l'objet
 	#>
-    NameGeneratorAviNetworks([string]$vraEnv, [string]$vraTenant): base($vraEnv, $vraTenant)
-   {
-   }
+    NameGeneratorAviNetworks([string]$vraEnv, [string]$vraTenant, [DeploymentTag]$deploymentTag): base($vraEnv, $vraTenant)
+    {
+        $this.initDeploymentTag($deploymentTag)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le nom court pour un type de VIP de Virtual Service
+
+        IN  : $vipType      -> Le type de la VIP
+        
+		RET : Le nom court du type
+	#>
+    hidden [string] getVSVipTypeShortName([XaaSAviNetworksVipType]$vipType)
+    {
+        $res = switch($vipType)
+        {
+            Private { "priv" }
+            Public { "pub" }
+        }
+        return $res
+    }
 
 
    <#
@@ -97,13 +118,12 @@ class NameGeneratorAviNetworks: NameGeneratorBase
 		BUT : Renvoie le nom du virtual service.
 
         IN  : $friendlyName     -> Nom entré par l'utilisateur
-        IN  : $deploymentTag    -> tag de déploiement
 
 		RET : Nom du virtual service
 	#>
-    [string] getVirtualServiceName([string]$friendlyName, [DeploymentTag]$deploymentTag)
+    [string] getVirtualServiceName([string]$friendlyName)
     {
-        return "{0}-{1}" -f $friendlyName, $this.getDeploymentTagShort($deploymentTag.toString())
+        return "{0}-{1}" -f $friendlyName, $this.getDeploymentTagShortname()
     }
 
 
@@ -125,19 +145,46 @@ class NameGeneratorAviNetworks: NameGeneratorBase
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie le nom du VRF Context pour un virtual service donné.
 
-        IN  : $deploymentTag    -> tag de déploiement
-
 		RET : Nom du VRF Context
 	#>
-    [string] getVRFContextName([DeploymentTag]$deploymentTag)
+    [string] getVRFContextName()
     {
+        # On n'utilise pas simplement la valeur de "$this.tenant" car AVI est ... sensible à la casse.
+        # Il ne faudrait donc pas qu'on change une fois la casse d'une des $global et que ça pète tout!
         $tenant = switch($this.tenant)
         {
             $global:VRA_TENANT__EPFL { "EPFL" }
             $global:VRA_TENANT__ITSERVICES { "ITServices"}
         }   
 
-        return "{0}-{1}" -f $tenant, $deploymentTag.toString()
+        return "{0}-{1}" -f $tenant, $this.deploymentTag.toString()
     }
 
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le nom de la VIP d'un Virtual Service
+
+        IN  : $vipType          -> Type de la VIP
+        IN  : $sslProfile       -> Profile SSL que l'on veut pour la VIP
+
+		RET : Nom de la VIP
+	#>
+    [string] getVSVipName([XaaSAviNetworksVipType]$vipType, [XaaSAviNetworksSSLProfile]$sslProfile)
+    {
+        $bgId = switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL { $this.getDetail('unitID') }
+            $global:VRA_TENANT__ITSERVICES { $this.getDetail('snowServiceId') }
+        } 
+
+        # Format: "vsvip-<BGId>-(t|d|p)-(pub|priv)-(security|compatibility)-NSX-T-<env>"
+        # <env> = Test|Dev|Prod ?
+        return "vsvip-{0}-{1}-{2}-{3}-NSX-T-{4}" -f $bgId, `
+                    $this.getDeploymentTagShortname(), `
+                    $this.getVSVipTypeShortName($vipType),
+                    $sslProfile.toString().toLower(), `
+                    # Nom de l'environnement avec première lettre en majuscule
+                    (Get-Culture).textInfo.toTitleCase($this.getEnvShortName())
+    }
 }

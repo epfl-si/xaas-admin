@@ -360,6 +360,19 @@ class NameGeneratorBase
 
     <#
         -------------------------------------------------------------------------------------
+        BUT : Renvoie la première lettre du nom de l'environnement.
+              Ceci est utilisé pour la génération des noms des groupes
+
+		RET : Nom court de l'environnement
+    #>
+    hidden [string] getEnvFirstLetter()
+    {
+        return $this.env.ToLower()[0]
+    }    
+
+
+    <#
+        -------------------------------------------------------------------------------------
         BUT : Renvoie le nom court de l'environnement.
               Ceci est utilisé pour la génération des noms des groupes
 
@@ -367,15 +380,14 @@ class NameGeneratorBase
     #>
     hidden [string] getEnvShortName()
     {
-        switch($this.env)
+        $shortName = switch($this.env)
         {
-            $global:TARGET_ENV__DEV {return 'd'}
-            $global:TARGET_ENV__TEST {return 't'}
-            $global:TARGET_ENV__PROD {return 'p'}
+            $global:TARGET_ENV__DEV {return 'dev'}
+            $global:TARGET_ENV__TEST {return 'test'}
+            $global:TARGET_ENV__PROD {return 'prod'}
         }
-        return ""
+        return $shortName
     }    
-
 
     <#
         -------------------------------------------------------------------------------------
@@ -420,17 +432,5 @@ class NameGeneratorBase
     }
 
 
-    <#
-        -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom court (la première lettre quoi) du tag de déploiment passé.
-
-        IN  : $deploymentTag     -> le tag de déploiement
-
-        RET : le tag de déploiement court
-    #>
-    hidden [string] getDeploymentTagShort([string]$deploymentTag)
-    {
-        return $deploymentTag.toLower()[0]
-    }
     
 }

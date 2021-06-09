@@ -157,7 +157,7 @@ class NameGenerator: NameGeneratorBase
                 {
                     # Même nom de groupe (court) pour AD et "groups"
                     # vra_<envShort>_adm_<tenantShort>
-                    $groupName = "{0}{1}_adm_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+                    $groupName = "{0}{1}_adm_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvFirstLetter(), $this.getTenantShortName()
                     $groupDesc = "Administrators for Tenant {0} on Environment {1}" -f $this.tenant.ToUpper(), $this.env.ToUpper()
                 }
                 # Support
@@ -165,7 +165,7 @@ class NameGenerator: NameGeneratorBase
                 {
                     # Même nom de groupe (court) pour AD et "groups"
                     # vra_<envShort>_sup_<facultyName>
-                    $groupName = "{0}{1}_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName'))
+                    $groupName = "{0}{1}_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvFirstLetter(), $this.transformFacultyForGroupName($this.getDetail('facultyName'))
                     $groupDesc = "Support for Faculty {0} on Tenant {1} on Environment {2}" -f $this.getDetail('facultyName').toUpper(), $this.tenant.ToUpper(), $this.env.ToUpper()
                 }
                 # Shared, Users
@@ -176,7 +176,7 @@ class NameGenerator: NameGeneratorBase
                     if($type -eq $this.GROUP_TYPE_AD)
                     {
                         # vra_<envShort>_<facultyID>_<unitID>
-                        $groupName = "{0}{1}_{2}_{3}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getDetail('facultyID'), $this.getDetail('unitID')
+                        $groupName = "{0}{1}_{2}_{3}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvFirstLetter(), $this.getDetail('facultyID'), $this.getDetail('unitID')
                         # Informations encodées en JSON
                         $descStruct = @{
                             faculty = $this.getDetail('facultyName').toUpper()
@@ -206,7 +206,7 @@ class NameGenerator: NameGeneratorBase
                     $role -eq "CSP_SUPPORT")
                 {
                     # vra_<envShort>_adm_sup_its
-                    $groupName = "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+                    $groupName = "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvFirstLetter(), $this.getTenantShortName()
                     $groupDesc = "Administrators/Support for Tenant {0} on Environment {1}" -f $this.tenant.ToUpper(), $this.env.ToUpper()
                     
                 }
@@ -215,7 +215,7 @@ class NameGenerator: NameGeneratorBase
                         $role -eq "CSP_CONSUMER")
                 {
                     # vra_<envShort>_<serviceId>
-                    $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('snowServiceId').toLower())
+                    $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvFirstLetter(), $this.transformForGroupName($this.getDetail('snowServiceId').toLower())
 
                     # Groupe AD
                     if($type -eq $this.GROUP_TYPE_AD)
@@ -253,7 +253,7 @@ class NameGenerator: NameGeneratorBase
                     $role -eq "CSP_SUPPORT")
                 {
                     # vra_<envShort>_adm_sup_rsrch
-                    $groupName = "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
+                    $groupName = "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvFirstLetter(), $this.getTenantShortName()
                     $groupDesc = "Administrators/Support for Tenant {0} on Environment {1}" -f $this.tenant.ToUpper(), $this.env.ToUpper()
                     
                 }
@@ -262,7 +262,7 @@ class NameGenerator: NameGeneratorBase
                         $role -eq "CSP_CONSUMER")
                 {
                     # vra_<envShort>_<projectId>
-                    $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('projectId'))
+                    $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvFirstLetter(), $this.transformForGroupName($this.getDetail('projectId'))
 
                     # Groupe AD
                     if($type -eq $this.GROUP_TYPE_AD)
@@ -483,7 +483,7 @@ class NameGenerator: NameGeneratorBase
 
         Ancienne nomenclature plus utilisée depuis 14.02.2019
         vra_<envShort>_approval_<faculty>
-        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformFacultyForGroupName($facultyName)
+        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvFirstLetter(), $this.transformFacultyForGroupName($facultyName)
 
         Level 1 -> vra_<envshort>_approval_iaas
         Level 2 -> vra_<envShort>_approval_<faculty>
@@ -497,7 +497,7 @@ class NameGenerator: NameGeneratorBase
         
 
         Mis en commentaire le 14.02.2019 (c'est la St-Valentin!) car plus utilisé pour le moment. Mais on garde au cas où.
-        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($serviceShortName)
+        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvFirstLetter(), $this.transformForGroupName($serviceShortName)
 
         Level 1 -> vra_<envShort>_approval_iaas
         Level 2 -> vra_<envShort>_approval_vpsi
@@ -573,7 +573,7 @@ class NameGenerator: NameGeneratorBase
             
         }
 
-        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $last
+        $groupName = "{0}{1}_approval_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvFirstLetter(), $last
 
         if($fqdn)
         {
@@ -1246,7 +1246,7 @@ class NameGenerator: NameGeneratorBase
                 # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
                 if($this.env -ne $global:TARGET_ENV__PROD)
                 {
-                    $envId = $this.getEnvShortName()
+                    $envId = $this.getEnvFirstLetter()
                 }
                 return "{0}{1}vm" -f $this.transformFacultyForGroupName($detailToUse), $envId
             }
@@ -1262,7 +1262,7 @@ class NameGenerator: NameGeneratorBase
                 # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
                 if($this.env -ne $global:TARGET_ENV__PROD)
                 {
-                    $envId = $this.getEnvShortName()
+                    $envId = $this.getEnvFirstLetter()
                 }
                 return "{0}{1}vm" -f $this.transformForGroupName($detailToUse) , $envId
             }
@@ -1815,7 +1815,7 @@ class NameGenerator: NameGeneratorBase
     #>
     [string] getTableauAdminEPFLADGroup()
     {
-        return ("vra_{0}_tableau_epfl_AppGrpU" -f $this.getEnvShortName())
+        return ("vra_{0}_tableau_epfl_AppGrpU" -f $this.getEnvFirstLetter())
     }
 
 

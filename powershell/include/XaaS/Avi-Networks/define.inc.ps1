@@ -19,18 +19,30 @@ enum XaaSAviNetworksAlertLevel {
 	High
 	Medium
  }
- 
- # Nom des éléments monitorés. Seront utilisés pour générer les bons noms de fichiers JSON pour les requêtes
- enum XaaSAviNetworksMonitoredElements {
-	VirtualService
-	Pool
- }
- 
- # Nom des status monitorés. Seront utilisés pour générer les bons noms de fichiers JSON pour les requêtes
- enum XaaSAviNetworksMonitoredStatus {
-	Up
-	Down
- }
+
+# Nom des éléments monitorés. Seront utilisés pour générer les bons noms de fichiers JSON pour les requêtes
+enum XaaSAviNetworksMonitoredElements {
+   VirtualService
+   Pool
+}
+
+# Nom des status monitorés. Seront utilisés pour générer les bons noms de fichiers JSON pour les requêtes
+enum XaaSAviNetworksMonitoredStatus {
+   Up
+   Down
+}
+
+# Type qu'on peut avoir pour les Vip des Virtual Services
+enum XaaSAviNetworksVipType {
+   Private
+   Public
+}
+
+# Niveau de sécurité SSL
+enum XaaSAviNetworksSSLProfile {
+   Security
+   Compatibility
+}
 
 
 $global:XAAS_AVI_NETWORKS_USER_ROLE_NAME = "Application-Only"
