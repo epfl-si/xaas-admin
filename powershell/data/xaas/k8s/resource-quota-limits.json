@@ -9,17 +9,17 @@
         "small":
         {
             "min":2,
-            "max":3
+            "max":10
         },
         "medium":
         {
             "min":2,
-            "max":5
+            "max":10
         },
         "large":
         {
-            "min":3,
-            "max":7
+            "min":2,
+            "max":10
         }
     },
     "nbLoadBalancers" : 1
