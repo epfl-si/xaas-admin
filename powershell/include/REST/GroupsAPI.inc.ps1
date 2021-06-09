@@ -3,13 +3,13 @@
 
     Documentation: 
         - API: http://websrv.epfl.ch/RWSGroups.html
+        ATTENTION!! ce n'est pas des 'y' ou 'n' qu'il faut passer mais des '0' ou '1'
 
     Prérequis:
         - Il faut inclure le fichier incude/functions.inc.ps1
 
     AUTEUR : Lucien Chaboudez
     DATE   : Juillet 2020
-
 
 #>
 class GroupsAPI: RESTAPICurl
@@ -177,8 +177,6 @@ class GroupsAPI: RESTAPICurl
             $this.addInCache($group.result[0], $uri)
         }
 
-        
-
         # Si on veut tous les détails
         if($allDetails)
         {
@@ -337,6 +335,28 @@ class GroupsAPI: RESTAPICurl
         $uri = "{0}&id={1}&newowner={2}" -f $this.getBaseURI('changeOwner'), $groupId, $ownerSciper
 
         $this.callAPI($uri, "POST", $null) | Out-Null
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Change des options d'un groupe
+
+        IN  : $groupId          -> ID du groupe 
+        IN  : $options          -> Hashtable avec les options à changer. En clef le nom de l'option
+                                    et en valeur, ben la nouvelle valeur à metter.
+                                    Voir la fonction addGroup() de ce fichier pour savoir quelles
+                                    options sont possibles
+    #>
+    [PSCustomObject] updateGroupOptions([string]$groupId, [Hashtable]$options)
+    {
+        $uri = "{0}&id={1}&{2}" -f $this.getBaseURI('modifyGroup'), `
+                                    $groupId, `
+                                    (($options.getEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join "&")
+        
+        $this.callAPI($uri, "POST", $null) | Out-Null
+
+        return $this.getGroupById($groupId)
     }
 
 

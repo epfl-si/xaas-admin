@@ -482,18 +482,20 @@ function createOrUpdateBG([vRAAPI]$vra, [string]$tenantName, [string]$bgEPFLID, 
 
 			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating BG '{0}' to '{1}'" -f $bg.name, $bgName))
 
-			# Mise à jour des informations
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
-
-			$bgUpdated = $true
-			
-
 			# Si le BG était en Ghost, 
 			if(!(isBGAlive -bg $bg))
 			{
 				# on compte juste la chose
 				$counters.inc('BGResurrected')
 			}
+			
+			# Mise à jour des informations
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
+
+			$bgUpdated = $true
+			
+
+			
 		}
 
 		# Mise à jour du compteur si besoin
@@ -1250,7 +1252,7 @@ function checkIfADGroupsExists([EPFLLDAP]$ldap, [System.Collections.ArrayList]$g
 function createNSGroupIfNotExists([NSXAPI]$nsx, [string]$nsxNSGroupName, [string]$nsxNSGroupDesc, [string]$nsxSecurityTag)
 {
 
-	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName)
+	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName, [NSXAPIEndPoint]::Manager)
 
 	# Si le NSGroup n'existe pas,
 	if($null -eq $nsGroup)
@@ -1258,7 +1260,7 @@ function createNSGroupIfNotExists([NSXAPI]$nsx, [string]$nsxNSGroupName, [string
 		$logHistory.addLineAndDisplay(("-> Creating NSX NS Group '{0}'... " -f $nsxNSGroupName))
 
 		# Création de celui-ci
-		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag, [NSXNSGroupMemberType]::VirtualMachine)
+		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag, [NSXNSGroupMemberType]::VirtualMachine, [NSXAPIEndpoint]::Manager)
 
 		$counters.inc('NSXNSGroupCreated')
 	}

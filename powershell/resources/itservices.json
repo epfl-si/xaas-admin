@@ -946,6 +946,15 @@
             "snowId": "SVC1211",
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
+            "longName":  "Cristal",
+            "shortName":  "crstl",
+            "snowId":  "SVC1369",
+            "additionalGroupsAdminSciperList": ["296747"],
+            "deniedVRAServiceList": []
         }
+
     ]
 }
