@@ -381,6 +381,7 @@ function PSCustomObjectToHashtable([PSCustomObject]$obj)
 function getvRAObjectNotifMailList([PSCUstomObject]$vraObj, [string]$mailPropName)
 {
 	# Recherche des adresses mail de notification
+
 	$notifMailList = getvRAObjectCustomPropValue -object $vraObj -customPropName $mailPropName
 
 	# Si custom property pas renseignée, 

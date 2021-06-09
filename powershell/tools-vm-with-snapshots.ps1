@@ -52,6 +52,62 @@ param([string]$targetEnv,
 $configGlobal   = [ConfigReader]::New("config-global.json")
 $configVra 		= [ConfigReader]::New("config-vra.json")
 
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Parcours les différentes notification qui ont été ajoutées dans le tableau
+		  durant l'exécution et effectue un traitement si besoin.
+
+		  La liste des notifications possibles peut être trouvée dans la déclaration
+		  de la variable $notifications plus bas dans le caode.
+
+	IN  : $notifications    -> Dictionnaire
+	IN  : $targetEnv	    -> Environnement courant
+	IN  : $targetTenant	    -> Tenant courant
+#>
+function handleNotifications([System.Collections.IDictionary] $notifications, [string]$targetEnv, [string]$targetTenant)
+{
+
+	# Parcours des catégories de notifications
+	ForEach($notif in $notifications.Keys)
+	{
+		# S'il y a des notifications de ce type
+		if($notifications.$notif.count -gt 0)
+		{
+			# Suppression des doublons 
+			$uniqueNotifications = $notifications.$notif | Sort-Object| Get-Unique
+
+			$valToReplace = @{}
+
+			switch($notif)
+			{
+				# ---------------------------------------
+				# Groupe active directory manquants pour création des éléments pour Tenant EPFL
+				'unknownMailboxes'
+				{
+					$valToReplace.mailList = ($uniqueNotifications -join "</li>`n<li>")
+					
+					$mailSubject = "Warning - VM Notification mail list "
+
+					$templateName = "vm-incorrect-notification-mail-list"
+				}
+
+				default
+				{
+					# Passage à l'itération suivante de la boucle
+					$logHistory.addWarningAndDisplay(("Notification '{0}' not handled in code !" -f $notif))
+					continue
+				}
+
+			}
+
+			# Si on arrive ici, c'est qu'on a un des 'cases' du 'switch' qui a été rencontré
+			$notificationMail.send($mailSubject, $templateName, $valToReplace)
+
+		} # FIN S'il y a des notifications pour la catégorie courante
+	}# FIN BOUCLE de parcours des catégories de notifications
+}
+
 try
 {
 
@@ -76,6 +132,16 @@ try
     $targetEnv = $targetEnv.ToLower()
     $targetTenant = $targetTenant.ToLower()
 
+    <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
+	aux administrateurs du service
+	!! Attention !!
+	A chaque fois qu'un élément est ajouté dans le IDictionnary ci-dessous, il faut aussi penser à compléter la
+	fonction 'handleNotifications()'
+
+	(cette liste sera accédée en variable globale même si c'est pas propre XD)
+	#>
+	$notifications = @{}
+	$notifications.unknownMailboxes = @()
 
     $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
                     $targetTenant, 
@@ -119,9 +185,6 @@ try
         $logHistory.addLineAndDisplay(("Processing BG '{0}'..." -f $bg.name))
         $vmList = $vra.getBGItemList($bg, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
 
-        # Pour la liste des VM avec 
-        $bgVMTooOldSnap = @()
-
         # Parcours des VM
         ForEach($vm in $vmList)
         {
@@ -146,16 +209,23 @@ try
                         # Recherche des adresses mail de notification et ajout d'une entrée par personne dans la liste
                         getvRAObjectNotifMailList -vRAvm $vm -mailPropName "ch.epfl.owner_mail" | Foreach-Object {
                             
-                            # Ajout au tableau avec les infos nécessaires pour envoyer les mails par la suite
-                            $vmWithSnap.add([PSCustomObject]@{
-                                bgName = $bg.name
-                                VM = $vm.name
-                                snapshotDate = $createDate.toString("dd.MM.yyyy HH:mm:ss")
-                                ageDays = $dateDiff.days
-                                mail = $_
-                            }) | Out-Null
-                            
-                        }
+                            # Si pas trouvé le mail
+                            if($null -eq $_ -or $_ -eq "")
+                            {
+                                $logHistory.addWarningAndDisplay(("--> Empty mail found for VM '{0}'" -f $vm.name))
+                            }
+                            else
+                            {
+                                # Ajout au tableau avec les infos nécessaires pour envoyer les mails par la suite
+                                $vmWithSnap.add([PSCustomObject]@{
+                                    bgName = $bg.name
+                                    VM = $vm.name
+                                    snapshotDate = $createDate.toString("dd.MM.yyyy HH:mm:ss")
+                                    ageDays = $dateDiff.days
+                                    mail = $_
+                                }) | Out-Null
+                            }
+                        }# FIN BOUCLE de parcours des mails
                     }
 
                 }
@@ -203,14 +273,19 @@ try
 
             # Envoi du mail
             $logHistory.addLineAndDisplay(("-> Sending mail to {0}..." -f $mailTo))
-            
-            Send-MailMessage -From $mailFrom -to $mailTo -Subject $mailSubject  `
-                                -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8
 
+            Send-MailMessage -From $mailFrom -to $mailTo -Subject $mailSubject  `
+                            -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8 -ErrorVariable 'errorVar'
+
+            # Si l'adresse mail n'existe pas
+            if($errorVar.count -gt 0 -and $errorVar[0].Exception.Message -like "*Mailbox unavailable*")
+            {
+                $notifications.unknownMailboxes += ("<b>Mail: </b>{0}<br><b>VMs: </b> {1}" -f $mailTo, ( ($vmWithSnap | Where-Object { $_.mail -eq $mailTo } | ForEach-Object{ $_.VM }) -join ", "))
+            }
+            
             # Pour ne pas faire de spam
             Start-Sleep -Milliseconds 500
             
-
         }# FIN BOUCLE de parcours des noms de BG
     }
     else
@@ -218,6 +293,9 @@ try
         # Affichage du résultat
         $vmWithSnap
     }
+
+    # Gestion des erreurs s'il y en a
+	handleNotifications -notifications $notifications -targetEnv $targetEnv -targetTenant $targetTenant
 
     $logHistory.addLineAndDisplay("Script execution done")
 }

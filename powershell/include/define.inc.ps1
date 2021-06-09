@@ -77,6 +77,7 @@ $global:VRA_CUSTOM_PROP_VRA_BG_NAME                 = "ch.epfl.vra.bg.name"
 $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER = "ch.epfl.billing.financecenter"
 $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME    = "ch.epfl.billing.entity.name"
 $global:VRA_CUSTOM_PROP_EPFL_DEPLOYMENT_TAG         = "ch.epfl.deployment_tag"
+$global:VRA_CUSTOM_PROP_EPFL_VM_NOTIFICATION_MAIL   = "ch.epfl.owner_mail"
 
 
 # Types de Business Group possibles
@@ -121,7 +122,6 @@ $global:SCRIPT_ACTION_FILE__FORCE_ISO_FOLDER_ACL_UPDATE  = "FORCE_ISO_FOLDER_ACL
 ## NSX
 # Nom de la section avant laquelle il faut créer les sections de Firewall vide
 $global:NSX_CREATE_FIREWALL_EMPTY_SECTION_BEFORE_NAME = "Legacy VLAN"
-$global:NSX_VM_MEMBER_TYPE = "VirtualMachine"
 
 # Mail
 $global:VRA_MAIL_SUBJECT_PREFIX = "vRA Service [{0}->{1}]"
