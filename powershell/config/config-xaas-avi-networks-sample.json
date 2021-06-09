@@ -12,14 +12,63 @@
             "user": "",
             "password": ""
         },
-        "elements": {
-            "alertSyslogConfigName": "",
-            "serviceEngineGroupName": "",
-            "applicationProfileName": "",
-            "cloudType": "",
-            "stringGroupName": "",
-            "networkPrivateVIPName": "",
-            "networkPublicVIPName": ""
+        "names": {
+            "alertSyslogConfig":"",
+            "applicationProfile":"", //??
+            "cloudType":"",
+            "stringGroup":"",
+            "privateVipNetwork": "",
+            "publicVipNetwork": "",
+            "tenants":{
+                "epfl": {
+                    "tkgi": {
+                        "test":{
+                            "serviceEngine":""
+                        },
+                        "development":{
+                            "serviceEngine":""
+                        },
+                        "production":{
+                            "serviceEngine":""
+                        }
+                    },
+                    "vm": {
+                        "test":{
+                            "serviceEngine":""
+                        },
+                        "development":{
+                            "serviceEngine":""
+                        },
+                        "production":{
+                            "serviceEngine":""
+                        }
+                    }
+                },
+                "itservices": {
+                    "tkgi": {
+                        "test":{
+                            "serviceEngine":""
+                        },
+                        "development":{
+                            "serviceEngine":""
+                        },
+                        "production":{
+                            "serviceEngine":""
+                        }
+                    },
+                    "vm": {
+                        "test":{
+                            "serviceEngine":""
+                        },
+                        "development":{
+                            "serviceEngine":""
+                        },
+                        "production":{
+                            "serviceEngine":""
+                        }
+                    }
+                }
+            }
         }
     },
     "test": {
@@ -34,14 +83,63 @@
             "user": "",
             "password": ""
         },
-        "elements": {
-            "alertSyslogConfigName": "",
-            "serviceEngineGroupName": "",
-            "applicationProfileName": "",
-            "cloudType": "",
-            "stringGroupName": "",
-            "networkPrivateVIPName": "",
-            "networkPublicVIPName": ""
+        "names": {
+            "alertSyslogConfig":"",
+            "applicationProfile":"", //??
+            "cloudType":"",
+            "stringGroup":"",
+            "privateVipNetwork": "",
+            "publicVipNetwork": "",
+            "tenants":{
+                "epfl": {
+                    "tkgi": {
+                        "test":{
+                            "serviceEngine":""
+                        },
+                        "development":{
+                            "serviceEngine":""
+                        },
+                        "production":{
+                            "serviceEngine":""
+                        }
+                    },
+                    "vm": {
+                        "test":{
+                            "serviceEngine":""
+                        },
+                        "development":{
+                            "serviceEngine":""
+                        },
+                        "production":{
+                            "serviceEngine":""
+                        }
+                    }
+                },
+                "itservices": {
+                    "tkgi": {
+                        "test":{
+                            "serviceEngine":""
+                        },
+                        "development":{
+                            "serviceEngine":""
+                        },
+                        "production":{
+                            "serviceEngine":""
+                        }
+                    },
+                    "vm": {
+                        "test":{
+                            "serviceEngine":""
+                        },
+                        "development":{
+                            "serviceEngine":""
+                        },
+                        "production":{
+                            "serviceEngine":""
+                        }
+                    }
+                }
+            }
         }
     },
     "prod": {
