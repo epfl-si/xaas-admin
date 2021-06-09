@@ -9,6 +9,7 @@ config-vra.json
 config-vrops.json
 config-vsphere.json
 config-xaas-backup.json
+config-xaas-k8s.json
 config-xaas-nas.json
 config-xaas-s3.json
 

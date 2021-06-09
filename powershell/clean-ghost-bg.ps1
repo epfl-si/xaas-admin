@@ -125,8 +125,6 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 			$vra.deleteEnt($_.id)
 		}
 		
-
-
 		# On initialise les détails depuis le nom du BG, cela nous permettra de récupérer
 		# le nom du préfix de machine.
 		$nameGenerator.initDetailsFromBG($bg)
@@ -472,6 +470,7 @@ try
 				}
 				
 			} # FIN Si le BG a pu être effacé
+
 
 		} 
 		else # Pas encore possible d'effacer le BG

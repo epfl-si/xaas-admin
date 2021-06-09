@@ -11,16 +11,19 @@
    DATE   : Mai 2019
 
 #>
+
 enum NSXNSGroupMemberType {
     VirtualMachine
     LogicalSwitch
 }
+
 
 enum NSXAPIEndpoint 
 {
     Manager
     Policy
 }
+
 
 class NSXAPI: RESTAPICurl
 {
@@ -42,6 +45,7 @@ class NSXAPI: RESTAPICurl
         
         $this.headers.Add('Accept', 'application/json')
         $this.headers.Add('Content-Type', 'application/json')
+        $this.headers.Add('X-Allow-Overwrite', 'true')
         
         $this.authInfos = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$password)))
 
@@ -167,7 +171,7 @@ class NSXAPI: RESTAPICurl
     
     <#
 		-------------------------------------------------------------------------------------
-		BUT : Crée un NS Group
+		BUT : Crée un NS Group pour des machines virtuelles
 
 		IN  : $name	        -> Le nom du groupe
 		IN  : $description	-> La description
@@ -193,11 +197,12 @@ class NSXAPI: RESTAPICurl
 
         $body = $this.createObjectFromJSON("nsx-nsgroup.json", $replace)
         
-		# Création du NS Group
+		    # Création du NS Group
         $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
         return $this.getNSGroupByName($name, $endpoint)
+
     }
 
 
@@ -229,6 +234,134 @@ class NSXAPI: RESTAPICurl
         return $this.getNSGroupById($nsGroup.id, $endpoint)
     }
 
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Crée un NS Group pour un cluster K8s donné
+
+		IN  : $name	        -> Le nom du groupe
+		IN  : $description	-> La description
+		IN  : $clusterUUID  -> UUID du cluster K8s
+
+		RET : Le NS group créé
+	#>
+    [PSObject] addNSGroupK8sCluster([string]$name, [string]$desc, [string] $clusterUUID)
+    {
+		$uri = "{0}/ns-groups" -f $this.baseUrl
+
+		# Valeur à mettre pour la configuration du NS Group
+		$replace = @{name = $name
+					description = $desc
+					clusterUUID = $clusterUUID}
+
+        $body = $this.createObjectFromJSON("nsx-nsgroup-xaas-k8s-cluster.json", $replace)
+        
+		# Création du NS Group
+        $this.callAPI($uri, "Post", $body) | Out-Null
+        
+        # Retour du NS Group en le cherchant par son nom
+        return $this.getNSGroupByName($name)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Supprime les NSGroup incorrects qui sont dans la liste des membres. Cela peut parfois
+                arriver quand du nettoyage "forcé" est fait dans NSX.
+
+		IN  : $nsGroup          -> Objet représentant le NSGroup à nettoyer
+		
+		RET : Le NS group nettoyé
+	#>
+    hidden [PSObject] removeIncorrectNSGroupMembers([PSObject]$nsGroup)
+    {
+        $membersOK = @()
+        ForEach($member in $nsGroup.members)
+        {
+            # Si le groupe courant existe dans NSX
+            if($null -ne $this.getNSGroupById($member.value))
+            {
+                $membersOK += $member
+            }
+        }
+
+        $nsGroup.Members = $membersOK
+        return $nsGroup
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute un membre de type NSGroup à un NSGroup existant
+
+		IN  : $nsGroup          -> Objet représentant le NSGroup auquel ajouter le membre
+		IN  : $nsGroupToAdd     -> Objet représentant le NSGroup à ajouter
+
+		RET : Le NS group modifié
+	#>
+    [PSObject] addNSGroupMemberNSGroup([PSObject]$nsGroup, [PSObject]$nsGroupToAdd)
+    {
+        # Nettoyage des potentiels NSGroup incorrects dans les membres. Si on ne le fait pas, on ne pourrait pas faire
+        # de PUT dessus, ça retournera une erreur dans le cas où des membres inexistant seraient contenus
+        $nsGroup = $this.removeIncorrectNSGroupMembers($nsGroup)
+
+        # Si le membre n'est pas encore présent
+        if($null -eq ($nsGroup.members | Where-Object { $_.value -eq $nsGroupToAdd.id}))
+        {
+            $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $nsGroup.id
+
+            # Valeur à mettre pour ajouter le membre
+            $replace = @{nsGroupId = $nsGroupToAdd.id }
+
+            $newMember = $this.createObjectFromJSON("nsx-nsgroup-member-nsgroup.json", $replace)
+
+            $nsGroup.members += $newMember
+
+            if($null -eq ($this.callAPI($uri, "PUT", $nsGroup)))
+            {
+                Throw "Unexepected error, please see debug logs"
+            }
+        }
+
+        return $nsGroup
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute un membre de type NSGroup à un NSGroup existant
+
+		IN  : $nsGroup          -> Objet représentant le NSGroup auquel ajouter le membre
+		IN  : $nsGroupToAdd     -> Objet représentant le NSGroup à ajouter
+
+		RET : Le NS group modifié
+	#>
+    [PSObject] removeNSGroupMemberFromNSGroup([PSObject]$nsGroup, [PSObject]$nsGroupToRemove)
+    {
+        # Nettoyage des potentiels NSGroup incorrects dans les membres. Si on ne le fait pas, on ne pourrait pas faire
+        # de PUT dessus, ça retournera une erreur dans le cas où des membres inexistant seraient contenus
+        $nsGroup = $this.removeIncorrectNSGroupMembers($nsGroup)
+
+        # On génère la liste des membres en enlevant celui qu'on doit enlever
+        # On met @() pour être sûr d'avoir une liste et pas un $null dans le cas où ça serait
+        # le dernier NSGroup membre que l'on voudrait supprimer
+        $newMembers = @(($nsGroup.members | Where-Object { $_.value -ne $nsGroupToRemove.id}))
+
+        # Si le NSGroup à supprimer était bien présent dans la liste,
+        if($newMembers.count -ne $nsGroup.Members.count)
+        {
+            $uri = "{0}/ns-groups/{1}" -f $this.baseUrl, $nsGroup.id
+
+            $nsGroup.members = $newMembers
+
+            if($null -eq ($this.callAPI($uri, "PUT", $nsGroup)))
+            {
+                Throw "Unexepected error, please see debug logs"
+            }
+        }
+
+        return $nsGroup
+    }
 
     <#
 		-------------------------------------------------------------------------------------
@@ -503,13 +636,13 @@ class NSXAPI: RESTAPICurl
     
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Ajoute les règles dans une section de firewall
+        BUT : Renvoie la liste des règles pour une section de Firewall
         
         IN  : $firewallSectionId    -> ID de la section de firewall
         
         RET : La liste des règles pour la section donnée
     #>
-    [Array] getFirewallSectionRules([string]$firewallSectionId)
+    [Array] getFirewallSectionRulesList([string]$firewallSectionId)
     {
         $uri = "{0}/firewall/sections/{1}/rules" -f $this.baseUrl, $firewallSectionId
 
@@ -590,6 +723,194 @@ class NSXAPI: RESTAPICurl
     <#
 		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
+	    									IP POOLS
+		-------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------
+	#>
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des Pools IP existants
+        
+        RET : La liste des règles pour la section donnée
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
+    #>
+    [Array] getIPPoolList()
+    {
+        $uri = "{0}/pools/ip-pools" -f $this.baseUrl
+
+        return $this.callAPI($uri, "GET", $null).results
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie une pool IP par son nom
+        
+        IN  : $name -> nom de la pool que l'on désire
+
+        RET : Info sur la pool 
+                $null si pas trouvé
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
+    #>
+    [PSObject] getIPPoolByName([string]$name)
+    {
+        return $this.getIPPoolList() | Where-Object { $_.display_name -eq $name }
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie un pool IP par son ID
+        
+        IN  : $poolId -> nom du pool que l'on désire
+
+        RET : Info sur la pool 
+                $null si pas trouvé
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
+    #>
+    [PSObject] getIPPoolByID([string]$poolId)
+    {
+        $uri = "{0}/pools/ip-pools/{1}" -f $this.baseUrl, $poolId
+
+        return $this.callAPI($uri, "GET", $null).results
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Alloue et renvoie une adresse IP disponible dans un pool
+        
+        IN  : $id -> nom du pool dans lequel piocher l'adresse IP
+
+        RET : Adresse IP
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
+    #>
+    [string] allocateIPAddressInPool([string]$poolId)
+    {
+        $uri = "{0}/pools/ip-pools/{1}?action=ALLOCATE" -f $this.baseUrl, $poolId
+
+         # Valeur à mettre pour la configuration des règles
+         $replace = @{
+            ipAddress = @("null", $true)
+        }
+
+        $body = $this.createObjectFromJSON("nsx-allocate-release-ip-address.json", $replace)
+
+        return $this.callAPI($uri, "POST", $body).allocation_id
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Libère une adresse IP disponible dans un pool.
+        
+        IN  : $id -> nom du pool dans lequel piocher l'adresse IP
+
+        RET : Adresse IP
+
+        NOTE : Il faut savoir que la restitution d'adresse IP est beaucoup plus lente que l'allocation.
+                L'appel à la commande sera rapide mais d'ici à ce que l'IP soit libérée de manière
+                effective dans le pool, il pourra s'écouler quelques minutes.
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool Management/ListIpPools
+    #>
+    [void] releaseIPAddressInPool([string]$poolId, [string]$ipAddress)
+    {
+        $uri = "{0}/pools/ip-pools/{1}?action=RELEASE" -f $this.baseUrl, $poolId
+
+        # Valeur à mettre pour la configuration des règles
+        $replace = @{
+            ipAddress = $ipAddress
+        }
+
+        $body = $this.createObjectFromJSON("nsx-allocate-release-ip-address.json", $replace)
+
+        $this.callAPI($uri, "Post", $body) | Out-Null
+    }
+    
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des adresses IP allouées dans un Pool
+        
+        IN  : $poolId -> ID du pool dans lequel on veut lister les adresses IP
+
+        RET : Tableau avec les adresses IP
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Pool%20Management/ListIpPoolAllocations
+    #>
+    [Array] getPoolIPAllocatedAddressList([string]$poolId)
+    {
+        $uri = "{0}/pools/ip-pools/{1}/allocations" -f $this.baseUrl, $poolId
+
+        return $this.callAPI($uri, "GET", $null).results | Select-Object -ExpandProperty allocation_id
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Permet de savoir si une IP est allouée dans le pool donné
+        
+        IN  : $poolId       -> ID du pool dans lequel on veut veut savoir si une IP est allouée
+        IN  : $ipAddress    -> Adresse IP dont on veut savoir si elle a été allouée
+
+        RET : $true ou $false pour dire si alloué ou pas.
+    #>
+    [bool] isIPAllocated([string]$poolId, [string]$ipAddress)
+    {
+        return ($this.getPoolIPAllocatedAddressList($poolId) -contains $ipAddress)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	    							LOAD BALANCER - SERVICES
+		-------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------
+    #>
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des services de load balancing
+        
+        RET : Tableau avec les services
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/ListLoadBalancerServices
+    #>
+    [Array] getLBServiceList()
+    {
+        $uri = "{0}/loadbalancer/services" -f $this.baseUrl
+
+        return $this.callAPI($uri, "GET", $null).results
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime un service du load balancer
+        
+        IN  : $serviceId    -> ID du service à supprimer
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/DeleteLoadBalancerService
+    #>
+    [void] deleteLBService([string]$serviceId)
+    {
+        $uri = "{0}/loadbalancer/services/{1}" -f $this.baseUrl, $serviceId
+
+        $this.callAPI($uri, "DELETE", $null) | Out-Null
+    }
+
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------
 	    							        ENTITES
 		-------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
@@ -622,6 +943,119 @@ class NSXAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
+        BUT : Renvoie le service de load balancer associé à un cluster
+
+        IN  : $clusterId    -> ID du cluster
+        
+        RET : Objet avec le service
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/ListLoadBalancerServices
+    #>
+    [PSObject] getClusterLBService([string]$clusterId)
+    {
+        return $this.getLBServiceList() | Where-Object { $_.display_name -eq ("lb-pks-{0}" -f $clusterId) }
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	    						LOAD BALANCER - VIRTUAL SERVERS
+		-------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------
+    #>
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie les infos d'un serveur virtuel
+        
+        IN  : $virtualServerId -> ID du serveur virtuel
+
+        RET : Objet avec les infos
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/ListLoadBalancerVirtualServers
+    #>
+    [PSObject] getLBVirtualServer([string]$virtualServerId)
+    {
+        $uri = "{0}/loadbalancer/virtual-servers/{1}" -f $this.baseUrl, $virtualServerId
+
+        return $this.callAPI($uri, "GET", $null)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime un virtual server d'un load balancer
+        
+        IN  : $virtualServerId    -> ID du virtual server à supprimer
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/DeleteLoadBalancerVirtualServer
+    #>
+    [void] deleteLBVirtualServer([string]$virtualServerId)
+    {
+        $uri = "{0}/loadbalancer/virtual-servers/{1}/?delete_associated_rules=true" -f $this.baseUrl, $virtualServerId
+
+        $this.callAPI($uri, "DELETE", $null) | Out-Null
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		-------------------------------------------------------------------------------------
+	    						LOAD BALANCER - PROFILES
+		-------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------
+    #>
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des services de load balancing
+        
+        RET : Tableau avec les services
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/ListLoadBalancerApplicationProfiles
+    #>
+    [Array] getLBAppProfileList()
+    {
+        $uri = "{0}/loadbalancer/application-profiles" -f $this.baseUrl
+
+        return $this.callAPI($uri, "GET", $null).results
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Renvoie la liste des applications profiles associés à un cluster
+
+        IN  : $clusterId    -> ID du cluster
+        
+        RET : Tableau des Application profiles
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/ListLoadBalancerApplicationProfiles
+    #>
+    [Array] getClusterLBAppProfileList([string]$clusterId)
+    {
+        return $this.getLBAppProfileList() | Where-Object { $_.display_name.startswith("ncp-pks-{0}" -f $clusterId) }
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Supprime un application profile d'un load balancer
+        
+        IN  : $appProfileId    -> ID de l'application profile à supprimer
+
+        https://code.vmware.com/apis/270/nsx-t-data-center-nsx-t-data-center-rest-api#/Services/DeleteLoadBalancerApplicationProfile
+    #>
+    [void] deleteLBAppProfile([string]$appProfileId)
+    {
+        $uri = "{0}/loadbalancer/application-profiles/{1}" -f $this.baseUrl, $appProfileId
+
+        $this.callAPI($uri, "DELETE", $null) | Out-Null
+    }
+
+    
+    <#
+        -------------------------------------------------------------------------------------
 		-------------------------------------------------------------------------------------
                                             TAGS
 		-------------------------------------------------------------------------------------

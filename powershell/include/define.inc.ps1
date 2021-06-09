@@ -29,6 +29,7 @@ $global:MAIL_TEMPLATE_FOLDER        = ([IO.Path]::Combine($global:RESOURCES_FOLD
 $global:JSON_TEMPLATE_FOLDER        = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "json-templates"))
 $global:VRA_JSON_TEMPLATE_FOLDER    = ([IO.Path]::Combine($global:JSON_TEMPLATE_FOLDER, "vRAAPI"))
 $global:JSON_2ND_DAY_ACTIONS_FOLDER = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "2nd-day-actions"))
+$global:YAML_TEMPLATE_FOLDER        = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "yaml-templates"))
 $global:ERROR_FOLDER                = ([IO.Path]::Combine("$PSScriptRoot", "..", "errors"))
 $global:RESULTS_FOLDER              = ([IO.Path]::Combine("$PSScriptRoot", "..", "results"))
 

@@ -93,6 +93,21 @@ class Counters
 
     <#
 	-------------------------------------------------------------------------------------
+        BUT : Incrémente un compteur avec une valeur donnée
+
+        IN  : $id           -> Identifiant unique pour le compteur
+        IN  : $val          -> Valeur à additionner au compteur
+    #>
+    [void] inc([string]$id, [int]$val)
+    {
+        if($this.counters.Keys -contains $id)
+        {
+            $this.counters[$id].value += $val
+        }
+    }
+
+    <#
+	-------------------------------------------------------------------------------------
         BUT : Initialise un compteur avec une valeur donnée
 
         IN  : $id           -> Identifiant unique pour le compteur
@@ -129,6 +144,15 @@ class Counters
     #>
     [string] getDisplay([string] $title)
     {
+        <# On change les caractères de séparation (milliers et décimales) par défaut des nombres.
+        Pourquoi on fait ça ?  ben simplement parce que par défaut, cette burnasse de PowerShell 
+        ne prend pas les paramètres définis dans Windows... 🙄
+        #>
+        $culture = [System.Globalization.CultureInfo]::CreateSpecificCulture("en-US")
+        $culture.NumberFormat.NumberDecimalSeparator = "."
+        $culture.NumberFormat.NumberGroupSeparator = "'"
+        [System.Threading.Thread]::CurrentThread.CurrentCulture = $culture
+
         $maxLength = 0
 
         # Parcours des compteurs pour trouver la description la plus longue
@@ -146,7 +170,8 @@ class Counters
         # Ajout des lignes avec les valeurs à partir de l'ordre d'ajout de ceux-ci dans l'objet
         foreach($id in $this.idList)
         {
-            $code += ("{0}: {1}`n" -f $this.counters.Item($id).description.PadRight($maxLength+1," "), `
+            # Le "N0" est pour dire qu'il faut afficher sous forme de nombre formaté. Le 0 veut dire "aucune décimale" ou "nombre entier",
+            $code += ("{0}: {1:N0}`n" -f $this.counters.Item($id).description.PadRight($maxLength+1," "), `
                     $this.counters.Item($id).value)
 
         }
