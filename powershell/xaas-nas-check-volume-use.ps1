@@ -5,6 +5,8 @@ USAGES:
 <#
     BUT 		: Permettant de contrôler l'utilisation des volumes NAS et d'envoyer des mails aux
                 admins si besoin.
+                ATTENTION! Ce script ne fonctionne que pour les volumes qui sont onboardés dans vRA car
+                            il n'y a que là que l'on a les infos sur les adresses de notification!
                   
 
 	DATE 	: Juin 2021
@@ -56,7 +58,7 @@ $configNAS = [ConfigReader]::New("config-xaas-nas.json")
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
 $PERCENT_WARNING_USAGE  = 80
-$PERCENT_CRITICAL_USAGE = 1
+$PERCENT_CRITICAL_USAGE = 90
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -81,9 +83,6 @@ try
     # On met en minuscules afin de pouvoir rechercher correctement dans le fichier de configuration (vu que c'est sensible à la casse)
     $targetEnv = $targetEnv.ToLower()
     $targetTenant = $targetTenant.ToLower()
-
-    # Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
-    $nameGeneratorNAS = [NameGeneratorNAS]::new($targetEnv, $targetTenant)
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
@@ -113,15 +112,13 @@ try
                                                     ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
 
-
-    ####################################
-
-
     # S'il a été demandé d'envoyer des mails
     if($sendNotifMail)
     {
         $mailFrom = ("noreply+{0}" -f $configGlobal.getConfigValue(@("mail", "admin")))
-        $mailMessageTemplate = (Get-Content -Raw -Path ( Join-Path $global:NAS_MAIL_TEMPLATE_FOLDER "volume-use.html" ))
+        # Template pour le sujet et le contenu du mail
+        $mailSubjectTemplate = "[IaaS] NAS - {{usageStatus}} - Volume {{volName}} usage is between {{percentUsageMin}}% and {{percentUsageMax}}%"
+        $mailMessageTemplate = (Get-Content -Raw -Path ( Join-Path $global:NAS_MAIL_TEMPLATE_FOLDER "volume-use.html" ) -Encoding:UTF8)
     }
 
     $BGList = $vra.getBGList()
@@ -151,7 +148,7 @@ try
             }
             else # Le volume existe bel et bien sur le NAS
             {
-                $usagePercent = $netAppVol.space.used / $netAppVol.space.size * 100
+                $usagePercent = truncateToNbDecimal -number ($netAppVol.space.used / $netAppVol.space.size * 100) -nbDecimals 1
 
                 $usageColor = $null
 
@@ -159,48 +156,67 @@ try
                 if($usagePercent -ge $PERCENT_CRITICAL_USAGE)
                 {
                     $usageColor = "#e61717"
-                    $usageText = "CRITICAL"
-                    
+                    $usageStatus = "CRITICAL"
+                    $percentUsageMin = $PERCENT_CRITICAL_USAGE
+                    $percentUsageMax = 100
                 }
+                # Utilisation Warning
                 elseif($usagePercent -ge $PERCENT_WARNING_USAGE)
                 {
                     $usageColor = "#fca50d"
-                    $usageText = "WARNING"
+                    $usageStatus = "WARNING"
+                    $percentUsageMin = $PERCENT_WARNING_USAGE
+                    $percentUsageMax = $PERCENT_CRITICAL_USAGE
                 }
 
                 # Si le volume a une utilisation élevée
                 if($null -ne $usageColor)
                 {
-                    $logHistory.addLineAndDisplay(("-> Usage is {0} ({1} %)" -f $usageText, ( truncateToNbDecimal -number $usagePercent -nbDecimals 2)))
+                    $logHistory.addLineAndDisplay(("-> Usage is {0} ({1} %)" -f $usageStatus, $usagePercent))
 
                     if($sendNotifMail)
                     {
                         $logHistory.addLineAndDisplay(("-> Getting notification mails..."))
 
-                    }
+                        $mailList = getvRAObjectNotifMailList -vraObj $vol -mailPropName "notificationMail"
+
+                        # Définition des valeurs à remplacer dans le mail et son sujet
+                        $valToReplace = @{
+                            color = $usageColor
+                            volName = $vol.name
+                            percentUsed = $usagePercent
+                            usedGB = (truncateToNbDecimal -number ($netAppVol.space.used / 1024 / 1024 / 1024) -nbDecimals 2)
+                            totGB = (truncateToNbDecimal -number ($netAppVol.space.size / 1024 / 1024 / 1024) -nbDecimals 2)
+                            usageStatus = $usageStatus
+                            percentUsageMin = $percentUsageMin
+                            percentUsageMax = $percentUsageMax
+                        }
+
+                        # Création du sujet du mail ainsi que du message
+                        $mailSubject, $mailMessage = replaceInStrings -stringList @($mailSubjectTemplate, $mailMessageTemplate) -valToReplace $valToReplace
+
+                        ForEach($mailTo in $mailList)
+                        {
+                            $logHistory.addLineAndDisplay(("--> Sending mail to {0}" -f $mailTo))
+                            Send-MailMessage -From $mailFrom -to $mailTo -Subject $mailSubject  `
+                                -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8
+                        }
+
+                        # Pour ne pas faire de spam
+                        Start-Sleep -Milliseconds 500
+
+                    } # FIN S'il faut envoyer le mail
             
-                }
+                }# FIN SI le volume a une utilisation élevée 
+
             }# FIN SI Le volume existe sur le NAS
-
-            
-
-
-
 
             $volNo++
 
             #break
-        }
+        }# FIN BOUCLE de parcours des volumes du BG
 
-    }
-
-
-
-    
-    $volList = $netapp.getVolumeList()
-
-    
-
+    }# FIN BOUCLE de parcours des BG
 
     $logHistory.addLineAndDisplay("Script execution done!")
 
