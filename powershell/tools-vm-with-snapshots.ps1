@@ -108,6 +108,7 @@ try
     {
         $mailFrom = ("noreply+{0}" -f $configGlobal.getConfigValue(@("mail", "admin")))
         $mailMessageTemplate = (Get-Content -Raw -Path ( Join-Path $global:MAIL_TEMPLATE_FOLDER "vm-with-old-snap.html" ))
+        $mailSubject = "[IaaS] VMs with old snapshots"
     }
     
 
@@ -143,7 +144,7 @@ try
                         $logHistory.addLineAndDisplay(("-> VM '{0}' has snapshot since {1} ({2} days)" -f $vm.name, $createDate.toString("dd.MM.yyyy HH:mm:ss"), $dateDiff.days))
 
                         # Recherche des adresses mail de notification et ajout d'une entrée par personne dans la liste
-                        getVMNotifMailList -vRAvm $vm | Foreach-Object {
+                        getvRAObjectNotifMailList -vRAvm $vm -mailPropName "ch.epfl.owner_mail" | Foreach-Object {
                             
                             # Ajout au tableau avec les infos nécessaires pour envoyer les mails par la suite
                             $vmWithSnap.add([PSCustomObject]@{
@@ -198,7 +199,6 @@ try
             $logHistory.addLineAndDisplay(("-> {0} VM associated to mail '{1}'..." -f $detailList.count, $mailTo))
 
             # Détails du mail
-            $mailSubject = "[IaaS] VMs with old snapshots"
             $mailMessage = $mailMessageTemplate -f ($detailList -join "</tr>`n<tr>")
 
             # Envoi du mail
