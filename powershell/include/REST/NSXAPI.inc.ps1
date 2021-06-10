@@ -235,10 +235,11 @@ class NSXAPI: RESTAPICurl
 		IN  : $name	        -> Le nom du groupe
 		IN  : $description	-> La description
 		IN  : $clusterUUID  -> UUID du cluster K8s
+        IN  : $endpoint     -> le type de endpoint sur lequel on veut faire la requête
 
 		RET : Le NS group créé
 	#>
-    [PSObject] addNSGroupK8sCluster([string]$name, [string]$desc, [string] $clusterUUID)
+    [PSObject] addNSGroupK8sCluster([string]$name, [string]$desc, [string] $clusterUUID, [NSXAPIEndpoint]$endpoint)
     {
 		$uri = "{0}/ns-groups" -f $this.baseUrl
 
@@ -253,7 +254,7 @@ class NSXAPI: RESTAPICurl
         $this.callAPI($uri, "Post", $body) | Out-Null
         
         # Retour du NS Group en le cherchant par son nom
-        return $this.getNSGroupByName($name)
+        return $this.getNSGroupByName($name, $endpoint)
     }
 
 
@@ -290,7 +291,7 @@ class NSXAPI: RESTAPICurl
 
 		IN  : $nsGroup          -> Objet représentant le NSGroup auquel ajouter le membre
 		IN  : $nsGroupToAdd     -> Objet représentant le NSGroup à ajouter
-        IN  : $endpoint     -> le type de endpoint sur lequel on veut faire la requête
+        IN  : $endpoint         -> le type de endpoint sur lequel on veut faire la requête
 
 		RET : Le NS group modifié
 	#>
@@ -328,14 +329,15 @@ class NSXAPI: RESTAPICurl
 
 		IN  : $nsGroup          -> Objet représentant le NSGroup auquel ajouter le membre
 		IN  : $nsGroupToAdd     -> Objet représentant le NSGroup à ajouter
+        IN  : $endpoint         -> le type de endpoint sur lequel on veut faire la requête
 
 		RET : Le NS group modifié
 	#>
-    [PSObject] removeNSGroupMemberFromNSGroup([PSObject]$nsGroup, [PSObject]$nsGroupToRemove)
+    [PSObject] removeNSGroupMemberFromNSGroup([PSObject]$nsGroup, [PSObject]$nsGroupToRemove, [NSXAPIEndpoint]$endpoint)
     {
         # Nettoyage des potentiels NSGroup incorrects dans les membres. Si on ne le fait pas, on ne pourrait pas faire
         # de PUT dessus, ça retournera une erreur dans le cas où des membres inexistant seraient contenus
-        $nsGroup = $this.removeIncorrectNSGroupMembers($nsGroup)
+        $nsGroup = $this.removeIncorrectNSGroupMembers($nsGroup, $endpoint)
 
         # On génère la liste des membres en enlevant celui qu'on doit enlever
         # On met @() pour être sûr d'avoir une liste et pas un $null dans le cas où ça serait

@@ -210,9 +210,9 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     if($null -ne $nsGroup)
     {
         $logHistory.addLine(("Removing NSX NSGroup '{0}' from NSGroup '{1}'" -f $nsGroupName, $envNSGroup.display_name))        
-        $envNSGroup = $nsx.removeNSGroupMemberFromNSGroup($envNSGroup, $nsGroup)
+        $envNSGroup = $nsx.removeNSGroupMemberFromNSGroup($envNSGroup, $nsGroup, [NSXAPIEndpoint]::Manager)
         $logHistory.addLine(("Deleting NSX NSGroup '{0}'" -f $nsGroupName))
-        $nsx.deleteNSGroup($nsGroup)
+        $nsx.deleteNSGroup($nsGroup, [NSXAPIEndpoint]::Manager)
     }
     else
     {
@@ -812,12 +812,12 @@ try
             if($null -ne $nsGroup)
             {
                 $logHistory.addLine(("Deleting old NSX NSGroup '{0}'" -f $nsGroupName))
-                $nsx.deleteNSGroup($nsGroup)
+                $nsx.deleteNSGroup($nsGroup, [NSXAPIEndpoint]::Manager)
             }
 
             # Création du nouvel élément
             $logHistory.addLine(("Creating NSX NSGroup '{0}'" -f $nsGroupName))
-            $nsGroup = $nsx.addNSGroupK8sCluster($nsGroupName, $nsGroupDesc, $cluster.uuid)
+            $nsGroup = $nsx.addNSGroupK8sCluster($nsGroupName, $nsGroupDesc, $cluster.uuid, [NSXAPIEndpoint]::Manager)
             $logHistory.addLine(("Adding NSGroup '{0}' to environement NSGroup '{1}'" -f $nsGroupName, $envNSGroupName))
             # On récupère à nouveau le NSGroup de l'environnement même si ça a été fait au début du script (juste pour contrôler qu'il existait déjà)
             # car s'il y a exécution concurrente de scripts, il peut avoir changé entre temps.
