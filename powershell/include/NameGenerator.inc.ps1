@@ -67,8 +67,6 @@ class NameGenerator: NameGeneratorBase
     }
 
 
-    
-
     <#
         -------------------------------------------------------------------------------------
         BUT : Transforme et renvoie la chaine de caractères passée pour qu'elle corresponde

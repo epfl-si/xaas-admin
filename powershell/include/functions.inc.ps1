@@ -13,6 +13,7 @@
 
 #>
 
+
 <#
 	-------------------------------------------------------------------------------------
 	BUT : Renvoie la valeur d'une "Custom Property" donnée pour le Business Group passé
@@ -413,20 +414,22 @@ function getBGSupportGroup([PSObject]$bg)
 <#	
 	BUT : Renvoie un tableau avec la liste des adresses mail de contact d'une VM donnée
     
-    IN  : $vRAvm		-> Objet représentant la VM vRA
+    IN  : $vraObj		-> Objet représentant l'objet vRA dont on veut le mail de notif
+	IN  : $mailPropName	-> Nom de la custom property contenant les infos de notification
 
     RET : Tableau avec la liste des mails
 #>
-function getVMNotifMailList([PSCUstomObject]$vRAvm)
+function getvRAObjectNotifMailList([PSCUstomObject]$vraObj, [string]$mailPropName)
 {
 	# Recherche des adresses mail de notification
-	$notifMailList = getvRAObjectCustomPropValue -object $vRAvm -customPropName "ch.epfl.owner_mail"
+
+	$notifMailList = getvRAObjectCustomPropValue -object $vraObj -customPropName $mailPropName
 
 	# Si custom property pas renseignée, 
 	if($null -eq $notifMailList)
 	{
 		# Définition de la liste des mail de notification en prenant l'adresse du Owner
-		$notifMailList = $vRAvm.owners | Where-Object { $_.type -eq "USER" } | ForEach-Object { get-adUser $_.ref.split("@")[0] -Properties mail | Select-Object -ExpandProperty mail }
+		$notifMailList = $vraObj.owners | Where-Object { $_.type -eq "USER" } | ForEach-Object { get-adUser $_.ref.split("@")[0] -Properties mail | Select-Object -ExpandProperty mail }
 	}
 	else
 	{
@@ -485,4 +488,36 @@ function ConvertTo-Hashtable {
             $InputObject
         }
     }
+}
+
+<#	
+    -------------------------------------------------------------------------------------
+	BUT : Effectue les remplacements de chaînes de caractères nécessaires dans les la liste
+			des chaînes données ($stringList) à l'aide des informations key=>value qui sont
+			dans $valToReplace.
+			Une clef dans $valToReplace doit se retrouver dans les chaînes $stringList sous la 
+			forme {{key}} et ceci sera remplacé par 'value'
+    
+    IN  : $stringList	-> Tableau dans lequel se trouvent les chaînes de caractères à traiter
+	IN  : $valToReplace	-> Dictionnaire avec en clef les valeurs à chercher et en valeur, ce qu'il
+							faut mettre à la place.
+
+    RET : Tableau avec la liste des chaînes de caractères traitées
+#>
+function replaceInStrings([Array]$stringList, [System.Collections.IDictionary]$valToReplace)
+{
+	# Parcours des remplacements à faire
+	ForEach($search in $valToReplace.Keys)
+	{
+		$replaceWith = $valToReplace.Item($search)
+
+		$search = "{{$($search)}}"
+		# Remplacement dans les chaînes de caractères passées
+		For($i=0; $i -lt $stringList.length; $i++)
+		{
+			$stringList[$i] = $stringList[$i] -replace $search, $replaceWith
+		}
+	}
+
+	return $stringList
 }

@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+# This cluster role binding allows group ideverp to access basic resources
+kind: ClusterRoleBinding
+metadata:
+  # nom du clusterRoleBindings entre le cluster role et le group AD
+  name: {{name}} 
+subjects:
+- kind: Group
+  # Ce à quoi ça s'applique. Ex:
+  # oidc:<adGroupName>
+  # system:<serviceaccount>
+  name: {{groupName}} 
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  # nom du cluster Role précédemment déployé
+  name: {{clusterRoleName}} 
+  apiGroup: rbac.authorization.k8s.io

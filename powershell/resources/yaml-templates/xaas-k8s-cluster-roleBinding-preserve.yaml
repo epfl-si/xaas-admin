@@ -1,0 +1,17 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  # nom du binding pour lier le groupe au rôle
+  name: {{name}}
+  # nom du namespace où se situe le rôle
+  namespace: {{namespace}}
+subjects:
+- kind: Group
+  # Nom du groupe AD
+  name: oidc:{{groupName}}
+  apiGroup: "rbac.authorization.k8s.io"
+roleRef:
+  kind: Role
+  # nom du rôle précédemment créé dans le namespace
+  name: {{roleName}} 
+  apiGroup: "rbac.authorization.k8s.io"

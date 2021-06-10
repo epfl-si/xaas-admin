@@ -1,0 +1,22 @@
+{
+    "display_name": "{{name}}",
+    "description": "{{description}}",
+    "membership_criteria": [
+        {
+            "target_type": "LogicalSwitch",
+            "scope": "ncp/cluster",
+            "scope_op": "EQUALS",
+            "tag": "pks-{{clusterUUID}}",
+            "tag_op": "EQUALS",
+            "resource_type": "NSGroupTagExpression"
+        },
+        {
+            "target_type": "LogicalSwitch",
+            "scope": "pks/cluster",
+            "scope_op": "EQUALS",
+            "tag": "{{clusterUUID}}",
+            "tag_op": "EQUALS",
+            "resource_type": "NSGroupTagExpression"
+        }
+    ]
+}
