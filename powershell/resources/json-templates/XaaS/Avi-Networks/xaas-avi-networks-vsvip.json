@@ -1,0 +1,31 @@
+{
+    "name": "{{name}}",
+    "vrf_context_ref": "{{vrfContextRef}}",
+    "tenant_ref": "{{tenantRef}}",
+    "cloud_ref": "{{cloudRef}}",
+    "vip": [
+        {
+            "enabled": true,
+            "auto_allocate_ip": true,
+            "auto_allocate_floating_ip": false,
+            "avi_allocated_vip": false,
+            "avi_allocated_fip": false,
+            "ipam_network_subnet": {
+                "network_ref": "{{networkRef}}"
+            },
+            "auto_allocate_ip_type": "V4_V6",
+            "prefix_length": 32
+        }
+    ],
+    "dns_info": [
+        {
+            "fqdn": "{{vipFQDN}}",
+            "ttl": 30,
+            "type": "DNS_RECORD_A",
+            "num_records_in_response": 1,
+            "algorithm": "DNS_RECORD_RESPONSE_CONSISTENT_HASH"
+        }
+    ],
+    "east_west_placement": false,
+    "tier1_lr": "{{tier1Lr}}"
+}
