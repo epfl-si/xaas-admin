@@ -1,0 +1,11 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  # nom du storageclass que l'on va déployer. Sera utilisé dans les persistentVolumeClaim par les users
+  name: {{name}}
+# A revoir mais en prod, vsan donc peut être une autre appellation (ex: kubernetes.io/vsphere-volume )
+provisioner: {{provisioner}}
+parameters:
+  diskformat: thin
+  # nom du datastore, en prod, ce sera le datastore vSAN, ex: VSISSPT-SIO-IN-SO04-PKS-01
+  datastore: {{datastore}}

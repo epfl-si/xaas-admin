@@ -104,7 +104,7 @@ class NetBackupAPI: RESTAPICurl
 		$res = ([RESTAPICurl]$this).callAPI($uri, $method, $body)
 
 		# Si on a un messgae d'erreur
-		if([bool]($res.PSobject.Properties.name -match "errorMessage") -and ($res.errorMessage -ne ""))
+		if((objectPropertyExists -obj $res -propertyName "errorMessage") -and ($res.errorMessage -ne ""))
 		{
 			# Création de l'erreur de base 
 			$err = "{0}::{1}(): {2}" -f $this.gettype().Name, (Get-PSCallStack)[0].FunctionName, $res.errorMessage

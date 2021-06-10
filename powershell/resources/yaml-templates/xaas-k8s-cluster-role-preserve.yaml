@@ -1,0 +1,12 @@
+# S'applique sur les namespaces que nous mettrons à dispo
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  # nom du namespace ou s'appliquera le role
+  namespace: {{namespace}}
+  # nom du role
+  name: {{name}} 
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["get", "list"]

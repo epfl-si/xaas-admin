@@ -496,6 +496,14 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 				# on compte juste la chose
 				$counters.inc('BGResurrected')
 			}
+			
+			# Mise à jour des informations
+			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
+
+			$bgUpdated = $true
+			
+
+			
 		}
 
 		# Mise à jour du compteur si besoin
@@ -1245,7 +1253,7 @@ function checkIfADGroupsExists([EPFLLDAP]$ldap, [System.Collections.ArrayList]$g
 function createNSGroupIfNotExists([NSXAPI]$nsx, [string]$nsxNSGroupName, [string]$nsxNSGroupDesc, [string]$nsxSecurityTag)
 {
 
-	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName, $global:NSX_VM_MEMBER_TYPE)
+	$nsGroup = $nsx.getNSGroupByName($nsxNSGroupName, [NSXAPIEndPoint]::Manager)
 
 	# Si le NSGroup n'existe pas,
 	if($null -eq $nsGroup)
@@ -1253,7 +1261,7 @@ function createNSGroupIfNotExists([NSXAPI]$nsx, [string]$nsxNSGroupName, [string
 		$logHistory.addLineAndDisplay(("-> Creating NSX NS Group '{0}'... " -f $nsxNSGroupName))
 
 		# Création de celui-ci
-		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag, $global:NSX_VM_MEMBER_TYPE)
+		$nsGroup = $nsx.addNSGroup($nsxNSGroupName, $nsxNSGroupDesc, $nsxSecurityTag, [NSXNSGroupMemberType]::VirtualMachine, [NSXAPIEndpoint]::Manager)
 
 		$counters.inc('NSXNSGroupCreated')
 	}
@@ -1343,7 +1351,7 @@ function createFirewallSectionRulesIfNotExists([NSXAPI]$nsx, [PSObject]$nsxFWSec
 	$allRules = $nsxFWRuleNames | ConvertTo-Json
 
 	# Recherche des règles existantes 
-	$rules = $nsx.getFirewallSectionRules($nsxFWSection.id)
+	$rules = $nsx.getFirewallSectionRulesList($nsxFWSection.id)
 
 	# Si les règles n'existent pas
 	if($rules.Count -eq 0)
