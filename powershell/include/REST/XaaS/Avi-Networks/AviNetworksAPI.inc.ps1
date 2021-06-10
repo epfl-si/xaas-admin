@@ -417,20 +417,19 @@ class AviNetworksAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
 		BUT : Met à jour le nom et la description d'un tenant.
 
-        IN  : $tenant 	-> Objet représentant le tenant
-		IN  : $newName	-> Nouveau nom
-		IN  : $newDesc	-> Nouvelle description
+        IN  : $tenant 		-> Objet représentant le tenant
+		IN  : $labels		-> Tableau associatif avec les labels à mettre au tenant
 
 		RET : Le tenant modifié
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/patch_tenant__uuid_
 	#>
-	[PSCustomObject] updateTenant([PSCustomObject]$tenant, [string]$newName, [string]$newDesc)
+	[PSCustomObject] updateTenant([PSCustomObject]$tenant, [string]$newName, [HashTable]$labels)
 	{
 		$uri = "{0}/tenant/{1}" -f $this.baseUrl, $tenant.uuid
 
 		$tenant.name = $newName
-		$tenant.description = $newDesc
+		$tenant.description = description = (ConvertTo-json $labels -Compress) -replace '"','\"'
 
 		$this.callAPI($uri, "PUT", $tenant) | Out-Null
 
@@ -1009,7 +1008,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		RET : Tableau avec les configurations d'alertes syslog
 
-		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertsyslogconfig
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/getalertSyslogConfig
 	#>
 	[Array] getAlertSyslogConfigList([PSCustomObject]$tenant)
 	{
@@ -1035,7 +1034,7 @@ class AviNetworksAPI: RESTAPICurl
 		RET : Objet avec la configuration
 				$null si pas trouvé
 
-		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertsyslogconfig
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/getalertSyslogConfig
 	#>
 	[PSCustomObject] getAlertSyslogConfig([string]$name)
 	{
@@ -1307,7 +1306,7 @@ class AviNetworksAPI: RESTAPICurl
 		RET : Objet avec le application profile
 				$null si pas trouvé
 
-		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_applicationprofile
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/getapplicationProfile
 	#>
 	[PSCustomObject] getApplicationProfile([string]$name)
 	{
@@ -1331,7 +1330,7 @@ class AviNetworksAPI: RESTAPICurl
 		RET : Objet avec le application profile
 				$null si pas trouvé
 
-		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_applicationprofile
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/getapplicationProfile
 	#>
 	[PSCustomObject] getStringGroup([string]$name)
 	{
@@ -1354,7 +1353,7 @@ class AviNetworksAPI: RESTAPICurl
 		RET : Objet avec le application profile
 				$null si pas trouvé
 
-		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_vrfcontext
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/getvrfContext
 	#>
 	[PSCustomObject] getVRFContext([string]$name)
 	{
@@ -1377,7 +1376,7 @@ class AviNetworksAPI: RESTAPICurl
 		RET : Objet avec le service engine group
 				$null si pas trouvé
 
-		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_serviceenginegroup
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/getserviceEnginegroup
 	#>
 	[PSCustomObject] getServiceEngineGroup([string]$name)
 	{
@@ -1445,4 +1444,79 @@ class AviNetworksAPI: RESTAPICurl
 		return $res
 
 	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+											VIRTUAL SERVICE VIP
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoir la VIP d'un Virtual Service, donnée par son nom
+
+		IN  : $name		-> Nom de la VIP
+
+		RET : Objet avec le network
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_vsvip
+	#>
+	[PSCustomObject] getVSVip([string]$name)
+	{
+		$uri = "{0}/vsvip?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri)
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute une VIP pour un Virtual Service
+
+        IN  : $name         -> Nom de la VIP
+		IN  : $fqdn			-> FQDN de la VIP
+		IN  : $vrfContext	-> Référence du contexte VRF
+		IN  : $tenant		-> Référence du tenant
+		IN  : $cloud		-> Référence du cloud
+		IN  : $network		-> Référence du network
+		IN  : $tier1Lr		-> Chemin jusqu'au Tier 1 LR
+        
+        RET : Objet représentant la Vip du Virtual Service
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_vsvip
+	#>
+    [PSCustomObject] addVSVip([string]$name, [string]$fqdn, [string]$vrfContextRef, [string]$tenantRef, [string]$cloudRef, [string]$networkRef, [string]$tier1Lr)
+    {
+        $uri = "{0}/vsvip" -f $this.baseUrl
+
+        $replace = @{
+			name = $name
+			vipFqdn = $fqdn
+			vrfContextRef = $vrfContextRef
+			tenantRef = $tenantRef
+			cloudRef = $cloudRef
+			networkRef = $networkRef
+			tier1Lr = $tier1Lr
+		}
+
+		$body = $this.createObjectFromJSON("xaas-avi-networks-vsvip.json", $replace)
+
+        return $this.callAPI($uri, "POST", $body) 
+    }
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Efface une Vip de Virtual Service
+
+        IN  : $vsVip       -> Objet représentant la Vip de Virtual Service à effacer
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/delete_vsvip__uuid_
+	#>
+    [void] deleteVSVip([PSCustomObject]$vsVip)
+    {
+        $uri = "{0}/vsvip/{1}" -f $this.baseUrl, $vsVip.uuid
+
+        $this.callAPI($uri, "DELETE", $null) | Out-Null
+    }
 }

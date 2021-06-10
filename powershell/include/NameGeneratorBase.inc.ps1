@@ -478,6 +478,6 @@ class NameGeneratorBase
             $global:VRA_TENANT__RESEARCH { $this.getDetail('projectId') }
         } 
 
-        return $bgId
+        return $bgId.toLower()
     }
 }

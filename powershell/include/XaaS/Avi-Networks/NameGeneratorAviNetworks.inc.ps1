@@ -175,7 +175,7 @@ class NameGeneratorAviNetworks: NameGeneratorBase
         $vipName = "vsvip-{0}-{1}-{2}-{3}-{4}-NSX-T-{5}" -f `
                         $this.getBGId(), `
                         $this.getDeploymentTagShortname(), `
-                        $targetElement.toString.toLower(), `
+                        $targetElement.toString().toLower(), `
                         $this.getVSVipTypeShortName($vipType), `
                         $sslProfile.toString().toLower(), `
                         # Nom de l'environnement avec première lettre en majuscule
@@ -192,7 +192,7 @@ class NameGeneratorAviNetworks: NameGeneratorBase
                         $this.getTenantStartLetter(), `
                         $this.getBGId(), `
                         $this.getDeploymentTagShortname(), `
-                        $targetElement.toString.toLower(), `
+                        $targetElement.toString().toLower(), `
                         $this.getVSVipTypeShortName($vipType), `
                         $this.getSSLProfileFirstLetter($sslProfile), `
                         $testInfra
