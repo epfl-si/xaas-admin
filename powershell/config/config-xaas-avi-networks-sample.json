@@ -13,71 +13,77 @@
             "password": ""
         },
         "names": {
-            "_alertSyslogConfig":"",
-            "_applicationProfile":"", //??
-            "_cloudType":"",
+            "alertSyslogConfig":"",
+            "applicationProfile":"", 
+            "cloudType":"",
             "tenants":{
                 "epfl": {
                     "development":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "test": {
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "production":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     }
                 },
                 "itservices": {
                     "development":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "test": {
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "production":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     }
                 }
@@ -97,71 +103,77 @@
             "password": ""
         },
         "names": {
-            "_alertSyslogConfig":"",
-            "_applicationProfile":"", //??
-            "_cloudType":"",
+            "alertSyslogConfig":"",
+            "applicationProfile":"",
+            "cloudType":"",
             "tenants":{
                 "epfl": {
                     "development":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "test": {
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "production":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     }
                 },
                 "itservices": {
                     "development":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "test": {
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "production":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     }
                 }
@@ -181,77 +193,77 @@
             "password": ""
         },
         "names": {
-            "_alertSyslogConfig":"",
-            "_applicationProfile":"", //??
-            "_cloudType":"",
+            "alertSyslogConfig":"",
+            "applicationProfile":"",
+            "cloudType":"",
             "tenants":{
                 "epfl": {
                     "development":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "_vrfContext": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "test": {
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "_vrfContext": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "production":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "_vrfContext": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     }
                 },
                 "itservices": {
                     "development":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "_vrfContext": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "test": {
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "_vrfContext": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     },
                     "production":{
-                        "_privateVipNetwork": "",
-                        "_publicVipNetwork": "",
-                        "_vrfContext": "",
-                        "tkgi": {
-                            "_serviceEngine": ""
+                        "vipNetwork": {
+                            "private": "",
+                            "public": ""
                         },
-                        "vm": {
-                            "_serviceEngine": ""
+                        "vrfContext": "",
+                        "serviceEngine": {
+                            "tkgi": "",
+                            "vm": ""
                         }
                     }
                 }
