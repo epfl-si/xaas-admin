@@ -29,6 +29,7 @@ class RESTAPICurl: RESTAPI
 	hidden [System.Diagnostics.Process]$curl
 	hidden [PSObject]$process
 	hidden [bool]$useUTF8Encoding
+	hidden [PSObject]$responseHeaders
 	
     <#
 	-------------------------------------------------------------------------------------
@@ -59,6 +60,8 @@ class RESTAPICurl: RESTAPI
 		$this.curl.StartInfo.CreateNoWindow = $false
 
 		$this.useUTF8Encoding = $true
+
+		$this.responseHeaders = $null
     }
 
 	<#
@@ -106,13 +109,33 @@ class RESTAPICurl: RESTAPI
 		IN  : $method	-> Méthode à utiliser (Post, Get, Put, Delete)
 		IN  : $body 	-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
 							 Si $null, on ne passe rien.
-		IN  : $extraAgrs -> Arguments supplémentaires pouvant être passés à Curl
+		IN  : $extraAgrs 	-> Arguments supplémentaires pouvant être passés à Curl	
 
 		RET : Retour de l'appel
 	#>
 	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body, [string]$extraArgs)
 	{
+		# On fait un "cast" pour être sûr d'appeler la fonction de la classe courante et pas une surcharge éventuelle
+		return ([RESTAPICurl]$this).callAPI($uri, $method, $body, $extraArgs, $false)
+	}
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Effectue un appel à l'API REST via Curl
+
+		IN  : $uri			-> URL à appeler
+		IN  : $method		-> Méthode à utiliser (Post, Get, Put, Delete)
+		IN  : $body 		-> Objet à passer en Body de la requête. On va ensuite le transformer en JSON
+							 	Si $null, on ne passe rien.
+		IN  : $extraAgrs 	-> Arguments supplémentaires pouvant être passés à Curl
+		IN  : $dumpHeaders	-> pour dire si on doit dump les header également
+
+		RET : Retour de l'appel
+	#>
+	hidden [Object] callAPI([string]$uri, [string]$method, [System.Object]$body, [string]$extraArgs, [bool]$dumpHeaders)
+	{
 		$this.lastBody = $body
+		$this.responseHeaders = @{}
+		$headerFile = $null
 		
 		$method = $method.ToUpper()
 
@@ -130,6 +153,15 @@ class RESTAPICurl: RESTAPI
 
 		# Mise à jour du compteur d'appels à la fonction qui a appelé celle-ci
 		$this.incFuncCall($false)
+
+		# Si on doit dump les header
+		if($dumpHeaders)
+		{
+			# Génération d'un nom de fichier dans lequel on va récupérer les headers
+			$headerFile = (New-TemporaryFile).FullName
+			# Ajout du nécessaire pour récupérer les headers
+			$extraArgs = '{0} -D "{1}"' -f $extraArgs, $headerFile
+		}
 		
 		$curlArgs = "{0} --insecure -s --request {1}" -f $extraArgs, $method.ToUpper()
 
@@ -190,6 +222,8 @@ class RESTAPICurl: RESTAPI
 			# Si aucune erreur
 			if($this.curl.ExitCode -eq 0)
 			{
+				$this.debugLog("CURL attempt: $($currentAttemptNo) = SUCCESS")
+				$this.debugLog("CURL response: $($output)")
 				# On teste la récupération de ce qui a été retourné
 				try
 				{
@@ -210,7 +244,7 @@ class RESTAPICurl: RESTAPI
 				}
 				
 				# Si rien reçu ou code d'erreur
-				if($null -ne ($result | get-member error_code))
+				if(([bool]($result.PSobject.Properties.name -match "error_code")) -and ($null -ne $result.error_code))
 				{
 					# Si on a fait le max de tentative, on peut lever une erreur
 					if($currentAttemptNo -eq $nbCurlAttempts)
@@ -229,6 +263,7 @@ class RESTAPICurl: RESTAPI
 			# Si erreur Curl
 			else
 			{
+				$this.debugLog("CURL attempt: $($currentAttemptNo) = FAIL")
 				# Si on a fait le max de tentative, on peut lever une erreur
 				if($currentAttemptNo -eq $nbCurlAttempts)
 				{
@@ -260,6 +295,21 @@ class RESTAPICurl: RESTAPI
 		{
 			# Suppression du fichier temporaire 
 			Remove-Item -Path $tmpFile -Force:$true -Confirm:$false
+		}
+
+		# Si on doit dump les header
+		if($dumpHeaders)
+		{
+			Get-Content $headerFile | ForEach-Object { 
+				$name, $value = $_ -split ": "
+				if($null -ne $value)
+				{
+					$this.responseHeaders.Add($name.ToLower(), $value)
+				}
+			 }
+
+			# Suppression du fichier temporaire 
+			Remove-Item -Path $headerFile -Force:$true -Confirm:$false
 		}
 
 		$this.debugLog("Returning result")
