@@ -342,24 +342,40 @@ class AviNetworksAPI: RESTAPICurl
 
 	<#
 	-------------------------------------------------------------------------------------
-		BUT : Renvoie les tenants (un par environnement) par leur ID "custom"
+		BUT : Renvoie un tenant donné par l'ID du BG auquel il est lié ainsi que le type
+				dont il est, le tenant, pas le BG
 
-        IN  : $customId       -> ID custom du tenant
+        IN  : bgId       -> ID du BG auquel le tenant est lié
+		IN  : $tenantType-> Type du tenant (prod, test, dev)
 
-        RET : Tableau avec les objets représentant le tenant
-               $null si pas trouvé
+        RET : Objet représentant le tenant
+                Exception si plusieurs résultats trouvés
+				$null si pas trouvé
 	#>
-    [Array] getTenantByCustomIdList([string]$customId)
-    {
-        return $this.getTenantList() | Where-Object { 
-			$_.suggested_object_labels | Where-Object { 
-				($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ($_.value -eq $customId )
-			} 
+	[PSCustomObject] getTenant([string]$bgId, [XaaSAviNetworksTenantType]$tenantType)
+	{
+		# Création des filtres pour la recherche
+		$labelFilters = @{
+			$global:XAAS_AVI_NETWORKS_TENANT_TYPE = $tenantType.toString()
+			$global:VRA_CUSTOM_PROP_EPFL_BG_ID = $bgId
 		}
-    }
-	
 
-    <#
+		$res = $this.getTenantList($labelFilters)
+
+		if($res.count -gt 1)
+		{
+			Throw ("Multiple tenant returned for BG ID '{0}' and tenant type '{1}'" -f $bgId, $tenantType)
+		}
+		elseif($res.count -eq 1)
+		{
+			return $res[0]
+		}
+		return $null
+		
+	}
+
+
+	<#
 	-------------------------------------------------------------------------------------
 		BUT : Renvoie un tenant par son nom
 
@@ -377,6 +393,25 @@ class AviNetworksAPI: RESTAPICurl
 
     }
 
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie les tenants (un par environnement) par leur ID de BG lié
+
+        IN  : $bgId       -> ID du BG pour lequel on veut les tenants correspondants
+
+        RET : Tableau avec les objets représentant les tenants
+               $null si pas trouvé
+	#>
+    [Array] getAllTenanteForBG([string]$bgId)
+    {
+        return $this.getTenantList() | Where-Object { 
+			$_.suggested_object_labels | Where-Object { 
+				($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ($_.value -eq $bgId )
+			} 
+		}
+    }
+	
 
 	<#
 	-------------------------------------------------------------------------------------

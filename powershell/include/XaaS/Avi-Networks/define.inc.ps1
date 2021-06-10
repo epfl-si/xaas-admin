@@ -44,6 +44,12 @@ enum XaaSAviNetworksSSLProfile {
    Compatibility
 }
 
+# Element "cible" qui est derrière un Virtual Service
+enum XaaSAviNetworksTargetElement {
+   VM
+   TKGI
+}
+
 
 $global:XAAS_AVI_NETWORKS_USER_ROLE_NAME = "Application-Only"
 

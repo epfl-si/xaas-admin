@@ -143,21 +143,15 @@ class NameGeneratorAviNetworks: NameGeneratorBase
 
     <#
 		-------------------------------------------------------------------------------------
-		BUT : Renvoie le nom du VRF Context pour un virtual service donné.
+		BUT : Renvoie la première lettre du profil SSL
 
-		RET : Nom du VRF Context
+        IN  : $sslProfile     -> Profil SSL
+
+		RET : Première lettre du profil
 	#>
-    [string] getVRFContextName()
+    [string] getSSLProfileFirstLetter([XaaSAviNetworksSSLProfile]$sslProfile)
     {
-        # On n'utilise pas simplement la valeur de "$this.tenant" car AVI est ... sensible à la casse.
-        # Il ne faudrait donc pas qu'on change une fois la casse d'une des $global et que ça pète tout!
-        $tenant = switch($this.tenant)
-        {
-            $global:VRA_TENANT__EPFL { "EPFL" }
-            $global:VRA_TENANT__ITSERVICES { "ITServices"}
-        }   
-
-        return "{0}-{1}" -f $tenant, $this.deploymentTag.toString()
+        return $sslProfile.ToString().toLower()[0]
     }
 
 
@@ -165,26 +159,46 @@ class NameGeneratorAviNetworks: NameGeneratorBase
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie le nom de la VIP d'un Virtual Service
 
+        IN  : $$targetElement   -> Type d'élément qui sera derrière le virtual service
         IN  : $vipType          -> Type de la VIP
         IN  : $sslProfile       -> Profile SSL que l'on veut pour la VIP
 
-		RET : Nom de la VIP
+		RET : Tableau avec:
+                -> Nom de la VIP
+                -> FQDN de la VIP
 	#>
-    [string] getVSVipName([XaaSAviNetworksVipType]$vipType, [XaaSAviNetworksSSLProfile]$sslProfile)
+    [Array] getVSVipInfos([XaaSAviNetworksTargetElement]$targetElement, [XaaSAviNetworksVipType]$vipType, [XaaSAviNetworksSSLProfile]$sslProfile)
     {
-        $bgId = switch($this.tenant)
-        {
-            $global:VRA_TENANT__EPFL { $this.getDetail('unitID') }
-            $global:VRA_TENANT__ITSERVICES { $this.getDetail('snowServiceId') }
-        } 
+        
+        # Documentation sur le format ici: https://confluence.epfl.ch:8443/display/SIAC/%5BIaaS%5D+AVI+Networks  
+              
+        $vipName = "vsvip-{0}-{1}-{2}-{3}-{4}-NSX-T-{5}" -f `
+                        $this.getBGId(), `
+                        $this.getDeploymentTagShortname(), `
+                        $targetElement.toString.toLower(), `
+                        $this.getVSVipTypeShortName($vipType), `
+                        $sslProfile.toString().toLower(), `
+                        # Nom de l'environnement avec première lettre en majuscule
+                        (Get-Culture).textInfo.toTitleCase($this.getEnvShortName())
 
-        # Format: "vsvip-<BGId>-(t|d|p)-(pub|priv)-(security|compatibility)-NSX-T-<env>"
-        # <env> = Test|Dev|Prod ?
-        return "vsvip-{0}-{1}-{2}-{3}-NSX-T-{4}" -f $bgId, `
-                    $this.getDeploymentTagShortname(), `
-                    $this.getVSVipTypeShortName($vipType),
-                    $sslProfile.toString().toLower(), `
-                    # Nom de l'environnement avec première lettre en majuscule
-                    (Get-Culture).textInfo.toTitleCase($this.getEnvShortName())
+        
+        $testInfra = ""
+        if($this.env -eq $global:TARGET_ENV__TEST)
+        {
+            $testInfra = "-t"
+        }
+
+        $vipFQDN = "{0}{1}-{2}-{3}-{4}-{5}.lb{6}.xaas.epfl.ch" -f `
+                        $this.getTenantStartLetter(), `
+                        $this.getBGId(), `
+                        $this.getDeploymentTagShortname(), `
+                        $targetElement.toString.toLower(), `
+                        $this.getVSVipTypeShortName($vipType), `
+                        $this.getSSLProfileFirstLetter($sslProfile), `
+                        $testInfra
+        
+        return @($vipName, $vipFQDN)
     }
+
+
 }

@@ -354,7 +354,7 @@ try
     # Ajout d'informations dans le log
     $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
     
-    $nameGeneratorAviNetworks = [NameGeneratorAviNetworks]::new($targetEnv, $targetTenant)
+    $nameGeneratorAviNetworks = [NameGeneratorAviNetworks]::new($targetEnv, $targetTenant, [DeploymentTag]::UnInitialized)
     
     <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -430,7 +430,7 @@ try
             $logHistory.addLine(("{0} mail address(es) found:`n{1}" -f $notificationMailList.count, ($notificationMailList -join "`n")))
             
             # -- Recherche de la configuration d'alerte Syslog
-            $alertSyslogConfigName = $configAviNetworks.getConfigValue(@($targetEnv, "alertSyslogConfigName"))
+            $alertSyslogConfigName = $configAviNetworks.getConfigValue(@($targetEnv, "names", "_alertSyslogConfig"))
             $logHistory.addLine(("Getting Syslog Alert Configuration ({0})..." -f $alertSyslogConfigName))
             $syslogAlertConfig = $aviNetWorks.getAlertSyslogConfig($alertSyslogConfigName)
 
@@ -450,7 +450,8 @@ try
 
                 $name, $desc = $nameGeneratorAviNetworks.getTenantNameAndDesc($bg.name, $_)
 
-                $tenant = $aviNetworks.getTenantByName($name)
+                # On recherche le tenant par son ID et son type, pour être sûr de le trouver
+                $tenant = $aviNetworks.getTenant($bgId, $_)
                 # Si le tenant n'existe pas, on le créé
                 if($null -eq $tenant)
                 {

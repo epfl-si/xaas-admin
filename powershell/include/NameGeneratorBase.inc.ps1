@@ -461,4 +461,23 @@ class NameGeneratorBase
 
         return $start
     }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie l'ID du BG, en fonction du tenant sur lequel on est
+
+        RET : ID du BG
+    #>
+    [string] getBGId()
+    {
+        $bgId = switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL { $this.getDetail('unitID') }
+            $global:VRA_TENANT__ITSERVICES { $this.getDetail('snowServiceId') }
+            $global:VRA_TENANT__RESEARCH { $this.getDetail('projectId') }
+        } 
+
+        return $bgId
+    }
 }
