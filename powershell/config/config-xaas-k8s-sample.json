@@ -1,0 +1,147 @@
+{
+    "dev": {
+        "pks":
+        {
+            "server": "",
+            "user": "",
+            "password": "",
+            "storageClass" : 
+            {
+                "provisioner":"",
+                "parameters.datastore": ""
+            },
+            "resourceQuota":
+            {
+                "spec.hard.requests.storageGi": 0
+            }
+        },
+        "tkgi":
+        {
+            "server": "",
+            "user":"",
+            "password":"",
+            "certificate": ""
+        },
+        "harbor":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "dns":
+        {
+            "server": "",
+            "psEndpointServer": "",  // nom IP du serveur PowerShell endpoint, se terminant par .intranet.epfl.ch
+            "user": "",
+            "password": ""
+        },
+        "e2e":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "nsx": {
+            "server": "",
+            "user":"",
+            "password":""
+        }
+    },
+    "test": {
+        "pks":
+        {
+            "server": "",
+            "user": "",
+            "password": "",
+            "storageClass" : 
+            {
+                "provisioner":"",
+                "parameters.datastore": ""
+            },
+            "resourceQuota":
+            {
+                "spec.hard.requests.storageGi": 0
+            }
+        },
+        "tkgi":
+        {
+            "server": "",
+            "user":"",
+            "password":"",
+            "certificate": ""
+        },
+        "harbor":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "dns":
+        {
+            "server": "",
+            "psEndpointServer": "",  // nom IP du serveur PowerShell endpoint, se terminant par .intranet.epfl.ch
+            "user": "",
+            "password": ""
+        },
+        "e2e":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "nsx": {
+            "server": "",
+            "user":"",
+            "password":""
+        }
+    },
+    "prod": {
+        "pks":
+        {
+            "server": "",
+            "user": "",
+            "password": "",
+            "storageClass" : 
+            {
+                "provisioner":"",
+                "parameters.datastore": ""
+            },
+            "resourceQuota":
+            {
+                "spec.hard.requests.storageGi": 0
+            }
+        },
+        "tkgi":
+        {
+            "server": "",
+            "user":"",
+            "password":"",
+            "certificate": ""
+        },
+        "harbor":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "dns":
+        {
+            "server": "",
+            "psEndpointServer": "",  // nom IP du serveur PowerShell endpoint, se terminant par .intranet.epfl.ch
+            "user": "",
+            "password": ""
+        },
+        "e2e":
+        {
+            "server": "",
+            "user": "",
+            "password": ""
+        },
+        "nsx": {
+            "server": "",
+            "user":"",
+            "password":""
+        }
+    }
+} 
+

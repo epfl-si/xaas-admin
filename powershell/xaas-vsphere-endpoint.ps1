@@ -169,8 +169,22 @@ try
                 
             }# FIN BOUCLE de parcours des disques de la VM
 
+            $homeStoragePolicy = $newStoragePolicy = $vsphereApi.getStoragePolicyByName($diskPoliciesToUpdate.vmhome)
+
+            if($null -eq $homeStoragePolicy)
+            {
+                Throw ("Home Storage Policy '{0}' doesn't exists" -f $diskPoliciesToUpdate.vmhome)
+            }
+
+            # Si la policy Home a changé
+            if($homeStoragePolicy.policy -ne $vmStoragePolicieInfos.vm_home)
+            {
+                $logHistory.addLine(("Changing VM Home Storage Policy to '{0}' " -f $homeStoragePolicy.name))
+            }
+
+
             $logHistory.addLine(("Updating VM '{0}' storage policies..." -f $vmName))
-            $vsphereApi.updateVMStoragePolicyList($vmName, $vmStoragePolicieInfos.vm_home, $disksNewPolicies)
+            $vsphereApi.updateVMStoragePolicyList($vmName, $homeStoragePolicy.policy, $disksNewPolicies)
 
         }# FIN Action mise à jour des storages policies
 

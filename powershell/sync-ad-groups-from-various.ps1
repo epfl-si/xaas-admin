@@ -438,10 +438,11 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 	IN  : $simulation			-> $true|$false Pour dire si on est en train de faire tourner en mode "simulation"
 	IN  : $allowAdminUpdate		-> Switch pour dire si on autorise à mettre à jour la
 									liste des administrateurs du groupe
+	IN  : $withMailingList		-> Pour dire si on doit spécifiquement activer la Mailing list pour le groupe	
 
 	RET : Le groupe
 #>
-function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList, [bool]$simulation, [switch]$allowAdminUpdate)
+function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [string]$name, [string]$desc, [Array]$memberSciperList, [Array]$adminSciperList, [bool]$simulation, [switch]$allowAdminUpdate, [switch]$withMailingList)
 {
 	# Suppression des potentiels doublons
 	$memberSciperList = $memberSciperList | Sort-Object | Get-Unique
@@ -467,9 +468,17 @@ function createGroupsGroupWithContent([GroupsAPI]$groupsApp, [EPFLLDAP]$ldap, [s
 
 		# Ajout du groupe
 		$logHistory.addLineAndDisplay(("--> Creating groups group '{0}'..." -f $name))
-		$options = @{
-			maillist = '0'
+		if($withMailingList)
+		{
+			$options = @{}
 		}
+		else
+		{
+			$options = @{
+				maillist = '0'
+			}
+		}
+
 		if(!$simulation)
 		{
 			$group = $groupsApp.addGroup($name, $desc, "", $options)
@@ -1355,7 +1364,7 @@ try
 					# Création du groupe dans Groups s'il n'existe pas
 					$requestGroupGroups = createGroupsGroupWithContent -groupsApp $groupsApp -ldap $ldap -name $userSharedGroupNameGroups -desc $userSharedGroupDescGroups `
 																		-memberSciperList $groupsContentAndAdmin -adminSciperList $groupsContentAndAdmin -allowAdminUpdate `
-																		-simulation $SIMULATION_MODE
+																		-simulation $SIMULATION_MODE -withMailingList
 
 					# Création des groupes + gestion des groupes prérequis 
 					if((createADGroupWithContent -groupName $userSharedGroupNameAD -groupDesc $userSharedGroupDescAD -groupMemberGroup $userSharedGroupNameGroupsAD `
