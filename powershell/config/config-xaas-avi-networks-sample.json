@@ -189,6 +189,7 @@
                     "development":{
                         "_privateVipNetwork": "",
                         "_publicVipNetwork": "",
+                        "_vrfContext": "",
                         "tkgi": {
                             "_serviceEngine": ""
                         },
@@ -199,6 +200,7 @@
                     "test": {
                         "_privateVipNetwork": "",
                         "_publicVipNetwork": "",
+                        "_vrfContext": "",
                         "tkgi": {
                             "_serviceEngine": ""
                         },
@@ -209,6 +211,7 @@
                     "production":{
                         "_privateVipNetwork": "",
                         "_publicVipNetwork": "",
+                        "_vrfContext": "",
                         "tkgi": {
                             "_serviceEngine": ""
                         },
@@ -221,6 +224,7 @@
                     "development":{
                         "_privateVipNetwork": "",
                         "_publicVipNetwork": "",
+                        "_vrfContext": "",
                         "tkgi": {
                             "_serviceEngine": ""
                         },
@@ -231,6 +235,7 @@
                     "test": {
                         "_privateVipNetwork": "",
                         "_publicVipNetwork": "",
+                        "_vrfContext": "",
                         "tkgi": {
                             "_serviceEngine": ""
                         },
@@ -241,6 +246,7 @@
                     "production":{
                         "_privateVipNetwork": "",
                         "_publicVipNetwork": "",
+                        "_vrfContext": "",
                         "tkgi": {
                             "_serviceEngine": ""
                         },
