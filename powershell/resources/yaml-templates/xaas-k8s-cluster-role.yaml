@@ -1,0 +1,94 @@
+# S'applique sur les namespaces que nous mettrons à dispo
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  # nom du namespace ou s'appliquera le role
+  namespace: {{namespace}}
+  # nom du role
+  name: {{name}} 
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - serviceaccounts
+  - secrets
+  - replicationcontrollers
+  - podtemplates
+  - pods
+  - pods/log
+  - pods/exec
+  - pods/cp
+  - pods/portforward
+  - persistentvolumeclaims
+  - limitranges
+  - events
+  - endpoints
+  - configmaps
+  - bindings
+  verbs:
+  - create
+  - delete
+  - update
+  - get
+  - list
+  - watch
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - resourcequotas
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - apps
+  - authorization.k8s.io
+  - autoscaling
+  - batch
+  - coordination.k8s.io
+  - discovery.k8s.io
+  - events.k8s.io
+  - extensions
+  - metrics.k8s.io
+  - monitoring.coreos.com
+  - pksapi.io
+  - projectcontour.io
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - create
+  - delete
+  - watch
+  - update
+  - patch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  - roles
+  verbs:
+  - create
+  - delete
+  - update
+  - patch
+- apiGroups:
+  - vmware.com
+  resources:
+  - '*'
+  verbs:
+  - list
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - list
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - '*'

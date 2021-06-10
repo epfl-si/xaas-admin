@@ -48,6 +48,7 @@ class NameGeneratorBase
                            $VRA_TENANT_DEFAULT
                            $VRA_TENANT_EPFL
                            $VRA_TENANT_ITSERVICES
+                           $VRA_TENANT_RESEARCH
 
 		RET : Instance de l'objet
 	#>
@@ -147,16 +148,16 @@ class NameGeneratorBase
                 }
 
                 $result = @{
-                    faculty = $faculty
+                    faculty = $faculty.toLower()
                     # On remet les "-" dans le nom d'unité si besoin
-                    unit = $unit -replace "_", "-"
+                    unit = ($unit -replace "_", "-").toLower()
                 }
             }
             
 
             $global:VRA_TENANT__ITSERVICES
             {
-                # Le nom du BG est au format: its_<svcId>
+                # Le nom du BG est au format: its_<serviceShortName>
                 $dummy, $serviceShortName = [regex]::Match($bgName, '^its_([a-z0-9]+)').Groups | Select-Object -ExpandProperty value
 
                 if($null -eq $serviceShortName)
@@ -206,11 +207,13 @@ class NameGeneratorBase
                 - getVMMachinePrefix 
                 - getApprovalPolicyNameAndDesc
 
-        IN  : $bgName   -> Nom du BG
+        IN  : $bg           -> Objet représentant le BG
     #>
-    [void] initDetailsFromBGName([string]$bgName)
+    [void] initDetailsFromBG([PSCustomObject]$bg)
     {
-        $bgDetails = $this.getDetailsFromBGName($bgName)
+        $bgCustomId = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+
+        $bgDetails = $this.getDetailsFromBGName($bg.name)
 
         $withDetails = @{}
         switch($this.tenant)
@@ -224,7 +227,7 @@ class NameGeneratorBase
                     facultyName = $bgDetails.faculty
                     facultyID = ''
                     unitName = $bgDetails.unit
-                    unitID = '' 
+                    unitID = $bgCustomId
                 }
             }
 
@@ -234,8 +237,8 @@ class NameGeneratorBase
                 # le nom du BG est au format <tenantShort>_<serviceShort>
                 $withDetails = @{
                     serviceShortName = $bgDetails.serviceShortName
-                    serviceName = ''
-                    snowServiceId = ''
+                    serviceName = $bg.description
+                    snowServiceId = $bgCustomId
                 }
             }
 
@@ -245,7 +248,7 @@ class NameGeneratorBase
                 # le nom du BG est au format <tenantShort>_<projectId>
                 $withDetails = @{
                     projectId = $bgDetails.projectId
-                    projectAcronym = ''
+                    projectAcronym = $bg.description
                 }
             }
 
@@ -340,6 +343,8 @@ class NameGeneratorBase
                 est levée.
 
         IN  : $name -> Nom du détail que l'on désire.
+                        Voir l'entête de la fonction 'initDetails' pour savoir quels sont les
+                        possibilités pour le paramètre $name
 
         RET : La valeur du détail
     #>
@@ -417,5 +422,31 @@ class NameGeneratorBase
     {
         $name = $this.sanitizeName($name)
         return (truncateString -str $name -maxChars $maxChars)
+    }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la lettre de début pour un tenant
+
+        RET : La lettre de début
+    #>
+    hidden [string] getTenantStartLetter()
+    {
+        $start = ""
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL
+            {
+                $start = "u"
+            }
+
+            $global:VRA_TENANT__RESEARCH
+            {
+                $start = "p"
+            }
+        }
+
+        return $start
     }
 }

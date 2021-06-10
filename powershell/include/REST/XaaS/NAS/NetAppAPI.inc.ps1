@@ -175,7 +175,7 @@ class NetAppAPI: RESTAPICurl
             $res = ([RESTAPICurl]$this).callAPI($currentUri, $method, $body, $this.extraArgs)
 
             # Si on a un messgae d'erreur
-            if([bool]($res.PSobject.Properties.name -match "error") -and ($res.error.messsage -ne ""))
+            if((objectPropertyExists -obj $res -propertyName "error") -and ($res.error.messsage -ne ""))
             {
                 # Si on doit s'arrêter au premier résultat trouvé, c'est qu'à priori on ne sait pas sur quel serveur
                 # se trouve ce qu'on cherche. Donc, dans ce cas-là, c'est normal qu'on ait une erreur du type "entity not found"
@@ -192,7 +192,7 @@ class NetAppAPI: RESTAPICurl
             if($uri -match "^https:")
             {
                 # Si la property existe
-                if(($getPropertyName -ne "") -and ([bool]($res.PSobject.Properties.name -eq $getPropertyName)))
+                if(($getPropertyName -ne "") -and (objectPropertyExists -obj $res -propertyName $getPropertyName))
                 {
                     $res = $res.$getPropertyName
                 }
@@ -205,7 +205,7 @@ class NetAppAPI: RESTAPICurl
                 if(($method -eq "get"))
                 {
                     # Si la property existe
-                    if(($getPropertyName -ne "") -and ([bool]($res.PSobject.Properties.name -eq $getPropertyName)))
+                    if(($getPropertyName -ne "") -and (objectPropertyExists -obj $res -propertyName $getPropertyName))
                     {
                         $res = $res.$getPropertyName
                     }
@@ -261,7 +261,7 @@ class NetAppAPI: RESTAPICurl
 
         RET : Tableau associatif avec en clef les noms des métriques désirées
 	#>
-    hidden [psobject] calcMetricsAverage([Array]$stats, [Array]$metricList, [NetAppMetricType]$metricType)
+    hidden [PSCustomObject] calcMetricsAverage([Array]$stats, [Array]$metricList, [NetAppMetricType]$metricType)
     {
         $result = @{}
 
@@ -409,7 +409,7 @@ class NetAppAPI: RESTAPICurl
         
         IN  : $id   -> ID de la SVM
 	#>
-    [PSObject] getSVMById([string]$id)
+    [PSCustomObject] getSVMById([string]$id)
     {
         $uri = "/api/svm/svms/{0}" -f $id
 
@@ -426,7 +426,7 @@ class NetAppAPI: RESTAPICurl
         RET : Objet avec le résultat
                 $null si pas trouvé
 	#>
-    [PSObject] getSVMByName([string]$name)
+    [PSCustomObject] getSVMByName([string]$name)
     {
         # Recherche de la SVM dans la liste
         $result = $this.getSVMList() | Where-Object { $_.name -eq $name }
@@ -449,7 +449,7 @@ class NetAppAPI: RESTAPICurl
 
         RET : Nom du serveur
 	#>
-    [string] getSVMClusterHost([PSObject]$svm)
+    [string] getSVMClusterHost([PSCustomObject]$svm)
     {
         return $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
     }
@@ -473,7 +473,7 @@ class NetAppAPI: RESTAPICurl
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/cifs_collection_performance_metrics_get
 
 	#>
-    [PSObject] getSVMMetrics([PSObject]$svm, [NetAppProtocol]$protocol, [NetAppMetricType]$metricType)
+    [PSCustomObject] getSVMMetrics([PSCustomObject]$svm, [NetAppProtocol]$protocol, [NetAppMetricType]$metricType)
     {
         $protocolStr = $protocol.toString()
         # On peut avoir "nfs3" et peut-être "nfs4" dans le futur donc on transforme pour avoir la bonne valeur pour l'URL après
@@ -495,10 +495,7 @@ class NetAppAPI: RESTAPICurl
             # Ajout d'une donnée membre au résultat qui sera renvoyé
             $result | Add-Member -NotePropertyName $_ -NotePropertyValue 0
         }
-
-        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
-
-        $uri = "https://{0}/api/protocols/{1}/services/{2}/metrics?fields={3}&interval=1w" -f $targetServer, $protocolStr, $svm.uuid, ($metricWithTypeList -join ",")
+        $uri = "/api/protocols/{0}/services/{1}/metrics?fields={2}&interval=1w" -f $protocolStr, $svm.uuid, ($metricWithTypeList -join ",")
         
         $stats = $this.callAPI($uri, "GET", $null, "records", $true)
         
@@ -554,7 +551,7 @@ class NetAppAPI: RESTAPICurl
         
         IN  : $id   -> ID de l'aggrégat
 	#>
-    [PSObject] getAggregateById([string]$id)
+    [PSCustomObject] getAggregateById([string]$id)
     {
         $uri = "/api/storage/aggregates/{0}" -f $id
 
@@ -572,7 +569,7 @@ class NetAppAPI: RESTAPICurl
         RET : Objet avec le résultat
                 $null si pas trouvé
 	#>
-    [PSObject] getAggregateByName([string]$name)
+    [PSCustomObject] getAggregateByName([string]$name)
     {
         # Recherche de la SVM dans la liste
         $result = $this.getAggregateList() | Where-Object { $_.name -eq $name }
@@ -650,7 +647,7 @@ class NetAppAPI: RESTAPICurl
 
         RET : Tableau avec la liste des volumes
 	#>
-    [Array] getSVMVolumeList([PSObject]$svm)
+    [Array] getSVMVolumeList([PSCustomObject]$svm)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
@@ -665,7 +662,7 @@ class NetAppAPI: RESTAPICurl
         
         IN  : $id   -> ID du volume
 	#>
-    [PSObject] getVolumeById([string]$id)
+    [PSCustomObject] getVolumeById([string]$id)
     {
         $uri = "/api/storage/volumes/{0}" -f $id
 
@@ -682,7 +679,7 @@ class NetAppAPI: RESTAPICurl
 
         RET : Protocole d'accès
 	#>
-    [NetAppProtocol] getVolumeAccessProtocol([PSObject]$vol)
+    [NetAppProtocol] getVolumeAccessProtocol([PSCustomObject]$vol)
     {
         $uri = "/api/storage/volumes/{0}?fields=nas.security_style" -f $vol.uuid
 
@@ -710,7 +707,7 @@ class NetAppAPI: RESTAPICurl
         RET : Objet avec le résultat
                 $null si pas trouvé
 	#>
-    [PSObject] getVolumeByName([string]$name)
+    [PSCustomObject] getVolumeByName([string]$name)
     {
         # Recherche du volume dans la liste
         $result = $this.getVolumeListQuery(("name={0}" -f $name))
@@ -735,7 +732,7 @@ class NetAppAPI: RESTAPICurl
                 Ce n'est donc pas comme si on pouvait juste "ajouter" des champs à ceux renvoyés par
                 défaut par l'appel retournant les détails d'un volume.
 	#>
-    [PSObject] getVolumeSizeInfos([PSObject]$vol)
+    [PSCustomObject] getVolumeSizeInfos([PSCustomObject]$vol)
     {
         $uri = "/api/storage/volumes/{0}?fields=space.snapshot.used,space.snapshot.reserve_percent,files.maximum,files.used" -f $vol.uuid
 
@@ -759,7 +756,7 @@ class NetAppAPI: RESTAPICurl
 
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_metrics_collection_get
 	#>
-    [PSObject] getVolumeMetrics([PSObject]$vol, [NetAppMetricType]$metricType)
+    [PSCustomObject] getVolumeMetrics([PSCustomObject]$vol, [NetAppMetricType]$metricType)
     {
 
         # Liste des métriques qu'on veut retourner 
@@ -804,7 +801,7 @@ class NetAppAPI: RESTAPICurl
 
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_create
 	#>
-    [PSObject] addVolume([string]$name, [float]$sizeGB, [PSObject]$svm, [PSObject]$aggregate, [string]$securityStyle, [string]$mountPath, [int]$snapSpacePercent)
+    [PSCustomObject] addVolume([string]$name, [float]$sizeGB, [PSCustomObject]$svm, [PSCustomObject]$aggregate, [string]$securityStyle, [string]$mountPath, [int]$snapSpacePercent)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
@@ -847,7 +844,7 @@ class NetAppAPI: RESTAPICurl
         IN  : $sizeGB           -> Taille du volume en GB
         IN  : $snapSpacePercent -> Pourcentage de la taille à réserver pour les snapshots
 	#>
-    [void] resizeVolume([PSObject]$vol, [float]$sizeGB, [int]$snapSpacePercent)
+    [void] resizeVolume([PSCustomObject]$vol, [float]$sizeGB, [int]$snapSpacePercent)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $vol.uuid)
@@ -877,7 +874,7 @@ class NetAppAPI: RESTAPICurl
         
         IN  : $vol   -> objet représentant le volume à effacer
 	#>
-    [void] deleteVolume([PSObject]$vol)
+    [void] deleteVolume([PSCustomObject]$vol)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $vol.uuid)
@@ -910,7 +907,7 @@ class NetAppAPI: RESTAPICurl
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/cifs_share_create
 	#>
-    [void] addCIFSShare([string]$name, [PSObject]$svm, [string]$path)
+    [void] addCIFSShare([string]$name, [PSCustomObject]$svm, [string]$path)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
@@ -941,7 +938,7 @@ class NetAppAPI: RESTAPICurl
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/cifs_share_delete
 	#>
-    [void] deleteCIFSShare([PSObject]$share)
+    [void] deleteCIFSShare([PSCustomObject]$share)
     {
          # Recherche du serveur NetApp cible
          $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $share.svm.uuid)
@@ -986,7 +983,7 @@ class NetAppAPI: RESTAPICurl
 
         RET : Liste des shares
 	#>
-    [Array] getSVMCIFSShareList([PSObject]$svm)
+    [Array] getSVMCIFSShareList([PSCustomObject]$svm)
     {
         return $this.getCIFSShareListQuery(("svm.name={0}" -f $svm.name))
     }
@@ -1000,7 +997,7 @@ class NetAppAPI: RESTAPICurl
 
         RET : Liste des shares
 	#>
-    [Array] getVolCIFSShareList([PSObject]$vol)
+    [Array] getVolCIFSShareList([PSCustomObject]$vol)
     {
         return $this.getCIFSShareListQuery(("volume.name={0}" -f $vol.name))
     }
@@ -1015,7 +1012,7 @@ class NetAppAPI: RESTAPICurl
 
         RET : Objet représentant le share
 	#>
-    [PSObject] getCIFSShare([PSObject]$svm, [string]$shareName)
+    [PSCustomObject] getCIFSShare([PSCustomObject]$svm, [string]$shareName)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
@@ -1044,7 +1041,7 @@ class NetAppAPI: RESTAPICurl
         NOTE: On doit manuellement spéficifer qu'on veut les 3 champs parce que par défaut il n'y
                 en a que 2 et il manque "permission"...
 	#>
-    [Array] getCIFSShareACLList([PSObject]$svm, [string]$shareName)
+    [Array] getCIFSShareACLList([PSCustomObject]$svm, [string]$shareName)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
@@ -1066,7 +1063,7 @@ class NetAppAPI: RESTAPICurl
         IN  : $permission           -> Type de permission à mettre. Voir les possibilité en haut
                                         du fichier courant
 	#>
-    [void] addCIFSShareACL([PSObject]$svm, [string]$shareName, [string]$userOrGroupAtDomain, [NetAppSharePermission]$permission)
+    [void] addCIFSShareACL([PSCustomObject]$svm, [string]$shareName, [string]$userOrGroupAtDomain, [NetAppSharePermission]$permission)
     {
         # Encodage si besoin
         $userOrGroupAtDomain = $this.encodeUsernameForJSON($userOrGroupAtDomain)
@@ -1097,7 +1094,7 @@ class NetAppAPI: RESTAPICurl
                                         lequel il faut supprimer des droits
 
 	#>
-    [void] deleteCIFSShareACL([PSObject]$svm, [string]$shareName, [string]$userOrGroupAtDomain)
+    [void] deleteCIFSShareACL([PSCustomObject]$svm, [string]$shareName, [string]$userOrGroupAtDomain)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
@@ -1123,23 +1120,12 @@ class NetAppAPI: RESTAPICurl
         IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
-        IN  : $targetServer -> (optionnel) Serveur sur lequel faire la requête
         
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_policy_collection_get
 	#>
     hidden [Array] getExportPolicyListQuery([string]$queryParams)
     {
-        return $this.getExportPolicyListQuery($queryParams, "")
-    }
-    hidden [Array] getExportPolicyListQuery([string]$queryParams, [string]$targetServer)
-    {
         $uri = "/api/protocols/nfs/export-policies?max_records=9999"
-
-        # Si on doit interroger un serveur donné, on l'ajoute
-        if($targetServer -ne "")
-        {
-            $uri = "https://{0}{1}" -f $targetServer, $uri
-        }
 
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1174,7 +1160,7 @@ class NetAppAPI: RESTAPICurl
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_policy_get
 	#>
-    [PSObject] getExportPolicyById([string]$id)
+    [PSCustomObject] getExportPolicyById([string]$id)
     {
         $uri = "/api/protocols/nfs/export-policies/{0}" -f $id
 
@@ -1192,7 +1178,7 @@ class NetAppAPI: RESTAPICurl
         RET : L'export policy
                 $null si pas trouvé
 	#>
-    [PSObject] getExportPolicyByName([string]$name)
+    [PSCustomObject] getExportPolicyByName([string]$name)
     {
         $result = $this.getExportPolicyListQuery( ("name={0}" -f $name) )
 
@@ -1215,12 +1201,9 @@ class NetAppAPI: RESTAPICurl
         RET : L'export policy
                 $null si pas trouvé
 	#>
-    [PSObject] getExportPolicyByName([PSObject]$svm, [string]$name)
+    [PSCustomObject] getExportPolicyByName([PSCustomObject]$svm, [string]$name)
     {
-        # Recherche du serveur NetApp cible
-        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
-
-        $result = $this.getExportPolicyListQuery( ("svm.name={0}&name={1}" -f $svm.name, $name), $targetServer )
+        $result = $this.getExportPolicyListQuery( ("svm.name={0}&name={1}" -f $svm.name, $name) )
 
         if($result.count -eq 0)
         {
@@ -1243,11 +1226,9 @@ class NetAppAPI: RESTAPICurl
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_policy_create
 	#>
-    [PSObject] addExportPolicy([string]$name, [PSObject]$svm)
+    [PSCustomObject] addExportPolicy([string]$name, [PSCustomObject]$svm)
     {
-        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
-
-        $uri = "https://{0}/api/protocols/nfs/export-policies" -f $targetServer
+        $uri = "/api/protocols/nfs/export-policies"
 
         $replace = @{
             name = $name
@@ -1272,7 +1253,7 @@ class NetAppAPI: RESTAPICurl
         
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_policy_delete
 	#>
-    [void] deleteExportPolicy([PSObject]$exportPolicy)
+    [void] deleteExportPolicy([PSCustomObject]$exportPolicy)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::ExportPolicy, $exportPolicy.id)
@@ -1292,7 +1273,7 @@ class NetAppAPI: RESTAPICurl
         
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_modify
 	#>
-    [void] applyExportPolicyOnVolume([PSObject]$exportPolicy, [PSObject]$volume)
+    [void] applyExportPolicyOnVolume([PSCustomObject]$exportPolicy, [PSCustomObject]$volume)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
@@ -1350,7 +1331,7 @@ class NetAppAPI: RESTAPICurl
 
         RET : Liste des règles d'export policies
 	#>
-    [PSObject] getExportPolicyRuleList([PSObject]$exportPolicy)
+    [PSCustomObject] getExportPolicyRuleList([PSCustomObject]$exportPolicy)
     {
         $result = @{
             RO = @()
@@ -1396,7 +1377,7 @@ class NetAppAPI: RESTAPICurl
         IN  : $exportPolicy     -> Objet représentant l'export policy
         IN  : $targetServer     -> Serveur cible sur lequel se trouve l'export policy
     #>
-    hidden [void] deleteExportPolicyRule([PSObject]$exportPolicy, [string]$targetServer, [int]$index)
+    hidden [void] deleteExportPolicyRule([PSCustomObject]$exportPolicy, [string]$targetServer, [int]$index)
     {
         $uri = "https://{0}/api/protocols/nfs/export-policies/{1}/rules/{2}" -f $targetServer, $exportPolicy.id, $index
 
@@ -1410,7 +1391,7 @@ class NetAppAPI: RESTAPICurl
 
         IN  : $exportPolicy     -> Objet représentant l'export policy
     #>
-    [void] deleteExportPolicyRuleList([PSObject]$exportPolicy)
+    [void] deleteExportPolicyRuleList([PSCustomObject]$exportPolicy)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::ExportPolicy, $exportPolicy.id)
@@ -1433,7 +1414,7 @@ class NetAppAPI: RESTAPICurl
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_rule_create
 	#>
-    hidden [void] addExportPolicyRule([PSObject]$exportPolicy, [string]$targetServer, [HashTable]$replaceInBody)
+    hidden [void] addExportPolicyRule([PSCustomObject]$exportPolicy, [string]$targetServer, [HashTable]$replaceInBody)
     {
         $uri = "https://{0}/api/protocols/nfs/export-policies/{1}/rules" -f $targetServer, $exportPolicy.id
 
@@ -1456,7 +1437,7 @@ class NetAppAPI: RESTAPICurl
 
         https://nas-mcc-t.epfl.ch/docs/api/#/NAS/export_rule_create
 	#>
-    [void] updateExportPolicyRules([PSObject]$exportPolicy, [Array]$ROIPList, [Array]$RWIPList, [Array]$RootIPList, [NetAppProtocol]$protocol)
+    [void] updateExportPolicyRules([PSCustomObject]$exportPolicy, [Array]$ROIPList, [Array]$RWIPList, [Array]$RootIPList, [NetAppProtocol]$protocol)
     {
         # On commence par supprimer les règles existantes
         $this.deleteExportPolicyRuleList($exportPolicy)
@@ -1618,7 +1599,7 @@ class NetAppAPI: RESTAPICurl
         
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/snapshot_policy_get
 	#>
-    [PSObject] getSnapshotPolicyById([string]$id)
+    [PSCustomObject] getSnapshotPolicyById([string]$id)
     {
         $uri = "/api/storage/snapshot-policies/{0}" -f $id
 
@@ -1636,7 +1617,7 @@ class NetAppAPI: RESTAPICurl
         RET : La policy de snapshot
                 $null si pas trouvé
 	#>
-    [PSObject] getSnapshotPolicyByName([string]$name)
+    [PSCustomObject] getSnapshotPolicyByName([string]$name)
     {
         $result = $this.getSnapshotPolicyListQuery( ("name={0}" -f $name) )
 
@@ -1659,7 +1640,7 @@ class NetAppAPI: RESTAPICurl
         
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/volume_modify
 	#>
-    [void] applySnapshotPolicyOnVolume([PSObject]$snapPolicy, [PSObject]$volume)
+    [void] applySnapshotPolicyOnVolume([PSCustomObject]$snapPolicy, [PSCustomObject]$volume)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
@@ -1687,7 +1668,7 @@ class NetAppAPI: RESTAPICurl
                 Ce n'est donc pas comme si on pouvait juste "ajouter" des champs à ceux renvoyés par
                 défaut par l'appel retournant les détails d'un volume.
 	#>
-    [PSObject] getVolumeSnapshotPolicy([PSObject]$vol)
+    [PSCustomObject] getVolumeSnapshotPolicy([PSCustomObject]$vol)
     {
         $uri = "/api/storage/volumes/{0}?fields=snapshot_policy.uuid" -f $vol.uuid
 
@@ -1714,22 +1695,12 @@ class NetAppAPI: RESTAPICurl
         IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
-        IN  : $targetServer -> (optionnel) Serveur sur lequel faire la requête REST    
         
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_rule_collection_get
 	#>
     hidden [Array] getQuotaRuleListQuery([string]$queryParams)
     {
-        return $this.getQuotaRuleListQuery($queryParams, "")
-    }
-    hidden [Array] getQuotaRuleListQuery([string]$queryParams, [string]$targetServer)
-    {
         $uri = "/api/storage/quota/rules/?max_records=9999"
-
-        if($targetServer -ne "")
-        {
-            $uri = "https://{0}{1}" -f $targetServer, $uri
-        }
 
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1749,12 +1720,10 @@ class NetAppAPI: RESTAPICurl
 
         RET : Liste
 	#>
-    [Array] getVolumeQuotaRuleList([PSObject]$volume)
+    [Array] getVolumeQuotaRuleList([PSCustomObject]$volume)
     {
-        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
-
         # Bizarrement, on doit spécifiquement mettre les champs que l'on veut car ceux-ci ne sont pas retournés par défaut !?!
-        return $this.getQuotaRuleListQuery( ("volume.uuid={0}&fields=users,space,files" -f $volume.uuid), $targetServer )
+        return $this.getQuotaRuleListQuery( ("volume.uuid={0}&fields=users,space,files" -f $volume.uuid) )
     }
 
 
@@ -1769,11 +1738,9 @@ class NetAppAPI: RESTAPICurl
 
         RET : Objet avec les informations
 	#>
-    [PSObject] getUserQuotaRule([PSObject]$volume, [string]$username)
+    [PSCustomObject] getUserQuotaRule([PSCustomObject]$volume, [string]$username)
     {
-        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
-
-        $res = $this.getQuotaRuleListQuery( ("volume.uuid={0}&users.name={1}&fields=users,space,files" -f $volume.uuid, $username), $targetServer )
+        $res = $this.getQuotaRuleListQuery( ("volume.uuid={0}&users.name={1}&fields=users,space,files" -f $volume.uuid, $username) )
 
         if($res.count -eq 0)
         {
@@ -1800,7 +1767,7 @@ class NetAppAPI: RESTAPICurl
         beaucoup de règles à la suite, à espérer que NetApp fasse le job sans se tirer une balle dans le 
         cluster au niveau des performances... C'est pour ça aussi qu'on attend que le job se termine
 	#>
-    [void] addUserQuotaRule([PSObject]$volume, [string]$username, [int]$quotaMB)
+    [void] addUserQuotaRule([PSCustomObject]$volume, [string]$username, [int]$quotaMB)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
@@ -1840,7 +1807,7 @@ class NetAppAPI: RESTAPICurl
                 fausse! la majorité des informations sont inutiles et génèrent une 
                 erreur
 	#>
-    [void] updateUserQuotaRule([PSObject]$volume, [string]$username, [int]$quotaMB)
+    [void] updateUserQuotaRule([PSCustomObject]$volume, [string]$username, [int]$quotaMB)
     {
         # Recherche de la règle de quota
         $rule = $this.getUserQuotaRule($volume, $username)
@@ -1883,7 +1850,7 @@ class NetAppAPI: RESTAPICurl
 
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_rule_delete
 	#>
-    [void] deleteUserQuotaRule([PSObject]$volume, [PSObject]$rule)
+    [void] deleteUserQuotaRule([PSCustomObject]$volume, [PSCustomObject]$rule)
     {
         # Recherche du serveur NetApp cible
         $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
@@ -1901,7 +1868,7 @@ class NetAppAPI: RESTAPICurl
         IN  : $volume       -> Objet représentant le volume
         IN  : $username     -> Nom d'utilisateur pour lequel effacer la règle de quota
 	#>
-    [void] deleteUserQuotaRule([PSObject]$volume, [string]$username)
+    [void] deleteUserQuotaRule([PSCustomObject]$volume, [string]$username)
     {
         $rule = $this.getUserQuotaRule($volume, $username)
 
@@ -1926,22 +1893,12 @@ class NetAppAPI: RESTAPICurl
         IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
 										Pas besoin de mettre le ? au début des $queryParams
-        IN  : $targetServer -> (optionnel) Serveur sur lequel faire la requête    
         
         https://nas-mcc-t.epfl.ch/docs/api/#/storage/quota_report_collection_get
 	#>
     hidden [Array] getQuotaReportListQuery([string]$queryParams)
     {
-        return $this.getQuotaReportListQuery($queryParams, "")
-    }
-    hidden [Array] getQuotaReportListQuery([string]$queryParams, [string]$targetServer)
-    {
         $uri = "/api/storage/quota/reports/?max_records=9999"
-
-        if($targetServer -ne "")
-        {
-            $uri = "https://{0}{1}" -f $targetServer, $uri
-        }
 
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -1961,12 +1918,10 @@ class NetAppAPI: RESTAPICurl
 
         RET : Liste
 	#>
-    [Array] getVolumeQuotaReportList([PSObject]$volume)
+    [Array] getVolumeQuotaReportList([PSCustomObject]$volume)
     {
-        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
-
         # Bizarrement, on doit spécifiquement mettre les champs que l'on veut car ceux-ci ne sont pas retournés par défaut !?!
-        return $this.getQuotaReportListQuery( ("volume.uuid={0}&fields=users,space,files" -f $volume.uuid), $targetServer )
+        return $this.getQuotaReportListQuery( ("volume.uuid={0}&fields=users,space,files" -f $volume.uuid) )
     }
 
 
@@ -1979,11 +1934,9 @@ class NetAppAPI: RESTAPICurl
 
         RET : Objet avec les informations
 	#>
-    [PSObject] getUserQuotaReport([PSObject]$volume, [string]$username)
+    [PSCustomObject] getUserQuotaReport([PSCustomObject]$volume, [string]$username)
     {
-        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
-
-        $res = $this.getQuotaReportListQuery( ("volume.uuid={0}&users.name={1}" -f $volume.uuid, $username), $targetServer )
+        $res = $this.getQuotaReportListQuery( ("volume.uuid={0}&users.name={1}" -f $volume.uuid, $username) )
 
         if($res.count -eq 0)
         {
@@ -1991,4 +1944,39 @@ class NetAppAPI: RESTAPICurl
         }
         return $res[0]
     }
+
+
+    <#
+        =====================================================================================
+                                            QUOTA 
+        =====================================================================================
+    #>
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Active ou désactive le quota d'un volume donné
+
+        IN  : $volume       -> Objet représentant le volume
+        IN  : $enabled      -> Pour dire si le quota est actif ou pas
+	#>
+    [void] changeQuotaStatus([PSCustomObject]$volume, [bool]$enabled)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $volume.uuid)
+
+        $uri = "https://{0}/api/storage/volume/{1}" -f $targetServer, $volume.uuid
+
+        $replace = @{
+            enabled = @($enabled, $true)
+        }
+
+        $body = $this.createObjectFromJSON("mynas-volume-quota-status.json", $replace)
+
+        $result = $this.callAPI($uri, "PATCH", $body)
+
+        # L'opération se fait en asynchrone donc on attend qu'elle se termine
+        $this.waitForJobToFinish($targetServer, $result.job.uuid)
+    }
+
+
 }
