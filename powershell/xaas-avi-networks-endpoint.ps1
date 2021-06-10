@@ -430,7 +430,7 @@ try
             $logHistory.addLine(("{0} mail address(es) found:`n{1}" -f $notificationMailList.count, ($notificationMailList -join "`n")))
             
             # -- Recherche de la configuration d'alerte Syslog
-            $alertSyslogConfigName = $configAviNetworks.getConfigValue(@($targetEnv, "names", "_alertSyslogConfig"))
+            $alertSyslogConfigName = $configAviNetworks.getConfigValue(@($targetEnv, "names", "alertSyslogConfig"))
             $logHistory.addLine(("Getting Syslog Alert Configuration ({0})..." -f $alertSyslogConfigName))
             $syslogAlertConfig = $aviNetWorks.getAlertSyslogConfig($alertSyslogConfigName)
 
