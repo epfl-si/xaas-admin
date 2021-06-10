@@ -24,3 +24,22 @@ La procédure pour les récupérer et les mettre à jour est la suivante:
 **Attention**
 
 Les deux DLL doivent avoir le même numéro de version sinon cela ne va pas fonctionner correctement.
+
+
+---
+
+## FileACL
+
+Difficile de dire où le trouver car le développement a été arrêté depuis longtemps, donc il faut bien le garder au chaud ce binaire!
+
+---
+
+## PSCP
+
+Ceci est l'utilitaire de Putty pour faire des SCP. Attention à bien conserver la version présente sur le repository et éviter de prendre la toute dernière version sur le site officiel. Pourquoi? simplement parce que la dernière version ne fonctionne pas pour notre environnement... aucune idée de la raison exacte
+
+---
+
+## TKGI
+
+Utilitaire pour K8s (Kubernetes). Permet de créer et gérer les clusters.

@@ -1,0 +1,10 @@
+{
+    "target_type": "NSGroup",
+    "target_property": "id",
+    "op": "EQUALS",
+    "value": "{{nsGroupId}}",
+    "target_resource": {
+        "is_valid": true
+    },
+    "resource_type": "NSGroupSimpleExpression"
+}
