@@ -211,7 +211,7 @@ class NameGeneratorBase
     #>
     [void] initDetailsFromBG([PSCustomObject]$bg)
     {
-        $bgCustomId = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+        $bgCustomId = getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID
 
         $bgDetails = $this.getDetailsFromBGName($bg.name)
 

@@ -97,9 +97,9 @@ class vRA8API: RESTAPICurl
 		$response = ([RESTAPICurl]$this).callAPI($uri, $method, $body)
 
         # Si une erreur a été renvoyée 
-        if(objectPropertyExists -obj $response -propertyName 'errors')
+        if(objectPropertyExists -obj $response -propertyName 'errorCode')
         {
-			Throw ("vRA8API error: {0}" -f $response.serverMessage)
+			Throw ("vRA8API error: {0}" -f $response.message)
         }
 
         return $response
@@ -186,6 +186,24 @@ class vRA8API: RESTAPICurl
     }
 
 
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des projets d'un type donné
+
+		IN  : $type	-> Le type dont les projets doivent êtres
+
+		RET : La liste des projets correspondant au type demandé
+	#>
+    [Array] getProjectList([ProjectType]$type)
+    {
+		# Retour des projets dont la custom property correspond à ce qui est demandé niveau "type"
+        return @($this.getProjectListQuery() | Where-Object { 
+				(objectPropertyExists -object $_.customProperties -propertyName $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE) -and `
+				($_.customProperties.($global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE) -eq $type.toString())
+			})
+    }
+
+
     <#
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie un projet donné par son nom
@@ -237,7 +255,7 @@ class vRA8API: RESTAPICurl
 
                 ForEach($project in $list)
 				{
-					$projectId = getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+					$projectId = getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID
 					# Si on est bien sur un BG "correcte", qui a donc un ID
 					if($null -ne $projectId)
 					{
@@ -254,10 +272,10 @@ class vRA8API: RESTAPICurl
 			# Retour en cherchant avec le custom ID
 			return $list| Where-Object { 
                 # Check si la custom property existe
-                (($_.customProperties | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name) -contains $global:VRA_CUSTOM_PROP_EPFL_BG_ID) `
+                (($_.customProperties | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name) -contains $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID) `
                 -and `
                 # Check de la valeur de la custom property
-                ($_.customProperties | Select-Object -ExpandProperty $global:VRA_CUSTOM_PROP_EPFL_BG_ID ) -eq $customId
+                ($_.customProperties | Select-Object -ExpandProperty $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID ) -eq $customId
             }
 		}
 	
@@ -340,10 +358,10 @@ class vRA8API: RESTAPICurl
 				changeant juste celles dont on a besoin, on est sûr de ne rien modifier qu'il ne
 				faudrait pas
 
-		IN  : $bg					-> Objet du BG à mettre à jour
+		IN  : $project				-> Objet du Projet à mettre à jour
 		IN  : $newName				-> (optionnel -> "") Nouveau nom
 		IN  : $newDesc				-> (optionnel -> "") Nouvelle description
-		IN  : $machinePrefixId  	-> (optionnel -> "") ID du prefix de machine à utiliser
+		IN  : $vmNamingTemplate  	-> (optionnel -> "") ID du prefix de machine à utiliser
 		IN  : $customProperties		-> (optionnel -> $null) La liste des "custom properties" (et leur valeur) à mettre à
 									   jour ou à ajouter. On n'a pas prévu de pouvoir supprimer des custom property
         IN  : $zoneList             -> Liste des objets représentants les Zones à mettre pour le projet
@@ -355,6 +373,10 @@ class vRA8API: RESTAPICurl
 
 		RET : Objet contenant le Projet mis à jour
 	#>
+	[PSCustomObject] updateProject([PSCustomObject]$project, [string] $newName, [string] $newDesc, [string]$vmNamingTemplate, [Hashtable]$customProperties)
+	{
+		return $this.updateProject($project, $newName, $newDesc, $vmNamingTemplate, $customProperties, $null, $null, $null)
+	}
 	[PSCustomObject] updateProject([PSCustomObject]$project, [string] $newName, [string] $newDesc, [string]$vmNamingTemplate, [Hashtable]$customProperties, [Array]$zoneList, [Array]$adminGroups, [Array]$userGroups)
 	{
 		$uri = "{0}/iaas/api/projects/{1}" -f $this.baseUrl, $project.id
@@ -462,6 +484,19 @@ class vRA8API: RESTAPICurl
 		
 		# On recherche l'objet mis à jour
 		return $this.getProject($project.name)
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Met à jour les custom properties d'un projet
+
+        IN  : $project      	-> Objet représentant le projet à mettre à jour
+		IN  : $customProperties	-> Tableau associatif avec les custom properties à mettre à jour
+	#>
+	[PSCustomObject] updateProjectCustomProperties([PSCustomObject]$project, [Hashtable]$customProperties)
+	{
+		return $this.updateProject($project, "", "", "", $customProperties, $null, $null, $null)
 	}
 
 
@@ -647,20 +682,21 @@ class vRA8API: RESTAPICurl
 
 		RET : Le content source ajouté
 	#>
-    [PSCustomObject] addContentSources([string]$name, [PSCustomObject]$sourceProject)
-    {
-        $uri = "{0}/catalog/api/admin/sources" -f $this.baseUrl
+    # [PSCustomObject] addContentSources([string]$name, [PSCustomObject]$sourceProject)
+    # {
+	# 	# TODO:
+    #     $uri = "{0}/catalog/api/admin/sources" -f $this.baseUrl
 
-		$replace = @{
-            name = $name
-            sourceProjectId = $sourceProject.id
-        }
+	# 	$replace = @{
+    #         name = $name
+    #         sourceProjectId = $sourceProject.id
+    #     }
 
-		$body = $this.createObjectFromJSON("vra-content-source.json", $replace)
+	# 	$body = $this.createObjectFromJSON("vra-content-source.json", $replace)
 
-		# Création du Content Source et retour
-		return $this.callAPI($uri, "Post", $body)
-    }
+	# 	# Création du Content Source et retour
+	# 	return $this.callAPI($uri, "Post", $body)
+    # }
 
 
 	<#
@@ -678,4 +714,101 @@ class vRA8API: RESTAPICurl
 	}
 
 
+	<#
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+                                                INTEGRATIONS
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+    #>
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des content sources selon des critères passés. Dans la GUI Web, il peuvent 
+				être trouvé dans "Service Broker > Content & Policies > Content Sources"
+
+        IN  : $queryParams  -> filtres à appliquer à la recherche
+
+		RET : La liste des Content Sources
+	#>
+	# FIXME: Aucune documentation pour avoir la liste des intérgrations...
+    # hidden [Array] getIntegrationListQuery()
+    # {
+    #     return $this.getContentSourcesListQuery("")
+    # }
+    # hidden [Array] getIntegrationListQuery([string]$queryParams)
+    # {
+    #     return $this.getObjectListQuery("/catalog/api/admin/sources", $queryParams)
+    # }
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la représentation "string" à utiliser pour créer une source pour un élément GitHub
+
+		IN  : $contentType	-> Le type de contenu pour lequel on veut la représentation
+
+		RET : La représentation "string"
+	#>
+	hidden [string] getGitHubContentTypeStringValue([GitHubContentType]$contentType)
+	{
+		$val = switch($contentType)
+		{
+			CloudTemplates { "BLUEPRINT" }
+			ActionBasedScripts { "ABC_SCRIPTS" }
+			TerraformConfigurations { "TERRAFORM_CONFIGURATION" }
+		}
+		return $val
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute une source GitHub pour un projet Catalogue donné
+
+		IN  : $catalogProject		-> Objet représentant le projet "catalogue"
+		IN  : $gitHubIntegrationId	-> ID de l'intégration GitHub
+		IN  : $contentType			-> Type de contenu que l'on veut ajouter comme source
+		IN  : $repository			-> sous la forme "<owner>/<repository>" tel qu'utilisé dans GitHub
+		IN  : $path					-> Le chemin au sein du repository. 
+										ATTENTION! Le chemin doit exister côté GitHub!
+		IN  : $branch				-> La branche sur laquelle se mettre
+
+		RET : Objet avec un champ, "id", qui représente l'ID de la source ajoutée
+	#>
+	[PSCustomObject] addCatalogProjectGitHubSource([PSCustomObject]$catalogProject, [string]$gitHubIntegrationId, [GitHubContentType]$contentType, [string]$repository, [string]$path, [string]$branch)
+	{
+		Write-Warning "HARDCODED GITHUB INTEGRATION ID, PLEASE FIX IT AS SOON AS FUC***G API IS WELL DOCUMENTED !"
+		
+		$uri = "{0}/content/api/sources" -f $this.baseUrl
+
+		$replace = @{
+            projectName = $catalogProject.name
+            projectId = $catalogProject.id
+			path = $path
+			branch = $branch
+			repository = $repository
+			contentType = $this.getGitHubContentTypeStringValue($contentType)
+			integrationId = $gitHubIntegrationId
+        }
+
+		$body = $this.createObjectFromJSON("vra-content-source.json", $replace)
+
+		# Création du Content Source et retour
+		return $this.callAPI($uri, "Post", $body)
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Supprime une source github pour un projet de type catalogue
+
+		IN  : $source	-> Objet représentant la source à supprimer
+	#>
+	[void] deleteCatalogProjectGitHubSource([PSCustomObject]$source)
+	{
+		$uri = "{0}/content/api/sources/{1}" -f $this.baseUrl, $source.id
+
+		$this.callAPI($uri, "DELETE", $null) | Out-Null
+	}
 }

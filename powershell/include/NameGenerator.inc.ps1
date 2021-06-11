@@ -1232,11 +1232,29 @@ class NameGenerator: NameGeneratorBase
         {
             return "{0}{1}{2}" -f $detailToUse, $envId, $suffix
         }
+
+        return ""
         
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la description d'un Project qui est de type "catalogue"
+
+        IN  : $catalogName      -> Le nom du catalogue
+        IN  : $catalogPrivacy   -> Niveau de visibilité du catalogue
+
+		RET : Description 
+    #>
+    [string] getCatalogProjectDescription([string]$catalogName, [CatalogProjectPrivacy]$catalogPrivacy)
+    {
+        return "{0} Cloud Templates for {1}" -f $catalogPrivacy.toString(), $catalogName
+    }
+
 
     <#
         -------------------------------------------------------------------------------------

@@ -24,10 +24,14 @@
 	RET : Valeur de la custom property
 			$null si pas trouvé
 #>
-function getBGCustomPropValue([object]$bg, [string]$customPropName)
+function getProjectCustomPropValue([object]$project, [string]$customPropName)
 {
-	# Recherche de la valeur de la "Custom Property" en PowerShell "optmisé"
-	return (($bg.ExtensionData.entries | Where-Object {$_.key -eq $customPropName}).value.values.entries | Where-Object {$_.key -eq "value"}).value.value
+	# Si la property existe, on la retourne
+	if(objectPropertyExists -object $project.customProperties -propertyName $customPropName)
+	{
+		return $project.customProperties.($customPropName)
+	}
+	return $null
 
 }
 
@@ -45,7 +49,7 @@ function isBGOfType
 {
 	param([PSCustomObject]$bg, [Array] $typeList)
 
-	$bgType = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_TYPE
+	$bgType = getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE
 
 	# Si custom property PAS trouvée,
 	if($null -eq $bgType)
@@ -76,7 +80,7 @@ function isBGOfType
 function getBGWithCustomProp([Object] $fromList, [string] $customPropName, [string] $customPropValue )
 {
 	# Recherche dans la liste en utilisant la puissance de PowerShell
-	return $fromList | Where-Object {(getBGCustomPropValue -bg $_ -customPropName $customPropName) -eq $customPropValue }
+	return $fromList | Where-Object {(getProjectCustomPropValue -project $_ -customPropName $customPropName) -eq $customPropValue }
 }
 
 

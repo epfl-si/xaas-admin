@@ -269,63 +269,32 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 
 	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $tenantName			-> Nom du tenant sur lequel on bosse
-	IN  : $projectEPFLID				-> ID du Project défini par l'EPFL et pas vRA. Valable pour les Project qui sont sur tous les tenants
-	IN  : $projectName				-> Nom du BG
-	IN  : $projectDesc				-> Description du BG
-	IN  : $machineNameTemplate	-> Nom du préfixe de machine à utiliser.
-								   Peut être "" si le Project doit être créé dans le tenant ITServices.
+	IN  : $projectEPFLID		-> ID du Project défini par l'EPFL et pas vRA. Valable pour les Project qui sont sur tous les tenants
+	IN  : $projectName			-> Nom du BG
+	IN  : $projectDesc			-> Description du BG
+	IN  : $machineNameTemplate	-> Template à utiliser pour la génération du nom des VM
 	IN  : $financeCenter		-> Centre financier
-	IN  : $capacityAlertsEmail	-> Adresse mail où envoyer les mails de "capacity alert"
+	IN  : $adminGrpList			-> Liste des admins
+	IN  : $userGrpList			-> Liste des utilisateurs
 	
 	RET : Objet représentant la Project
 #>
-function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$projectEPFLID, [string]$projectName, [string]$projectDesc, [string]$machineNameTemplate, [string]$financeCenter, [string]$capacityAlertsEmail)
+function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$projectEPFLID, [string]$projectName, [string]$projectDesc, [string]$machineNameTemplate, [string]$financeCenter, [Array]$adminGrpList, [Array]$userGrpList)
 {
 
 	$logHistory.addLineAndDisplay(("-> Handling Project with custom ID {0}..." -f $projectEPFLID))
 	
 	# Recherche du Project par son no identifiant (no d'unité, no de service Snow, etc... ).
-	# FIXME:
-	
-	$bg = $vra.getProjectByCustomId($projectEPFLID, $true)
+	$project = $vra.getProjectByCustomId($projectEPFLID, $true)
 
-	# TODO: Continuer depuis ici
-	# ---- EPFL ---- ou ---- Research ----
-	if( ($tenantName -eq $global:VRA_TENANT__EPFL) -or ($tenantName -eq $global:VRA_TENANT__RESEARCH))
+	$projectType = switch($tenantName)
 	{
-		# Définition du type de BG
-		if($tenantName -eq $global:VRA_TENANT__EPFL)
-		{
-			$bgType = $global:VRA_BG_TYPE__UNIT
+		$global:VRA_TENANT__EPFL { [ProjectType]::Unit }
+		$global:VRA_TENANT__ITSERVICES { [ProjectType]::Service }
+		$global:VRA_TENANT__RESEARCH { [ProjectType]::Project }
+		default {
+			Throw ("Incorrect value given for tenant name ({0})" -f $tenantName)
 		}
-		else
-		{
-			$bgType = $global:VRA_BG_TYPE__PROJECT
-		}
-		
-		# Tentative de recherche du préfix de machine
-		$machinePrefix = $vra.getMachinePrefix($machineNameTemplate)
-
-		# Si on ne trouve pas de préfixe de machine pour le nouveau BG,
-		if($null -eq $machinePrefix)
-		{
-			$logHistory.addLineAndDisplay(("-> Machine prefix {0} doesn't exists, creating..." -f $machineNameTemplate))
-			$machinePrefix = $vra.addMachinePrefix($machineNameTemplate, $global:VRA_MACHINE_PREFIX_NB_DIGITS)
-		}
-		$machinePrefixId = $machinePrefix.id
-	
-	}
-	# ---- ITServices ----
-	elseif($tenantName -eq $global:VRA_TENANT__ITSERVICES )
-	{
-		# Pas d'ID de machine pour ce Tenant
-		$machinePrefixId = $null
-
-		$bgType = $global:VRA_BG_TYPE__SERVICE
-	}
-	else
-	{
-		Throw ("Incorrect value given for tenant name ({0})" -f $tenantName)
 	}
 
 	<# Si le Project n'existe pas, ce qui peut arriver dans les cas suivants :
@@ -334,35 +303,36 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 		Tenant ITServices
 		- nouveau service
 	#>
-	if($null -eq $bg)
+	if($null -eq $project)
 	{
 		$customProperties = @{}
 
-		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_STATUS"] 				= $global:VRA_BG_STATUS__ALIVE
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS"] 	 	= $global:VRA_PROJECT_STATUS__ALIVE
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE"] 			= $global:VRA_BG_RES_MANAGE__AUTO
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
-		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BG_ID"] 				= $projectEPFLID
-		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_TYPE"] 				= $bgType
+		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID"] 			= $projectEPFLID
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE"] 			= $projectType.toString()
 		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER"]= $financeCenter
 		
 
 		# Ajout aussi des informations sur le Tenant et le Project car les mettre ici, c'est le seul moyen que l'on pour récupérer cette information
 		# pour la génération des mails personnalisée... 
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME"] = $tenantName
-		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_NAME"] = $projectName
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_PROJECT_NAME"] = $projectName
+		
 		
 		# Vu qu'on a cherché le Project par son ID et qu'on n'a pas trouvé, on regarde quand même si un Project portant le nom de celui qu'on doit
 		# créer n'existe pas déjà (si si, ça se peut #facepalm)
-		$existingBg = $vra.getBG($projectName)
+		$existingBg = $vra.getProject($projectName)
 		if($null -ne $existingBg)
 		{
-			$existingBgId = (getBGCustomPropValue -bg $existingBg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
+			$existingProjectId = (getProjectCustomPropValue -project $existingBg -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID)
 			$logHistory.addWarningAndDisplay(("-> Impossible to create new Project with name '{0}' (ID={1}) because another one already exists with this name (ID={2})" -f `
-												$projectName, $projectEPFLID, $existingBgId))
+												$projectName, $projectEPFLID, $existingProjectId))
 
-			$notifications.projectNameAlreadyTaken += ("Existing Project {0} ,ID={1}. New Project ID={1}" -f $projectName, $existingBgId, $projectEPFLID)
+			$notifications.projectNameAlreadyTaken += ("Existing Project {0} ,ID={1}. New Project ID={1}" -f $projectName, $existingProjectId, $projectEPFLID)
 
-			$counters.inc('BGNotCreated')
+			$counters.inc('projectNotCreated')
 			# On sort et on renvoie $null pour qu'on n'aille pas plus loin dans le traitement de ce Project pour le moment.
 			return $null
 		}
@@ -370,9 +340,11 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 		{
 			$logHistory.addLineAndDisplay(("-> Project '{0}' (ID={1}) doesn't exists, creating..." -f $projectName, $projectEPFLID))
 			# Création du BG
-			$bg = $vra.addBG($projectName, $projectDesc, $capacityAlertsEmail, $machinePrefixId, $customProperties)
+			
+			$zoneList = $vra.getCloudZoneList()
+			$project = $vra.addProject($projectName, $projectDesc, $machineNameTemplate, $customProperties, $zoneList, $adminGroups, $userGrpList)
 
-			$counters.inc('BGCreated')
+			$counters.inc('projectCreated')
 		}
 		
 	}
@@ -382,34 +354,25 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 
 		$logHistory.addLineAndDisplay(("-> Project '{0}' already exists" -f $bg.Name))
 
-		$bgUpdated = $false
+		$projectUpdated = $false
 
-		$counters.inc('BGExisting')
+		$counters.inc('projectExisting')
 		# ==========================================================================================
 
 		# Si le centre financier du Project a changé (ce qui peut arriver), on le met à jour
-		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER) -ne $financeCenter)
+		if((getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER) -ne $financeCenter)
 		{
 			# Mise à jour
-			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
-			$bgUpdated = $true
+			$project = $vra.updateProjectCustomProperties($project, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER" = $financeCenter})
+			$projectUpdated = $true
 		}
 
-		# Si le Project n'a pas la custom property donnée, on l'ajoute
-		# FIXME: Cette partie de code pourra être enlevée au bout d'un moment car elle est juste prévue pour mettre à jours
-		# les Project existants avec la nouvelle "Custom Property"
-		# if($null -eq (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME))
-		# {
-		# 	# Ajout de la custom Property avec la valeur par défaut 
-		# 	$bg = $vra.updateBG($bg, $projectName, $projectDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
-		# }
-
 		# Si le nom de l'entité de facturation a changé (ce qui peut arriver), on la met à jour
-		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME) -ne $nameGenerator.getBillingEntityName())
+		if((getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME) -ne $nameGenerator.getBillingEntityName())
 		{
 			# Mise à jour
-			$bg = $vra.updateBG($bg, $bg.name, $bg.description, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
-			$bgUpdated = $true
+			$project = $vra.updateProjectCustomProperties($project, @{"$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME" = $nameGenerator.getBillingEntityName()})
+			$projectUpdated = $true
 		}
 
 
@@ -420,14 +383,14 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 		# 		jamais $true
 		# OU
 		# Si le Project est désactivé
-		if(($bg.name -ne $projectName) -or ($bg.description -ne $projectDesc) -or (!(isBGAlive -bg $bg)))
+		if(($project.name -ne $projectName) -or ($project.description -ne $projectDesc) -or (!(isProjectAlive -project $project)))
 		{
-			$logHistory.addLineAndDisplay(("-> Project '{0}' has changed" -f $bg.name))
+			$logHistory.addLineAndDisplay(("-> Project '{0}' has changed" -f $project.name))
 
 			# S'il y a eu changement de nom,
-			if($bg.name -ne $projectName)
+			if($project.name -ne $projectName)
 			{
-				$logHistory.addLineAndDisplay(("-> Renaming Project '{0}' to '{1}'" -f $bg.name, $projectName))
+				$logHistory.addLineAndDisplay(("-> Renaming Project '{0}' to '{1}'" -f $project.name, $projectName))
 
 				<# On commence par regarder s'il n'y aurait pas par hasard déjà un Project avec le nouveau nom.
 				 Ceci peut arriver si on supprime une unité/service IT et qu'on change le nom d'un autre en même temps pour reprendre le nom de 
@@ -436,20 +399,20 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 				#>
 				if($null -ne $vra.getBG($projectName)) 
 				{
-					$logHistory.addWarningAndDisplay(("-> Impossible to rename Project '{0}' to '{1}'. A Project with the new name already exists" -f $bg.name, $projectName))
-					$notifications.projectNameDuplicate += ("{0} &gt;&gt; {1}" -f $bg.name, $projectName)
-					$counters.inc('BGNotRenamed')
+					$logHistory.addWarningAndDisplay(("-> Impossible to rename Project '{0}' to '{1}'. A Project with the new name already exists" -f $project.name, $projectName))
+					$notifications.projectNameDuplicate += ("{0} &gt;&gt; {1}" -f $project.name, $projectName)
+					$counters.inc('projectNotRenamed')
 
 					# On sort et on renvoie $null pour qu'on n'aille pas plus loin dans le traitement de ce Project pour le moment.
 					return $null
 				}
 				
 				# Recherche du nom actuel du dossier où se trouvent les ISO du BG
-				$bgISOFolderCurrent = $nameGenerator.getNASPrivateISOPath($bg.name)
+				$projectISOFolderCurrent = $nameGenerator.getNASPrivateISOPath($project.name)
 				# Recherche du nouveau nom du dossier où devront se trouver les ISO
-				$bgISOFolderNew = $nameGenerator.getNASPrivateISOPath($projectName)
+				$projectISOFolderNew = $nameGenerator.getNASPrivateISOPath($projectName)
 
-				$logHistory.addLineAndDisplay(("-> Renaming ISO folder for BG: '{0}' to '{1}'" -f $bgISOFolderCurrent, $bgISOFolderNew))
+				$logHistory.addLineAndDisplay(("-> Renaming ISO folder for BG: '{0}' to '{1}'" -f $projectISOFolderCurrent, $projectISOFolderNew))
 				
 				try 
 				{
@@ -459,7 +422,7 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 					On met "-ErrorAction 'Stop'" pour s'assurer qu'en cas d'erreur on passe bien dans le "catch". Si on ne le fait pas, 
 					ça va passer tout droit et simplement afficher l'erreur à la console. On n'aura pas de possibilité d'effectuer des 
 					actions suite à l'erreur. #>
-					Rename-Item -Path $bgISOFolderCurrent -NewName $bgISOFolderNew -Force -ErrorAction 'Stop'
+					Rename-Item -Path $projectISOFolderCurrent -NewName $projectISOFolderNew -Force -ErrorAction 'Stop'
 				}
 				catch 
 				{
@@ -469,53 +432,51 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 					$logHistory.addErrorAndDisplay(("-> Error renaming folder. Error is : {0}" -f $_.Error.Message))
 				
 					# Ajout d'information dans les notifications pour faire en sorte que les admins soient informés par mail.
-					$notifications.ISOFolderNotRenamed += ("{0} -> {1}" -f $bgISOFolderCurrent, $bgISOFolderNew)
+					$notifications.ISOFolderNotRenamed += ("{0} -> {1}" -f $projectISOFolderCurrent, $projectISOFolderNew)
 
 					# On continue ensuite l'exécution normalement 
 				}
 				
 				# Mise à jour de la custom property qui contient le nom du BG
-				$bg = $vra.updateBG($bg, $projectName, $projectDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_NAME" = $projectName})
+				$project = $vra.updateProject($project, $projectName, $projectDesc, $machineNameTemplate, @{"$global:VRA_CUSTOM_PROP_VRA_PROJECT_NAME" = $projectName})
 
-				$bgUpdated = $true
-				$counters.inc('BGRenamed')
+				$projectUpdated = $true
+				$counters.inc('projectRenamed')
 
 			}# Fin s'il y a eu changement de nom 
 
-			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating Project '{0}' to '{1}'" -f $bg.name, $projectName))
+			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating Project '{0}' to '{1}'" -f $project.name, $projectName))
 
 			# Mise à jour des informations
-			$bg = $vra.updateBG($bg, $projectName, $projectDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
+			$project = $vra.updateProject($project, $projectName, $projectDesc, $machineNameTemplate, @{"$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS" = $global:VRA_PROJECT_STATUS__ALIVE})
 
-			$bgUpdated = $true
+			$projectUpdated = $true
 			
 
 			# Si le Project était en Ghost, 
-			if(!(isBGAlive -bg $bg))
+			if(!(isProjectAlive -project $project))
 			{
 				# on compte juste la chose
-				$counters.inc('BGResurrected')
+				$counters.inc('projectResurrected')
 			}
 			
 			# Mise à jour des informations
-			$bg = $vra.updateBG($bg, $bgName, $bgDesc, $machinePrefixId, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__ALIVE})
+			$project = $vra.updateProject($project, $bgName, $bgDesc, $machineNameTemplate, @{"$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS" = $global:VRA_PROJECT_STATUS__ALIVE})
 
-			$bgUpdated = $true
-			
-
+			$projectUpdated = $true
 			
 		}
 
 		# Mise à jour du compteur si besoin
-		if($bgUpdated)
+		if($projectUpdated)
 		{
-			$counters.inc('BGUpdated')
+			$counters.inc('projectUpdated')
 		}
 
 	} # FIN SI le Project existe déjà
 
-	return $bg
-
+	return $project
+	
 }
 
 <#
@@ -552,7 +513,7 @@ function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$adminG
 		$logHistory.addLineAndDisplay("--> Updating 'Support role'...")
 
 		# Si le role est géré de manière manuelle pour le BG
-		if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
+		if((getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
 		{
 			$logHistory.addLineAndDisplay("---> Role manually managed, skipping it...")	
 		}
@@ -865,7 +826,7 @@ function createOrUpdateBGReservations([vRAAPI]$vra, [PSCustomObject]$bg, [string
 {
 
 	# Si les réservations sont gérées de manière manuelle pour le BG
-	if((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
+	if((getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
 	{
 		$logHistory.addLineAndDisplay("-> Reservation are manually managed for BG, skipping this part...")	
 		return
@@ -970,12 +931,12 @@ function setBGAsGhostIfNot([vRAAPI]$vra, [PSObject]$bg)
 {
 	# FIXME:
 	# Si le Project est toujours actif
-	if(isBGAlive -bg $bg)
+	if(isProjectAlive -project $bg)
 	{
 		$notifications.bgSetAsGhost += $bg.name
 
 		# On marque le Project comme "Ghost"
-		$vra.updateBG($bg, $null, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_BG_STATUS" = $global:VRA_BG_STATUS__GHOST})
+		$vra.updateBG($bg, $null, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS" = $global:VRA_BG_STATUS__GHOST})
 
 		$counters.inc('BGGhost')
 
@@ -1027,21 +988,21 @@ function setBGAsGhostIfNot([vRAAPI]$vra, [PSObject]$bg)
 
 	RET : Nom du groupe de sécurité à ajouter
 #>
-function isBGAlive([PSCustomObject]$bg)
+function isProjectAlive([PSCustomObject]$project)
 {
 
-	$bgStatus = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS
+	$projectStatus = getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS
 
 	# Si la "Custom property" a été trouvée,
-	if($null -ne $bgStatus)
+	if($null -ne $projectStatus)
 	{
-		return $bgStatus -eq $global:VRA_BG_STATUS__ALIVE
+		return $projectStatus -eq $global:VRA_PROJECT_STATUS__ALIVE
 	}
 
 	<# Si on arrive ici, c'est qu'on n'a pas défini de clef (pour une raison inconnue) pour enregistrer le statut
 	   On enregistre donc la chose et on dit que le Project est "vivant"
 	#>
-	$notifications.bgWithoutCustomPropStatus += $bg.name
+	$notifications.projectWithoutCustomPropStatus += $bg.name
 	return $true
 }
 
@@ -1076,10 +1037,10 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 
 				# ---------------------------------------
 				# Project sans "custom property" permettant de définir le statut
-				'bgWithoutCustomPropStatus'
+				'projectWithoutCustomPropStatus'
 				{
 					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
-					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_BG_STATUS
+					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS
 					$mailSubject = "Warning - Project without '{{customProperty}}' custom property"
 					$templateName = "bg-without-custom-prop"
 				}
@@ -1089,7 +1050,7 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				'bgWithoutCustomPropType'
 				{
 					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
-					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_BG_TYPE
+					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE
 					$mailSubject = "Warning - Project without '{{customProperty}}' custom property"
 					$templateName = "bg-without-custom-prop"
 				}
@@ -1428,16 +1389,15 @@ try
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
 	$counters.add('ADGroups', '# AD group processed')
-	$counters.add('BGCreated', '# Project created')
-	$counters.add('BGNotCreated', '# Project NOT created')
-	$counters.add('BGUpdated', '# Project updated')
-	$counters.inc('BGExisting', '# Project already existing')
-	$counters.add('BGNotCreated', '# Project not created (because of an error)')
-	$counters.add('BGNotRenamed', '# Project not renamed')
+	$counters.add('projectCreated', '# Project created')
+	$counters.add('projectUpdated', '# Project updated')
+	$counters.inc('projectExisting', '# Project already existing')
+	$counters.add('projectNotCreated', '# Project not created (because of an error)')
+	$counters.add('projectNotRenamed', '# Project not renamed')
 	$counters.add('ProjectResumeSkipped', '#Project skipped because of resume')
 	$counters.add('BGGhost',	'# Project set as "ghost"')
-	$counters.add('BGRenamed',	'# Project renamed')
-	$counters.add('BGResurrected', '# Project set alive again')
+	$counters.add('projectRenamed',	'# Project renamed')
+	$counters.add('projectResurrected', '# Project set alive again')
 	# Entitlements
 	$counters.add('EntCreated', '# Entitlements created')
 	$counters.add('EntUpdated', '# Entitlements updated')
@@ -1475,7 +1435,7 @@ try
 
 	(cette liste sera accédée en variable globale même si c'est pas propre XD)
 	#>
-	$notifications=@{bgWithoutCustomPropStatus = @()
+	$notifications=@{projectWithoutCustomPropStatus = @()
 					bgWithoutCustomPropType = @()
 					bgSetAsGhost = @()
 					projectNameDuplicate = @()
@@ -1551,9 +1511,6 @@ try
 
 	# Calcul de la date dans le passé jusqu'à laquelle on peut prendre les groupes modifiés.
 	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
-
-	# Ajout de l'adresse par défaut à laquelle envoyer les mails. 
-	$capacityAlertMails = @($configGlobal.getConfigValue(@("mail", "capacityAlert")))
 
 	# Parcours des groupes AD pour l'environnement/tenant donné
 	$adGroupList | ForEach-Object {
@@ -1647,7 +1604,7 @@ try
 					adGroup = $_.name
 					projectName = $projectName
 				}
-				$counters.inc('BGExisting')
+				$counters.inc('projectExisting')
 				return
 			}
 		}
@@ -1751,8 +1708,9 @@ try
 
 		# Création ou mise à jour du Project
 		$bg = createOrUpdateProject -vra $vra -bgEPFLID $projectEPFLID -tenantName $targetTenant -projectName $projectName -bgDesc $projectDesc `
-									-machinePrefixName $machineNameTemplate -financeCenter $financeCenter -capacityAlertsEmail ($capacityAlertMails -join ",") 
+									-machinePrefixName $machineNameTemplate -financeCenter $financeCenter -adminGrpList $adminGrpList -userGrpList $userGrpList
 
+		
 		# Si Project pas créé, on passe au s	uivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
 		if($null -eq $bg)
 		{
@@ -1768,28 +1726,26 @@ try
 		# Si l'élément courant (unité, service, projet...) doit avoir une approval policy,
 		if($descInfos.hasApproval)
 		{
+			# FIXME: GERER LES APPROVAL POLICIES
 			# ----------------------------------------------------------------------------------
 			# --------------------------------- Approval policies
 			# Création des Approval policies pour les demandes de nouveaux éléments et les reconfigurations si celles-ci n'existent pas encore
-			$itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
-										-approvalLevelJSON $newItemApprovalInfos.approvalLevelJSON -approverGroupAtDomainList $approverGroupAtDomainList  `
-										-approvalPolicyJSON $newItemApprovalInfos.approvalPolicyJSON `
-										-additionnalReplace @{} -processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
+			# $itemReqApprovalPolicy = createApprovalPolicyIfNotExists -vra $vra -name $itemReqApprovalPolicyName -desc $itemReqApprovalPolicyDesc `
+			# 							-approvalLevelJSON $newItemApprovalInfos.approvalLevelJSON -approverGroupAtDomainList $approverGroupAtDomainList  `
+			# 							-approvalPolicyJSON $newItemApprovalInfos.approvalPolicyJSON `
+			# 							-additionnalReplace @{} -processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
 
-			# Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
-			create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
-										-approverGroupAtDomainList $approverGroupAtDomainList -secondDayActions $secondDayActions `
-										-processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
+			# # Pour les approval policies des 2nd day actions, on récupère un tableau car il peut y avoir plusieurs policies
+			# create2ndDayActionApprovalPolicies -vra $vra -baseName $actionReqBaseApprovalPolicyName -desc $actionReqApprovalPolicyDesc `
+			# 							-approverGroupAtDomainList $approverGroupAtDomainList -secondDayActions $secondDayActions `
+			# 							-processedApprovalPoliciesIDs ([ref]$processedApprovalPoliciesIDs)
 		}
 		else # Pas d'approval policy de définie
 		{
-			$itemReqApprovalPolicy = $null
+			# $itemReqApprovalPolicy = $null
 		}
 		
-		# ----------------------------------------------------------------------------------
-		# --------------------------------- Project Roles
-		createOrUpdateBGRoles -vra $vra -bg $bg -managerGrpList $adminGrpList -supportGrpList $supportGrpList `
-									-userGrpList $userGrpList 
+		#  TODO: COntinuer depuis ici
 
 
 		# ----------------------------------------------------------------------------------
@@ -1871,7 +1827,7 @@ try
 		# OU
 		# que c'est un Project avec le groupe de support qui est managé
 		if($ISOFolderCreated -or $forceACLsUpdate -or `
-			(getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -ne $global:VRA_BG_RES_MANAGE__AUTO)
+			(getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -ne $global:VRA_BG_RES_MANAGE__AUTO)
 		{
 			$logHistory.addLineAndDisplay(("--> Preparing ACLs for ISO folder '{0}'..." -f $bgISOFolder))
 			# Récupération et modification des ACL pour ajouter les groupes AD qui sont pour le Role "Shared" dans le BG
@@ -1966,17 +1922,17 @@ try
 	$vra.getBGList() | ForEach-Object {
 
 		# Recherche si le Project est d'un des types donné, pour ne pas virer des Project "admins"
-		$isBGOfType = isBGOfType -bg $_ -typeList @($global:VRA_BG_TYPE__SERVICE, $global:VRA_BG_TYPE__UNIT, $global:VRA_BG_TYPE__PROJECT)
+		$isBGOfType = isBGOfType -bg $_ -typeList @([ProjectType]::Service, [ProjectType]::Unit, [ProjectType]::Project)
 
 		# Si la custom property qui donne les infos n'a pas été trouvée
 		if($null -eq $isBGOfType)
 		{
 			$notifications.bgWithoutCustomPropType += $_.name
-			$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Project '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_BG_TYPE, $_.name))
+			$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Project '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE, $_.name))
 		}
 		else # On a les infos sur le type de BG
 		{
-			$bgId = (getBGCustomPropValue -bg $_ -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
+			$bgId = (getProjectCustomPropValue -project $_ -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID)
 			# Si on n'a pas trouvé de groupe AD qui correspondait au BG, on peut le mettre en "ghost"
 			if(($null -ne $bgId) -and  ($doneBGidList -notcontains $bgId))
 			{
