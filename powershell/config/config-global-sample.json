@@ -1,6 +1,5 @@
 {
     "mail": {
         "admin": "", // adresse mail de l'admin
-        "capacityAlert": "" // Adresse mail par défaut à laquelle envoyer les mails de "capacity alert"
     }
 }
