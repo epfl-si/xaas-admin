@@ -24,10 +24,10 @@
 	RET : Valeur de la custom property
 			$null si pas trouvé
 #>
-function getProjectCustomPropValue([object]$project, [string]$customPropName)
+function getProjectCustomPropValue([PSCustomObject]$project, [string]$customPropName)
 {
 	# Si la property existe, on la retourne
-	if(objectPropertyExists -object $project.customProperties -propertyName $customPropName)
+	if(objectPropertyExists -obj $project.customProperties -propertyName $customPropName)
 	{
 		return $project.customProperties.($customPropName)
 	}

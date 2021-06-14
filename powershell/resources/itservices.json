@@ -1,5 +1,22 @@
 {
-    "dev": [],
+    "dev": [
+        {
+            "active": true,
+            "longName":  "Antivirus",
+            "shortName":  "Antivirus",
+            "snowId":  "SVC0062",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
+            "longName":  "MySQL hosting",
+            "shortName":  "MySQL",
+            "snowId":  "SVC0020",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
+        }
+    ],
     "test": [
         {
             "active": true,

@@ -1191,9 +1191,16 @@ class NameGenerator: NameGeneratorBase
             # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES 
             { 
+                $shortName = $this.getDetail('serviceShortName')
+                if($shortName.length -gt 8)
+                {
+                    # On diminue la longueur en prenant la première la dernière et la lettre du milieu
+                    # NOTE: C'est comme ça que vRA 7.x générait visiblement un préfixe de VM
+                    $shortName = "{0}{1}{2}" -f $shortName[0], $shortName[[Math]::Floor($shortName.length/2)], $shortName[-1]
+                }
                 # On utilise le nom du tenant (court) suivi du nom court du service
                 # its<serviceShortName>
-                $detailToUse = "{0}{1}" -f $this.getTenantShortName, $this.getDetail('svcShortName')
+                $detailToUse = "{0}{1}" -f $this.getTenantShortName(), $shortName
             }
 
             # Tenant Research
@@ -1212,8 +1219,7 @@ class NameGenerator: NameGeneratorBase
         # Suppression de tous les caractères non alpha numériques
         $detailToUse = $detailToUse -replace '[^a-z0-9]', ''
 
-        # On raccourci à 6 caractères pour ne pas avoir des préfixes trop longs
-        $detailToUse = $detailToUse.Substring(0, [System.Math]::Min(6, $detailToUse.length)).toLower()
+        
 
         # Pour l'ID court de l'environnement 
         $envId = ""
@@ -1221,6 +1227,9 @@ class NameGenerator: NameGeneratorBase
         if($this.tenant -eq $global:VRA_TENANT__EPFL -or `
             $this.tenant -eq $global:VRA_TENANT__RESEARCH )
         {
+            # On raccourci à 6 caractères pour ne pas avoir des préfixes trop longs
+            $detailToUse = $detailToUse.Substring(0, [System.Math]::Min(6, $detailToUse.length)).toLower()
+
             # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
             if($this.env -ne $global:TARGET_ENV__PROD)
             {
@@ -1228,7 +1237,7 @@ class NameGenerator: NameGeneratorBase
             }
             return "{0}{1}vm{2}" -f $detailToUse, $envId, $suffix
         }
-        elseif($this.env -eq $global:VRA_TENANT__ITSERVICES)
+        elseif($this.tenant -eq $global:VRA_TENANT__ITSERVICES)
         {
             return "{0}{1}{2}" -f $detailToUse, $envId, $suffix
         }

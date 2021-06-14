@@ -204,7 +204,7 @@ class vRA8API: RESTAPICurl
     {
 		# Retour des projets dont la custom property correspond à ce qui est demandé niveau "type"
         return @($this.getProjectListQuery() | Where-Object { 
-				(objectPropertyExists -object $_.customProperties -propertyName $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE) -and `
+				(objectPropertyExists -obj $_.customProperties -propertyName $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE) -and `
 				($_.customProperties.($global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE) -eq $type.toString())
 			})
     }
