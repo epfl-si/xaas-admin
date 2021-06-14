@@ -136,7 +136,7 @@ switch($action)
 
             try
             {
-                $logHistory.addLineAndDisplay(("Adding Git source for '{0}' project" -f $name))
+                $logHistory.addLineAndDisplay(("Adding Git source for '{0}' project..." -f $name))
                 $gitSource = $vra.addCatalogProjectGitHubSource($name, $catalogProject, $gitHubIntegrationId, [GitHubContentType]::CloudTemplates, $gitRepo, $gitPath, $gitBranch)
             }
             catch
