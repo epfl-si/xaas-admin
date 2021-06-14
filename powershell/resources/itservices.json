@@ -748,9 +748,9 @@
         },
         {
             "active": true,
-            "longName":  "Datacenter hosting",
-            "shortName":  "dchst",
-            "snowId":  "SVC0051",
+            "longName":  "Datacenter Operation Service",
+            "shortName":  "dcops",
+            "snowId":  "SVC1388",
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
@@ -953,6 +953,14 @@
             "shortName":  "crstl",
             "snowId":  "SVC1369",
             "additionalGroupsAdminSciperList": ["296747"],
+            "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
+            "longName":  "Datacenter hosting",
+            "shortName":  "dchst",
+            "snowId":  "SVC0051",
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         }
 
