@@ -113,7 +113,8 @@ switch($action)
             $gitRepo = $configVra.getConfigValue(@($targetEnv, "git", "repository"))
             $gitBranch = $configVra.getConfigValue(@($targetEnv, "git", "branch"))
 
-            Read-Host -Prompt ("-> Please add a folder '{0}' (with an empty README file) on '{1}' branch on GitHub repository '{2}'. Then, hit ENTER to continue" -f $gitPath, $gitBranch, $gitRepo)
+            Write-Host ("-> Please add a folder '{0}' (with an empty README file) on '{1}' branch on GitHub repository '{2}'. " -f $gitPath, $gitBranch, $gitRepo) -ForegroundColor:Blue -NoNewLine
+            Read-Host -Prompt "Then, hit ENTER to continue"
 
             $catalogPrivacy = [CatalogProjectPrivacy]$privacy
 
@@ -136,17 +137,18 @@ switch($action)
             try
             {
                 $logHistory.addLineAndDisplay(("Adding Git source for '{0}' project" -f $name))
-                $gitSource = $vra.addCatalogProjectGitHubSource($catalogProject, $gitHubIntegrationId, [GitHubContentType]::CloudTemplates, $gitRepo, $gitPath, $gitBranch)
+                $gitSource = $vra.addCatalogProjectGitHubSource($name, $catalogProject, $gitHubIntegrationId, [GitHubContentType]::CloudTemplates, $gitRepo, $gitPath, $gitBranch)
             }
             catch
             {
-                $logHistory.addWaringAndDisplay("Error adding content source, deleting added project")
+                $logHistory.addWarningAndDisplay("Error adding content source, deleting added project")
                 $vra.deleteProject($catalogProject)
             }
                         
         }
         
     }
+
 
     # -- Suppression d'un catalogue de projet
     $ACTION_DELETE_CATALOG_PROJECT
@@ -172,11 +174,11 @@ switch($action)
         # Si déjà effacé
         if($null -eq $catalogProject)
         {
-            $logHistory.addLineAndDisplay(("-> Catalog Project '{0}' doesn't exists..."))
+            $logHistory.addLineAndDisplay(("-> Catalog Project '{0}' doesn't exists..." -f $name))
         }
         else
         {
-            $logHistory.addLineAndDisplay(("-> Catalog Project '{0}' exists, deleting it..."))
+            $logHistory.addLineAndDisplay(("-> Catalog Project '{0}' exists, deleting it..." -f $name))
             $vra.deleteProject($catalogProject)
         }
         
