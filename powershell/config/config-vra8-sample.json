@@ -23,6 +23,11 @@
             "password":"",
             "dbName":"",
             "port":""
+        },
+        "git": {
+            "integrationId": "",
+            "repository": "",
+            "branch":""
         }
     },
     "test": {
@@ -49,6 +54,11 @@
             "password":"",
             "dbName":"",
             "port":""
+        },
+        "git": {
+            "integrationId": "",
+            "repository": "",
+            "branch":""
         }
     },
     "prod": {
@@ -75,6 +85,11 @@
             "password":"",
             "dbName":"",
             "port":""
+        },
+        "git": {
+            "integrationId": "",
+            "repository": "",
+            "branch":""
         }
     }
 }
