@@ -102,6 +102,12 @@ class vRA8API: RESTAPICurl
 			Throw ("vRA8API error: {0}" -f $response.message)
         }
 
+		# Si une erreur a été renvoyée (vu qu'on peut aussi l'avoir dans un autre champ...)
+        if(objectPropertyExists -obj $response -propertyName 'error')
+        {
+			Throw ("vRA8API error: {0}" -f $response.error)
+        }
+
         return $response
 	}
 
@@ -769,6 +775,7 @@ class vRA8API: RESTAPICurl
 		-------------------------------------------------------------------------------------
 		BUT : Ajoute une source GitHub pour un projet Catalogue donné
 
+		IN  : $name					-> Nom de la source GitHub
 		IN  : $catalogProject		-> Objet représentant le projet "catalogue"
 		IN  : $gitHubIntegrationId	-> ID de l'intégration GitHub
 		IN  : $contentType			-> Type de contenu que l'on veut ajouter comme source
@@ -778,14 +785,17 @@ class vRA8API: RESTAPICurl
 		IN  : $branch				-> La branche sur laquelle se mettre
 
 		RET : Objet avec un champ, "id", qui représente l'ID de la source ajoutée
+
+		https://vsissp-vra8-t-02.epfl.ch/content/api/swagger/swagger-ui.html#/Content_Source
 	#>
-	[PSCustomObject] addCatalogProjectGitHubSource([PSCustomObject]$catalogProject, [string]$gitHubIntegrationId, [GitHubContentType]$contentType, [string]$repository, [string]$path, [string]$branch)
+	[PSCustomObject] addCatalogProjectGitHubSource([string]$name, [PSCustomObject]$catalogProject, [string]$gitHubIntegrationId, [GitHubContentType]$contentType, [string]$repository, [string]$path, [string]$branch)
 	{
 		Write-Warning "HARDCODED GITHUB INTEGRATION ID, PLEASE FIX IT AS SOON AS FUC***G API IS WELL DOCUMENTED !"
 		
 		$uri = "{0}/content/api/sources" -f $this.baseUrl
 
 		$replace = @{
+			name = $name
             projectName = $catalogProject.name
             projectId = $catalogProject.id
 			path = $path
@@ -799,6 +809,26 @@ class vRA8API: RESTAPICurl
 
 		# Création du Content Source et retour
 		return $this.callAPI($uri, "Post", $body)
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie une source github pour un projet de type catalogue existant
+
+		IN  : $name	-> Nom de la source github
+
+		RET : Objet représentant la source github
+	#>
+	[PSCustomObject] getCatalogProjectGitHubSource([string]$name)
+	{
+		$res = @($this.getObjectListQuery("/content/api/sources", "") | Where-Object { $_.name -eq $name})		
+
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+		return $res[0]
 	}
 
 

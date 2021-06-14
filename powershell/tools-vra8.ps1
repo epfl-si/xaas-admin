@@ -1,6 +1,7 @@
 <#
 USAGES:
-	tools-vra8.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research -action addCatalogProject -name <name> -privacy (private|public)
+	tools-vra8.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addCatalogProject -name <name> -privacy (private|public)
+    tools-vra8.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delCatalogProject -name <name>
 #>
 <#
 	BUT 		: Permet de faire différentes actions sur l'infra vRA
@@ -54,7 +55,7 @@ $configGlobal 	= [ConfigReader]::New("config-global.json")
 
 # Liste des actions possibles
 $ACTION_ADD_CATALOG_PROJECT    = "addCatalogProject"
-$ACTION_DELETE_CATALOG_PROJECT = "deleteCatalogProject"
+$ACTION_DELETE_CATALOG_PROJECT = "delCatalogProject"
 
 
 
@@ -150,7 +151,35 @@ switch($action)
     # -- Suppression d'un catalogue de projet
     $ACTION_DELETE_CATALOG_PROJECT
     {
+        $logHistory.addLineAndDisplay(("Getting Git source '{0}'..." -f $name))
 
+        $gitSource = $vra.getCatalogProjectGitHubSource($name)
+
+        if($null -eq $gitSource)
+        {
+            $logHistory.addLineAndDisplay(("-> Git source '{0}' doesn't exists" -f $name))
+        }
+        else
+        {
+            $logHistory.addLineAndDisplay(("-> Git source '{0}', deleting it..." -f $name))
+            $vra.deleteCatalogProjectGitHubSource($gitSource)
+        }
+
+        $logHistory.addLineAndDisplay(("Getting Catalog Project '{0}'..." -f $name))
+
+        $catalogProject = $vra.getProject($name)
+
+        # Si déjà effacé
+        if($null -eq $catalogProject)
+        {
+            $logHistory.addLineAndDisplay(("-> Catalog Project '{0}' doesn't exists..."))
+        }
+        else
+        {
+            $logHistory.addLineAndDisplay(("-> Catalog Project '{0}' exists, deleting it..."))
+            $vra.deleteProject($catalogProject)
+        }
+        
     }
 
 
