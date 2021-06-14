@@ -82,7 +82,7 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$r
 
 
 # Chargement des fichiers de configuration
-$configVra 		= [ConfigReader]::New("config-vra.json")
+$configVra 		= [ConfigReader]::New("config-vra8.json")
 $configGlobal 	= [ConfigReader]::New("config-global.json")
 $configNSX 		= [ConfigReader]::New("config-nsx.json")
 $configLdapAD 	= [ConfigReader]::New("config-ldap-ad.json")
@@ -1453,8 +1453,7 @@ try
 	
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
-	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
-						 $targetTenant, 
+	$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 

@@ -324,18 +324,21 @@ class vRA8API: RESTAPICurl
 		}
 
         # Ajout des admins
-        $adminGroups | ForEach-Object {
-            $body.administrators += $this.createObjectFromJSON("vra-project-right-group.json", @{ groupShortName = $_})
+        ForEach($group in $adminGroups)
+		{
+            $body.administrators += $this.createObjectFromJSON("vra-project-right-group.json", @{ groupShortName = $group})
         }
 
         # Ajout des Utilisateurs
-        $userGroups | ForEach-Object {
-            $body.members += $this.createObjectFromJSON("vra-project-right-group.json", @{ groupShortName = $_})
+        ForEach($group in $userGroups)
+		{
+            $body.members += $this.createObjectFromJSON("vra-project-right-group.json", @{ groupShortName = $group})
         }
 
         # Ajout des Zones
-        $zoneList | ForEach-Object {
-            $body.zoneAssignmentConfigurations += $this.createObjectFromJSON("vra-project-zone.json", @{ zoneId = $_.id})
+        ForEach($zone in $zoneList)
+		{
+            $body.zoneAssignmentConfigurations += $this.createObjectFromJSON("vra-project-zone.json", @{ zoneId = $zone.id})
         }
 
 		# Création du Projet

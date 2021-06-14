@@ -1252,7 +1252,7 @@ class NameGenerator: NameGeneratorBase
     #>
     [string] getCatalogProjectDescription([string]$catalogName, [CatalogProjectPrivacy]$catalogPrivacy)
     {
-        return "{0} Cloud Templates for {1}" -f $catalogPrivacy.toString(), $catalogName
+        return "{0} CloudTemplates for {1}" -f $catalogPrivacy.toString(), $catalogName
     }
 
 
@@ -1830,6 +1830,21 @@ class NameGenerator: NameGeneratorBase
         }
 
         return $entityName
+    }
+
+
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie le chemin à utiliser dans GitHub pour stocker des éléments de 
+                catalogue
+
+        IN  : $catalogName      -> Le nom du catalogue
+
+        RET : Le chemin
+    #>
+    [string] getGitHubCatalogPath([string]$catalogName)
+    {
+        return ("CloudTemplates/{0}" -f $catalogName)
     }
 
 }
