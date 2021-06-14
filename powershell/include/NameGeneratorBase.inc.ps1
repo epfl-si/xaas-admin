@@ -204,14 +204,14 @@ class NameGeneratorBase
                 dans cette classe car d'autres détails manqueront. A la base, on peut initialiser
                 les détails depuis le nom du BG pour pouvoir utiliser les fonctions suivante 
                 mais peut-être que d'autres peuvent aussi fonctionner:
-                - getVMMachinePrefix 
+                - getVMNameTemplate 
                 - getApprovalPolicyNameAndDesc
 
         IN  : $bg           -> Objet représentant le BG
     #>
     [void] initDetailsFromBG([PSCustomObject]$bg)
     {
-        $bgCustomId = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+        $bgCustomId = getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID
 
         $bgDetails = $this.getDetailsFromBGName($bg.name)
 

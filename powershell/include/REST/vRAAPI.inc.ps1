@@ -257,7 +257,7 @@ class vRAAPI: RESTAPICurl
 				$this.bgCustomIdMappingCache = @{}
 				ForEach($bg in $list)
 				{
-					$bgId = getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID
+					$bgId = getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID
 					# Si on est bien sur un BG "correcte", qui a donc un ID
 					if($null -ne $bgId)
 					{
@@ -276,7 +276,7 @@ class vRAAPI: RESTAPICurl
 			# ça risque d'être un peu galère à debug par la suite ^^'
 			$result = $list| Where-Object { 
 				($_.extensionData.entries | Where-Object {
-					$null -ne ($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_BG_ID) -and ( $null -ne ($_.value.values.entries | Where-Object { 
+					$null -ne ($_.key -eq $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID) -and ( $null -ne ($_.value.values.entries | Where-Object { 
 						($null -ne $_.value.value) -and ($_.value.value -is [System.String]) -and ($_.value.value -eq $customId) } ) ) `
 														} `
 				)}

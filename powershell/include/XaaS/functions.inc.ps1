@@ -57,6 +57,7 @@ function getBGAccessGroupList([vRAAPI]$vra, [PSObject]$bg, [string]$targetTenant
     <# On explose l'infos <group>@intranet.epfl.ch pour n'extraire que le nom du groupe
         Récupération des utilisateurs qui ont le droit de demander des cluster, ça sera ceux
         qui pourront gérer le cluster #>
+        # FIXME: Trouver par quoi remplacer "CSP_CONSUMER"
     $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
     $groupName, $null = $userAndGroupList[0] -split '@'
 

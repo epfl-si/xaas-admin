@@ -137,9 +137,9 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 			# Préfixe de VM
 
 
-			$machinePrefixName = $nameGenerator.getVMMachinePrefix()
+			$machineNameTemplate = $nameGenerator.getVMNameTemplate()
 
-			$machinePrefix = $vra.getMachinePrefix($machinePrefixName)
+			$machinePrefix = $vra.getMachinePrefix($machineNameTemplate)
 
 			# Si on a trouvé un ID de machine
 			if($null -ne $machinePrefix)
@@ -211,16 +211,16 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 			# --------------
 			# Groupe "groups" pour les demandes
 
-			$userSharedGroupNameGroups = $nameGenerator.getRoleGroupsGroupName("CSP_CONSUMER")
-			$logHistory.addLineAndDisplay(("--> Deleting customer groups group '{0}'..." -f $userSharedGroupNameGroups))
+			$userGroupNameGroups = $nameGenerator.getRoleGroupsGroupName([UserRole]::User)
+			$logHistory.addLineAndDisplay(("--> Deleting customer groups group '{0}'..." -f $userGroupNameGroups))
 			try
 			{
-				$groupsApp.deleteGroup($userSharedGroupNameGroups)
+				$groupsApp.deleteGroup($userGroupNameGroups)
 			}
 			catch
 			{
 				# Si exception, c'est qu'on n'a probablement pas les droits d'effacer parce que le owner du groupe n'est pas le bon
-				$notifications.groupsGroupsNotDeleted += $userSharedGroupNameGroups
+				$notifications.groupsGroupsNotDeleted += $userGroupNameGroups
 				$logHistory.addWarningAndDisplay("--> Cannot delete groups group maybe because not owner by correct person")
 			}
 
@@ -443,8 +443,8 @@ try
 		$logHistory.addLineAndDisplay(("[{0}/{1}] Checking Business Group '{2}'..." -f $bgNo, $bglist.count, $_.name))
 
 		# Si c'est un BG d'unité ou de service et s'il est déjà en Ghost
-		if((isBGOfType -bg $_ -typeList @($global:VRA_BG_TYPE__SERVICE, $global:VRA_BG_TYPE__UNIT, $global:VRA_BG_TYPE__PROJECT)) -and `
-			((getBGCustomPropValue -bg $_ -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_STATUS) -eq $global:VRA_BG_STATUS__GHOST) -and `
+		if((isBGOfType -bg $_ -typeList @([ProjectType]::Service, [ProjectType]::Unit, [ProjectType]::Project)) -and `
+			((getProjectCustomPropValue -project $_ -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS) -eq $global:VRA_BG_STATUS__GHOST) -and `
 			($bgName -eq "" -or ($bgName -ne "" -and $bgName -eq $_.name)))
 		{
 			$logHistory.addLineAndDisplay(("-> Business Group '{0}' is Ghost, deleting..." -f $_.name))

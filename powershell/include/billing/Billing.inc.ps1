@@ -357,7 +357,7 @@ class Billing
     {
         # Recherche du BG avec son ID unique. 
         # NOTE: On utilise le cache pour faire cette action car on est dans un script qui ne modifie pas la liste des BG
-        $bg = $this.vraTenantList.$targetTenant.getBGByCustomId($bgId, $true)
+        $bg = $this.vraTenantList.$targetTenant.getProjectByCustomId($bgId, $true)
 
         # Si le BG n'est pas trouvé dans vRA, c'est qu'il a été supprimé
         if($null -eq $bg)
@@ -381,8 +381,8 @@ class Billing
         {
             # Ajout de l'entité à la base de données (si pas déjà présente)
             $entityId = $this.addEntity($entityType, $bgId, `
-                                        (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME), `
-                                        (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
+                                        (getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME), `
+                                        (getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
         }
         
         return $entityId

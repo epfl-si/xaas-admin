@@ -162,7 +162,7 @@ function getTargetBG([array]$params)
         # Si pas trouvé dans le cache
         if($null -eq $bg)
         {
-            $vraBG = $vra.getBGByCustomId($params[0])
+            $vraBG = $vra.getProjectByCustomId($params[0])
 
             if($null -eq $vraBG)
             {

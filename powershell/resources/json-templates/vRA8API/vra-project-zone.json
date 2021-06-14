@@ -1,0 +1,8 @@
+{
+    "storageLimitGB": 0,
+    "cpuLimit": 0,
+    "memoryLimitMB": 0,
+    "zoneId": "{{zoneId}}",
+    "maxNumberInstances": 0,
+    "priority": 1
+  }

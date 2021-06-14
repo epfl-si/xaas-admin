@@ -1,0 +1,13 @@
+{
+    "name": "{{projectName}}",
+    "typeId": "com.github",
+    "projectId": "{{projectId}}",
+    "config": {
+                "path": "{{path}}",
+                "branch": "{{branch}}",
+                "repository": "{{repository}}",
+                "contentType": "{{contentType}}",
+                "projectName": "{{projectName}}",
+                "integrationId": "{{integrationId}}"
+            }
+}

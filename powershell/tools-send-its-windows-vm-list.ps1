@@ -123,14 +123,14 @@ try
         $logHistory.addLineAndDisplay(("-> Processing BG '{0}'..." -f $bg.name))
 
         # Si c'est un BG admin
-        if(($bgId -eq "SVC0000") -or ((getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_TYPE) -eq "admin"))
+        if(($bgId -eq "SVC0000") -or ((getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE) -eq "admin"))
         {
             $logHistory.addLineAndDisplay("-> Is admin BG, skipping!")
             continue
         }
         
         # Recherche de l'ID
-        $bgId = (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
+        $bgId = (getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID)
         $logHistory.addLineAndDisplay(("-> Custom ID is '{0}'" -f $bgId))
 
         $logHistory.addLineAndDisplay(("-> Getting Item List for BG '{0}'..." -f $bg.name))

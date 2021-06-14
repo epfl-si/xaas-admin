@@ -64,31 +64,27 @@ $global:APPROVE_POLICY_TYPE__ITEM_REQ     = 'new'
 $global:APPROVE_POLICY_TYPE__ACTION_REQ   = 'reconfigure'
 
 # Information sur les services au sens vRA
+#FIXME: A priori on devrait pouvoir supprimer ceci
 $global:VRA_SERVICE_SUFFIX__PUBLIC  =" (Public)"
 $global:VRA_SERVICE_SUFFIX__PRIVATE =" (Private)"
 
 # Nom des custom properties à utiliser
-$global:VRA_CUSTOM_PROP_EPFL_BG_ID                  = "ch.epfl.vra.bg.id"
-$global:VRA_CUSTOM_PROP_VRA_BG_TYPE                 = "ch.epfl.vra.bg.type"
-$global:VRA_CUSTOM_PROP_VRA_BG_STATUS               = "ch.epfl.vra.bg.status"
-$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE           = "ch.epfl.vra.bg.res.manage"
-$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE  = "ch.epfl.vra.bg.roles.support.manage"
+$global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID             = "ch.epfl.vra.project.id"
+$global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE            = "ch.epfl.vra.project.type"
+$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS          = "ch.epfl.vra.project.status"
+$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE           = "ch.epfl.vra.project.res.manage"
+$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE  = "ch.epfl.vra.project.roles.support.manage"
 $global:VRA_CUSTOM_PROP_VRA_TENANT_NAME             = "ch.epfl.vra.tenant.name"
-$global:VRA_CUSTOM_PROP_VRA_BG_NAME                 = "ch.epfl.vra.bg.name"
+$global:VRA_CUSTOM_PROP_VRA_PROJECT_NAME            = "ch.epfl.vra.project.name"
 $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER = "ch.epfl.billing.financecenter"
 $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME    = "ch.epfl.billing.entity.name"
 $global:VRA_CUSTOM_PROP_EPFL_DEPLOYMENT_TAG         = "ch.epfl.deployment_tag"
 $global:VRA_CUSTOM_PROP_EPFL_VM_NOTIFICATION_MAIL   = "ch.epfl.owner_mail"
 
 
-# Types de Business Group possibles
-$global:VRA_BG_TYPE__ADMIN 	= "admin"
-$global:VRA_BG_TYPE__SERVICE  = "service"
-$global:VRA_BG_TYPE__UNIT 	   = "unit"
-$global:VRA_BG_TYPE__PROJECT  = "project"
-
 # Statuts de Business Group possibles
-$global:VRA_BG_STATUS__ALIVE = "alive"
+# FIXME: Utiliser des types énumérés
+$global:VRA_PROJECT_STATUS__ALIVE = "alive"
 $global:VRA_BG_STATUS__GHOST = "ghost"
 
 # Valeurs possibles pour la gestion des Réservations du Business Group
@@ -150,4 +146,41 @@ enum EntitlementType
 {
     User
     Admin
+}
+
+# Type de rôles
+enum UserRole
+{
+    Admin
+    User
+    Support
+}
+
+# Type de projet possible
+enum ProjectType
+{
+    # Pour les 3 tenants
+    Unit
+    Service
+    Project
+
+    Admin
+    # Type de catalogues
+    PublicCatalog
+    PrivateCatalog
+}
+
+# Type du catalogue
+enum CatalogProjectPrivacy
+{
+    Private
+    Public
+}
+
+# Type de contenu GitHub
+enum GitHubContentType
+{
+    CloudTemplates
+    ActionBasedScripts
+    TerraformConfigurations
 }

@@ -112,11 +112,7 @@ class NameGenerator: NameGeneratorBase
         REMARQUE : ATTENTION A BIEN PASSER DES [int] POUR CERTAINS PARAMETRES !! SI CE N'EST PAS FAIT, C'EST LE 
                    MAUVAIS PROTOTYPE DE FONCTION QUI RISQUE D'ETRE PRIS EN COMPTE.
 
-        IN  : $role                 -> Nom du rôle pour lequel on veut le groupe. 
-                                        "CSP_SUBTENANT_MANAGER"
-                                        "CSP_SUPPORT"
-                                        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                        "CSP_CONSUMER"
+        IN  : $role                 -> Le rôle
         IN  : $type                 -> Type du nom du groupe:
                                         $this.GROUP_TYPE_AD
                                         $this.GROUP_TYPE_GROUPS
@@ -130,7 +126,7 @@ class NameGenerator: NameGeneratorBase
             - Nom du groupe à utiliser pour le rôle.
             - Description du groupe (si $type == 'ad', sinon, "")
     #>
-    hidden [System.Collections.ArrayList] getRoleGroupNameAndDesc([string]$role, [string]$type, [bool]$fqdn, [Hashtable]$additionalDetails)
+    hidden [System.Collections.ArrayList] getRoleGroupNameAndDesc([UserRole]$role, [string]$type, [bool]$fqdn, [Hashtable]$additionalDetails)
     {
         # On initialise à vide car la description n'est pas toujours générée. 
         $groupDesc = ""
@@ -151,7 +147,7 @@ class NameGenerator: NameGeneratorBase
             $global:VRA_TENANT__EPFL 
             {
                 # Admin
-                if($role -eq "CSP_SUBTENANT_MANAGER")
+                if($role -eq [UserRole]::Admin)
                 {
                     # Même nom de groupe (court) pour AD et "groups"
                     # vra_<envShort>_adm_<tenantShort>
@@ -159,7 +155,7 @@ class NameGenerator: NameGeneratorBase
                     $groupDesc = "Administrators for Tenant {0} on Environment {1}" -f $this.tenant.ToUpper(), $this.env.ToUpper()
                 }
                 # Support
-                elseif($role -eq "CSP_SUPPORT")
+                elseif($role -eq [UserRole]::Support)
                 {
                     # Même nom de groupe (court) pour AD et "groups"
                     # vra_<envShort>_sup_<facultyName>
@@ -167,8 +163,7 @@ class NameGenerator: NameGeneratorBase
                     $groupDesc = "Support for Faculty {0} on Tenant {1} on Environment {2}" -f $this.getDetail('facultyName').toUpper(), $this.tenant.ToUpper(), $this.env.ToUpper()
                 }
                 # Shared, Users
-                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
-                        $role -eq "CSP_CONSUMER")
+                elseif($role -eq [UserRole]::User)
                 {
                     # Groupe AD
                     if($type -eq $this.GROUP_TYPE_AD)
@@ -200,8 +195,7 @@ class NameGenerator: NameGeneratorBase
             $global:VRA_TENANT__ITSERVICES
             {
                 # Admin, Support
-                if($role -eq "CSP_SUBTENANT_MANAGER" -or `
-                    $role -eq "CSP_SUPPORT")
+                if($role -eq [UserRole]::Admin -or $role -eq [UserRole]::Support)
                 {
                     # vra_<envShort>_adm_sup_its
                     $groupName = "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
@@ -209,8 +203,7 @@ class NameGenerator: NameGeneratorBase
                     
                 }
                 # Shared, Users
-                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
-                        $role -eq "CSP_CONSUMER")
+                elseif($role -eq [UserRole]::User)
                 {
                     # vra_<envShort>_<serviceId>
                     $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('snowServiceId').toLower())
@@ -247,8 +240,7 @@ class NameGenerator: NameGeneratorBase
             $global:VRA_TENANT__RESEARCH
             {
                 # Admin, Support
-                if($role -eq "CSP_SUBTENANT_MANAGER" -or `
-                    $role -eq "CSP_SUPPORT")
+                if($role -eq [UserRole]::Admin -or $role -eq [UserRole]::Support)
                 {
                     # vra_<envShort>_adm_sup_rsrch
                     $groupName = "{0}{1}_adm_sup_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.getTenantShortName()
@@ -256,8 +248,7 @@ class NameGenerator: NameGeneratorBase
                     
                 }
                 # Shared, Users
-                elseif($role -eq "CSP_CONSUMER_WITH_SHARED_ACCESS" -or `
-                        $role -eq "CSP_CONSUMER")
+                elseif($role -eq [UserRole]::User)
                 {
                     # vra_<envShort>_<projectId>
                     $groupName = "{0}{1}_{2}" -f [NameGenerator]::AD_GROUP_PREFIX, $this.getEnvShortName(), $this.transformForGroupName($this.getDetail('projectId'))
@@ -362,16 +353,12 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom du groupe AD pour les paramètres passés 
               
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-							        "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
+        IN  : $role             -> Le rôle
         IN  : $fqdn             -> Pour dire si on veut le nom avec le nom de domaine après.
                                     $true|$false  
                                     Si pas passé => $false      
     #>
-    [string] getRoleADGroupName([string]$role, [bool]$fqdn)
+    [string] getRoleADGroupName([UserRole]$role, [bool]$fqdn)
     {   
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $fqdn, @{})
         return $groupName
@@ -382,19 +369,15 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie la description du groupe AD pour les paramètres passés 
 
-        IN  : $role                 -> Nom du rôle pour lequel on veut le groupe. 
-                                        "CSP_SUBTENANT_MANAGER"
-                                        "CSP_SUPPORT"
-                                        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                        "CSP_CONSUMER"
+        IN  : $role                 -> Le rôle
         IN  : $additionalDetails    -> (optionel) tableau associatif avec les détails additionnels
                                         à ajouter au format JSON à la description du groupe
     #>
-    [string] getRoleADGroupDesc([string]$role)
+    [string] getRoleADGroupDesc([UserRole]$role)
     {
         return $this.getRoleADGroupDesc($role, @{})
     }
-    [string] getRoleADGroupDesc([string]$role, [Hashtable]$additionalDetails)
+    [string] getRoleADGroupDesc([UserRole]$role, [Hashtable]$additionalDetails)
     {
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_AD, $false, $additionalDetails)
         return $groupDesc
@@ -405,13 +388,9 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom du groupe "GROUPS" pour les paramètres passés 
 
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
+        IN  : $role             -> Le rôle
     #>
-    [string] getRoleGroupsGroupName([string]$role)
+    [string] getRoleGroupsGroupName([UserRole]$role)
     {
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false, @{})
         return $groupName
@@ -422,13 +401,9 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie la description du groupe "GROUPS" pour les paramètres passés 
 
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUBTENANT_MANAGER"
-							        "CSP_SUPPORT"
-							        "CSP_CONSUMER_WITH_SHARED_ACCESS"
-                                    "CSP_CONSUMER"
+        IN  : $role             -> Le rôle
     #>
-    [string] getRoleGroupsGroupDesc([string]$role)
+    [string] getRoleGroupsGroupDesc([UserRole]$role)
     {
         $groupName, $groupDesc = $this.getRoleGroupNameAndDesc($role, $this.GROUP_TYPE_GROUPS, $false, @{})
         return $groupDesc
@@ -439,11 +414,9 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie le nom du groupe "GROUPS" dans Active Directory pour les paramètres passés 
 
-        IN  : $role             -> Nom du rôle pour lequel on veut le groupe. 
-                                    "CSP_SUPPORT"
-                                    "CSP_MANAGER"
+        IN  : $role             -> Le rôle
     #>
-    [string] getRoleGroupsADGroupName([string]$role)
+    [string] getRoleGroupsADGroupName([UserRole]$role)
     {
         $groupName = $this.getRoleGroupsGroupName($role)
         return $groupName + [NameGenerator]::AD_GROUP_GROUPS_SUFFIX
@@ -1198,12 +1171,14 @@ class NameGenerator: NameGeneratorBase
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie le préfixe de machine à utiliser pour une faculté ou un service
+        BUT : Renvoie le template pour générer un nom de machine pour une faculté ou un service
 
-		RET : Préfixe de machine
+		RET : Template pour générer le nom
     #>
-    [string] getVMMachinePrefix()
+    [string] getVMNameTemplate()
     {
+        $suffix = "`${####}"
+
         $detailToUse = ""
         switch($this.tenant)
         {
@@ -1216,53 +1191,15 @@ class NameGenerator: NameGeneratorBase
             # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES 
             { 
-                # On ne créé pas de préfixe de VM pour ce tenant, c'est vRA qui s'occupera de faire le job
-                # en utilisant le nom du BG comme base pour le préfixe de VM
-                return ""
+                # On utilise le nom du tenant (court) suivi du nom court du service
+                # its<serviceShortName>
+                $detailToUse = "{0}{1}" -f $this.getTenantShortName, $this.getDetail('svcShortName')
             }
 
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
                 $detailToUse = $this.getDetail('projectId')
-            }
-        }
-
-        # Suppression de tous les caractères non alpha numériques
-        $detailToUse = $detailToUse -replace '[^a-z0-9]', ''
-
-        # On raccourci à 6 caractères pour ne pas avoir des préfixes trop longs
-        $detailToUse = $detailToUse.Substring(0, [System.Math]::Min(6, $detailToUse.length))
-
-        # Pour l'ID court de l'environnement 
-        $envId = ""
-        
-        switch($this.tenant)
-        {
-            $global:VRA_TENANT__EPFL 
-            { 
-                # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
-                if($this.env -ne $global:TARGET_ENV__PROD)
-                {
-                    $envId = $this.getEnvShortName()
-                }
-                return "{0}{1}vm" -f $this.transformFacultyForGroupName($detailToUse), $envId
-            }
-            
-            $global:VRA_TENANT__ITSERVICES 
-            { 
-                # Pas besoin de traiter les choses ici car on a déjà fait un "return" précédemment pour sortir de la fonction                
-            }
-
-            # Tenant Research
-            $global:VRA_TENANT__RESEARCH
-            {
-                # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
-                if($this.env -ne $global:TARGET_ENV__PROD)
-                {
-                    $envId = $this.getEnvShortName()
-                }
-                return "{0}{1}vm" -f $this.transformForGroupName($detailToUse) , $envId
             }
 
             # Tenant pas géré
@@ -1271,19 +1208,61 @@ class NameGenerator: NameGeneratorBase
                 Throw ("Unsupported Tenant ({0})" -f $this.tenant)
             }
         }
+
+        # Suppression de tous les caractères non alpha numériques
+        $detailToUse = $detailToUse -replace '[^a-z0-9]', ''
+
+        # On raccourci à 6 caractères pour ne pas avoir des préfixes trop longs
+        $detailToUse = $detailToUse.Substring(0, [System.Math]::Min(6, $detailToUse.length)).toLower()
+
+        # Pour l'ID court de l'environnement 
+        $envId = ""
+        
+        if($this.tenant -eq $global:VRA_TENANT__EPFL -or `
+            $this.tenant -eq $global:VRA_TENANT__RESEARCH )
+        {
+            # Si on n'est pas sur la prod, on ajoutera l'id cour de l'environnement
+            if($this.env -ne $global:TARGET_ENV__PROD)
+            {
+                $envId = $this.getEnvShortName()
+            }
+            return "{0}{1}vm{2}" -f $detailToUse, $envId, $suffix
+        }
+        elseif($this.env -eq $global:VRA_TENANT__ITSERVICES)
+        {
+            return "{0}{1}{2}" -f $detailToUse, $envId, $suffix
+        }
+
         return ""
+        
     }
 
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
     <# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- #>
 
+
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie la description d'un BG du tenant EPFL
+        BUT : Renvoie la description d'un Project qui est de type "catalogue"
 
-		RET : Description du BG
+        IN  : $catalogName      -> Le nom du catalogue
+        IN  : $catalogPrivacy   -> Niveau de visibilité du catalogue
+
+		RET : Description 
     #>
-    [string] getBGDescription()
+    [string] getCatalogProjectDescription([string]$catalogName, [CatalogProjectPrivacy]$catalogPrivacy)
+    {
+        return "{0} Cloud Templates for {1}" -f $catalogPrivacy.toString(), $catalogName
+    }
+
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie la description d'un Project du tenant courant
+
+		RET : Description du Project
+    #>
+    [string] getProjectDescription()
     {
         $desc = ""
         switch($this.tenant)
@@ -1295,7 +1274,7 @@ class NameGenerator: NameGeneratorBase
 
             $global:VRA_TENANT__ITSERVICES 
             {
-                $desc = "" 
+                $desc = $this.getDetail('svcName')
             }
 
             # Tenant Research
@@ -1431,11 +1410,11 @@ class NameGenerator: NameGeneratorBase
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom à utiliser pour un BG en fonction des paramètres passés.
+        BUT : Renvoie le nom à utiliser pour un Projet en fonction des paramètres passés.
 
-        RET : Le nom du BG à utiliser
+        RET : Le nom du Project à utiliser
     #>
-    [string] getBGName()
+    [string] getProjectName()
     {
         $name = ""
         switch($this.tenant)

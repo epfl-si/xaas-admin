@@ -6,6 +6,7 @@ config-ldap-ad.json
 config-nsx.json
 config-snow.json
 config-vra.json
+config-vra8.json
 config-vrops.json
 config-vsphere.json
 config-xaas-backup.json
