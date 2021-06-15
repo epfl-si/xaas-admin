@@ -164,11 +164,13 @@ enum vRAUserRole
     Viewers
 }
 
-enum vRAUserRoleContentType
+# Type de source pour un élément de catalogue
+enum ContentSourceType
 {
-    User
-    Group
+    CatalogSourceIdentifier # Source = regroupement d'Items
+    CatalogItemIdentifier   # Item
 }
+
 
 # Type de projet possible
 enum ProjectType

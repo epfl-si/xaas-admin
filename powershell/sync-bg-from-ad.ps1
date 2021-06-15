@@ -548,8 +548,6 @@ function createOrUpdateProjectRoles([vRA8API]$vra, [PSCustomObject]$project, [Ar
 									Si vide, on ne limite à personne, open bar pour tous.
 
 	RET : Objet contenant l'Entitlement
-
-	-deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
 #>
 function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [CatalogProjectPrivacy]$contentSourcePrivacy, [EntitlementType]$entType, [NameGenerator]$nameGenerator, [Array]$deniedServices, [Array]$mandatoryItems, [Array]$onlyForGroups)
 {
@@ -566,12 +564,12 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Cata
 	# Parcours des Content Sources trouvées
 	ForEach($contentSource in $contentSourceList)
 	{
-		$logHistory.addLineAndDisplay(("> Processing Content Source '{0}'..." -f $contentSource.name))
+		$logHistory.addLineAndDisplay(("-> Processing Content Source '{0}'..." -f $contentSource.name))
 
 		# S'il n'y a pas d'items dans la Content Source
 		if($contentSource.itemsImported -eq 0)
 		{
-			$logHistory.addWarningAndDisplay(("> No item found in Content Source '{0}', skipping it" -f $contentSource.name))
+			$logHistory.addWarningAndDisplay(("-> No item found in Content Source '{0}', skipping it" -f $contentSource.name))
 			continue
 		}
 
@@ -582,33 +580,96 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Cata
 		# L'entitlement n'existe pas encore
 		if($null -eq $ent)
 		{
-			$logHistory.addLineAndDisplay((">> Entilement '{0}' doesn't exists" -f $entName))
+			$logHistory.addLineAndDisplay(("--> Entilement doesn't exists" -f $entName))
 
 			# Si le Content Source n'est pas dans ceux qui ne sont pas autorisés pour le Projet
 			if($deniedServicesNames -notcontains $contentSource.name)
 			{
-				$logHistory.addLineAndDisplay((">> Creating Entitlement '{0}' for Content Source '{1}'..." -f $entName, $contentSource.name))
+				$logHistory.addLineAndDisplay(("--> Creating Entitlement for Content Source '{0}'..." -f $contentSource.name))
 				# Ajout de l'entitlement (appelé "content sharing" dans la GUI WEB)
-				$ent = $vra.addEntitlement($contentSource, $project)
+				$ent = $vra.addEntitlement($contentSource, [ContentSourceType]::CatalogSourceIdentifier, $project)	
+				
 			}
 			else # Le ContentSource n'est pas autorisé
 			{
-				$logHistory.addLineAndDisplay((">> Content Source '{0}' not allowed for Project '{1}', skipping Entitlement creation" -f $contentSource.name, $project.name))
+				$logHistory.addLineAndDisplay(("--> Content Source '{0}' not allowed for Project '{1}', skipping Entitlement creation" -f $contentSource.name, $project.name))
 			}
 			
 		}
 		else # L'Entitlement existe déjà
 		{
-			$logHistory.addLineAndDisplay((">> Entitlement '{0}' already exists" -f $entName))
+			$logHistory.addLineAndDisplay(("--> Entitlement '{0}' already exists" -f $entName))
 
 			# Si le content Source n'est pas autorisé pour le projet courant, on le supprime
-			if($deniedServicesNames -contains $contentSource.name)
+			if(($deniedServicesNames -contains $contentSource.name) -and ($currentEntitlementIdList -contains $contentSource.name))
 			{
-				$logHistory.addLineAndDisplay((">> Content Source '{0}' not allowed for Project '{1}', removing Entitlement..." -f $contentSource.name, $projectName))
+				$logHistory.addLineAndDisplay(("--> Content Source '{0}' not allowed for Project '{1}', removing Entitlement..." -f $contentSource.name, $projectName))
 				$vra.deleteEntitlement($ent)
 			}
 
 		} # FIN SI l'entitlement existe déjà
+
+		# Si le Content Source n'est pas autorisé
+		if($deniedServicesNames -contains $contentSource.name)
+		{
+			# Recherche des infos pour savoir ce qui doit réellement être retiré de la liste au niveau des items de catalogues
+			$deniedSvcInfos = $deniedServices | Where-Object { $_.svc -eq  $contentSource.name}
+
+			# Si c'est seulement certains items du catalogue pour le service courant qui ne doivent pas être affichés (mais que d'autres oui)
+			if($deniedSvcInfos.items.count -gt 0)
+			{
+				$logHistory.addLineAndDisplay(("--> Content Source '{0}' has been denied but only for {1} catalog item(s), adding the others" -f $contentSource.name, $deniedSvcInfos.items.count))
+
+				# Recherche de la liste des items de catalogue disponibles dans le service courant
+				$catalogItemList = $vra.getContentSourceCatalogItemList($contentSource)
+
+				# Parcours des catalog items présents dans le content source qui est "defendu"
+				ForEach($catalogItem in $catalogItemList)
+				{
+					# Recherche de l'entitlement pour l'élément de catalogue
+					$ent = $vra.getProjectEntitlement($project, $catalogItem.name)
+
+					# Si l'élément de catalogue courant est autorisé
+					if($deniedSvcInfos.items -notcontains $catalogItem.name)
+					{
+						# Si l'entitlement n'est pas encore présent
+						if($null -eq $ent)
+						{
+							$logHistory.addLineAndDisplay(("--> Creating Entitlement for Catalog Item '{0}'... " -f $catalogItem.name))
+							# Ajout de l'élément de catalogue "non défendu"
+							$ent = $vra.addEntitlement($catalogItem, [ContentSourceType]::CatalogItemIdentifier, $project)
+						}
+						else # L'entitlement est déjà présent
+						{
+							$logHistory.addLineAndDisplay(("--> Entitlement for Catalog Item '{0}' already exists" -f $catalogItem.name))
+						}
+					}
+					else # L'item courant n'est pas autorisé pour le projet
+					{
+						# Si l'item est déjà dans les Entitlements,
+						if($null -ne $ent)
+						{
+							$logHistory.addLineAndDisplay(("--> Catalog Item '{0}' not allowd, removing it..." -f $catalogItem.name))
+							$vra.deleteEntitlement($ent)
+						}
+					}# FIN SI l'élélment courant n'est pas autorisé pour le projet
+
+				} # FIN BOUCLE de parcours des items de catalogue à ajouter
+
+				# FIXME:
+				# # Si pas d'approval policy de définie
+				# if($null -eq $approvalPolicy)
+				# {
+				# 	$entService.approvalPolicyId = ""
+				# }
+				# else
+				# {
+				# 	# On met à jour l'ID de l'approval policy dans le cas où elle aurait changé (peut arriver si on a forcé la recréation de celles-ci)
+				# 	$entService.approvalPolicyId = $approvalPolicy.id
+				# }
+				
+			}
+		}
 
 	}# FIN BOUCLE de parcours des Content Sources trouvées
 
@@ -1467,11 +1528,7 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Entitlements
 
-
-		# -- Public
-		
-		
-		#FIXME: Gérer aussi les Entitlement "Private"
+		#FIXME: Gérer aussi les Entitlement "Private" => mis à la main
 
 		#  TODO: COntinuer depuis ici
 
@@ -1479,9 +1536,10 @@ try
 		# # Pour les utilisateurs (toutes les actions)
 		$ent = createOrUpdateProjectEnt -vra $vra -project $project -contentSourcePrivacy ([CatalogProjectPrivacy]::Public) -entType ([EntitlementType]::User) -NameGenerator $nameGenerator `
 									-onlyForGroups @() -deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
+
 		# # Pour les admins (actions VIP)
 		# $entAdm = createOrUpdateProjectEnt -vra $vra -bg $project -entName $entNameAdm -entDesc $entDescAdm -entType ([EntitlementType]::Admin) -NameGenerator $nameGenerator `
-		# 							-onlyForGroups $adminGrpList.split('@')[0]
+		# 							-onlyForGroups $adminGrpList.split('@')[0] -deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
 		
 		# # ----------------------------------------------------------------------------------
 		# # --------------------------------- Project Entitlement - 2nd day Actions
@@ -1593,16 +1651,16 @@ try
 		# --------------------------------- NSX
 
 		# Création du NSGroup si besoin 
-		$nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
+		# $nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
 
-		# Création de la section de Firewall si besoin
-		$nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc -nsxNSGroup $nsxNSGroup
+		# # Création de la section de Firewall si besoin
+		# $nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc -nsxNSGroup $nsxNSGroup
 
-		# Création des règles dans la section de firewall
-		createFirewallSectionRulesIfNotExists -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
+		# # Création des règles dans la section de firewall
+		# createFirewallSectionRulesIfNotExists -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
 
-		# Verrouillage de la section de firewall (si elle ne l'est pas encore)
-		$nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
+		# # Verrouillage de la section de firewall (si elle ne l'est pas encore)
+		# $nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
 
 		$doneElementList += @{
 			adGroup = $_.name

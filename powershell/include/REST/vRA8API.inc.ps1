@@ -684,25 +684,27 @@ class vRA8API: RESTAPICurl
 		-------------------------------------------------------------------------------------
 		BUT : Ajoute un Entitlement
 
-		IN  : $name				-> Nom de l'entitlement
-		IN  : $description		-> Description de l'entitlement
-		IN  : $contentSource	-> Objet représentant le Content Source qui référence le
-									projet "Catalogue" qui contient les items de catalog 
-									que l'on veut mettre à dispo pour le projet $project
-		IN  : $project			-> Objet représentant le projet dans lequel on veut mettre à
-									disposition les items qui se trouve dans le projet
-									catalogue $catalogProject	
+		IN  : $contentSourceOrItem	-> Objet représentant le Content Source qui référence le
+										projet "Catalogue" qui contient les items de catalog 
+										que l'on veut mettre à dispo pour le projet $project.
+										Cela peut aussi être un objet qui n'est en fait qu'un
+										item que l'on désire ajouter seul
+		IN  : $sourceType			-> Type de la source, élément de catalogue ou regroupement d'éléments
+		IN  : $project				-> Objet représentant le projet dans lequel on veut mettre à
+										disposition les items qui se trouve dans le projet
+										catalogue $catalogProject	
 
 		RET : L'entitlement ajouté
 	#>
-    [PSCustomObject] addEntitlement([PSCustomObject]$contentSource, [PSCustomObject]$project)
+    [PSCustomObject] addEntitlement([PSCustomObject]$contentSourceOrItem, [ContentSourceType]$sourceType, [PSCustomObject]$project)
     {
 		$uri = "{0}/catalog/api/admin/entitlements" -f $this.baseUrl
 
 		$replace = @{
-			name = $contentSource.name # On peut mettre ce qu'on veut, c'est toujours l'équivalent de contentSource.name qui sera repris donc...
-            contentSourceId = $contentSource.id
+			name = $contentSourceOrItem.name # On peut mettre ce qu'on veut, c'est toujours l'équivalent de contentSource.name qui sera repris donc...
+            contentSourceOrItemId = $contentSourceOrItem.id
 			projectId = $project.id
+			type = $sourceType.toString()
         }
 
 		$body = $this.createObjectFromJSON("vra-content-sharing.json", $replace)
@@ -732,7 +734,6 @@ class vRA8API: RESTAPICurl
                                                 CATALOG ITEMS
         ------------------------------------------------------------------------------------------------------
         ------------------------------------------------------------------------------------------------------
-		FIXME: Pas forcément besoin de ces éléments. A priori on peut tout faire avec "content sources" en fait  (quelques lignes plus bas) 
     #>
 
 	<#
@@ -762,7 +763,21 @@ class vRA8API: RESTAPICurl
     {
         return $this.getCatalogItemListQuery()
     }
+	
 
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Catalog Items disponibles pour une Content Source donnée
+
+		IN  : $contentSource		-> Objet représentant la Content Source pour laquelle
+										on veut avoir la liste des items contenus
+
+		RET : La liste des catalog items de la Content Source
+	#>
+    [Array] getContentSourceCatalogItemList([PSCustomObject]$contentSource)
+    {
+        return $this.getObjectListQuery("/catalog/api/admin/items", "") | Where-Object { $_.sourceId -eq $contentSource.id}
+    }
 
 	<#
         ------------------------------------------------------------------------------------------------------

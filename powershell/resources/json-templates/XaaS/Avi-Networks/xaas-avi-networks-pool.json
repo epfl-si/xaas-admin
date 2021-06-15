@@ -1,0 +1,81 @@
+{
+    "name": "nomservice-t-pool",
+    "enabled": true,
+    "tenant_ref": "https://vsissp-avi-ctrl-t.epfl.ch/api/tenant/tenant-9d9f1df1-8dd5-4364-a211-623102030adc",
+    "cloud_ref": "https://vsissp-avi-ctrl-t.epfl.ch/api/cloud/cloud-90d10d1c-7480-4d01-b48f-4f79d83d48de",
+    "default_server_port": 443,
+    "graceful_disable_timeout": 1,
+    "connection_ramp_duration": 10,
+    "max_concurrent_connections_per_server": 0,
+    "servers": [
+        {
+            "ip": {
+                "addr": "10.94.106.13",
+                "type": "V4"
+            },
+            "hostname": "itstxaas1157",
+            "enabled": true,
+            "ratio": 1,
+            "verify_network": false,
+            "resolve_server_by_dns": true,
+            "prst_hdr_val": "",
+            "static": false,
+            "rewrite_host_header": false
+        },
+        {
+            "ip": {
+                "addr": "10.94.106.12",
+                "type": "V4"
+            },
+            "hostname": "itstxaas1158",
+            "enabled": true,
+            "ratio": 1,
+            "verify_network": false,
+            "resolve_server_by_dns": true,
+            "prst_hdr_val": "",
+            "static": false,
+            "rewrite_host_header": false
+        }
+    ],
+    "lb_algorithm": "LB_ALGORITHM_LEAST_CONNECTIONS",
+    "lb_algorithm_hash": "LB_ALGORITHM_CONSISTENT_HASH_SOURCE_IP_ADDRESS",
+    "inline_health_monitor": true,
+    "use_service_port": false,
+    "fail_action": {
+        "type": "FAIL_ACTION_HTTP_REDIRECT",
+        "redirect": {
+            "protocol": "HTTPS",
+            "host": "sorryserver.epfl.ch",
+            "path": "/",
+            "status_code": "HTTP_REDIRECT_STATUS_CODE_302"
+        }
+    },
+    "host_check_enabled": false,
+    "sni_enabled": true,
+    "rewrite_host_header_to_sni": false,
+    "rewrite_host_header_to_server_name": false,
+    "lb_algorithm_core_nonaffinity": 2,
+    "lookup_server_by_name": false,
+    "analytics_policy": {
+        "enable_realtime_metrics": false
+    },
+    "server_timeout": 0,
+    "conn_pool_properties": {
+        "upstream_connpool_server_max_cache": 0,
+        "upstream_connpool_conn_max_reuse": 0,
+        "upstream_connpool_conn_idle_tmo": 60000,
+        "upstream_connpool_conn_life_tmo": 600000
+    },
+    "delete_server_on_dns_refresh": true,
+    "enable_http2": false,
+    "ignore_server_port": false,
+    "routing_pool": false,
+    "tier1_lr": "/infra/tier-1s/T1-SERVICE-TEST-01",
+    "health_monitor_refs": [
+        "https://vsissp-avi-ctrl-t.epfl.ch/api/healthmonitor/healthmonitor-df6cfa29-c602-477b-9bd1-42e853887b7b",
+        "https://vsissp-avi-ctrl-t.epfl.ch/api/healthmonitor/healthmonitor-f3225785-5525-4e62-8f52-b84c3ee7ec38",
+        "https://vsissp-avi-ctrl-t.epfl.ch/api/healthmonitor/healthmonitor-88bbff47-fdf3-483a-aff5-267d4b2b2daa"
+    ],
+    "vrf_ref": "https://vsissp-avi-ctrl-t.epfl.ch/api/vrfcontext/vrfcontext-e2dadb78-9560-4948-954d-1a30833d1b81",
+    "analytics_profile_ref": "https://vsissp-avi-ctrl-t.epfl.ch/api/analyticsprofile/analyticsprofile-610b6c8e-f0f6-4913-85bf-ef88e4d87834"
+}
