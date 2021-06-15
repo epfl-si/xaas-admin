@@ -156,6 +156,20 @@ enum UserRole
     Support
 }
 
+# Rôles utilisateurs dispo dans vRA
+enum vRAUserRole
+{
+    Administrator
+    Members
+    Viewers
+}
+
+enum vRAUserRoleContentType
+{
+    User
+    Group
+}
+
 # Type de projet possible
 enum ProjectType
 {

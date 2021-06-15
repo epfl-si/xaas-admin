@@ -298,7 +298,7 @@ class vRA8API: RESTAPICurl
     
     <#
 		-------------------------------------------------------------------------------------
-		BUT : Ajoute un BG
+		BUT : Ajoute un Projet
 
 		IN  : $name					-> Nom du BG à ajouter
 		IN  : $desc					-> Description du BG
@@ -509,7 +509,7 @@ class vRA8API: RESTAPICurl
 		BUT : Met à jour les custom properties d'un projet
 
         IN  : $project      	-> Objet représentant le projet à mettre à jour
-		IN  : $customProperties	-> Tableau associatif avec les custom properties à mettre à jour
+		IN  : $customProperties	-> Tableau associatif avec les custom properties à mettre à jour ou à ajouter, on ne supprime rien
 	#>
 	[PSCustomObject] updateProjectCustomProperties([PSCustomObject]$project, [Hashtable]$customProperties)
 	{
@@ -529,6 +529,71 @@ class vRA8API: RESTAPICurl
 
 		($this.callAPI($uri, "DELETE", $null)).content | Out-Null
     }
+
+
+	<#
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+                                                PROJECT ROLES
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+    #>
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajouter des groupes (ET UNIQUEMENT DES GROUPES) à une liste d'utilisateurs pour un rôle donnée d'un projet
+
+        IN  : $project      	-> Objet représentant le projet à modifier
+		IN  : $userRole			-> Le rôle à mettre à jour
+		IN  : $userOrGroupList	-> Liste avec les éléments à ajouter, du type donné par $contentType
+
+		RET : Objet avec le projet modifié
+	#>
+	[PSCustomObject] addProjectUserRoleContent([PSCustomObject]$project, [vRAUserRole]$userRole, [Array]$groupList)
+	{
+		$uri = "{0}/iaas/api/projects/{1}" -f $this.baseUrl, $project.id
+
+		# Parcours des éléments à ajouter
+		$groupList | ForEach-Object {
+
+			# Si l'élément n'est pas présent, on l'ajoute
+			if($null -eq ($project.($userRole.toString().toLower()) | Where-Object { $_.type -eq "group" -and $_.email -eq $_}))
+			{
+				$project.($userRole.toString().toLower()) += $this.createObjectFromJSON("vra-project-right-group.json", @{ groupShortName = $_})
+			}
+		}
+
+		# Mise à jour des informations
+		$this.callAPI($uri, "PATCH", $project) | Out-Null
+		
+		# On recherche l'objet mis à jour
+		return $this.getProject($project.name)
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Vide une liste d'utilisateurs (groupes et utilisateurs) pour un rôle donnée d'un projet
+
+        IN  : $project      -> Objet représentant le projet à modifier
+		IN  : $userRole		-> Le rôle à vider
+
+		RET : Objet avec le projet modifié
+	#>
+	[PSCustomObject] deleteProjectUserRoleContent([PSCustomObject]$project, [vRAUserRole]$userRole)
+	{
+		$uri = "{0}/iaas/api/projects/{1}" -f $this.baseUrl, $project.id
+
+		# On vide la liste
+		$project.($userRole.toString().toLower()) = @()
+
+		# Mise à jour des informations
+		$this.callAPI($uri, "PATCH", $project) | Out-Null
+		
+		# On recherche l'objet mis à jour
+		return $this.getProject($project.name)
+	}
 
 
     <#

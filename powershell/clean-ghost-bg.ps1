@@ -443,7 +443,7 @@ try
 		$logHistory.addLineAndDisplay(("[{0}/{1}] Checking Business Group '{2}'..." -f $bgNo, $bglist.count, $_.name))
 
 		# Si c'est un BG d'unité ou de service et s'il est déjà en Ghost
-		if((isBGOfType -bg $_ -typeList @([ProjectType]::Service, [ProjectType]::Unit, [ProjectType]::Project)) -and `
+		if((isProjectOfType -bg $_ -typeList @([ProjectType]::Service, [ProjectType]::Unit, [ProjectType]::Project)) -and `
 			((getProjectCustomPropValue -project $_ -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS) -eq $global:VRA_BG_STATUS__GHOST) -and `
 			($bgName -eq "" -or ($bgName -ne "" -and $bgName -eq $_.name)))
 		{

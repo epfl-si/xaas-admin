@@ -39,27 +39,26 @@ function getProjectCustomPropValue([PSCustomObject]$project, [string]$customProp
 -------------------------------------------------------------------------------------
 	BUT : Permet de savoir si le Business Group passé est du type donné
 
-	IN  : $bg		-> Business Group dont on veut savoir s'il est du type donné
-	IN  : $type		-> Type duquel le BG doit être
+	IN  : $project		-> Projet dont on veut savoir s'il est du type donné
+	IN  : $type			-> Type duquel le Projet doit être
 
 	RET : $true|$false
 			$null si custom property pas trouvée
 #>
-function isBGOfType
+function isProjectOfType([PSCustomObject]$project, [Array] $typeList)
 {
-	param([PSCustomObject]$bg, [Array] $typeList)
 
-	$bgType = getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE
+	$projectType = getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE
 
 	# Si custom property PAS trouvée,
-	if($null -eq $bgType)
+	if($null -eq $projectType)
 	{
 		return $null
 	}
 	else # Custom property trouvée
 	{
 		# On regarde si la valeur est dans la liste
-		return $typeList -contains $bgType
+		return $typeList -contains $projectType
 	}
 
 
@@ -439,18 +438,17 @@ function replaceInStrings([Array]$stringList, [System.Collections.IDictionary]$v
 
 <#
     -------------------------------------------------------------------------------------
-	BUT : Renvoie un tableau avec la liste des utilisateurs pour un projet donné,
-			les groupes ou les utilisateurs 
-    
+	BUT : Renvoie un tableau avec la liste des groupes (admin, members) pour un projet donné,
+			
     IN  : $project		-> Objet représentant le Projet
-	IN  : $type			-> Type que l'on désire: user|group
+	IN  : $userRole		-> Rôle pour lequel on veut la liste
 
-    RET : Tableau avec la liste des user/groups
+    RET : Tableau avec la liste des groupes
 #>
-function getProjectUserList([PSCustomObject]$project, [string]$type)
+function getProjectRoleContent([PSCustomObject]$project, [vRAUserRole]$userRole)
 {
 	# Filtre par le type d'admin recherché et nettoyage de la valeur.
 	# On peut avoir un truc style: "xaas_t_its_admins@intranet.epfl.ch@intranet.epfl.ch"
 	# Donc on nettoie pour ne plus avoir que: xaas_t_its_admins
-	return @($project.members | Where-Object { $_.type -eq $type } | ForEach-Object { $_.email -replace "@.*", ""} )
+	return @($project.($userRole.toString().toLower()) | Where-Object { $_.type -eq "group" } | ForEach-Object { $_.email -replace "@.*", ""} )
 }
