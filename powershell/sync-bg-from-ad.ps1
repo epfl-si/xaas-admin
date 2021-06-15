@@ -1531,46 +1531,6 @@ try
 	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
 
 
-	# -------- Catalog Projects
-
-	$catalogProjectTypeList = @([ProjectType]::PublicCatalog, [ProjectType]::PrivateCatalog)
-
-	# Parcours de la liste des types
-	ForEach($catalogProjectType in $catalogProjectTypeList)
-	{
-		$logHistory.addLineAndDisplay(("Getting Catalog Project list with type '{0}'..." -f $catalogProjectType))
-
-		$catalogProjectList = $vra.getProjectList($catalogProjectType)
-
-		$logHistory.addLineAndDisplay(("{0} Catalog Projects found" -f $catalogProjectList.count))
-
-		# Parcours des projets trouvés pour le type courant
-		ForEach($catalogProject in $catalogProjectList)
-		{
-			$logHistory.addLineAndDisplay(("> Processing Catalog Project '{0}'..." -f $catalogProject.name))
-
-			# Recherche du nom de la "Content Source"
-			$contentSourceName = $nameGenerator.getCatalogProjectContentSourceName($catalogProject)
-
-			$contentSource = $vra.getContentSource($contentSourceName)
-
-			# Si pas trouvé
-			if($null -eq $contentSource)
-			{
-				$logHistory.addLineAndDisplay(("> Content Source '{0}' doesn't exists, creating..." -f $contentSourceName))
-
-				$contentSource = $vra.addContentSources($contentSourceName, $catalogProject)
-			}
-			else # Le Content Source existe déjà
-			{
-				$logHistory.addLineAndDisplay(("> Content Source already exists"))
-			}
-
-		}# FIN BOUCLE de parcours des catalogue pour le type courant
-
-	}# FIN BOUCLE de parcours sur les types de catalogue possibles
-
-	
 
 	# Parcours des groupes AD pour l'environnement/tenant donné
 	$adGroupList | ForEach-Object {

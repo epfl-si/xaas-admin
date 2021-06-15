@@ -1842,16 +1842,16 @@ class NameGenerator: NameGeneratorBase
     -------------------------------------------------------------------------------------
         BUT : Renvoie le nom d'un "Content Source" pour un projet "catalogue" donné
 
-        IN  : $catalogProject      -> L'objet représentant le projet "catalogue"
+        IN  : $catalogProjectName      -> Le nom du projet "Catalogue"
 
         RET : Le nom
 
     #>
-    [string] getCatalogProjectContentSourceName([PSCustomObject]$catalogProject)
+    [string] getCatalogProjectContentSourceName([string]$catalogProjectName)
     {
         # On utilise le même nom que le "Catalog Project" comme ça on pourra filtrer facilement par 
         # la suite pour les services "denied"
-        return $catalogProject.name
+        return $catalogProjectName
     }
 
 }

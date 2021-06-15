@@ -141,10 +141,17 @@ switch($action)
             }
             catch
             {
-                $logHistory.addWarningAndDisplay("Error adding content source, deleting added project")
+                $logHistory.addWarningAndDisplay("Error adding Git source, deleting added project")
                 $vra.deleteProject($catalogProject)
+                Throw
             }
-                        
+            
+            # Recherche du nom de la "Content Source"
+			$contentSourceName = $nameGenerator.getCatalogProjectContentSourceName($name)
+
+            $logHistory.addLineAndDisplay(("Creating Content Source '{0}'..." -f $contentSourceName))
+			$contentSource = $vra.addContentSources($contentSourceName, $catalogProject)
+			
         }
         
     }
@@ -153,6 +160,22 @@ switch($action)
     # -- Suppression d'un catalogue de projet
     $ACTION_DELETE_CATALOG_PROJECT
     {
+        # Recherche du nom de la "Content Source"
+        $contentSourceName = $nameGenerator.getCatalogProjectContentSourceName($name)
+
+        $logHistory.addLineAndDisplay(("Getting Content Source '{0}'..." -f $contentSourceName))
+        $contentSource = $vra.getContentSource($contentSourceName)
+        # Si pas trouvé
+        if($null -eq $contentSource)
+        {
+            $logHistory.addLineAndDisplay(("-> Content Source '{0}' doesn't exists" -f $contentSourceName))
+        }
+        else
+        {
+            $logHistory.addLineAndDisplay(("-> Deleting Content Source '{0}'..." -f $contentSourceName))
+            $vra.deleteContentSource($contentSource)
+        }
+        
         $logHistory.addLineAndDisplay(("Getting Git source '{0}'..." -f $name))
 
         $gitSource = $vra.getCatalogProjectGitHubSource($name)
@@ -178,6 +201,7 @@ switch($action)
         }
         else
         {
+            
             $logHistory.addLineAndDisplay(("-> Catalog Project '{0}' exists, deleting it..." -f $name))
             $vra.deleteProject($catalogProject)
         }
