@@ -20,6 +20,14 @@
     "test": [
         {
             "active": true,
+            "longName":  "ERP exploitation",
+            "shortName":  "erpe",
+            "snowId":  "SVC0642",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
             "longName":  "Antivirus",
             "shortName":  "Antivirus",
             "snowId":  "SVC0062",
