@@ -274,7 +274,7 @@
     },
 
     {
-        "name": "getBGEntNameAndDesc",
+        "name": "getProjectEntNameAndDesc",
         "tests": [
             {
                 "params":["[EntitlementType]::User"],

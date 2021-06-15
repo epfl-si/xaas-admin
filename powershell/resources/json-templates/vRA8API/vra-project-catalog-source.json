@@ -1,0 +1,9 @@
+{
+    "name": "{{name}}",
+    "typeId": "com.vmw.blueprint",
+    "config": {
+        "sourceProjectId": "{{catalogProjectId}}"
+    },
+    "projectId": "{{catalogProjectId}}",
+    "global": true
+}

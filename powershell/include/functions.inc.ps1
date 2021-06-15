@@ -435,3 +435,22 @@ function replaceInStrings([Array]$stringList, [System.Collections.IDictionary]$v
 
 	return $stringList
 }
+
+
+<#
+    -------------------------------------------------------------------------------------
+	BUT : Renvoie un tableau avec la liste des utilisateurs pour un projet donné,
+			les groupes ou les utilisateurs 
+    
+    IN  : $project		-> Objet représentant le Projet
+	IN  : $type			-> Type que l'on désire: user|group
+
+    RET : Tableau avec la liste des user/groups
+#>
+function getProjectUserList([PSCustomObject]$project, [string]$type)
+{
+	# Filtre par le type d'admin recherché et nettoyage de la valeur.
+	# On peut avoir un truc style: "xaas_t_its_admins@intranet.epfl.ch@intranet.epfl.ch"
+	# Donc on nettoie pour ne plus avoir que: xaas_t_its_admins
+	return @($project.members | Where-Object { $_.type -eq $type } | ForEach-Object { $_.email -replace "@.*", ""} )
+}

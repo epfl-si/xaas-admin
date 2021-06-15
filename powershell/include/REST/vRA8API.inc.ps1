@@ -129,7 +129,15 @@ class vRA8API: RESTAPICurl
             $uri = "{0}&{1}" -f $uri, $queryParams
         }
 
-		return ($this.callAPI($uri, "Get", $null)).content
+		$res = ($this.callAPI($uri, "Get", $null))
+
+		# Ces burnasses de développeurs vRA ne sont pas cohérents et parfois le résultat est dans "content" 
+		# et parfois il n'y a pas de "content", c'est à la racine... (les cons...)
+		if(objectPropertyExists -obj $res -propertyName "content")
+		{
+			return $res.content
+		}
+		return $res
     }
 
 
@@ -569,10 +577,9 @@ class vRA8API: RESTAPICurl
         ------------------------------------------------------------------------------------------------------
     #>
 	
-	
 	<#
 		-------------------------------------------------------------------------------------
-		BUT : Renvoie la liste des entitlements d'un projet (peuvent être trouvés dans "Service Broker > Content & Policies > Content Sources")
+		BUT : Renvoie la liste des entitlements d'un projet (peuvent être trouvés dans "Service Broker > Content & Policies > Content Sharing")
 				Cela représente en fait la liste des projets contenant des CloudTemplates partageables et qui sont
 				disponibles pour le projet passé en paramètre
 
@@ -582,9 +589,77 @@ class vRA8API: RESTAPICurl
 	#>
     [Array] getProjectEntitlementList([PSCustomObject]$project)
     {
-        return $this.getObjectListQuery("/iaas/api/zones", ("projectId={0}" -f $project.id) )
+        return $this.getObjectListQuery("/catalog/api/admin/entitlements", ("projectId={0}" -f $project.id) )
     }
 
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie un entitlement de projet donné par son nom
+
+        IN  : $project 	-> objet représentant le projet pour lequel on veut les entitlements
+		IN  : $name		-> nom de l'entitlement recherché
+
+		RET : Entitlement 
+				$null si pas trouvé
+	#>
+    [PSCustomObject] getProjectEntitlement([PSCustomObject]$project, [string]$name)
+    {
+        $res = @($this.getProjectEntitlementList($project) | Where-Object { $_.definition.name -eq $name})
+
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+		return $res[0]
+    }
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute un Entitlement
+
+		IN  : $name				-> Nom de l'entitlement
+		IN  : $description		-> Description de l'entitlement
+		IN  : $contentSource	-> Objet représentant le Content Source qui référence le
+									projet "Catalogue" qui contient les items de catalog 
+									que l'on veut mettre à dispo pour le projet $project
+		IN  : $project			-> Objet représentant le projet dans lequel on veut mettre à
+									disposition les items qui se trouve dans le projet
+									catalogue $catalogProject	
+
+		RET : L'entitlement ajouté
+	#>
+    [PSCustomObject] addEntitlement([PSCustomObject]$contentSource, [PSCustomObject]$project)
+    {
+		$uri = "{0}/catalog/api/admin/entitlements" -f $this.baseUrl
+
+		$replace = @{
+			name = $contentSource.name # On peut mettre ce qu'on veut, c'est toujours l'équivalent de contentSource.name qui sera repris donc...
+            contentSourceId = $contentSource.id
+			projectId = $project.id
+        }
+
+		$body = $this.createObjectFromJSON("vra-content-sharing.json", $replace)
+
+		# Création du Content Source et retour
+		return $this.callAPI($uri, "Post", $body)
+    }
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Efface un Entitlement
+
+		IN  : $entitlement	-> objet représentant l'Entitlement à effacer
+	#>
+	[void] deleteEntitlement([PSCustomObject]$entitlement)
+	{
+		$uri = "{0}/catalog/api/admin/entitlements/{1}" -f $this.baseUrl, $entitlement.id
+
+		# Création de l'entitlement et retour
+		$this.callAPI($uri, "DELETE", $null) | Out-Null
+	}
 
 	<#
         ------------------------------------------------------------------------------------------------------
@@ -666,13 +741,27 @@ class vRA8API: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Content Sources pour un type de catalogue donné
+
+		IN  : $catalogPrivacy	-> Le niveau de confidentialité du catalogue (Public ou privé)
+
+		RET : La liste des Content Sources
+	#>
+    [Array] getContentSourcesList([CatalogProjectPrivacy]$catalogPrivacy)
+    {
+        return $this.getContentSourcesListQuery() | Where-Object { $_.name -match (".+({0})" -f $catalogPrivacy.toString())}
+    }
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie un Content Source donné par son nom
 
 		IN  : $name		-> Le nom du Content Source
 
 		RET : La liste des Content Sources
 	#>
-    [PSCustomObject] getContentSources([string]$name)
+    [PSCustomObject] getContentSource([string]$name)
     {
 		return $this.getContentSourcesList() | Where-Object { $_.name -eq $name }
 
@@ -686,26 +775,25 @@ class vRA8API: RESTAPICurl
 		BUT : Ajout un Content Source
 
 		IN  : $name				-> Le nom du Content Source
-		IN  : $sourceProject	-> Objet représentant le projet content les items de catalog 
-									que l'on veut partager dans le Content Source1
+		IN  : $catalogProject	-> Objet représentant le projet content les items de catalog 
+									que l'on veut partager dans le Content Source
 
 		RET : Le content source ajouté
 	#>
-    # [PSCustomObject] addContentSources([string]$name, [PSCustomObject]$sourceProject)
-    # {
-	# 	# TODO:
-    #     $uri = "{0}/catalog/api/admin/sources" -f $this.baseUrl
+    [PSCustomObject] addContentSources([string]$name, [PSCustomObject]$catalogProject)
+    {
+		$uri = "{0}/catalog/api/admin/sources" -f $this.baseUrl
 
-	# 	$replace = @{
-    #         name = $name
-    #         sourceProjectId = $sourceProject.id
-    #     }
+		$replace = @{
+            name = $name
+            catalogProjectId = $catalogProject.id
+        }
 
-	# 	$body = $this.createObjectFromJSON("vra-content-source.json", $replace)
+		$body = $this.createObjectFromJSON("vra-project-catalog-source.json", $replace)
 
-	# 	# Création du Content Source et retour
-	# 	return $this.callAPI($uri, "Post", $body)
-    # }
+		# Création du Content Source et retour
+		return $this.callAPI($uri, "Post", $body)
+    }
 
 
 	<#
@@ -805,7 +893,7 @@ class vRA8API: RESTAPICurl
 			integrationId = $gitHubIntegrationId
         }
 
-		$body = $this.createObjectFromJSON("vra-content-source.json", $replace)
+		$body = $this.createObjectFromJSON("vra-project-github-source.json", $replace)
 
 		# Création du Content Source et retour
 		return $this.callAPI($uri, "Post", $body)

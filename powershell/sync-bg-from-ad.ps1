@@ -75,7 +75,7 @@ param ( [string]$targetEnv, [string]$targetTenant, [switch]$fullSync, [switch]$r
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vROAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "NSXAPI.inc.ps1"))
 
@@ -164,7 +164,7 @@ function getFullElementNameFromJSON([string]$baseName, [string]$JSONFile, [strin
 
 	RET : Objet représentant l'approval policy
 #>
-function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$desc, [string]$approvalLevelJSON, [Array]$approverGroupAtDomainList, [string]$approvalPolicyJSON, [psobject]$additionnalReplace, [ref]$processedApprovalPoliciesIDs)
+function createApprovalPolicyIfNotExists([vRA8API]$vra, [string]$name, [string]$desc, [string]$approvalLevelJSON, [Array]$approverGroupAtDomainList, [string]$approvalPolicyJSON, [psobject]$additionnalReplace, [ref]$processedApprovalPoliciesIDs)
 {
 	# Recherche du nom complet de la policy depuis le fichier JSON
 	$fullName = getFullElementNameFromJSON -baseName $name -JSONFile $approvalPolicyJSON -replaceString "preApprovalName" -fieldName "name"
@@ -238,7 +238,7 @@ function createApprovalPolicyIfNotExists([vRAAPI]$vra, [string]$name, [string]$d
 											il semblerait que sur PowerShell, les objets soient par défaut passés en IN/OUT 
 	
 #>
-function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$secondDayActions, [string]$baseName, [string]$desc, [Array]$approverGroupAtDomainList, [ref] $processedApprovalPoliciesIDs)
+function create2ndDayActionApprovalPolicies([vRA8API]$vra, [SecondDayActions]$secondDayActions, [string]$baseName, [string]$desc, [Array]$approverGroupAtDomainList, [ref] $processedApprovalPoliciesIDs)
 {
 	# Récupération de la liste des fichiers JSON à utiliser pour créer les approval policies utilisées dans les 2nd day actions.
 	$approvalPolicyList = $secondDayActions.getJSONApprovalPoliciesFilesInfos($targetTenant)
@@ -279,7 +279,7 @@ function create2ndDayActionApprovalPolicies([vRAAPI]$vra, [SecondDayActions]$sec
 	
 	RET : Objet représentant la Project
 #>
-function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$projectEPFLID, [string]$projectName, [string]$projectDesc, [string]$machineNameTemplate, [string]$financeCenter, [Array]$adminGrpList, [Array]$userGrpList)
+function createOrUpdateProject([vRA8API]$vra, [string]$tenantName, [string]$projectEPFLID, [string]$projectName, [string]$projectDesc, [string]$machineNameTemplate, [string]$financeCenter, [Array]$adminGrpList, [Array]$userGrpList)
 {
 
 	$logHistory.addLineAndDisplay(("-> Handling Project with custom ID {0}..." -f $projectEPFLID))
@@ -313,6 +313,7 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID"] 			= $projectEPFLID
 		$customProperties["$global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE"] 			= $projectType.toString()
 		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER"]= $financeCenter
+		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME"] 	= $nameGenerator.getBillingEntityName()
 		
 
 		# Ajout aussi des informations sur le Tenant et le Project car les mettre ici, c'est le seul moyen que l'on pour récupérer cette information
@@ -342,7 +343,7 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 			# Création du BG
 			
 			$zoneList = $vra.getCloudZoneList()
-			$project = $vra.addProject($projectName, $projectDesc, $machineNameTemplate, $customProperties, $zoneList, $adminGroups, $userGrpList)
+			$project = $vra.addProject($projectName, $projectDesc, $machineNameTemplate, $customProperties, $zoneList, $adminGrpList, $userGrpList)
 
 			$counters.inc('projectCreated')
 		}
@@ -352,7 +353,7 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 	else
 	{
 
-		$logHistory.addLineAndDisplay(("-> Project '{0}' already exists" -f $bg.Name))
+		$logHistory.addLineAndDisplay(("-> Project '{0}' already exists" -f $project.Name))
 
 		$projectUpdated = $false
 
@@ -447,12 +448,6 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 
 			$logHistory.addLineAndDisplay(("-> Updating and/or Reactivating Project '{0}' to '{1}'" -f $project.name, $projectName))
 
-			# Mise à jour des informations
-			$project = $vra.updateProject($project, $projectName, $projectDesc, $machineNameTemplate, @{"$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS" = $global:VRA_PROJECT_STATUS__ALIVE})
-
-			$projectUpdated = $true
-			
-
 			# Si le Project était en Ghost, 
 			if(!(isProjectAlive -project $project))
 			{
@@ -461,7 +456,7 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 			}
 			
 			# Mise à jour des informations
-			$project = $vra.updateProject($project, $bgName, $bgDesc, $machineNameTemplate, @{"$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS" = $global:VRA_PROJECT_STATUS__ALIVE})
+			$project = $vra.updateProject($project, $projectName, $projectDesc, $machineNameTemplate, @{"$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS" = $global:VRA_PROJECT_STATUS__ALIVE})
 
 			$projectUpdated = $true
 			
@@ -493,18 +488,18 @@ function createOrUpdateProject([vRAAPI]$vra, [string]$tenantName, [string]$proje
 									"Share users". Si pas passé ou $null, on ne change rien dans la liste spécifiée
 	RET : Rien
 #>
-function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$adminGrpList, [Array]$supportGrpList, [Array]$userGrpList)
+function createOrUpdateBGRoles([vRA8API]$vra, [PSCustomObject]$bg, [Array]$adminGrpList, [Array]$supportGrpList, [Array]$userGrpList)
 {
 
 	# FIXME: Remplacer les CSP_* avec le nécessaire. Voir les rôles définis au début du define.inc.ps1
-	$logHistory.addLineAndDisplay(("-> Updating roles for Project {0}..." -f $bg.name))
+	$logHistory.addLineAndDisplay(("-> Updating roles for Project {0}..." -f $project.name))
 
 	# S'il faut faire des modifs
 	if($adminGrpList.count -gt 0)
 	{
 		$logHistory.addLineAndDisplay("--> Updating 'Group manager role'...")
-		$vra.deleteBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER")
-		$adminGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_SUBTENANT_MANAGER", $_) }
+		$vra.deleteBGRoleContent($project.id, "CSP_SUBTENANT_MANAGER")
+		$adminGrpList | ForEach-Object { $vra.addRoleToBG($project.id, "CSP_SUBTENANT_MANAGER", $_) }
 	}
 
 	# S'il faut faire des modifs
@@ -513,14 +508,14 @@ function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$adminG
 		$logHistory.addLineAndDisplay("--> Updating 'Support role'...")
 
 		# Si le role est géré de manière manuelle pour le BG
-		if((getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
+		if((getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -eq $global:VRA_BG_RES_MANAGE__MAN)
 		{
 			$logHistory.addLineAndDisplay("---> Role manually managed, skipping it...")	
 		}
 		else # Le rôle est géré de manière automatique
 		{
-			$vra.deleteBGRoleContent($bg.id, "CSP_SUPPORT")
-			$supportGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_SUPPORT", $_) }
+			$vra.deleteBGRoleContent($project.id, "CSP_SUPPORT")
+			$supportGrpList | ForEach-Object { $vra.addRoleToBG($project.id, "CSP_SUPPORT", $_) }
 		}
 	}
 
@@ -528,8 +523,8 @@ function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$adminG
 	if($userGrpList.Count -gt 0)
 	{
 		$logHistory.addLineAndDisplay("--> Updating 'Shared access role'...")
-		$vra.deleteBGRoleContent($bg.id, "CSP_CONSUMER_WITH_SHARED_ACCESS")
-		$userGrpList | ForEach-Object { $vra.addRoleToBG($bg.id, "CSP_CONSUMER_WITH_SHARED_ACCESS", $_) }
+		$vra.deleteBGRoleContent($project.id, "CSP_CONSUMER_WITH_SHARED_ACCESS")
+		$userGrpList | ForEach-Object { $vra.addRoleToBG($project.id, "CSP_CONSUMER_WITH_SHARED_ACCESS", $_) }
 	}
 
 }
@@ -537,60 +532,84 @@ function createOrUpdateBGRoles([vRAAPI]$vra, [PSCustomObject]$bg, [Array]$adminG
 
 <#
 -------------------------------------------------------------------------------------
-	BUT : Créé (si inexistant) ou met à jour un Entitlement de Project (si existant)
+	BUT : Créé (si inexistant) ou met à jour un Entitlement de Project (si existant).
+			Ajoute aussi les content source avec le niveau de confidentialité donné
 
-	IN  : $vra 			-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $bg			-> Objet Project auquel l'entitlement est attaché
-	IN  : $entName		-> Nom de l'entitlement
-	IN  : $entDesc		-> Description de l'entitlement.
-	IN  : $entType		-> Type d'entitlement
-	IN  : $nameGenerator-> Objet faisant office de générateur de noms
-	IN  : $onlyForGroups-> Tableau avec la liste des noms des groupes auquels donner accès.
-							Si vide, on ne limite à personne, open bar pour tous.
+	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $project				-> Objet Project auquel l'entitlement est attaché
+	IN  : $contentSourcePrivacy	-> Niveau de confidentialité des "content source"
+	IN  : $entType				-> Type d'entitlement
+	IN  : $nameGenerator		-> Objet faisant office de générateur de noms
+	IN  : $deniedServices		-> Tableau avec les services à ne pas mettre pour le Projet.
+									Le tableau contient une liste d'objet ayant les clefs suivantes:
+									.svc	-> nom du service concerné
+									.items 	-> tableau des items "denied". Si vide, c'est l'entier du
+												service qui est "denied". Sinon, on ajoute spécifiquement
+												les autres items du catalogue, à l'exception de ceux qui
+												sont présents dans la liste
+	IN  : $mandatoryItems		-> Tableau avec la liste des items de catalogue à ajouter obligatoirement
+									à la liste des "Entitled items"	
+	IN  : $onlyForGroups		-> Tableau avec la liste des noms des groupes auquels donner accès.
+									Si vide, on ne limite à personne, open bar pour tous.
 
 	RET : Objet contenant l'Entitlement
+
+	-deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
 #>
-function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName, [string]$entDesc, [EntitlementType]$entType, [NameGenerator]$nameGenerator, [Array]$onlyForGroups)
+function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [CatalogProjectPrivacy]$contentSourcePrivacy, [EntitlementType]$entType, [NameGenerator]$nameGenerator, [Array]$deniedServices, [Array]$mandatoryItems, [Array]$onlyForGroups)
 {
+	# Extraction des noms des services non autorisés
+	$deniedServicesNames = @($deniedServices | Select-Object -ExpandProperty svc)
 
-	# On recherche l'entitlement 
-	$logHistory.addLineAndDisplay(("-> Trying to get Entitlement for Project {0} (type: {1})..." -f $bg.name, $entType.ToString()))
+	#FIXME: Gérer les "mandatory catalog items" une fois qu'on saura les gérer un par un
+	$logHistory.addLineAndDisplay(("Getting '{0}' Content Source list..." -f $contentSourcePrivacy))
 
-	# Recherche de l'entitlement du Project du type donné. On recherche ceux du Project et on filtre ensuite avec une RegEx
-	$ent = @($vra.getBGEntList($bg.id) | Where-Object { $_.name -match $nameGenerator.getEntNameRegex($entType)})
+	$contentSourceList = $vra.getContentSourcesList($contentSourcePrivacy)
+	
+	$logHistory.addLineAndDisplay(("{0} {1} Content Sources found" -f $contentSourceList.count, $contentSourcePrivacy))
 
-	# Si on a trop de résultats
-	if($ent.count -gt 1)
+	# Parcours des Content Sources trouvées
+	ForEach($contentSource in $contentSourceList)
 	{
-		Throw ("{0} Entitlements with same type ({1}) found for Project '{2}'" -f $ent.count, $entType.toString(), $bg.name)
-	}
+		$logHistory.addLineAndDisplay(("> Processing Content Source '{0}'..." -f $contentSource.name))
 
-	if($ent.count -eq 0)
-	{
-		$logHistory.addLineAndDisplay(("-> Entitlement for type '{0} not found... creating {1}..." -f $entType.toString(), $entName))
-		$ent = $vra.addEnt($entName, $entDesc, $bg.id, $bg.name, $onlyForGroups)
+		#FIXME: Gérer aussi les Entitlement [EntitlementType]::Admin
+		$entName = $contentSource.name
+		$ent = $vra.getProjectEntitlement($project, $entName)
 
-		$counters.inc('EntCreated')
-	}
-	else # L'entitlement existe
-	{
-		$ent = $ent[0]
-
-		# Si le nom a changé (car le nom du Project a changé) ou la description a changé 
-		if(($ent.name -ne $entName) -or ($ent.description -ne $entDesc) -or `
-			((!$ent.allUsers) -and ($null -ne (Compare-Object $onlyForGroups ($ent.principals | Select-Object -ExpandProperty "value")))))
+		# L'entitlement n'existe pas encore
+		if($null -eq $ent)
 		{
-			$logHistory.addLineAndDisplay(("-> Updating Entitlement {0} for type {1}..." -f $ent.name, $entType.toString()))
-			# Mise à jour du nom/description de l'entitlement courant et on force la réactivation
-			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true, $onlyForGroups)
+			$logHistory.addLineAndDisplay((">> Entilement '{0}' doesn't exists" -f $entName))
 
-			$counters.inc('EntUpdated')
+			# Si le Content Source n'est pas dans ceux qui ne sont pas autorisés pour le Projet
+			if($deniedServicesNames -notcontains $contentSource.name)
+			{
+				$logHistory.addLineAndDisplay((">> Creating Entitlement '{0}' for Content Source '{1}'..." -f $entName, $contentSource.name))
+				# Ajout de l'entitlement (appelé "content sharing" dans la GUI WEB)
+				$ent = $vra.addEntitlement($contentSource, $project)
+			}
+			else # Le ContentSource n'est pas autorisé
+			{
+				$logHistory.addLineAndDisplay((">> Content Source '{0}' not allowed for Project '{1}', skipping Entitlement creation" -f $contentSource.name, $project.name))
+			}
+			
 		}
-		else
+		else # L'Entitlement existe déjà
 		{
-			$logHistory.addLineAndDisplay(("-> Entitlement {0} for type {1} is up-to-date" -f $ent.name, $entType.toString()))
-		}
-	}
+			$logHistory.addLineAndDisplay((">> Entitlement '{0}' already exists" -f $entName))
+
+			# Si le content Source n'est pas autorisé pour le projet courant, on le supprime
+			if($deniedServicesNames -contains $contentSource.name)
+			{
+				$logHistory.addLineAndDisplay((">> Content Source '{0}' not allowed for Project '{1}', removing Entitlement..." -f $contentSource.name, $projectName))
+				$vra.deleteEntitlement($ent)
+			}
+
+		} # FIN SI l'entitlement existe déjà
+
+	}# FIN BOUCLE de parcours des Content Sources trouvées
+
 	return $ent
 }
 
@@ -624,7 +643,7 @@ function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName
 	
 	RET : Objet Entitlement mis à jour
 #>
-function prepareAddMissingBGEntPublicServices([vRAAPI]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices, [Array]$mandatoryItems, [string]$projectName)
+function prepareAddMissingBGEntPublicServices([vRA8API]$vra, [PSCustomObject]$ent, [PSCustomObject]$approvalPolicy, [Array]$deniedServices, [Array]$mandatoryItems, [string]$projectName)
 {
 
 	$logHistory.addLineAndDisplay("-> Getting existing public Services...")
@@ -822,7 +841,7 @@ function sendErrorMailNoResTemplateFound
 
 	RET : Rien
 #>
-function createOrUpdateBGReservations([vRAAPI]$vra, [PSCustomObject]$bg, [string]$resTemplatePrefix)
+function createOrUpdateBGReservations([vRA8API]$vra, [PSCustomObject]$bg, [string]$resTemplatePrefix)
 {
 
 	# Si les réservations sont gérées de manière manuelle pour le BG
@@ -844,7 +863,7 @@ function createOrUpdateBGReservations([vRAAPI]$vra, [PSCustomObject]$bg, [string
 	}
 
 	# Recherche de la liste des Reservations déjà attachée au BG
-	$bgResList = $vra.getBGResList($bg.id)
+	$bgResList = $vra.getBGResList($project.id)
 
 	# Pour enregistrer la liste des Reservations qui ont été traitées
 	$doneResList = @()
@@ -856,7 +875,7 @@ function createOrUpdateBGReservations([vRAAPI]$vra, [PSCustomObject]$bg, [string
 		$templateClusterName = getResClusterName -reservation $resTemplate
 
 		# Création du nom que la Reservation devrait avoir
-		$resName = $nameGenerator.getBGResName($bg.name, $templateClusterName)
+		$resName = $nameGenerator.getBGResName($project.name, $templateClusterName)
 
 		$doneResList += $resName
 
@@ -878,7 +897,7 @@ function createOrUpdateBGReservations([vRAAPI]$vra, [PSCustomObject]$bg, [string
 		if($null -eq $matchingRes)
 		{
 			$logHistory.addLineAndDisplay(("--> Adding Reservation '{0}' from template '{1}'..." -f $resName, $resTemplate.name))
-			$vra.addResFromTemplate($resTemplate, $resName, $bg.tenant, $bg.id) | Out-Null
+			$vra.addResFromTemplate($resTemplate, $resName, $project.tenant, $project.id) | Out-Null
 
 			$counters.inc('ResCreated')
 		}
@@ -927,13 +946,13 @@ function createOrUpdateBGReservations([vRAAPI]$vra, [PSCustomObject]$bg, [string
 	RET : $true si mis en ghost
 		  $false si pas mis en ghost
 #>
-function setBGAsGhostIfNot([vRAAPI]$vra, [PSObject]$bg)
+function setBGAsGhostIfNot([vRA8API]$vra, [PSObject]$bg)
 {
 	# FIXME:
 	# Si le Project est toujours actif
 	if(isProjectAlive -project $bg)
 	{
-		$notifications.bgSetAsGhost += $bg.name
+		$notifications.bgSetAsGhost += $project.name
 
 		# On marque le Project comme "Ghost"
 		$vra.updateBG($bg, $null, $null, $null, @{"$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS" = $global:VRA_BG_STATUS__GHOST})
@@ -941,20 +960,20 @@ function setBGAsGhostIfNot([vRAAPI]$vra, [PSObject]$bg)
 		$counters.inc('BGGhost')
 
 		# ---- EPFL ----
-		if($bg.tenant -eq $global:VRA_TENANT__EPFL )
+		if($project.tenant -eq $global:VRA_TENANT__EPFL )
 		{
 			
 			# Récupération du contenu du rôle des admins de faculté pour le BG
-			$facAdmins = $vra.getBGRoleContent($bg.id, "CSP_SUBTENANT_MANAGER") 
+			$facAdmins = $vra.getBGRoleContent($project.id, "CSP_SUBTENANT_MANAGER") 
 			
 			# Ajout des admins de la faculté de l'unité du Project afin qu'ils puissent gérer les élments du BG.
 			# FIXME: 
 			createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $facAdmins
 		}
 		# ITServices ou Research
-		elseif( ($bg.tenant -eq $global:VRA_TENANT__ITSERVICES) -or ($bg.tenant -eq $global:VRA_TENANT__RESEARCH) )
+		elseif( ($project.tenant -eq $global:VRA_TENANT__ITSERVICES) -or ($project.tenant -eq $global:VRA_TENANT__RESEARCH) )
 		{
-			$tenantAdmins = $vra.getTenantAdminGroupList($bg.tenant)
+			$tenantAdmins = $vra.getTenantAdminGroupList($project.tenant)
 			# Ajout des admins LOCAUX du tenant comme pouvant gérer les éléments du BG
 			# FIXME:
 			createOrUpdateBGRoles -vra $vra -bg $bg -sharedGrpList $tenantAdmins
@@ -962,7 +981,7 @@ function setBGAsGhostIfNot([vRAAPI]$vra, [PSObject]$bg)
 		}
 		else
 		{
-			Throw ("!!! Tenant '{0}' not supported in this script" -f $bg.tenant)
+			Throw ("!!! Tenant '{0}' not supported in this script" -f $project.tenant)
 		}
 		
 		$setAsGhost = $true
@@ -1002,7 +1021,7 @@ function isProjectAlive([PSCustomObject]$project)
 	<# Si on arrive ici, c'est qu'on n'a pas défini de clef (pour une raison inconnue) pour enregistrer le statut
 	   On enregistre donc la chose et on dit que le Project est "vivant"
 	#>
-	$notifications.projectWithoutCustomPropStatus += $bg.name
+	$notifications.projectWithoutCustomPropStatus += $project.name
 	return $true
 }
 
@@ -1511,6 +1530,48 @@ try
 	# Calcul de la date dans le passé jusqu'à laquelle on peut prendre les groupes modifiés.
 	$aMomentInThePast = (Get-Date).AddDays(-$global:AD_GROUP_MODIFIED_LAST_X_DAYS)
 
+
+	# -------- Catalog Projects
+
+	$catalogProjectTypeList = @([ProjectType]::PublicCatalog, [ProjectType]::PrivateCatalog)
+
+	# Parcours de la liste des types
+	ForEach($catalogProjectType in $catalogProjectTypeList)
+	{
+		$logHistory.addLineAndDisplay(("Getting Catalog Project list with type '{0}'..." -f $catalogProjectType))
+
+		$catalogProjectList = $vra.getProjectList($catalogProjectType)
+
+		$logHistory.addLineAndDisplay(("{0} Catalog Projects found" -f $catalogProjectList.count))
+
+		# Parcours des projets trouvés pour le type courant
+		ForEach($catalogProject in $catalogProjectList)
+		{
+			$logHistory.addLineAndDisplay(("> Processing Catalog Project '{0}'..." -f $catalogProject.name))
+
+			# Recherche du nom de la "Content Source"
+			$contentSourceName = $nameGenerator.getCatalogProjectContentSourceName($catalogProject)
+
+			$contentSource = $vra.getContentSource($contentSourceName)
+
+			# Si pas trouvé
+			if($null -eq $contentSource)
+			{
+				$logHistory.addLineAndDisplay(("> Content Source '{0}' doesn't exists, creating..." -f $contentSourceName))
+
+				$contentSource = $vra.addContentSources($contentSourceName, $catalogProject)
+			}
+			else # Le Content Source existe déjà
+			{
+				$logHistory.addLineAndDisplay(("> Content Source already exists"))
+			}
+
+		}# FIN BOUCLE de parcours des catalogue pour le type courant
+
+	}# FIN BOUCLE de parcours sur les types de catalogue possibles
+
+	
+
 	# Parcours des groupes AD pour l'environnement/tenant donné
 	$adGroupList | ForEach-Object {
 
@@ -1706,12 +1767,12 @@ try
 		# --------------------------------- Project 
 
 		# Création ou mise à jour du Project
-		$bg = createOrUpdateProject -vra $vra -bgEPFLID $projectEPFLID -tenantName $targetTenant -projectName $projectName -bgDesc $projectDesc `
-									-machinePrefixName $machineNameTemplate -financeCenter $financeCenter -adminGrpList $adminGrpList -userGrpList $userGrpList
+		$project = createOrUpdateProject -vra $vra -projectEPFLID $projectEPFLID -tenantName $targetTenant -projectName $projectName -projectDesc $projectDesc `
+									-machineNameTemplate $machineNameTemplate -financeCenter $financeCenter -adminGrpList $adminGrpList -userGrpList $userGrpList
 
 		
 		# Si Project pas créé, on passe au s	uivant (la fonction de création a déjà enregistré les infos sur ce qui ne s'est pas bien passé)
-		if($null -eq $bg)
+		if($null -eq $project)
 		{
 			# On note quand même le Project comme pas traité
 			$doneElementList += @{
@@ -1744,55 +1805,65 @@ try
 			# $itemReqApprovalPolicy = $null
 		}
 		
+		
+
+
+		# ----------------------------------------------------------------------------------
+		# --------------------------------- Entitlements
+
+
+		# -- Public
+		
+		
+		#FIXME: Gérer aussi les Entitlement "Private"
+
 		#  TODO: COntinuer depuis ici
 
 
-		# ----------------------------------------------------------------------------------
-		# --------------------------------- Project Entitlement
-		# Pour les utilisateurs (toutes les actions)
-		$ent = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entName -entDesc $entDesc -entType ([EntitlementType]::User) -NameGenerator $nameGenerator `
-									-onlyForGroups @()
-		# Pour les admins (actions VIP)
-		$entAdm = createOrUpdateBGEnt -vra $vra -bg $bg -entName $entNameAdm -entDesc $entDescAdm -entType ([EntitlementType]::Admin) -NameGenerator $nameGenerator `
-									-onlyForGroups $adminGrpList.split('@')[0]
+		# # Pour les utilisateurs (toutes les actions)
+		$ent = createOrUpdateProjectEnt -vra $vra -project $project -contentSourcePrivacy ([CatalogProjectPrivacy]::Public) -entType ([EntitlementType]::User) -NameGenerator $nameGenerator `
+									-onlyForGroups @() -deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
+		# # Pour les admins (actions VIP)
+		# $entAdm = createOrUpdateProjectEnt -vra $vra -bg $project -entName $entNameAdm -entDesc $entDescAdm -entType ([EntitlementType]::Admin) -NameGenerator $nameGenerator `
+		# 							-onlyForGroups $adminGrpList.split('@')[0]
 		
-		# ----------------------------------------------------------------------------------
-		# --------------------------------- Project Entitlement - 2nd day Actions
-		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for users...")
-		$result = $vra.prepareEntActions($ent, $secondDayActions, $targetTenant)
-		$ent = $result.entitlement
-		# Mise à jour de la liste des actions non trouvées
-		$notifications.notFound2ndDayActions += $result.notFoundActions
+		# # ----------------------------------------------------------------------------------
+		# # --------------------------------- Project Entitlement - 2nd day Actions
+		# $logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for users...")
+		# $result = $vra.prepareEntActions($ent, $secondDayActions, $targetTenant)
+		# $ent = $result.entitlement
+		# # Mise à jour de la liste des actions non trouvées
+		# $notifications.notFound2ndDayActions += $result.notFoundActions
 
-		$logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for admins...")
-		$result = $vra.prepareEntActions($entAdm, $secondDayActionsAdm, $targetTenant)
-		$entAdm = $result.entitlement
+		# $logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for admins...")
+		# $result = $vra.prepareEntActions($entAdm, $secondDayActionsAdm, $targetTenant)
+		# $entAdm = $result.entitlement
 
-		# Mise à jour de la liste des actions non trouvées
-		$notifications.notFound2ndDayActions += $result.notFoundActions
+		# # Mise à jour de la liste des actions non trouvées
+		# $notifications.notFound2ndDayActions += $result.notFoundActions
 		
 	
-		# ----------------------------------------------------------------------------------
-		# --------------------------------- Project Entitlement - Services
-		$logHistory.addLineAndDisplay(("-> Adding public Services to Entitlement for users..."))
-		$ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc `
-				-mandatoryItems $mandatoryEntItemsList -projectName $projectName
+		# # ----------------------------------------------------------------------------------
+		# # --------------------------------- Project Entitlement - Services
+		# $logHistory.addLineAndDisplay(("-> Adding public Services to Entitlement for users..."))
+		# $ent = prepareAddMissingBGEntPublicServices -vra $vra -ent $ent -approvalPolicy $itemReqApprovalPolicy -deniedServices $deniedVRASvc `
+		# 		-mandatoryItems $mandatoryEntItemsList -projectName $projectName
 
-		$logHistory.addLineAndDisplay(("-> Adding public Services to Entitlement for admins..."))
-		$entAdm = prepareAddMissingBGEntPublicServices -vra $vra -ent $entAdm -approvalPolicy $null -deniedServices $deniedVRASvc `
-				-mandatoryItems $mandatoryEntItemsList -projectName $projectName
+		# $logHistory.addLineAndDisplay(("-> Adding public Services to Entitlement for admins..."))
+		# $entAdm = prepareAddMissingBGEntPublicServices -vra $vra -ent $entAdm -approvalPolicy $null -deniedServices $deniedVRASvc `
+		# 		-mandatoryItems $mandatoryEntItemsList -projectName $projectName
 
-		# Mise à jour de l'entitlement avec les modifications apportées ci-dessus
-		$logHistory.addLineAndDisplay("-> Updating Entitlement for users...")
-		$ent = $vra.updateEnt($ent, $true)
+		# # Mise à jour de l'entitlement avec les modifications apportées ci-dessus
+		# $logHistory.addLineAndDisplay("-> Updating Entitlement for users...")
+		# $ent = $vra.updateEnt($ent, $true)
 
-		$logHistory.addLineAndDisplay("-> Updating Entitlement for admins...")
-		$entAdm = $vra.updateEnt($entAdm, $true)
+		# $logHistory.addLineAndDisplay("-> Updating Entitlement for admins...")
+		# $entAdm = $vra.updateEnt($entAdm, $true)
 
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Reservations
-		createOrUpdateBGReservations -vra $vra -bg $bg -resTemplatePrefix $nameGenerator.getReservationTemplatePrefix()
+		# createOrUpdateBGReservations -vra $vra -bg $project -resTemplatePrefix $nameGenerator.getReservationTemplatePrefix()
 
 		
 
@@ -1800,108 +1871,111 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Dossier pour les ISO privées
 		
-		# Recherche de l'UNC jusqu'au dossier où mettre les ISO pour le BG
-		$bgISOFolder = $nameGenerator.getNASPrivateISOPath($projectName)
-
-		$ISOFolderCreated = $false
-		# Si on a effectivement un dossier où mettre les ISO et qu'il n'existe pas encore,
-		# NOTE: Si on est sur le DEV, on a fait en sorte que $bgISOFolder soit vide ("") donc
-		# on n'entrera jamais dans ce IF
-		if(($bgISOFolder -ne "") -and (-not (Test-Path $bgISOFolder)))
+		if($targetEnv -ne $global:TARGET_ENV__DEV)
 		{
-			$logHistory.addLineAndDisplay(("--> Creating ISO folder '{0}'..." -f $bgISOFolder))
-			# On le créé
-			New-Item -Path $bgISOFolder -ItemType:Directory | Out-Null
+			# Recherche de l'UNC jusqu'au dossier où mettre les ISO pour le BG
+			$bgISOFolder = $nameGenerator.getNASPrivateISOPath($projectName)
 
-			$ISOFolderCreated = $true
-			# On attend 1 seconde que le dossier se créée bien car si on essaie trop rapidement d'y accéder, on ne va pas pouvoir
-			# récuprer les ACL correctement...
-			Start-sleep -Seconds 1
-		} # FIN S'il faut créer un dossier pour les ISO et qu'il n'existe pas encore.
-
-
-		# Si on a créé un dossier 
-		# OU 
-		# qu'on doit mettre à jour les ACLs
-		# OU
-		# que c'est un Project avec le groupe de support qui est managé
-		if($ISOFolderCreated -or $forceACLsUpdate -or `
-			(getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -ne $global:VRA_BG_RES_MANAGE__AUTO)
-		{
-			$logHistory.addLineAndDisplay(("--> Preparing ACLs for ISO folder '{0}'..." -f $bgISOFolder))
-			# Récupération et modification des ACL pour ajouter les groupes AD qui sont pour le Role "Shared" dans le BG
-			$acl = Get-Acl $bgISOFolder
-	
-			# On détermine qui a accès. Par défaut, tous les utilisateurs du BG
-			$grantsToGroups = $userGrpList
-			# Ajout des groupes de support
-			$grantsToGroups += $vra.getBGRoleContent($bg.id, "CSP_SUPPORT")
-	
-			# Extraction des noms des groupes présents dans les ACLs du dossier, seulement ceux qui ne sont pas (et on les met au format <item>@intranet.epfl.ch)
-			$aclGroups = @($acl.Access | Where-Object { !$_.IsInherited } | ForEach-Object { "{0}@intranet.epfl.ch" -f $_.IdentityReference.Value.Split('\')[1]} )
-	
-			<# Note:
-				On pourrait simplement virer toutes les ACLs et les réappliquer mais dans le cas éventuel où une entrée aurait été modifiée 
-				(par exemple avec un peu plus de droits, vu que nécessaire depuis OSX), elle serait supprimée et recréée "faux". Donc là, 
-				on ne nettoie que ce qui ne devrait plus être là en fait.
-			#>
-	
-			# On détermine ce qui doit être ajouté ou supprimé
-			$diff = Compare-Object -ReferenceObject $grantsToGroups -DifferenceObject $aclGroups
-	
-			# Si on a des différences entre ce qui est appliqué comme ACL et ce qui devrait être appliqué
-			if($null -ne $diff)
+			$ISOFolderCreated = $false
+			# Si on a effectivement un dossier où mettre les ISO et qu'il n'existe pas encore,
+			# NOTE: Si on est sur le DEV, on a fait en sorte que $bgISOFolder soit vide ("") donc
+			# on n'entrera jamais dans ce IF
+			if(($bgISOFolder -ne "") -and (-not (Test-Path $bgISOFolder)))
 			{
-				# Parcours de ce qui doit être supprimé
-				ForEach($toRemove in ($diff | Where-Object { $_.SideIndicator -eq "=>"} | Select-Object -ExpandProperty InputObject ))
-				{
-					$logHistory.addLineAndDisplay(("---> Removing incorrect Group/User '{0}'..." -f $toRemove))
-					$acl.RemoveAccessRule( ($acl.Access | Where-Object { !$_.IsInherited -and $_.IdentityReference -like ('*\{0}' -f $toRemove)}) )
-				}
-	
-				# Parcours de ce qui doit être ajouté
-				ForEach($toAdd in ($diff | Where-Object { $_.SideIndicator -eq "<="} | Select-Object -ExpandProperty InputObject))
-				{
-					$logHistory.addLineAndDisplay(("---> Adding Group/User '{0}'..." -f $toAdd))
-					# On fait en sorte de créer le dossier sans donner les droits de création de sous-dossier à l'utilisateur, histoire qu'il ne puisse pas décompresser une ISO
-					$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($toAdd,  "CreateFiles, WriteExtendedAttributes, WriteAttributes, Delete, ReadAndExecute, Synchronize", "ContainerInherit,ObjectInherit",  "None", "Allow")
-					$acl.SetAccessRule($ar)
-				}
-	
-				$logHistory.addLineAndDisplay(("--> Applying ACLs on ISO folder '{0}'..." -f $bgISOFolder))
-				Set-Acl $bgISOFolder $acl
-			}
-			else # Les ACLs sont à jour
-			{
-				$logHistory.addLineAndDisplay(("--> ACLs on ISO folder '{0}' is up-to-date" -f $bgISOFolder))
-			}
+				$logHistory.addLineAndDisplay(("--> Creating ISO folder '{0}'..." -f $bgISOFolder))
+				# On le créé
+				New-Item -Path $bgISOFolder -ItemType:Directory | Out-Null
 
+				$ISOFolderCreated = $true
+				# On attend 1 seconde que le dossier se créée bien car si on essaie trop rapidement d'y accéder, on ne va pas pouvoir
+				# récuprer les ACL correctement...
+				Start-sleep -Seconds 1
+			} # FIN S'il faut créer un dossier pour les ISO et qu'il n'existe pas encore.
+
+
+			# Si on a créé un dossier 
+			# OU 
+			# qu'on doit mettre à jour les ACLs
+			# OU
+			# que c'est un Project avec le groupe de support qui est managé
+			if($ISOFolderCreated -or $forceACLsUpdate -or `
+				(getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -ne $global:VRA_BG_RES_MANAGE__AUTO)
+			{
+				$logHistory.addLineAndDisplay(("--> Preparing ACLs for ISO folder '{0}'..." -f $bgISOFolder))
+				# Récupération et modification des ACL pour ajouter les groupes AD qui sont pour le Role "Shared" dans le BG
+				$acl = Get-Acl $bgISOFolder
+		
+				# On détermine qui a accès. Par défaut, tous les utilisateurs du BG
+				$grantsToGroups = $userGrpList
+								
+				# Extraction des noms des groupes présents dans les ACLs du dossier, seulement ceux qui ne sont pas (et on les met au format <item>@intranet.epfl.ch)
+				$aclGroups = @($acl.Access | Where-Object { !$_.IsInherited } | ForEach-Object { "{0}@intranet.epfl.ch" -f $_.IdentityReference.Value.Split('\')[1]} )
+		
+				<# Note:
+					On pourrait simplement virer toutes les ACLs et les réappliquer mais dans le cas éventuel où une entrée aurait été modifiée 
+					(par exemple avec un peu plus de droits, vu que nécessaire depuis OSX), elle serait supprimée et recréée "faux". Donc là, 
+					on ne nettoie que ce qui ne devrait plus être là en fait.
+				#>
+		
+				# On détermine ce qui doit être ajouté ou supprimé
+				$diff = Compare-Object -ReferenceObject $grantsToGroups -DifferenceObject $aclGroups
+		
+				# Si on a des différences entre ce qui est appliqué comme ACL et ce qui devrait être appliqué
+				if($null -ne $diff)
+				{
+					# Parcours de ce qui doit être supprimé
+					ForEach($toRemove in ($diff | Where-Object { $_.SideIndicator -eq "=>"} | Select-Object -ExpandProperty InputObject ))
+					{
+						$logHistory.addLineAndDisplay(("---> Removing incorrect Group/User '{0}'..." -f $toRemove))
+						$acl.RemoveAccessRule( ($acl.Access | Where-Object { !$_.IsInherited -and $_.IdentityReference -like ('*\{0}' -f $toRemove)}) )
+					}
+		
+					# Parcours de ce qui doit être ajouté
+					ForEach($toAdd in ($diff | Where-Object { $_.SideIndicator -eq "<="} | Select-Object -ExpandProperty InputObject))
+					{
+						$logHistory.addLineAndDisplay(("---> Adding Group/User '{0}'..." -f $toAdd))
+						# On fait en sorte de créer le dossier sans donner les droits de création de sous-dossier à l'utilisateur, histoire qu'il ne puisse pas décompresser une ISO
+						$ar = New-Object  system.security.accesscontrol.filesystemaccessrule($toAdd,  "CreateFiles, WriteExtendedAttributes, WriteAttributes, Delete, ReadAndExecute, Synchronize", "ContainerInherit,ObjectInherit",  "None", "Allow")
+						$acl.SetAccessRule($ar)
+					}
+		
+					$logHistory.addLineAndDisplay(("--> Applying ACLs on ISO folder '{0}'..." -f $bgISOFolder))
+					Set-Acl $bgISOFolder $acl
+				}
+				else # Les ACLs sont à jour
+				{
+					$logHistory.addLineAndDisplay(("--> ACLs on ISO folder '{0}' is up-to-date" -f $bgISOFolder))
+				}
+
+			}
+			else # Si on n'a pas besoin de mettre à jour les ACLs
+			{
+				$logHistory.addLineAndDisplay(("--> No need to update ACLs on ISO folder '{0}'" -f $bgISOFolder))
+			}
 		}
-		else # Si on n'a pas besoin de mettre à jour les ACLs
-		{
-			$logHistory.addLineAndDisplay(("--> No need to update ACLs on ISO folder '{0}'" -f $bgISOFolder))
-		}
+
+		
 
 
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- NSX
 
-		# Création du NSGroup si besoin 
-		$nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
+		# # Création du NSGroup si besoin 
+		# $nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
 
-		# Création de la section de Firewall si besoin
-		$nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc -nsxNSGroup $nsxNSGroup
+		# # Création de la section de Firewall si besoin
+		# $nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc -nsxNSGroup $nsxNSGroup
 
-		# Création des règles dans la section de firewall
-		createFirewallSectionRulesIfNotExists -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
+		# # Création des règles dans la section de firewall
+		# createFirewallSectionRulesIfNotExists -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
 
-		# Verrouillage de la section de firewall (si elle ne l'est pas encore)
-		$nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
+		# # Verrouillage de la section de firewall (si elle ne l'est pas encore)
+		# $nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
 
-		$doneElementList += @{
-			adGroup = $_.name
-			projectName = $projectName
-		}
+		# $doneElementList += @{
+		# 	adGroup = $_.name
+		# 	projectName = $projectName
+		# }
 		# On sauvegarde l'avancement dans le cas où on arrêterait le script au milieu manuellement
 		$resumeOnFail.save($doneElementList)	
 
@@ -1914,50 +1988,35 @@ try
 
 	$logHistory.addLineAndDisplay("Cleaning 'old' Projects")
 	
-	# Extraction de la liste des ID "custom" des éléments qui ont été traités. Cela sera donc les SVCxxxx ou ID d'unité suivant le tenant)
-	$doneBGidList = ($doneElementList | ForEach-Object { ($nameGenerator.extractInfosFromADGroupName($_.adGroup))[-1] } )
+	# # Extraction de la liste des ID "custom" des éléments qui ont été traités. Cela sera donc les SVCxxxx ou ID d'unité suivant le tenant)
+	# $doneBGidList = ($doneElementList | ForEach-Object { ($nameGenerator.extractInfosFromADGroupName($_.adGroup))[-1] } )
 
-	# Recherche et parcours de la liste des Project commençant par le bon nom pour le tenant
-	$vra.getBGList() | ForEach-Object {
+	# # Recherche et parcours de la liste des Project commençant par le bon nom pour le tenant
+	# $vra.getBGList() | ForEach-Object {
 
-		# Recherche si le Project est d'un des types donné, pour ne pas virer des Project "admins"
-		$isBGOfType = isBGOfType -bg $_ -typeList @([ProjectType]::Service, [ProjectType]::Unit, [ProjectType]::Project)
+	# 	# Recherche si le Project est d'un des types donné, pour ne pas virer des Project "admins"
+	# 	$isBGOfType = isBGOfType -bg $_ -typeList @([ProjectType]::Service, [ProjectType]::Unit, [ProjectType]::Project)
 
-		# Si la custom property qui donne les infos n'a pas été trouvée
-		if($null -eq $isBGOfType)
-		{
-			$notifications.bgWithoutCustomPropType += $_.name
-			$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Project '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE, $_.name))
-		}
-		else # On a les infos sur le type de BG
-		{
-			$bgId = (getProjectCustomPropValue -project $_ -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID)
-			# Si on n'a pas trouvé de groupe AD qui correspondait au BG, on peut le mettre en "ghost"
-			if(($null -ne $bgId) -and  ($doneBGidList -notcontains $bgId))
-			{
-				$logHistory.addLineAndDisplay(("-> Setting Project '{0}' as Ghost..." -f $_.name))
-				setBGAsGhostIfNot -vra $vra -bg $_ | Out-Null
-			}
-
-		}
-
-	}
-
-	# ----------------------------------------------------------------------------------------------------------------------
-	# ----------------------------------------------------------------------------------------------------------------------
-
-	# Désactivation des approval policies qui ne sont pas utilisées
-	# $logHistory.addLineAndDisplay("Deactivating unused Approval Policies")
-	# $vra.getApprovalPolicyList() | ForEach-Object {
-	# 	if($processedApprovalPoliciesIDs -notcontains $_.id)
+	# 	# Si la custom property qui donne les infos n'a pas été trouvée
+	# 	if($null -eq $isBGOfType)
 	# 	{
-	# 		$logHistory.addLineAndDisplay(("-> Deactivating Approval Policy '{0}'... " -f $_.name))
-	# 		$res = $vra.setApprovalPolicyState($_, $false)
+	# 		$notifications.bgWithoutCustomPropType += $_.name
+	# 		$logHistory.addLineAndDisplay(("-> Custom Property '{0}' not found in Project '{1}'..." -f $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE, $_.name))
 	# 	}
+	# 	else # On a les infos sur le type de BG
+	# 	{
+	# 		$bgId = (getProjectCustomPropValue -project $_ -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID)
+	# 		# Si on n'a pas trouvé de groupe AD qui correspondait au BG, on peut le mettre en "ghost"
+	# 		if(($null -ne $bgId) -and  ($doneBGidList -notcontains $bgId))
+	# 		{
+	# 			$logHistory.addLineAndDisplay(("-> Setting Project '{0}' as Ghost..." -f $_.name))
+	# 			setBGAsGhostIfNot -vra $vra -bg $_ | Out-Null
+	# 		}
+
+	# 	}
+
 	# }
 
-
-	$vra.disconnect()
 
 	# Gestion des erreurs s'il y en a
 	handleNotifications -notifications $notifications -targetEnv $targetEnv -targetTenant $targetTenant

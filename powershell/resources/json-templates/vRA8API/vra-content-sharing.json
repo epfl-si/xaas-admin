@@ -1,0 +1,8 @@
+{
+    "definition": {
+      "id": "{{contentSourceId}}",
+      "name": "{{name}}",
+      "type": "CatalogSourceIdentifier"
+    },
+    "projectId": "{{projectId}}"
+  }

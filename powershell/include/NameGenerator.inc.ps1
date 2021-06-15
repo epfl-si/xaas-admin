@@ -873,25 +873,6 @@ class NameGenerator: NameGeneratorBase
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom et la description d'un Entitlement pour le tenant
-
-        IN  : $entType  -> Type de l'entitlement
-
-        RET : Tableau avec :
-                - Nom de l'Entitlement
-                - Description de l'entitlement
-    #>
-    [System.Collections.ArrayList] getBGEntNameAndDesc([EntitlementType]$entType)
-    {
-        $name = $this.getEntName($entType)
-        $desc = $this.getEntDescription($entType)
-
-        return @($name, $desc)
-    }
-
-
-    <#
-        -------------------------------------------------------------------------------------
         BUT : Renvoie le nom et la description du Security Group (NSX) pour une faculté donnée
 
         IN  : $bgName   -> Le nom du BG lié au Business Group
@@ -1854,6 +1835,23 @@ class NameGenerator: NameGeneratorBase
     [string] getGitHubCatalogPath([string]$catalogName)
     {
         return ("CloudTemplates/{0}" -f $catalogName)
+    }
+
+
+    <#
+    -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom d'un "Content Source" pour un projet "catalogue" donné
+
+        IN  : $catalogProject      -> L'objet représentant le projet "catalogue"
+
+        RET : Le nom
+
+    #>
+    [string] getCatalogProjectContentSourceName([PSCustomObject]$catalogProject)
+    {
+        # On utilise le même nom que le "Catalog Project" comme ça on pourra filtrer facilement par 
+        # la suite pour les services "denied"
+        return $catalogProject.name
     }
 
 }

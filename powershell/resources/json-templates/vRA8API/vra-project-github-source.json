@@ -2,6 +2,7 @@
     "name": "{{name}}",
     "typeId": "com.github",
     "projectId": "{{projectId}}",
+    "syncEnabled": true,
     "config": {
                 "path": "{{path}}",
                 "branch": "{{branch}}",
