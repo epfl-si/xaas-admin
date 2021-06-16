@@ -1,190 +1,176 @@
 [
+    /* --- Custom machine actions --- */
     {
-        "appliesTo": "Virtual Machine", 
-        "_comment": "Custom EPFL action",
-        "actions": [
-            {
-                "name": "[VM] Mount/Unmount CD-ROM (ISO)",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "[VM] Modify Notification Mail",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "[VM] DNS alias request",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "[DMZ] Reconfigure",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "[DMZ] Scan Request",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "[VM] Request support",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "[Backup] Config",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "[Backup] Restore",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "Create Snapshot",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "Revert to Snapshot",
-                "approvals": [],
-                "deniedTenants": []
+        "name": "[VM] Mount/Unmount CD-ROM (ISO)",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "[VM] Modify Notification Mail",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "[VM] DNS alias request",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "[DMZ] Reconfigure",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "[DMZ] Scan Request",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "[VM] Request support",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "[Backup] Config",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "[Backup] Restore",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "Create Snapshot",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "Revert to Snapshot",
+        "approvals": [],
+        "deniedTenants": []
 
-            },
-            {
-                "name": "Delete Snapshot",
-                "approvals": [],
-                "deniedTenants": []
-            }
-        ]
     },
     {
-        "appliesTo": "Machine",
-        "_comment": "Actions on VM",
-        "actions": [
-            {
-                "name": "Connect to Remote Console",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "Connect using VMRC",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "Install Tools",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "Power Cycle",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "Power On",
-                "approvals":[],
-                "deniedTenants": []
-            },
-            {
-                "name": "Power Off",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "Reboot",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "Shutdown",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "Reconfigure",
-                "approvals": [
-                    {
-                        "tenant": "EPFL",
-                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
-                        "JSONReplacements": {},
-                        "approvalLevels": 2
-                    },
-                    {
-                        "tenant": "ITServices",
-                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
-                        "JSONReplacements": {},
-                        "approvalLevels": 1
-                    },
-                    {
-                        "tenant": "Research",
-                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
-                        "JSONReplacements": {},
-                        "approvalLevels": 2
-                    }
-                ],
-                "deniedTenants": []
-            },
-            {
-                "name": "Cancel Reconfigure",
-                "approvals": [],
-                "deniedTenants": []
-            },
-            {
-                "name": "Execute Reconfigure",
-                "approvals": [],
-                "deniedTenants": []
-            }
-        ]
+        "name": "Delete Snapshot",
+        "approvals": [],
+        "deniedTenants": []
+    },
+
+    /* --- Builtin Machine actions --- */
+    {
+        "name": "Cloud.vSphere.Machine.Remote.Console",
+        "approvals": [],
+        "deniedTenants": []
     },
     {
-        "appliesTo": "Deployment",
-        "_comment": "Actions done on deployments",
-        "actions": [
+        "name": "Connect using VMRC",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "Install Tools",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "Cloud.vSphere.Machine.Reset",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "Cloud.vSphere.Machine.PowerOn",
+        "approvals":[],
+        "deniedTenants": []
+    },
+    {
+        "name": "Cloud.vSphere.Machine.PowerOff",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "Cloud.vSphere.Machine.Reboot",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "Cloud.vSphere.Machine.Shutdown",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "Cloud.vSphere.Machine.Resize",
+        "approvals": [
             {
-                "name": "Expire",
-                "approvals": [],
-                "deniedTenants": []
+                "tenant": "EPFL",
+                "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                "JSONReplacements": {},
+                "approvalLevels": 2
             },
             {
-                "name": "Change Lease",
-                "approvals": [
-                    {
-                        "tenant": "EPFL",
-                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
-                        "JSONReplacements": {},
-                        "approvalLevels": 2
-                    },
-                    {
-                        "tenant": "ITServices",
-                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
-                        "JSONReplacements": {},
-                        "approvalLevels": 1
-                    },
-                    {
-                        "tenant": "Research",
-                        "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
-                        "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
-                        "JSONReplacements": {},
-                        "approvalLevels": 2
-                    }
-                ],
-                "deniedTenants": []
+                "tenant": "ITServices",
+                "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                "JSONReplacements": {},
+                "approvalLevels": 1
             },
             {
-                "name": "Change Owner",
-                "approvals": [],
-                "deniedTenants": []
+                "tenant": "Research",
+                "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                "JSONReplacements": {},
+                "approvalLevels": 2
             }
-        ]
+        ],
+        "deniedTenants": []
+    },
+    {
+        "name": "Cancel Reconfigure",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "Execute Reconfigure",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    /* --- Deployment Actions --- */
+    {
+        "name": "Expire",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "Deployment.ChangeLease",
+        "approvals": [
+            {
+                "tenant": "EPFL",
+                "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                "JSONReplacements": {},
+                "approvalLevels": 2
+            },
+            {
+                "tenant": "ITServices",
+                "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                "JSONReplacements": {},
+                "approvalLevels": 1
+            },
+            {
+                "tenant": "Research",
+                "approvalPolicyJSON": "vra-pre-approval-policy-2nd-day-generic.json",
+                "approvalLevelJSON": "vra-approval-level-usrgrp-admin-passthrough.json",
+                "JSONReplacements": {},
+                "approvalLevels": 2
+            }
+        ],
+        "deniedTenants": []
+    },
+    {
+        "name": "Deployment.ChangeOwner",
+        "approvals": [],
+        "deniedTenants": []
     }
 ]

@@ -1033,4 +1033,39 @@ class vRA8API: RESTAPICurl
 
 		$this.callAPI($uri, "DELETE", $null) | Out-Null
 	}
+
+
+	<#
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+                                                POLICIES
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+    #>
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie une Policy donnée par son nom.
+
+		IN  : $name	-> Nom de la Policy
+
+		RET : Objet représentant la policy
+	#>
+	[PSCustomObject] getPolicy([string]$name)
+	{
+		$res = @($this.getObjectListQuery("/policy/api/policies", "") | Where-Object { $_.name -eq $name})		
+
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+		# On récupère "réellement" la policy car ce qui est renvoyé par l'appel juste avant ne contient
+		# que des informations succinctes sur la policy
+		return $this.getObject(("/policy/api/policies/{0}" -f $res[0].id))
+	}
+
+
+	
+
 }
