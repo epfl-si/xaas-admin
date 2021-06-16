@@ -711,7 +711,6 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 
 						$ent = $vra.addEntitlement($catalogItem, [ContentSourceType]::CatalogItemIdentifier, $project)
 
-						# TODO: Continuer ici
 						# FIXME: Ajouter l'approval policy
 						# Définition de la potentielle approval policy à mettre
 						# if($_.hasApproval)
