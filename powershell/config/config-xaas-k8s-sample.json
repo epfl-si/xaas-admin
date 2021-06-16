@@ -45,6 +45,9 @@
             "server": "",
             "user":"",
             "password":""
+        },
+        "misc": {
+            "gentlemenAgreementC2CGroup": ""
         }
     },
     "test": {
@@ -93,6 +96,9 @@
             "server": "",
             "user":"",
             "password":""
+        },
+        "misc": {
+            "gentlemenAgreementC2CGroup": ""
         }
     },
     "prod": {
@@ -141,6 +147,9 @@
             "server": "",
             "user":"",
             "password":""
+        },
+        "misc": {
+            "gentlemenAgreementC2CGroup": ""
         }
     }
 } 

@@ -716,7 +716,7 @@ try
             $tkgiKubectl.addClusterRoleBinding($clusterName, 
                                                 "cluster-admin", 
                                                 "crb-gentleman-agreement", 
-                                                "oidc:vra_t_svc1219_AppGrpU")
+                                                ("oidc:{0}" -f $configK8s.getConfigValue(@($targetEnv, "misc", "gentlemenAgreementC2CGroup"))))
                     
             $logHistory.addLine("> Service Accounts")
             # Pour les services accounts
