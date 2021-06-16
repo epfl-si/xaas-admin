@@ -748,9 +748,9 @@
         },
         {
             "active": true,
-            "longName":  "Datacenter hosting",
-            "shortName":  "dchst",
-            "snowId":  "SVC0051",
+            "longName":  "Datacenter Operation Service",
+            "shortName":  "dcops",
+            "snowId":  "SVC1388",
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
@@ -901,9 +901,9 @@
         {
             "active": true,
             "longName":  "Gestion des Alumni",
-            "shortName":  "prjalumgmt",
-            "snowId":  "PRJ0012151",
-            "additionalGroupsAdminSciperList": ["296747"],
+            "shortName":  "alumni",
+            "snowId":  "SVC1375",
+            "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
         },
         {
@@ -946,6 +946,23 @@
             "snowId": "SVC1211",
             "additionalGroupsAdminSciperList": [],
             "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
+            "longName":  "Cristal",
+            "shortName":  "crstl",
+            "snowId":  "SVC1369",
+            "additionalGroupsAdminSciperList": ["296747"],
+            "deniedVRAServiceList": []
+        },
+        {
+            "active": true,
+            "longName":  "Datacenter hosting",
+            "shortName":  "dchst",
+            "snowId":  "SVC0051",
+            "additionalGroupsAdminSciperList": [],
+            "deniedVRAServiceList": []
         }
+
     ]
 }

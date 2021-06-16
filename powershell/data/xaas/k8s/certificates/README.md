@@ -1,0 +1,1 @@
+Ce dossier contient les certificats (*.crt) qui sont utilisés par TKGI. Les fichiers sont ensuite référencés dans le fichier de configuration `./config/config-xaas-k8s.json`

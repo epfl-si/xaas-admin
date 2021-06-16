@@ -1,0 +1,6 @@
+{
+    "group_name": "{{groupLDAPDN}}",
+    "ldap_group_dn": "{{groupLDAPDN}}",
+    "group_type": 1,
+    "id": 0
+  }

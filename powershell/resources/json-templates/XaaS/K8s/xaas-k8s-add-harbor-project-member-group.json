@@ -1,0 +1,9 @@
+{
+    "role_id": "{{roleId}}",
+    "member_group": {
+      "group_name": "{{groupName}}",
+      "ldap_group_dn": "{{LDAPDN}}",
+      "group_type": 1,
+      "id": "{{groupId}}"
+     }
+  }
