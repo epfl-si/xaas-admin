@@ -1628,6 +1628,7 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Dossier pour les ISO privées
 		
+		# Vu qu'on n'a pas de montage NAS pour la partie "dev"
 		if($targetEnv -ne $global:TARGET_ENV__DEV)
 		{
 			# Recherche de l'UNC jusqu'au dossier où mettre les ISO pour le BG
@@ -1709,7 +1710,8 @@ try
 			{
 				$logHistory.addLineAndDisplay(("--> No need to update ACLs on ISO folder '{0}'" -f $bgISOFolder))
 			}
-		}
+
+		}# FIN SI on n'est pas sur l'environnement de DEV
 
 		
 
@@ -1717,6 +1719,7 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- NSX
 
+		Write-Warning "----------------------->>>>> UNCOMMENT NSX PART <<<<<---------------------------"
 		# Création du NSGroup si besoin 
 		# $nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
 
