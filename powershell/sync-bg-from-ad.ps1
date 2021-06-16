@@ -532,7 +532,6 @@ function createOrUpdateProjectRoles([vRA8API]$vra, [PSCustomObject]$project, [Ar
 
 	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $project				-> Objet Project auquel l'entitlement est attaché
-	IN  : $contentSourcePrivacy	-> Niveau de confidentialité des "content source"
 	IN  : $entType				-> Type d'entitlement
 	IN  : $nameGenerator		-> Objet faisant office de générateur de noms
 	IN  : $deniedServices		-> Tableau avec les services à ne pas mettre pour le Projet.
@@ -549,10 +548,13 @@ function createOrUpdateProjectRoles([vRA8API]$vra, [PSCustomObject]$project, [Ar
 
 	RET : Objet contenant l'Entitlement
 #>
-function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [CatalogProjectPrivacy]$contentSourcePrivacy, [EntitlementType]$entType, [NameGenerator]$nameGenerator, [Array]$deniedServices, [Array]$mandatoryItems, [Array]$onlyForGroups)
+function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [EntitlementType]$entType, [NameGenerator]$nameGenerator, [Array]$deniedServices, [Array]$mandatoryItems, [Array]$onlyForGroups)
 {
 	# Extraction des noms des services non autorisés
 	$deniedServicesNames = @($deniedServices | Select-Object -ExpandProperty svc)
+
+	# On va traiter uniquement les éléments "public"
+	$contentSourcePrivacy = [CatalogProjectPrivacy]::Public
 
 	#FIXME: Gérer les "mandatory catalog items" une fois qu'on saura les gérer un par un
 	$logHistory.addLineAndDisplay(("Getting '{0}' Content Source list..." -f $contentSourcePrivacy))
@@ -668,10 +670,75 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Cata
 				# 	$entService.approvalPolicyId = $approvalPolicy.id
 				# }
 				
-			}
-		}
+			}# FIN SI un sous ensemble des Item du Content Source doivent quand même être disponibles
+
+		}# FIN SI le Content Source courant n'est pas autorisé
 
 	}# FIN BOUCLE de parcours des Content Sources trouvées
+
+	
+	# Ajout des Items de catalogue "mandatory" s'il y en a
+	if($mandatoryItems.count -gt 0)
+	{
+		$logHistory.addLineAndDisplay(("-> Adding {0} mandatory catalog items..." -f $mandatoryItems.count))
+
+		# Parcours et ajout
+		$mandatoryItems | ForEach-Object {
+
+			# On regarde si on peut bien ajouter l'élément de catalogue pour le BG courant
+			if(($_.onlyForBG.count -eq 0) -or `
+				(($_.onlyForBG.count -gt 0) -and ($_.onlyForBG -contains $project.name)))
+			{
+				
+				$catalogItem = $vra.getCatalogItem($_.name)
+
+				# Elément de catalogue pas trouvé dans vRA
+				if($null -eq $catalogItem)
+				{
+					$logHistory.addWarningAndDisplay(("--> Catalog Item '{0}' not found!" -f $_.name))
+					$notifications.mandatoryItemsNotFound += $_.name
+				}
+				else # L'élément de catalogue existe
+				{
+
+					# Recherche de l'entitlement pour l'élément de catalogue
+					$ent = $vra.getProjectEntitlement($project, $_.name)
+
+					# Si l'élément n'a pas d'entitlement
+					if($null -eq $ent)
+					{
+						$logHistory.addLineAndDisplay(("--> Adding Entitlement for mandatory Catalog Item '{0}'..." -f $_.name))
+
+						$ent = $vra.addEntitlement($catalogItem, [ContentSourceType]::CatalogItemIdentifier, $project)
+
+						# TODO: Continuer ici
+						# FIXME: Ajouter l'approval policy
+						# Définition de la potentielle approval policy à mettre
+						# if($_.hasApproval)
+						# {
+						# 	$itemApprovalPolicy = $approvalPolicy
+						# }
+						# else
+						# {
+						# 	$itemApprovalPolicy = $null
+						# }
+					}
+					else
+					{
+						$logHistory.addLineAndDisplay(("--> Mandatory Catalog Item '{0}' already has an Entitlement" -f $_.name))
+					}
+					
+				}# FIN SI l'élément de catalogue existe dans vRA 
+
+			}
+			else # L'élément de catalogue n'est pas autorisé pour le BG courant
+			{
+				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not allowed for Project '{1}'" -f $_.name, $project.name))
+			}
+			
+		}# FIN BOUCLE de parcours des éléments de catalogue obligatoires
+
+	}# FIN SI il y a des éléments de catalogue obligatoires à ajouter
 
 	return $ent
 }
@@ -1534,7 +1601,7 @@ try
 
 
 		# # Pour les utilisateurs (toutes les actions)
-		$ent = createOrUpdateProjectEnt -vra $vra -project $project -contentSourcePrivacy ([CatalogProjectPrivacy]::Public) -entType ([EntitlementType]::User) -NameGenerator $nameGenerator `
+		$ent = createOrUpdateProjectEnt -vra $vra -project $project -entType ([EntitlementType]::User) -NameGenerator $nameGenerator `
 									-onlyForGroups @() -deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
 
 		# # Pour les admins (actions VIP)

@@ -763,6 +763,27 @@ class vRA8API: RESTAPICurl
     {
         return $this.getCatalogItemListQuery()
     }
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie un item de catalogue donné par son nom
+
+		IN  : $name		-> Le nom de l'item de catalogue
+
+		RET : La liste des catalog items
+	#>
+    [PSCustomObject] getCatalogItem([string]$name)
+    {
+        $res = @($this.getCatalogItemListQuery() | Where-Object { $_.name -eq $name })
+
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+		return $res[0]
+
+    }
 	
 
 	<#
