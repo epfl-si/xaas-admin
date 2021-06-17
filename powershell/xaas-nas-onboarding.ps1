@@ -801,11 +801,18 @@ try
                 #$template.description = $excelSheet.Cells.Item($lineNo, $colComment).text
                 #$template.reasons = $excelSheet.Cells.Item($lineNo, $colReasonForRequest).text
 
+                # On met une valeur pour "Reason for request" car elle ne peut pas être nulle
+                $reasonForRequest = $excelSheet.Cells.Item($lineNo, $colReasonForRequest).text
+                if($null -eq $reasonForRequest -or $reasonForRequest -eq "")
+                {
+                    $reasonForRequest = "-"
+                }
+
                 $template.data.access = $excelSheet.Cells.Item($lineNo, $colAccessType).text
                 $template.data.bgName = $bgName
                 $template.data.deploymentTag = (getCorrectDeploymentTag -deploymentTag $excelSheet.Cells.Item($lineNo, $colType).text)
                 $template.data.notificationMail = $excelSheet.Cells.Item($lineNo, $colMailList).text
-                $template.data.reasonsForRequest = $excelSheet.Cells.Item($lineNo, $colReasonForRequest).text
+                $template.data.reasonsForRequest = $reasonForRequest
                 $template.data.requestor = $owner
                 $template.data.svm = $netappVol.svm.name
                 $template.data.targetTenant = (getTargetTenantCorrectCase -targetTenant $targetTenant)
