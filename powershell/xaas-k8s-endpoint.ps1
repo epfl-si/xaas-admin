@@ -236,7 +236,7 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     {
         $hostnameFull = ("{0}.{1}" -f $hostname, $global:K8S_DNS_ZONE_NAME)
         
-        $logHistory.addLine(("> IP {0} and host '{1}'" -f $ip, $hostnameFull))
+        $logHistory.addLine(("> Hostname '{0}'" -f $hostnameFull))
         $logHistory.addLine("> Unregistering IP(s) for host in DNS if exists...")
         $EPFLDNS.unregisterDNSName($hostname, $global:K8S_DNS_ZONE_NAME)
 
@@ -716,7 +716,7 @@ try
             $tkgiKubectl.addClusterRoleBinding($clusterName, 
                                                 "cluster-admin", 
                                                 "crb-gentleman-agreement", 
-                                                "oidc:vra_t_svc1219_AppGrpU")
+                                                ("oidc:{0}" -f $configK8s.getConfigValue(@($targetEnv, "misc", "gentlemenAgreementC2CGroup"))))
                     
             $logHistory.addLine("> Service Accounts")
             # Pour les services accounts
@@ -736,7 +736,7 @@ try
 
             # L'adresse IP va probablement prendre un peu de temps à apparaître dans NSX, donc on va poller celui-ci 
             # périodiquement pour la récupérer, tout en mettant un timeout pour éviter de faire ça indéfiniment
-            $remainingSecWait = 90
+            $remainingSecWait = 120
             $waitSecInterval = 10
 
             $logHistory.addLine(("IP address for cluster is {0}. Looking for Ingress/Contour IP in NSX..." -f $ipMain))
@@ -753,7 +753,7 @@ try
             # Si on n'a pas réussi à trouver l'IP dans le temps imparti... 
             if($null -eq $ipIngress)
             {
-                Throw "Impossible to find IP address for Ingress/Contour part"
+                Throw ("Impossible to find IP address for Ingress/Contour part (timeout)")
             }
             $logHistory.addLine(("Ingress/Contour IP address is {0}" -f $ipIngress))
 
