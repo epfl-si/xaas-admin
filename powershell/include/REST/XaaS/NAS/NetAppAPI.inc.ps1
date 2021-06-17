@@ -1204,8 +1204,12 @@ class NetAppAPI: RESTAPICurl
 	#>
     [PSCustomObject] getExportPolicyByName([PSCustomObject]$svm, [string]$name)
     {
-        $result = $this.getExportPolicyListQuery( ("svm.name={0}&name={1}" -f $svm.name, $name) )
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
 
+        $uri = "https://{0}/api/protocols/nfs/export-policies?max_records=9999&svm.name={1}&name={2}" -f $targetServer, $svm.name, $name
+
+        $result = $this.callAPI($uri, "GET", $null, "records")
+        
         if($result.count -eq 0)
         {
             return $null
