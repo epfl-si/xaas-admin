@@ -1098,7 +1098,7 @@ class vRAAPI: RESTAPICurl
 	#>
 	[PSCustomObject] prepareRemoveCatalogItem([PSCustomObject]$ent, [PSCustomObject]$catalogItem)
 	{
-		# On supprime tous les éléments 
+		# On supprime l'élément qu'on ne veut plus voir
 		$ent.entitledCatalogItems = $ent.entitledCatalogItems | Where-Object { $_.catalogItemRef.id -ne $catalogItem.id}
 		return $ent
 	}

@@ -261,6 +261,7 @@ function getCorrectDeploymentTag([string] $deploymentTag)
     return $correctValue
 }
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -759,6 +760,21 @@ try
                 
                 $owner = $excelSheet.Cells.Item($lineNo, $colOwner).text
 
+
+                Write-Host ("> Adding '{0}' catalog item to BG '{1}' Entitlement..." -f $catalogItemName, $bgName)
+                # Récupération de l'entitlement dans lequel il faut mettre le catalog Item
+                # NOTE: On prend un raccourci car on met direct le BGName et on ne passe pas par le NameGenerator. Ce script 
+                #       devant disparaître dans un futur relativement proche, on ne fait pas 100% propre XD
+                $ent = $vra.getEnt($bgName)
+
+                # On supprime le catalog Item de l'entitlement (au cas où il s'y trouverait)
+                $ent = $vra.prepareRemoveCatalogItem($ent, $catalogItem)
+                # On l'ajoute à nouveau
+                $ent = $vra.prepareAddEntCatalogItem($ent, $catalogItem, $null)
+                # Et on sauvegarde 
+                $ent = $vra.updateEnt($ent, $true)
+
+
                 Write-Host ("> Getting request template...")
                 $template = $vra.getCatalogItemRequestTemplate($catalogItem, $bg, $owner)
 
@@ -804,6 +820,11 @@ try
                     Throw ("Error onboarding volume '{0}'. Phase: {1}" -f $volName, $request.phase)
                 }
 
+                # On supprime le catalog Item de l'entitlement
+                $ent = $vra.prepareRemoveCatalogItem($ent, $catalogItem)
+                # Et on sauvegarde 
+                $ent = $vra.updateEnt($ent, $true)
+
                 # Mise à jour de la date d'onboarding et sauvegarde du fichier
                 Write-Host "> Saving onboard date..."
                 $excelSheet.Cells.Item($lineNo, $colOnboardDate) = (Get-Date -Format "dd.MM.yyyy H:m:s")
@@ -829,6 +850,11 @@ try
 catch
 {
 
+    # On supprime le catalog Item de l'entitlement
+    $ent = $vra.prepareRemoveCatalogItem($ent, $catalogItem)
+    # Et on sauvegarde 
+    $ent = $vra.updateEnt($ent, $true)
+    
     # Récupération des infos
     $errorMessage = $_.Exception.Message
     $errorTrace = $_.ScriptStackTrace
