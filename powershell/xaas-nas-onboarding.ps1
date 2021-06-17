@@ -291,14 +291,6 @@ try
 
     $ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))						                                 
 
-    # Pour accéder à la base de données
-	$sqldb = [SQLDB]::new([DBType]::MySQL,
-                        $configNAS.getConfigValue(@("websiteDB", "host")),
-                        $configNAS.getConfigValue(@("websiteDB", "dbName")),
-                        $configNAS.getConfigValue(@("websiteDB", "user")),
-                        $configNAS.getConfigValue(@("websiteDB", "password")),
-                        $configNAS.getConfigValue(@("websiteDB", "port")), $false)                                
-
     $logHistory.addLineAndDisplay("Connecting to vRA...")
     $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
                             $targetTenant, 
@@ -459,6 +451,14 @@ try
         # -- Création d'un nouveau Volume 
         $ACTION_GEN_DATA_FILE 
         {
+            # Pour accéder à la base de données
+            $sqldb = [SQLDB]::new([DBType]::MySQL,
+                    $configNAS.getConfigValue(@("websiteDB", "host")),
+                    $configNAS.getConfigValue(@("websiteDB", "dbName")),
+                    $configNAS.getConfigValue(@("websiteDB", "user")),
+                    $configNAS.getConfigValue(@("websiteDB", "password")),
+                    $configNAS.getConfigValue(@("websiteDB", "port")), $false)         
+                    
             Write-Host -NoNewLine "Getting volume list... "
             $volList = getVolToOnboard -sqldb $sqldb -volType $volType
             Write-Host "done" -foregroundColor:DarkGreen
