@@ -1099,7 +1099,7 @@ class vRAAPI: RESTAPICurl
 	[PSCustomObject] prepareRemoveCatalogItem([PSCustomObject]$ent, [PSCustomObject]$catalogItem)
 	{
 		# On supprime tous les éléments 
-		$ent.entitledCatalogItems = $ent.entitledCatalogItems | Where-Object { $_.id -ne $catalogItem.id}
+		$ent.entitledCatalogItems = $ent.entitledCatalogItems | Where-Object { $_.catalogItemRef.id -ne $catalogItem.id}
 		return $ent
 	}
 
