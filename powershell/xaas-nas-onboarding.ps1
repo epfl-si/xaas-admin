@@ -743,7 +743,7 @@ try
 
                 if($null -eq $netappVol)
                 {
-                    Throw ("Incorrect volume name ({0}) given. Check Excel file on line {1}" -f $volName, $lineNo)
+                    Throw ("Incorrect volume name ({0}) given, not found on NAS. Check Excel file on line {1}" -f $volName, $lineNo)
                 }
 
                 # -- vRA Volume
