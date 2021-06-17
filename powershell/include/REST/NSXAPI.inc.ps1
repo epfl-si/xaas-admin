@@ -691,7 +691,7 @@ class NSXAPI: RESTAPICurl
         # Création des règles
         $this.callAPI($uri, "Post", $body) | Out-Null
 
-        return $this.getFirewallSectionRules($firewallSectionId)
+        return $this.getFirewallSectionRulesList($firewallSectionId)
     }
 
     
@@ -706,7 +706,7 @@ class NSXAPI: RESTAPICurl
         # Déverrouillage de la section au cas où, histoire de pas se chopper une exception
         $this.unlockFirewallSection($firewallSectionId)
 
-        $ruleList = $this.getFirewallSectionRules($firewallSectionId)
+        $ruleList = $this.getFirewallSectionRulesList($firewallSectionId)
 
         ForEach($rule in $ruleList)
         {
