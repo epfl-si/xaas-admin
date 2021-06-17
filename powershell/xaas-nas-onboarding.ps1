@@ -302,6 +302,7 @@ try
     {
         # Activation du debug
         $netapp.activateDebug($logHistory)    
+        $vra.activateDebug($logHistory)    
     }
 
     $cols = @(
