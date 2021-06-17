@@ -835,7 +835,7 @@ try
                 }
 
                 # -- Rename
-                Write-Host ("> Renaming Deployment to set 'old' Volume name '{0}'..." -f $nas3VolName)
+                Write-Host ("> Renaming Deployment to set old NAS3 Volume name '{0}'..." -f $nas3VolName)
 
                 $item = $vra.getItem($global:VRA_XAAS_NAS_DYNAMIC_TYPE, $volName)
                 $item = $vra.renameItem($item, $nas3VolName, $nas3VolDesc)
