@@ -890,6 +890,33 @@ class NetAppAPI: RESTAPICurl
 
 
     <#
+		-------------------------------------------------------------------------------------
+        BUT : Modifie le commentaire d'un volume
+        
+        IN  : $vol      -> objet représentant le volume à modifier
+        IN  : $comment  -> le commentaire à mettre pour le volume
+	#>
+    [PSCustomObject] updateVolumeComment([PSCustomObject]$vol, [string]$comment)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $vol.uuid)
+
+        $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $vol.uuid
+
+        $body = @{
+            comment = $comment
+        }
+        
+        $result = $this.callAPI($uri, "PATCH", $body)
+
+        # L'opération se fait en asynchrone donc on attend qu'elle se termine
+        $this.waitForJobToFinish($targetServer, $result.job.uuid)
+
+        return $this.getVolumeById($vol.uuid)
+    }
+
+
+    <#
         =====================================================================================
                                         CIFS SHARES
         =====================================================================================
