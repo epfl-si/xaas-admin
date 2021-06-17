@@ -708,8 +708,11 @@ try
             # Parcours des éléments du fichier Excel
             for($lineNo=2 ; $lineNo -le ($excelSheet.UsedRange.Rows).count; $lineNo++)
             {
+                $nas3VolName = $excelSheet.Cells.Item($lineNo, $colNas3VolName).text
+                $nas3VolDesc = $excelSheet.Cells.Item($lineNo, $colComment).text
                 $volName = $excelSheet.Cells.Item($lineNo, $colNas2020VolName).text
-                Write-Host ("Volume '{0}'..." -f $volName)
+
+                Write-Host ("Volume '{0}' (old name was '{1}')..." -f $volName, $nas3VolName)
 
                 $onboardDate = $excelSheet.Cells.Item($lineNo, $colOnboardDate).text
                 if($onboardDate -ne "")
@@ -748,13 +751,24 @@ try
                     Throw ("Incorrect volume name ({0}) given, not found on NAS. Check Excel file on line {1}" -f $volName, $lineNo)
                 }
 
-                # -- vRA Volume
+
+                # -- vRA Volume (nom NAS2020)
                 $vraVol = $vra.getItem($global:VRA_XAAS_NAS_DYNAMIC_TYPE, $volName)
 
                 # Si le volume existe déjà dans vRA, y'a un souci
                 if($null -ne $vraVol)
                 {
-                    Throw ("Volume '{0}' is already onboarded in vRA but 'onboard date' wasn't set, please manually check" -f $volName)
+                    Throw ("Volume '{0}' is already onboarded in vRA but name is incorrect (should be '{1}')" -f $volName, $nas3VolName)
+                }
+
+
+                # -- vRA Volume (nom NAS3, tel qu'il devrait l'avoir si procédure complètement terminée)
+                $vraVol = $vra.getItem($global:VRA_XAAS_NAS_DYNAMIC_TYPE, $nas3VolName)
+
+                # Si le volume existe déjà dans vRA, y'a un souci
+                if($null -ne $vraVol)
+                {
+                    Throw ("Volume '{0}' is already onboarded in vRA but 'onboard date' wasn't set, please manually check" -f $nas3VolName)
                 }
 
                 
@@ -820,10 +834,18 @@ try
                     Throw ("Error onboarding volume '{0}'. Phase: {1}" -f $volName, $request.phase)
                 }
 
+                # -- Rename
+                Write-Host ("> Renaming Deployment to set 'old' Volume name '{0}'..." -f $nas3VolName)
+
+                $item = $vra.getItem($global:VRA_XAAS_NAS_DYNAMIC_TYPE, $volName)
+                $item = $vra.renameItem($item, $nas3VolName, $nas3VolDesc)
+
+                Write-Host "> Removing catalog Item from BG Entitlement..."
                 # On supprime le catalog Item de l'entitlement
                 $ent = $vra.prepareRemoveCatalogItem($ent, $catalogItem)
                 # Et on sauvegarde 
                 $ent = $vra.updateEnt($ent, $true)
+                
 
                 # Mise à jour de la date d'onboarding et sauvegarde du fichier
                 Write-Host "> Saving onboard date..."
@@ -832,7 +854,6 @@ try
                 
             }# FIN Parcours des lignes du fichier Excel
 
-            
             
             if($null -ne $excel)
             {
@@ -850,22 +871,28 @@ try
 catch
 {
 
-    # On supprime le catalog Item de l'entitlement
-    $ent = $vra.prepareRemoveCatalogItem($ent, $catalogItem)
-    # Et on sauvegarde 
-    $ent = $vra.updateEnt($ent, $true)
-    
-    # Récupération des infos
-    $errorMessage = $_.Exception.Message
-    $errorTrace = $_.ScriptStackTrace
-
     if($null -ne $excel)
     {
         $excel.Quit()
     }
+    if($null -ne $ent)
+    {
+        # On supprime le catalog Item de l'entitlement
+        $ent = $vra.prepareRemoveCatalogItem($ent, $catalogItem)
+        # Et on sauvegarde 
+        $ent = $vra.updateEnt($ent, $true)
+    }
+
+    # Récupération des infos
+    $errorMessage = $_.Exception.Message
+    $errorTrace = $_.ScriptStackTrace
+
+
     
     Write-Host ("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace) -foregroundColor:DarkRed
 
+
+    
 }
 
 if($null -ne $vra)

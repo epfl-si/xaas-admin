@@ -1079,6 +1079,10 @@ class vRAAPI: RESTAPICurl
 		# Création du nécessaire pour le service à ajouter
 		$catalogItem = $this.createObjectFromJSON("vra-entitlement-catalog-item.json", $replace)
 
+		if($ent.entitledCatalogItems -isnot [Array])
+		{
+			$ent.entitledCatalogItems = @($ent.entitledCatalogItems)
+		}
 		# Ajout du service à l'objet
 		$ent.entitledCatalogItems += $catalogItem
 
@@ -1099,7 +1103,7 @@ class vRAAPI: RESTAPICurl
 	[PSCustomObject] prepareRemoveCatalogItem([PSCustomObject]$ent, [PSCustomObject]$catalogItem)
 	{
 		# On supprime l'élément qu'on ne veut plus voir
-		$ent.entitledCatalogItems = $ent.entitledCatalogItems | Where-Object { $_.catalogItemRef.id -ne $catalogItem.id}
+		$ent.entitledCatalogItems = @($ent.entitledCatalogItems | Where-Object { $_.catalogItemRef.id -ne $catalogItem.id})
 		return $ent
 	}
 
@@ -1938,11 +1942,12 @@ class vRAAPI: RESTAPICurl
 		return $res[0]
 	}
 
+
 	<#
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie un item donné pour son id
 			  
-		IN  : $itemName			-> ID de l'item que l'on chercher
+		IN  : $itemId			-> ID de l'item que l'on chercher
 
 		RET : Objet avec l'item
 			$null si pas trouvé
@@ -1957,6 +1962,40 @@ class vRAAPI: RESTAPICurl
 		}
 		return $res[0]
 	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renomme un item (ou un déploiement plutôt)
+				API non documentée... infos trouvées ici:
+				https://vra4u.com/2020/02/24/vra-7-5-7-6-change-set-deployment-name-during-provisioning-with-ebs-vro/
+			  
+		IN  : $item			-> Objet représentant l'Item à renommer, de type "Deployment". Il faut donc
+								chercher celui-ci via $this.getItem("Deployment", <itemName>)
+		IN  : $name			-> Nouveau nom
+		IN  : $description	-> Nouvelle description
+
+		RET : Objet avec l'item
+			$null si pas trouvé
+	#>
+	[PSObject] renameItem([PSCustomObject]$item, [string]$name, [string]$description)
+	{
+		$uri = "{0}/catalog-service/api/consumer/deployments/{1}" -f $this.baseUrl, $item.id
+
+		# Valeur à mettre pour la configuration du BG
+		$replace = @{
+			name = $name
+			description = $description
+		}
+
+		$body = $this.createObjectFromJSON("vra-deployment-rename.json", $replace)
+
+		# Retour de la liste mais on ne prend que les éléments qui existent encore.
+		$this.callAPI($uri, "PUT", $body) | Out-Null
+
+		return $this.getItem($item.id)
+	}
+
 
 	<#
 		-------------------------------------------------------------------------------------
