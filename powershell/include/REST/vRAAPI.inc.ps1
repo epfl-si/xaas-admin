@@ -1089,12 +1089,29 @@ class vRAAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Préparer un objet contenant un Entitlement en lui enlevant un élément de catalogue donné
+
+		IN  : $ent			-> Objet de l'entitlement auquel enlever l'élément de catalogue
+		IN  : $catalogItem	-> Objet représentant l'élément de catalogue à supprimer
+
+		RET : Objet contenant Entitlement avec les éléments de catalogue mis à jour
+	#>
+	[PSCustomObject] prepareRemoveCatalogItem([PSCustomObject]$ent, [PSCustomObject]$catalogItem)
+	{
+		# On supprime tous les éléments 
+		$ent.entitledCatalogItems = $ent.entitledCatalogItems | Where-Object { $_.id -ne $catalogItem.id}
+		return $ent
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Préparer un objet contenant un Entitlement en lui enlevant tous les éléments
 				de catalogue
 
 		IN  : $ent		-> Objet de l'entitlement auquel enlever l'élément de catalogue
 
-		RET : Objet contenant Entitlement avec tous les éléments de catalogue
+		RET : Objet contenant Entitlement avec tous les éléments de catalogue supprimés
 	#>
 	[PSCustomObject] prepareRemoveAllCatalogItems([PSCustomObject]$ent)
 	{
