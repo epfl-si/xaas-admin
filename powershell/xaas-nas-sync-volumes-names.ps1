@@ -138,6 +138,8 @@ try
                 # Si le nom du déploiement ne correspond plus au nom du volume sur NetApp
                 if($vRAVol.name -ne $netAppVolName)
                 {
+                    $logHistory.addLineAndDisplay(("> Volume '{0}' has a new deployment name on vRA: {1}" -f $netAppVolName, $vraVol.name))
+                    
                     # Mise à jour du commentaire
                     $comment = "FriendlyName: {0}" -f $vRAVol.name
                     $netapp.updateVolumeComment($netAppVol, $comment)
