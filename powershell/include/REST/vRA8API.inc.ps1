@@ -1066,6 +1066,53 @@ class vRA8API: RESTAPICurl
 	}
 
 
-	
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des policies d'un type donné
+
+		IN  : $type	-> Type de la Policy
+
+		RET : Liste des policy
+	#>
+	[Array] getPolicyList([PolicyType]$type)
+	{
+		return @($this.getObjectListQuery("/policy/api/policies", "") | Where-Object { $_.typeId -like ("*.{0}" -f $type.toString())})		
+
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute une policy Day-2, approval, lease ou day2 action
+
+		IN  : $name			-> Nom de la Policy
+		IN  : $description	-> Description
+		IN  : $project		-> Objet représentant le projet pour lequel on veut ajouter une Day-2 policy
+		IN  : $role			-> Pour quel rôle s'applique la policy (Admin, Member)
+		IN  : $actionList	-> Liste des noms des actions à ajouter
+
+		RET : Objet représentant la policy ajoutée
+	#>
+	[PSCustomObject] addDay2Policy([string]$name, [string]$description, [PSCustomObject]$project, [PolicyRole]$role, [Array]$actionList)
+	{
+		$uri = "{0}/policy/api/policies" -f $this.baseUrl
+
+		$replace = @{
+			name = $name
+			description = $description
+			orgId = (getProjectOrganizationID -project $project)
+			projectId = $project.id
+			role = $role.toString().toLower()
+        }
+
+		$body = $this.createObjectFromJSON("vra-policy-day2.json", $replace)
+
+		# Ajout de la liste des actions
+		$body.definition.allowedActions.actions = $actionList
+
+		# Création du Content Source et retour
+		return $this.callAPI($uri, "Post", $body)
+	}
+
 
 }

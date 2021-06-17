@@ -1607,8 +1607,15 @@ try
 		# $entAdm = createOrUpdateProjectEnt -vra $vra -bg $project -entName $entNameAdm -entDesc $entDescAdm -entType ([EntitlementType]::Admin) -NameGenerator $nameGenerator `
 		# 							-onlyForGroups $adminGrpList.split('@')[0] -deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
 		
-		# # ----------------------------------------------------------------------------------
-		# # --------------------------------- Project Entitlement - 2nd day Actions
+
+		# ----------------------------------------------------------------------------------
+		# --------------------------------- Day2 Actions
+
+		$day2PolName, $day2PolDesc = $nameGenerator.getPolicyNameAndDesc([PolicyType]::Action, [PolicyRole]::Member)
+
+		#TODO:
+		
+
 		# $logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for users...")
 		# $result = $vra.prepareEntActions($ent, $secondDayActions, $targetTenant)
 		# $ent = $result.entitlement

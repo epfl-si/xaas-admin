@@ -1,78 +1,79 @@
 [
     /* --- Custom machine actions --- */
-    {
-        "name": "[VM] Mount/Unmount CD-ROM (ISO)",
-        "approvals": [],
-        "deniedTenants": []
-    },
-    {
-        "name": "[VM] Modify Notification Mail",
-        "approvals": [],
-        "deniedTenants": []
-    },
-    {
-        "name": "[VM] DNS alias request",
-        "approvals": [],
-        "deniedTenants": []
-    },
-    {
-        "name": "[DMZ] Reconfigure",
-        "approvals": [],
-        "deniedTenants": []
-    },
-    {
-        "name": "[DMZ] Scan Request",
-        "approvals": [],
-        "deniedTenants": []
-    },
-    {
-        "name": "[VM] Request support",
-        "approvals": [],
-        "deniedTenants": []
-    },
-    {
-        "name": "[Backup] Config",
-        "approvals": [],
-        "deniedTenants": []
-    },
-    {
-        "name": "[Backup] Restore",
-        "approvals": [],
-        "deniedTenants": []
-    },
-    {
-        "name": "Create Snapshot",
-        "approvals": [],
-        "deniedTenants": []
-    },
-    {
-        "name": "Revert to Snapshot",
-        "approvals": [],
-        "deniedTenants": []
-
-    },
-    {
-        "name": "Delete Snapshot",
-        "approvals": [],
-        "deniedTenants": []
-    },
+    // {
+    //     "name": "[VM] Mount/Unmount CD-ROM (ISO)",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
+    // {
+    //     "name": "[VM] Modify Notification Mail",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
+    // {
+    //     "name": "[VM] DNS alias request",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
+    // {
+    //     "name": "[DMZ] Reconfigure",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
+    // {
+    //     "name": "[DMZ] Scan Request",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
+    // {
+    //     "name": "[VM] Request support",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
+    // {
+    //     "name": "[Backup] Config",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
+    // {
+    //     "name": "[Backup] Restore",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
+    
 
     /* --- Builtin Machine actions --- */
+    {
+        "name": "Cloud.vSphere.Machine.Snapshot.Create",
+        "approvals": [],
+        "deniedTenants": []
+    },
+    {
+        "name": "Cloud.vSphere.Machine.Snapshot.Revert",
+        "approvals": [],
+        "deniedTenants": []
+
+    },
+    {
+        "name": "Cloud.vSphere.Machine.Snapshot.Delete",
+        "approvals": [],
+        "deniedTenants": []
+    },
     {
         "name": "Cloud.vSphere.Machine.Remote.Console",
         "approvals": [],
         "deniedTenants": []
     },
-    {
-        "name": "Connect using VMRC",
-        "approvals": [],
-        "deniedTenants": []
-    },
-    {
-        "name": "Install Tools",
-        "approvals": [],
-        "deniedTenants": []
-    },
+    // {
+    //     "name": "Connect using VMRC",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
+    // {
+    //     "name": "Install Tools",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
     {
         "name": "Cloud.vSphere.Machine.Reset",
         "approvals": [],
@@ -125,22 +126,22 @@
         ],
         "deniedTenants": []
     },
-    {
-        "name": "Cancel Reconfigure",
-        "approvals": [],
-        "deniedTenants": []
-    },
-    {
-        "name": "Execute Reconfigure",
-        "approvals": [],
-        "deniedTenants": []
-    },
+    // {
+    //     "name": "Cancel Reconfigure",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
+    // {
+    //     "name": "Execute Reconfigure",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
     /* --- Deployment Actions --- */
-    {
-        "name": "Expire",
-        "approvals": [],
-        "deniedTenants": []
-    },
+    // {
+    //     "name": "Expire",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // },
     {
         "name": "Deployment.ChangeLease",
         "approvals": [

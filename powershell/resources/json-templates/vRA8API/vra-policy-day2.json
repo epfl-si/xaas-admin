@@ -1,0 +1,19 @@
+{
+    "name": "{{name}}",
+    "description": "{{description}}",
+    "typeId": "com.vmware.policy.deployment.action",
+    "enforcementType": "HARD",
+    "orgId": "{{orgId}}",
+    "projectId": "{{projectId}}",
+    "definition": {
+        "allowedActions": [
+            {
+                "actions": [ // Il faudra ajouter les ID des actions ici
+                ],
+                "authorities": [
+                    "ROLE:{{role}}"
+                ]
+            }
+        ]
+    }
+}

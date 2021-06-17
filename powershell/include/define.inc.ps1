@@ -200,3 +200,33 @@ enum GitHubContentType
     ActionBasedScripts
     TerraformConfigurations
 }
+
+<# Type de policy que l'on peut avoir
+Service Broker -> Content & Policies -> Policies -> Definitions
+
+NOTE: Ces noms correspondent à la fin des noms utilisés par vRA pour identifier les types de policies:
+
+com.vmware.policy.deployment.approval
+com.vmware.policy.deployment.action
+com.vmware.policy.deployment.lease
+#>
+enum PolicyType
+{
+    Approval 
+    Action
+    Lease
+}
+
+<#
+Tout comme pour PolicyType, ces valeurs correspondent à ce qui est possible pour identifier un rôle:
+
+ROLE:administrator
+ROLE:infrastructure_administrator
+ROLE:member
+#>
+enum PolicyRole
+{
+    Administrator
+    Member
+    Infrastructure_Administrator
+}

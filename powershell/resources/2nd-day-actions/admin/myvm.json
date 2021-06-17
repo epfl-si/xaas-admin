@@ -3,10 +3,10 @@
         "name": "Deployment.ChangeProject",
         "approvals": [],
         "deniedTenants": []
-    },
-    {
-        "name": "[Adm] Remove DMZ transit tag",
-        "approvals": [],
-        "deniedTenants": []
-    }
+     }//,
+    // {
+    //     "name": "[Adm] Remove DMZ transit tag",
+    //     "approvals": [],
+    //     "deniedTenants": []
+    // }
 ]

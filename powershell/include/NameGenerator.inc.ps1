@@ -1854,4 +1854,97 @@ class NameGenerator: NameGeneratorBase
         return $catalogProjectName
     }
 
+
+    <#
+        -------------------------------------------------------------------------------------
+        BUT : Renvoie le nom d'un Entitlement en fonction du tenant défini. 
+
+        IN  : $policyType   -> Type de la policy
+        IN  : $policyRole   -> Role auquel la policy s'applique
+
+		RET : Tableau avec: 
+                - Nom de la Policy
+                - Description de la Policy
+    #>
+    [Array] getPolicyNameAndDesc([PolicyType]$policyType, [PolicyRole]$policyRole)
+    {
+        $nameStart = ""
+        $descStart = ""
+        switch($this.tenant)
+        {
+            $global:VRA_TENANT__EPFL 
+            { 
+                $nameStart = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName')), $this.transformForGroupName($this.getDetail('unitName'))
+                $descStart = "Faculty: {0}`nUnit: {1}" -f $this.getDetail('facultyName').toUpper(), $this.getDetail('unitName').toUpper()
+            }
+
+            $global:VRA_TENANT__ITSERVICES 
+            {
+                $nameStart = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('serviceShortName')) 
+                $descStart = "Service: {0}" -f $this.getDetail('serviceName')
+            }
+
+            # Tenant Research
+            $global:VRA_TENANT__RESEARCH
+            {
+                $nameStart = "{0}_{1}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('projectId')) 
+                $descStart = "Project: {0}" -f $this.getDetail('projectId')
+            }
+
+            # Tenant pas géré
+            default
+            {
+                Throw ("Unsupported Tenant ({0})" -f $this.tenant)
+            }
+
+        }
+
+        $typeShortName = ""
+        switch($policyType)
+        {
+            Approval 
+            { 
+                $typeShortName = "approval" 
+            }
+            
+            Action 
+            { 
+                $typeShortName = "day2" 
+            }
+
+            Lease 
+            { 
+                $typeShortName = "lease" 
+            }
+        }
+
+        $nameEnd = ""
+        $descEnd = ""
+        switch($policyRole)
+        {
+            Administrator 
+            { 
+                $nameEnd = "_admin"
+                $descEnd = "administrators"
+            }
+
+            Member
+            { 
+                $nameEnd = ""
+                $descEnd = "members"
+            }
+
+            Infrastructure_Administrator 
+            {
+                $nameEnd = "_infadmin" 
+                $descEnd = "infrastructure administrators"
+            }
+        }
+
+        return @(
+            ("{0}_{1}{2}" -f $nameStart, $typeShortName, $nameEnd),
+            ("{0}`nType: {1}`nApplies to:{2}" -f $descStart, $typeShortName, $descEnd)
+        )
+    }    
+
 }

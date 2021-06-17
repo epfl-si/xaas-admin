@@ -452,3 +452,33 @@ function getProjectRoleContent([PSCustomObject]$project, [vRAUserRole]$userRole)
 	# Donc on nettoie pour ne plus avoir que: xaas_t_its_admins
 	return @($project.($userRole.toString().toLower()) | Where-Object { $_.type -eq "group" } | ForEach-Object { $_.email -replace "@.*", ""} )
 }
+
+
+<#
+    -------------------------------------------------------------------------------------
+	BUT : Renvoie l'ID de l'organisation d'un projet. 
+			On passe par une fonction pour faire ceci car à la date du 17 juin de l'an de grâce 2021, 
+			il y a 2 champs dans les informations d'un projet qui contiennent l'ID de l'organisation,
+			à savoir "organizationId" et "orgId". Et il y a fort à parier qu'un fourbe développeur
+			va soudainement décider de s'affranchir d'un de ces 2 champs en le faisant disparaître.
+			De ce fait, l'utilisation de la présente fonction permet que cette disparition n'ait aucun
+			impact sur l'exécution du code.
+			
+    IN  : $project		-> Objet représentant le Projet
+
+    RET : ID de l'organisation
+#>
+function getProjectOrganizationID([PSCustomObject]$project)
+{
+	$propertiesToTest = @("orgId", "organizationId")
+
+	$propertiesToTest | ForEach-Object {
+		if(objectPropertyExists -obj $project -propertyName $_)
+		{
+			return $project.$_
+		}
+	}
+	# Si on arrive ici, c'est que pour une raison X ou Y aucune des propriétés n'a été trouvée dans le projet. Alors oui, un peu de fantaisie a été ajoutée dans l'erreur, ça fait du bien de se lâcher parfois XD
+	Throw ("Oganization ID not found! It seems thata a malicious vRA developer changed something in the returned field for a Project object (here's the Project content):`n{0}" -f ($project | ConvertTo-Json))
+	
+}
