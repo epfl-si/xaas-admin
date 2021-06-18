@@ -1457,7 +1457,7 @@ try
 
 		# Pour repartir "propre" pour le groupe AD courant
 		# FIXME: voir si c'est encore utile
-		$secondDayActions.clearApprovalPolicyMapping()
+		#$secondDayActions.clearApprovalPolicyMapping()
 
 		# Génération du nom du groupe avec le domaine
 		$ADFullGroupName = $nameGenerator.getADGroupFQDN($_.Name)
@@ -1596,8 +1596,6 @@ try
 
 		#FIXME: Gérer aussi les Entitlement "Private" => mis à la main
 
-		#  TODO: COntinuer depuis ici
-
 
 		# # Pour les utilisateurs (toutes les actions)
 		$ent = createOrUpdateProjectEnt -vra $vra -project $project -entType ([EntitlementType]::User) -NameGenerator $nameGenerator `
@@ -1613,7 +1611,15 @@ try
 
 		$day2PolName, $day2PolDesc = $nameGenerator.getPolicyNameAndDesc([PolicyType]::Action, [PolicyRole]::Member)
 
+		$actionNameList = @($secondDayActions.getActionList() | ForEach-Object { $_.name })
+
+		$logHistory.addLineAndDisplay(("Adding Day2 Policy '{0}' with {1} Day2 actions for '{2}' role" -f $day2PolName, $actionNameList.count, ([EntitlementType]::User).toString()))
+
+		$day2Policy = $vra.addDay2Policy($day2PolName, $day2PolDesc, $project, [PolicyRole]::Member, $actionNameList)
 		#TODO:
+
+
+
 		
 
 		# $logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for users...")

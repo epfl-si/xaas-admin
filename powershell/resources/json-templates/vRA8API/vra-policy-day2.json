@@ -8,8 +8,7 @@
     "definition": {
         "allowedActions": [
             {
-                "actions": [ // Il faudra ajouter les ID des actions ici
-                ],
+                "actions": "{{actionNameList}}",
                 "authorities": [
                     "ROLE:{{role}}"
                 ]

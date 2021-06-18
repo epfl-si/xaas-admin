@@ -1936,14 +1936,14 @@ class NameGenerator: NameGeneratorBase
 
             Infrastructure_Administrator 
             {
-                $nameEnd = "_infadmin" 
+                $nameEnd = "_infradmin" 
                 $descEnd = "infrastructure administrators"
             }
         }
 
         return @(
             ("{0}_{1}{2}" -f $nameStart, $typeShortName, $nameEnd),
-            ("{0}`nType: {1}`nApplies to:{2}" -f $descStart, $typeShortName, $descEnd)
+            ("{0}`nType: {1}`nApplies to: {2}" -f $descStart, $typeShortName, $descEnd)
         )
     }    
 

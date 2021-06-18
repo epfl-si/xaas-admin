@@ -472,8 +472,9 @@ function getProjectOrganizationID([PSCustomObject]$project)
 {
 	$propertiesToTest = @("orgId", "organizationId")
 
-	$propertiesToTest | ForEach-Object {
-		if(objectPropertyExists -obj $project -propertyName $_)
+	ForEach($property in $propertiesToTest) 
+	{
+		if(objectPropertyExists -obj $project -propertyName $property)
 		{
 			return $project.$_
 		}
