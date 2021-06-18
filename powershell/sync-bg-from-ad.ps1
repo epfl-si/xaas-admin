@@ -166,6 +166,7 @@ function getFullElementNameFromJSON([string]$baseName, [string]$JSONFile, [strin
 #>
 function createApprovalPolicyIfNotExists([vRA8API]$vra, [string]$name, [string]$desc, [string]$approvalLevelJSON, [Array]$approverGroupAtDomainList, [string]$approvalPolicyJSON, [psobject]$additionnalReplace, [ref]$processedApprovalPoliciesIDs)
 {
+	#TODO: continuer ici
 	# Recherche du nom complet de la policy depuis le fichier JSON
 	$fullName = getFullElementNameFromJSON -baseName $name -JSONFile $approvalPolicyJSON -replaceString "preApprovalName" -fieldName "name"
 
@@ -1477,13 +1478,7 @@ try
 		# Ajout de l'adresse mail à laquelle envoyer les "capacity alerts" pour le BG. On prend le niveau 1 car c'est celui de EXHEB
 		# NOTE : 15.02.2019 - Les approbations pour les ressources sont faites par admin IaaS (level 1), donc plus besoin d'info aux approbateurs level 2
 		#$capacityAlertMails += $nameGenerator.getApproveGroupsEmail(1)
-		
-		# Nom de la policy d'approbation ainsi que du groupe d'approbateurs
 
-		# FIXME: Voir comment faire en temps voulu avec les approval policies
-		# FIXME: APPROVAL POLICIES --->
-		# $itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ITEM_REQ)
-		# $actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($global:APPROVE_POLICY_TYPE__ACTION_REQ)
 
 		# # Tableau pour les approbateurs des différents niveaux
 		# $approverGroupAtDomainList = @()
@@ -1569,6 +1564,9 @@ try
 		# Si l'élément courant (unité, service, projet...) doit avoir une approval policy,
 		if($descInfos.hasApproval)
 		{
+			#$itemReqApprovalPolicyName, $itemReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc([ApprovalPolicyType]::NewItem)
+			# $actionReqBaseApprovalPolicyName, $actionReqApprovalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc([ApprovalPolicyType]::Day2Action)
+
 			# FIXME: GERER LES APPROVAL POLICIES
 			# ----------------------------------------------------------------------------------
 			# --------------------------------- Approval policies

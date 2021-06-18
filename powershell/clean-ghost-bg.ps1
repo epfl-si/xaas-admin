@@ -191,8 +191,8 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 			
 			# --------------
 			# Approval policies
-			$approvalPoliciesTypesToDelete = @($global:APPROVE_POLICY_TYPE__ITEM_REQ,
-											   $global:APPROVE_POLICY_TYPE__ACTION_REQ)
+			$approvalPoliciesTypesToDelete = @([ApprovalPolicyType]::NewItem,
+											   [ApprovalPolicyType]::Day2Action])
 			ForEach($approvalPolicyType in $approvalPoliciesTypesToDelete)
 			{
 				# Recherche du nom

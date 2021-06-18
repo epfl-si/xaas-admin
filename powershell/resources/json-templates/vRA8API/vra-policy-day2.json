@@ -8,7 +8,7 @@
     "definition": {
         "allowedActions": [
             {
-                "actions": "{{actionNameList}}",
+                "actions": "{{actionNameList}}", // là il faudra passer un tableau avec les noms des actions concernées
                 "authorities": [
                     "ROLE:{{role}}"
                 ]

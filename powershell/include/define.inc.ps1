@@ -59,9 +59,6 @@ $global:VRA_GROUPS_ADMIN_GROUP = "vsissp-prod-admins"
 # Nom des tenants que l'on devra traiter
 $global:TARGET_TENANT_LIST = @($global:VRA_TENANT__EPFL, $global:VRA_TENANT__ITSERVICES, $global:VRA_TENANT__RESEARCH<#, $global:VRA_TENANT__DEFAULT #>)
 
-# Les types d'approval policies
-$global:APPROVE_POLICY_TYPE__ITEM_REQ     = 'new'
-$global:APPROVE_POLICY_TYPE__ACTION_REQ   = 'reconfigure'
 
 # Information sur les services au sens vRA
 #FIXME: A priori on devrait pouvoir supprimer ceci
@@ -229,4 +226,11 @@ enum PolicyRole
     Administrator
     Member
     Infrastructure_Administrator
+}
+
+# Utilisé comme paramètre de fonction pour définir quel type d'approval policy on veut
+enum ApprovalPolicyType
+{
+    NewItem
+    Day2Action
 }

@@ -1083,7 +1083,7 @@ class vRA8API: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
-		BUT : Ajoute une policy Day-2, approval, lease ou day2 action
+		BUT : Ajoute une policy Day-2
 
 		IN  : $name				-> Nom de la Policy
 		IN  : $description		-> Description
@@ -1112,5 +1112,37 @@ class vRA8API: RESTAPICurl
 		return $this.callAPI($uri, "Post", $body)
 	}
 
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Ajoute une approval policy
+
+		IN  : $name				-> Nom de la Policy
+		IN  : $description		-> Description
+		IN  : $project			-> Objet représentant le projet pour lequel on veut ajouter une approval policy
+		IN  : $actionNameList	-> Liste des noms des actions à ajouter
+		IN  : $approverNameList	-> Liste des noms d'utilisateurs (shortname) pouvant faire l'approbation
+
+		RET : Objet représentant la policy ajoutée
+	#>
+	[PSCustomObject] addApprovePolicy([string]$name, [string]$description, [PSCustomObject]$project, [Array]$actionNameList, [Array]$approverNameList)
+	{
+		$uri = "{0}/policy/api/policies" -f $this.baseUrl
+
+		$replace = @{
+			name = $name
+			description = $description
+			orgId = (getProjectOrganizationID -project $project)
+			projectId = $project.id
+			actionNameList = @(($actionNameList | ConvertTo-Json), $true)
+			# Formatage de la liste des utilisateurs et ajout
+			approverNameList = @(( @($approverNameList | ForEach-Object { ("USER:{0}" -f $_)}) | ConvertTo-Json), $true)
+        }
+
+		$body = $this.createObjectFromJSON("vra-policy-approval.json", $replace)
+
+		# Création du Content Source et retour
+		return $this.callAPI($uri, "Post", $body)
+	}
 
 }

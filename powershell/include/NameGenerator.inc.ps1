@@ -760,62 +760,68 @@ class NameGenerator: NameGeneratorBase
         -------------------------------------------------------------------------------------
         BUT : Renvoie un tableau vec le nom et la description de la policy d'approbation à utiliser
 
-        IN  : $approvalPolicyType   -> Type de la policy :
-                                        $global:APPROVE_POLICY_TYPE__ITEM_REQ
-                                        $global:APPROVE_POLICY_TYPE__ACTION_REQ
+        IN  : $approvalPolicyType   -> Type de la policy. Voir type enuméré dans "include/define.inc.ps1"
+        IN  : $level                -> Le niveau de l'approval policy
        
         RET : Tableau avec:
             - Nom de la policy
             - Description de la policy
     #>
-    [System.Collections.ArrayList] getApprovalPolicyNameAndDesc([string]$approvalPolicyType)
+    [System.Collections.ArrayList] getApprovalPolicyNameAndDesc([ApprovalPolicyType]$approvalPolicyType, [int]$level)
     {
         
         $name = ""
         $desc = ""
+
+        $typeDesc = ""
+        $suffix = ""
 
         switch($this.tenant)
         {
             # Tenant EPFL
             $global:VRA_TENANT__EPFL
             {
-                if($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ITEM_REQ)
+                
+                switch($approvalPolicyType)
                 {
-                    $name_suffix = "newItems"
-                    $type_desc = "new items"
-                }
-                elseif($approvalPolicyType -eq $global:APPROVE_POLICY_TYPE__ACTION_REQ)
-                {
-                    $name_suffix = "2ndDay"
-                    $type_desc = "2nd day actions"
-                }
-                else 
-                {
-                    Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType
+                    NewItem
+                    {
+                        $suffix = "newItems"
+                        $typeDesc = "new items"
+                    }
+
+                    Day2Action
+                    {
+                        $suffix = "2ndDay"
+                        $typeDesc = "2nd day actions"
+                    }
+
+                    default
+                    {
+                        Throw "Incorrect Approval Policy type ({0})" -f $approvalPolicyType.toString()
+                    }
                 }
         
-                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName')), $name_suffix
-                $desc = "Approval policy for {0} for {1} Faculty" -f $type_desc, $this.getDetail('facultyName').ToUpper()
+                $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformFacultyForGroupName($this.getDetail('facultyName')), $suffix
+                $desc = "Approval policy for {0} for {1} Faculty" -f $typeDesc, $this.getDetail('facultyName').ToUpper()
             }
 
 
             # Tenant ITServices
             $global:VRA_TENANT__ITSERVICES
             {
-                $type_desc = ""
-                $suffix = ""
                 switch($approvalPolicyType)
                 {
-                    $global:APPROVE_POLICY_TYPE__ITEM_REQ
+                    NewItem
                     {
                         $suffix = "newItems"
-                        $type_desc = "new items"
+                        $typeDesc = "new items"
                     }
 
-                    $global:APPROVE_POLICY_TYPE__ACTION_REQ
+                    Day2Action
                     {
                         $suffix = "2ndDay"
-                        $type_desc = "2nd day actions"
+                        $typeDesc = "2nd day actions"
                     }
 
                     default
@@ -826,26 +832,24 @@ class NameGenerator: NameGeneratorBase
                 }
         
                 $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('serviceShortName')), $suffix
-                $desc = "Approval policy for {0} for Service: {1}" -f $type_desc, $this.getDetail('serviceName')
+                $desc = "Approval policy for {0} for Service: {1}" -f $typeDesc, $this.getDetail('serviceName')
             }
 
             # Tenant Research
             $global:VRA_TENANT__RESEARCH
             {
-                $type_desc = ""
-                $suffix = ""
                 switch($approvalPolicyType)
                 {
-                    $global:APPROVE_POLICY_TYPE__ITEM_REQ
+                    NewItem
                     {
                         $suffix = "newItems"
-                        $type_desc = "new items"
+                        $typeDesc = "new items"
                     }
 
-                    $global:APPROVE_POLICY_TYPE__ACTION_REQ
+                    Day2Action
                     {
                         $suffix = "2ndDay"
-                        $type_desc = "2nd day actions"
+                        $typeDesc = "2nd day actions"
                     }
 
                     default
@@ -856,7 +860,7 @@ class NameGenerator: NameGeneratorBase
                 }
         
                 $name = "{0}_{1}_{2}" -f $this.getTenantShortName(), $this.transformForGroupName($this.getDetail('projectId')), $suffix
-                $desc = "Approval policy for {0} for Project: {1}" -f $type_desc, $this.getDetail('projectId')
+                $desc = "Approval policy for {0} for Project: {1}" -f $typeDesc, $this.getDetail('projectId')
             }
 
 
@@ -866,6 +870,10 @@ class NameGenerator: NameGeneratorBase
                 Throw ("Unsupported Tenant ({0})" -f $this.tenant)
             }
         }
+
+        # Ajout des infos du level
+        $name = "{0}_{1}" -f $name, $level
+        $desc = "{0}`nLevel: {1}" -f $desc, $level
 
         return @($name, $desc)
     }

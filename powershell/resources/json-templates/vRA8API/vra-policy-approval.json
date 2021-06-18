@@ -1,0 +1,17 @@
+{
+    "name": "{{name}}",
+    "description": "{{description}}",
+    "typeId": "com.vmware.policy.approval",
+    "enforcementType": "HARD",
+    "orgId": "{{orgId}}",
+    "projectId": "{{projectId}}",
+    "definition": {
+        "level": 1,   // <- y'a un "level" mais c'est une constante et on se prend une erreur si on essaie de mettre autre chose que 1... #facepalm
+        "actions": "{{actionNameList}}", // là il faudra passer un tableau avec les noms des actions concernées
+        "approvers": "{{approverNameList}}", // là on devra passer un tableau avec les noms courts AD des approbateurs, au format: "USER:<adShortUserName>"
+        "approvalMode": "ANY_OF",
+        "approverType": "USER",
+        "autoApprovalExpiry": 7,    // FIXME: à définir encore ce qu'on fait ici... vu qu'on est limité de 1 à 7 jours...
+        "autoApprovalDecision": "APPROVE"
+    }
+}
