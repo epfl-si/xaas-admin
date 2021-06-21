@@ -180,7 +180,7 @@ class APIUtils
 
 		RET : Objet créé depuis le code JSON
 	#>
-	hidden [Object] createObjectFromJSON([string] $file, [System.Collections.IDictionary] $valToReplace)
+	[Object] createObjectFromJSON([string] $file, [System.Collections.IDictionary] $valToReplace)
 	{
 		$filePath = ""
 		# Chemin complet jusqu'au fichier à charger
