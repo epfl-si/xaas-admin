@@ -1,0 +1,13 @@
+{
+    "componentTypeId":  "com.vmware.csp.component.iaas.proxy.provider",
+    "componentId":  null,
+    "classId":  "Infrastructure.CustomProperty",
+    "typeFilter":  null,
+    "data":  {
+                 "id":  "{{name}}",
+                 "is_encrypted":  false,
+                 "is_hidden":  false,
+                 "prompt_user":  false,
+                 "value":  "{{value}}"
+             }
+}
