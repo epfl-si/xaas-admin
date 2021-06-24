@@ -2298,7 +2298,8 @@ class vRAAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
-		BUT : Exécute une action sur une ressource donnée.
+		BUT : Exécute une action sur une ressource donnée. On ne retourne rien car l'appel à l'API
+				ne renvoie rien non plus.
 
 		IN  : $resource 	-> Objet représentant la ressource sur laquelle effectuer l'action
 		IN  : $form			-> Objet représentant le formulaire à soumettre pour l'action

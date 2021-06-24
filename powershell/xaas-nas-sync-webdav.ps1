@@ -321,8 +321,11 @@ function getWebDAVShareList([vRAAPI]$vra, [NetAppAPI]$netapp)
             # On regarde si le volume doit être accédé en WebDAV
             if( (getvRAObjectCustomPropValue -object $_ -customPropName $global:VRA_XAAS_NAS_CUSTOM_PROPERTY_WEBDAV_ACCESS) -eq $true)
             {
+                # Recherche du "vrai" nom du volume dans les custom properties (au cas où il aurait été renommé)
+                $netAppVolName = getvRAObjectCustomPropValue -object $_ -customPropName "name"  
+
                 # Recherche du volume
-                $vol = $netapp.getVolumeByName($_.Name)
+                $vol = $netapp.getVolumeByName($netAppVolName.Name)
 
                 # Recherche des shares pour le volume donné et ajout à la liste
                 $netapp.getVolCIFSShareList($_) | ForEach-Object {
