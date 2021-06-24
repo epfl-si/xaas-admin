@@ -3,7 +3,7 @@
     "metadata": {
       "enable_content_trust": "true",
       "auto_scan": "true",
-      "severity": "{{serverity}}",
+      "severity": "{{severity}}",
       "reuse_sys_cve_whitelist": "false",
       "public": "false",
       "prevent_vul": "true"
