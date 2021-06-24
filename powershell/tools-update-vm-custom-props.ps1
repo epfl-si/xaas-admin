@@ -77,8 +77,9 @@ try
 
 	# Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
 	$counters = [Counters]::new()
-	$counters.add('ADGroups', '# AD group processed')
-	$counters.add('projectCreated', '# Business Group created')
+	$counters.add('reconfigActionFound', '# "Reconfigure" action not found')
+	$counters.add('vmUpdated', '# VM updated')
+	$counters.add('vmOK', '# VM OK')
 
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
@@ -122,6 +123,16 @@ try
 					# Si on n'a pas encore le template
 					if($null -eq $reconfigTemplate)
 					{
+						$actionInfos = $vra.getResourceActionInfos($vm, "Reconfigure")
+
+						# Si on n'a pas trouvé l'action reconfigure, c'est qu'il y a un problème
+						if($null -eq $actionInfos)
+						{
+							$counters.inc('reconfigActionFound')
+							$logHistory.addWarningAndDisplay(("No 'Reconfigure' action found for '{0}'" -f $vm.name))
+							continue
+						}
+
 						# On récupère le nécessaire pour corriger la chose
 						$reconfigTemplate = $vra.getResourceActionTemplate($vm, "Reconfigure")
 					}
@@ -158,13 +169,19 @@ try
 			if($null -ne $reconfigTemplate)
 			{
 				$logHistory.addLineAndDisplay((">> Reconfiguring VM to update custom properties..."))
-				$request = $vra.doResourceActionRequest($vm, $reconfigTemplate)
-				$request
+				$vra.doResourceActionRequest($vm, $reconfigTemplate)
+				$counters.inc('vmUpdated')
+			}
+			else # Pas besoin de reconfigure donc tout est OK
+			{
+				$counters.inc('vmOK')
 			}
 
         }# FIN BOUCLE de parcours des VM du Business Group
 
     }# FIN BOUCLE de pacours des Business Groups
+
+	$logHistory.addLineAndDisplay($counters.getDisplay("Counters summary"))
 
 }
 catch # Dans le cas d'une erreur dans le script
