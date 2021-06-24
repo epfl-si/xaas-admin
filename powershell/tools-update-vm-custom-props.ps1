@@ -80,13 +80,21 @@ try
 	$counters.add('reconfigActionFound', '# "Reconfigure" action not found')
 	$counters.add('vmUpdated', '# VM updated')
 	$counters.add('vmOK', '# VM OK')
+	$counters.add('vmWithWaitingRequest', '# VM not updated because already having waiting request')
 
+	$vraUser = $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user"))
+
+	if($vraUser -notlike "itadmin-*")
+	{
+		Write-Warning "Please change your vRA config (config/config-vra.json) to use an itadmin-* account to do the job. Otherwise, all Reconfigure actions will need an approval"
+		exit
+	}
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
 	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
 						 $targetTenant, 
-						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+						 $vraUser,
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
     # Parcours de la liste des BG
@@ -169,7 +177,26 @@ try
 			if($null -ne $reconfigTemplate)
 			{
 				$logHistory.addLineAndDisplay((">> Reconfiguring VM to update custom properties..."))
-				$vra.doResourceActionRequest($vm, $reconfigTemplate)
+				try
+				{
+					$vra.doResourceActionRequest($vm, $reconfigTemplate)
+				}
+				catch
+				{
+					# S'il y a déjà une requête en attente
+					# NOTE: OUi c'est sale de passer par une exception pour faire ça mais j'ai pas de fonction vRAAPI pour savoir
+					# s'il y a déjà une requête donc...
+					if($_.Exception.Message -like '*must be completed before we accept new request on resource*')
+					{
+						$counters.inc('vmWithWaitingRequest')
+						$logHistory.addWarningAndDisplay((">> VM already have a waiting request, cannot process it..."))
+					}
+					else
+					{
+						Throw
+					}
+				}
+				
 				$counters.inc('vmUpdated')
 			}
 			else # Pas besoin de reconfigure donc tout est OK
