@@ -261,6 +261,7 @@ function getCorrectDeploymentTag([string] $deploymentTag)
     return $correctValue
 }
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------- PROGRAMME PRINCIPAL ---------------------------------------------------
@@ -291,14 +292,6 @@ try
 
     $ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))						                                 
 
-    # Pour accéder à la base de données
-	$sqldb = [SQLDB]::new([DBType]::MySQL,
-                        $configNAS.getConfigValue(@("websiteDB", "host")),
-                        $configNAS.getConfigValue(@("websiteDB", "dbName")),
-                        $configNAS.getConfigValue(@("websiteDB", "user")),
-                        $configNAS.getConfigValue(@("websiteDB", "password")),
-                        $configNAS.getConfigValue(@("websiteDB", "port")), $false)                                
-
     $logHistory.addLineAndDisplay("Connecting to vRA...")
     $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
                             $targetTenant, 
@@ -310,6 +303,7 @@ try
     {
         # Activation du debug
         $netapp.activateDebug($logHistory)    
+        $vra.activateDebug($logHistory)    
     }
 
     $cols = @(
@@ -459,6 +453,14 @@ try
         # -- Création d'un nouveau Volume 
         $ACTION_GEN_DATA_FILE 
         {
+            # Pour accéder à la base de données
+            $sqldb = [SQLDB]::new([DBType]::MySQL,
+                    $configNAS.getConfigValue(@("websiteDB", "host")),
+                    $configNAS.getConfigValue(@("websiteDB", "dbName")),
+                    $configNAS.getConfigValue(@("websiteDB", "user")),
+                    $configNAS.getConfigValue(@("websiteDB", "password")),
+                    $configNAS.getConfigValue(@("websiteDB", "port")), $false)         
+                    
             Write-Host -NoNewLine "Getting volume list... "
             $volList = getVolToOnboard -sqldb $sqldb -volType $volType
             Write-Host "done" -foregroundColor:DarkGreen
@@ -706,8 +708,11 @@ try
             # Parcours des éléments du fichier Excel
             for($lineNo=2 ; $lineNo -le ($excelSheet.UsedRange.Rows).count; $lineNo++)
             {
+                $nas3VolName = $excelSheet.Cells.Item($lineNo, $colNas3VolName).text
+                $nas3VolDesc = $excelSheet.Cells.Item($lineNo, $colComment).text
                 $volName = $excelSheet.Cells.Item($lineNo, $colNas2020VolName).text
-                Write-Host ("Volume '{0}'..." -f $volName)
+
+                Write-Host ("Volume '{0}' (old name was '{1}')..." -f $volName, $nas3VolName)
 
                 $onboardDate = $excelSheet.Cells.Item($lineNo, $colOnboardDate).text
                 if($onboardDate -ne "")
@@ -743,20 +748,46 @@ try
 
                 if($null -eq $netappVol)
                 {
-                    Throw ("Incorrect volume name ({0}) given. Check Excel file on line {1}" -f $volName, $lineNo)
+                    Throw ("Incorrect volume name ({0}) given, not found on NAS. Check Excel file on line {1}" -f $volName, $lineNo)
                 }
 
-                # -- vRA Volume
+
+                # -- vRA Volume (nom NAS2020)
                 $vraVol = $vra.getItem($global:VRA_XAAS_NAS_DYNAMIC_TYPE, $volName)
 
                 # Si le volume existe déjà dans vRA, y'a un souci
                 if($null -ne $vraVol)
                 {
-                    Throw ("Volume '{0}' is already onboarded in vRA but 'onboard date' wasn't set, please manually check" -f $volName)
+                    Throw ("Volume '{0}' is already onboarded in vRA but name is incorrect (should be '{1}')" -f $volName, $nas3VolName)
+                }
+
+
+                # -- vRA Volume (nom NAS3, tel qu'il devrait l'avoir si procédure complètement terminée)
+                $vraVol = $vra.getItem($global:VRA_XAAS_NAS_DYNAMIC_TYPE, $nas3VolName)
+
+                # Si le volume existe déjà dans vRA, y'a un souci
+                if($null -ne $vraVol)
+                {
+                    Throw ("Volume '{0}' is already onboarded in vRA but 'onboard date' wasn't set, please manually check" -f $nas3VolName)
                 }
 
                 
                 $owner = $excelSheet.Cells.Item($lineNo, $colOwner).text
+
+
+                Write-Host ("> Adding '{0}' catalog item to BG '{1}' Entitlement..." -f $catalogItemName, $bgName)
+                # Récupération de l'entitlement dans lequel il faut mettre le catalog Item
+                # NOTE: On prend un raccourci car on met direct le BGName et on ne passe pas par le NameGenerator. Ce script 
+                #       devant disparaître dans un futur relativement proche, on ne fait pas 100% propre XD
+                $ent = $vra.getEnt($bgName)
+
+                # On supprime le catalog Item de l'entitlement (au cas où il s'y trouverait)
+                $ent = $vra.prepareRemoveCatalogItem($ent, $catalogItem)
+                # On l'ajoute à nouveau
+                $ent = $vra.prepareAddEntCatalogItem($ent, $catalogItem, $null)
+                # Et on sauvegarde 
+                $ent = $vra.updateEnt($ent, $true)
+
 
                 Write-Host ("> Getting request template...")
                 $template = $vra.getCatalogItemRequestTemplate($catalogItem, $bg, $owner)
@@ -770,11 +801,18 @@ try
                 #$template.description = $excelSheet.Cells.Item($lineNo, $colComment).text
                 #$template.reasons = $excelSheet.Cells.Item($lineNo, $colReasonForRequest).text
 
+                # On met une valeur pour "Reason for request" car elle ne peut pas être nulle
+                $reasonForRequest = $excelSheet.Cells.Item($lineNo, $colReasonForRequest).text
+                if($null -eq $reasonForRequest -or $reasonForRequest -eq "")
+                {
+                    $reasonForRequest = "-"
+                }
+
                 $template.data.access = $excelSheet.Cells.Item($lineNo, $colAccessType).text
                 $template.data.bgName = $bgName
                 $template.data.deploymentTag = (getCorrectDeploymentTag -deploymentTag $excelSheet.Cells.Item($lineNo, $colType).text)
                 $template.data.notificationMail = $excelSheet.Cells.Item($lineNo, $colMailList).text
-                $template.data.reasonsForRequest = $excelSheet.Cells.Item($lineNo, $colReasonForRequest).text
+                $template.data.reasonsForRequest = $reasonForRequest
                 $template.data.requestor = $owner
                 $template.data.svm = $netappVol.svm.name
                 $template.data.targetTenant = (getTargetTenantCorrectCase -targetTenant $targetTenant)
@@ -803,6 +841,19 @@ try
                     Throw ("Error onboarding volume '{0}'. Phase: {1}" -f $volName, $request.phase)
                 }
 
+                # -- Rename
+                Write-Host ("> Renaming Deployment to set old NAS3 Volume name '{0}'..." -f $nas3VolName)
+
+                $item = $vra.getItem($global:VRA_XAAS_NAS_DYNAMIC_TYPE, $volName)
+                $item = $vra.renameItem($item, $nas3VolName, $nas3VolDesc)
+
+                Write-Host "> Removing catalog Item from BG Entitlement..."
+                # On supprime le catalog Item de l'entitlement
+                $ent = $vra.prepareRemoveCatalogItem($ent, $catalogItem)
+                # Et on sauvegarde 
+                $ent = $vra.updateEnt($ent, $true)
+                
+
                 # Mise à jour de la date d'onboarding et sauvegarde du fichier
                 Write-Host "> Saving onboard date..."
                 $excelSheet.Cells.Item($lineNo, $colOnboardDate) = (Get-Date -Format "dd.MM.yyyy H:m:s")
@@ -810,7 +861,6 @@ try
                 
             }# FIN Parcours des lignes du fichier Excel
 
-            
             
             if($null -ne $excel)
             {
@@ -828,17 +878,28 @@ try
 catch
 {
 
-    # Récupération des infos
-    $errorMessage = $_.Exception.Message
-    $errorTrace = $_.ScriptStackTrace
-
     if($null -ne $excel)
     {
         $excel.Quit()
     }
+    if($null -ne $ent)
+    {
+        # On supprime le catalog Item de l'entitlement
+        $ent = $vra.prepareRemoveCatalogItem($ent, $catalogItem)
+        # Et on sauvegarde 
+        $ent = $vra.updateEnt($ent, $true)
+    }
+
+    # Récupération des infos
+    $errorMessage = $_.Exception.Message
+    $errorTrace = $_.ScriptStackTrace
+
+
     
     Write-Host ("An error occured: `nError: {0}`nTrace: {1}" -f $errorMessage, $errorTrace) -foregroundColor:DarkRed
 
+
+    
 }
 
 if($null -ne $vra)

@@ -592,7 +592,7 @@ class NetAppAPI: RESTAPICurl
 
     <#
 		-------------------------------------------------------------------------------------
-        BUT : Retourne la liste des volumes avec des paramètres de filtrage optionnels
+        BUT : Retourne la liste des volumes RW avec des paramètres de filtrage optionnels
 
         IN  : $queryParams	-> (Optionnel -> "") Chaine de caractères à ajouter à la fin
 										de l'URI afin d'effectuer des opérations supplémentaires.
@@ -606,7 +606,6 @@ class NetAppAPI: RESTAPICurl
     {
         return $this.getVolumeListQuery($queryParams, "")
     }
-
     hidden [Array] getVolumeListQuery([string]$queryParams, [string]$targetServer)
     {
         $uri = ""
@@ -617,7 +616,9 @@ class NetAppAPI: RESTAPICurl
             $uri = "https://{0}" -f $targetServer
         }
 
-        $uri = "{0}/api/storage/volumes?max_records=9999" -f $uri
+        # On filtre pour ne prendre que les volumes RW car cela permet de ne pas renvoyer les volumes "target"
+        # de snapmirror (type=dp) qui pourraient avoir le même nom qu'un volume RW
+        $uri = "{0}/api/storage/volumes?max_records=9999&type=rw" -f $uri
  
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
@@ -885,6 +886,33 @@ class NetAppAPI: RESTAPICurl
 
         # L'opération se fait en asynchrone donc on attend qu'elle se termine
         $this.waitForJobToFinish($targetServer, $result.job.uuid)
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+        BUT : Modifie le commentaire d'un volume
+        
+        IN  : $vol      -> objet représentant le volume à modifier
+        IN  : $comment  -> le commentaire à mettre pour le volume
+	#>
+    [PSCustomObject] updateVolumeComment([PSCustomObject]$vol, [string]$comment)
+    {
+        # Recherche du serveur NetApp cible
+        $targetServer = $this.getServerForObject([NetAppObjectType]::Volume, $vol.uuid)
+
+        $uri = "https://{0}/api/storage/volumes/{1}" -f $targetServer, $vol.uuid
+
+        $body = @{
+            comment = $comment
+        }
+        
+        $result = $this.callAPI($uri, "PATCH", $body)
+
+        # L'opération se fait en asynchrone donc on attend qu'elle se termine
+        $this.waitForJobToFinish($targetServer, $result.job.uuid)
+
+        return $this.getVolumeById($vol.uuid)
     }
 
 
@@ -1203,8 +1231,12 @@ class NetAppAPI: RESTAPICurl
 	#>
     [PSCustomObject] getExportPolicyByName([PSCustomObject]$svm, [string]$name)
     {
-        $result = $this.getExportPolicyListQuery( ("svm.name={0}&name={1}" -f $svm.name, $name) )
+        $targetServer = $this.getServerForObject([NetAppObjectType]::SVM, $svm.uuid)
 
+        $uri = "https://{0}/api/protocols/nfs/export-policies?max_records=9999&svm.name={1}&name={2}" -f $targetServer, $svm.name, $name
+
+        $result = $this.callAPI($uri, "GET", $null, "records")
+        
         if($result.count -eq 0)
         {
             return $null

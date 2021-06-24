@@ -146,7 +146,10 @@ try
             $vSphereVM = Get-VM $vm.name
             $vmView = $vSphereVM| Get-View
        
-            if($vmView.Guest.GuestFamily -like "*Windows*")
+            # On regarde dans les 2 données membres. La première est visiblement renseignée via les VMware Tools (donc fiable)
+            # Et la 2e, c'est le type de machine au niveau vSphere. Moins "fiable" mais si la première n'est pas présente, on
+            # prend celle-ci pour tenter de définir le type d'OS
+            if(($vmView.Guest.GuestFamily -like "*Windows*") -or ($vSphereVM.GuestId -like "*Windows*"))
             {
                 $logHistory.addLineAndDisplay("---> Windows VM")
 
@@ -166,10 +169,20 @@ try
                     $deploymentTag = getvRAObjectCustomPropValue -object $vm -customPropName $global:VRA_CUSTOM_PROP_EPFL_DEPLOYMENT_TAG
                 }
 
+                # On aura l'info du nom complet de l'OS uniquement si les tools sont installées
+                if($null -ne $vmView.Guest.GuestFullName)
+                {
+                    $osFullName = $vmView.Guest.GuestFullName
+                }
+                else
+                {
+                    $osFullName = "Windows Version ??"
+                }
+
                 $values = @($vm.name,
                         $deploymentTag,
                         $vmView.Summary.Runtime.PowerState,
-                        $vmView.Guest.GuestFullName,
+                        $osFullName,
                         $bg.description,
                         $bgId,
                         $serviceManager,

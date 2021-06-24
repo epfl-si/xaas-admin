@@ -155,16 +155,46 @@ function createADGroupWithContent([string]$groupName, [string]$groupDesc, [strin
 	{
 		$logHistory.addLineAndDisplay(("--> Adding {0} member(s) to AD group..." -f $groupMemberGroup.Count))
 
-		if(-not $simulation)
-		{
-			# Suppression des membres du groupes pour être sûr d'avoir des groupes à jour
-			Get-ADGroupMember $groupName | ForEach-Object {Remove-ADGroupMember $groupName $_ -Confirm:$false}
-			# Et on remet les bons membres
-			Add-ADGroupMember $groupName -Members $groupMemberGroup
-		}
-	}
+		# Récupération du contenu actuel du groupe
+		$adGroupContent = @(Get-ADGroupMember $groupName | ForEach-Object { $_.SamAccountName})
+		
+		# On compare les 2 listes et on récupère les informations de différence
+		$comparisonResult = (Compare-Object -ReferenceObject $groupMemberGroup -DifferenceObject $adGroupContent)
 
+		# Si les groupes présents dans le groupe AD ne sont pas les mêmes que ceux qui devraient y être
+		if($null -ne $comparisonResult)
+		{
+			$toRemove = @($comparisonResult | Where-Object { $_.SideIndicator -eq "=>" } | Select-Object -ExpandProperty InputObject)
+			# On commence par supprimer les groupes qui ne doivent pas être dans le groupe, s'il y en a
+			if($toRemove.count -gt 0)
+			{
+				$logHistory.addLineAndDisplay(("--> Removing {0} group(s) in group '{1}'..." -f $toRemove.count, $groupName))
+				if(-not $simulation)
+				{
+					Remove-ADGroupMember $groupName -Members $toRemove -confirm:$false
+				}
+			}
 			
+			$toAdd = @($comparisonResult | Where-Object { $_.SideIndicator -eq "<=" } | Select-Object -ExpandProperty InputObject)
+			# Ajout des groupes qui manquent
+			if($toAdd.count -gt 0)
+			{
+				$logHistory.addLineAndDisplay(("--> Adding {0} group(s) in group '{1}'..." -f $toAdd.count, $groupName))
+				if(-not $simulation)
+				{
+					Add-ADGroupMember $groupName -Members $toAdd
+				}
+
+				$counters.inc('ADGroupsContentUpdated')
+			}
+
+		} 
+		else # Le contenu du groupe est OK
+		{
+			$counters.inc('ADGroupsContentOK')
+		}
+
+	}
 		
 	return $true
 }
