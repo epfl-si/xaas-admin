@@ -1,12 +1,10 @@
 <#
 USAGES:
-    xaas-nas-check-volume-use.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl [-sendNotifMail]
+    xaas-nas-sync-volumes-names.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl
 #>
 <#
-    BUT 		: Permettant de contrôler l'utilisation des volumes NAS et d'envoyer des mails aux
-                admins si besoin.
-                ATTENTION! Ce script ne fonctionne que pour les volumes qui sont onboardés dans vRA car
-                            il n'y a que là que l'on a les infos sur les adresses de notification!
+    BUT 		: Permettant de mettre à jour le commentaire d'un volume côté NetApp en prenant
+                    le nom du déploiement si celui-ci n'est plus égal au vrai nom du volume
                   
 
 	DATE 	: Juin 2021
@@ -22,8 +20,7 @@ USAGES:
 
 #>
 param([string]$targetEnv, 
-      [string]$targetTenant,
-      [switch]$sendNotifMail)
+      [string]$targetTenant)
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -55,10 +52,6 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 $configVra = [ConfigReader]::New("config-vra.json")
 $configNAS = [ConfigReader]::New("config-xaas-nas.json")
 
-# -------------------------------------------- CONSTANTES ---------------------------------------------------
-
-$PERCENT_WARNING_USAGE  = 80
-$PERCENT_CRITICAL_USAGE = 90
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -72,7 +65,7 @@ try
     $output = getObjectForOutput
 
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $logHistory = [LogHistory]::new(@('xaas','nas', 'check-volume-use'), $global:LOGS_FOLDER, 120)
+    $logHistory = [LogHistory]::new(@('xaas','nas', 'sync-volumes-names'), $global:LOGS_FOLDER, 120)
     
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
@@ -112,15 +105,6 @@ try
                                                     ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
 
 
-    # S'il a été demandé d'envoyer des mails
-    if($sendNotifMail)
-    {
-        $mailFrom = ("noreply+{0}" -f $configGlobal.getConfigValue(@("mail", "admin")))
-        # Template pour le sujet et le contenu du mail
-        $mailSubjectTemplate = "[IaaS] NAS - {{usageStatus}} - Volume {{volName}} usage is between {{percentUsageMin}}% and {{percentUsageMax}}%"
-        $mailMessageTemplate = (Get-Content -Raw -Path ( Join-Path $global:NAS_MAIL_TEMPLATE_FOLDER "volume-use.html" ) -Encoding:UTF8)
-    }
-
     $BGList = $vra.getBGList()
 
     # Parcours des BG
@@ -134,12 +118,12 @@ try
         $volList = $vra.getBGItemList($bg, $global:VRA_XAAS_NAS_DYNAMIC_TYPE)
 
         $volNo = 1
-        ForEach($vol in $volList)
+        ForEach($vRAVol in $volList)
         {
             # Recherche du "vrai" nom du volume dans les custom properties (au cas où il aurait été renommé)
-            $netAppVolName = getvRAObjectCustomPropValue -object $vol -customPropName "name"  
+            $netAppVolName = getvRAObjectCustomPropValue -object $vRAVol -customPropName "name"  
 
-            $logHistory.addLineAndDisplay(("> [{0}/{1}] Volume '{2}' (NetApp name: {3})..." -f $volNo, $volList.count, $vol.name, $netAppVolName))
+            $logHistory.addLineAndDisplay(("> [{0}/{1}] Volume '{2}' (NetApp name: {3})..." -f $volNo, $volList.count, $vRAVol.name, $netAppVolName))
 
             # Recherche des infos du volume directement sur le NAS
             $netAppVol = $netapp.getVolumeByName($netAppVolName)
@@ -151,72 +135,20 @@ try
             }
             else # Le volume existe bel et bien sur le NAS
             {
-                $usagePercent = truncateToNbDecimal -number ($netAppVol.space.used / $netAppVol.space.size * 100) -nbDecimals 1
-
-                $usageColor = $null
-
-                # Si utilisation critique
-                if($usagePercent -ge $PERCENT_CRITICAL_USAGE)
+                # Si le nom du déploiement ne correspond plus au nom du volume sur NetApp
+                if($vRAVol.name -ne $netAppVolName)
                 {
-                    $usageColor = "#e61717"
-                    $usageStatus = "CRITICAL"
-                    $percentUsageMin = $PERCENT_CRITICAL_USAGE
-                    $percentUsageMax = 100
+                    $logHistory.addLineAndDisplay(("> Volume '{0}' has a new deployment name on vRA: {1}" -f $netAppVolName, $vraVol.name))
+                    
+                    # Mise à jour du commentaire
+                    $comment = "FriendlyName: {0}" -f $vRAVol.name
+                    $netapp.updateVolumeComment($netAppVol, $comment)
                 }
-                # Utilisation Warning
-                elseif($usagePercent -ge $PERCENT_WARNING_USAGE)
-                {
-                    $usageColor = "#fca50d"
-                    $usageStatus = "WARNING"
-                    $percentUsageMin = $PERCENT_WARNING_USAGE
-                    $percentUsageMax = $PERCENT_CRITICAL_USAGE
-                }
-
-                # Si le volume a une utilisation élevée
-                if($null -ne $usageColor)
-                {
-                    $logHistory.addLineAndDisplay(("-> Usage is {0} ({1} %)" -f $usageStatus, $usagePercent))
-
-                    if($sendNotifMail)
-                    {
-                        $logHistory.addLineAndDisplay(("-> Getting notification mails..."))
-
-                        $mailList = getvRAObjectNotifMailList -vraObj $vol -mailPropName "notificationMail"
-
-                        # Définition des valeurs à remplacer dans le mail et son sujet
-                        $valToReplace = @{
-                            color = $usageColor
-                            volName = $vol.name
-                            percentUsed = $usagePercent
-                            usedGB = (truncateToNbDecimal -number ($netAppVol.space.used / 1024 / 1024 / 1024) -nbDecimals 2)
-                            totGB = (truncateToNbDecimal -number ($netAppVol.space.size / 1024 / 1024 / 1024) -nbDecimals 2)
-                            usageStatus = $usageStatus
-                            percentUsageMin = $percentUsageMin
-                            percentUsageMax = $percentUsageMax
-                        }
-
-                        # Création du sujet du mail ainsi que du message
-                        $mailSubject, $mailMessage = replaceInStrings -stringList @($mailSubjectTemplate, $mailMessageTemplate) -valToReplace $valToReplace
-
-                        ForEach($mailTo in $mailList)
-                        {
-                            $logHistory.addLineAndDisplay(("--> Sending mail to {0}" -f $mailTo))
-                            Send-MailMessage -From $mailFrom -to $mailTo -Subject $mailSubject  `
-                                -Body $mailMessage -BodyAsHtml:$true -SmtpServer "mail.epfl.ch" -Encoding:UTF8
-                        }
-
-                        # Pour ne pas faire de spam
-                        Start-Sleep -Milliseconds 500
-
-                    } # FIN S'il faut envoyer le mail
-            
-                }# FIN SI le volume a une utilisation élevée 
 
             }# FIN SI Le volume existe sur le NAS
 
             $volNo++
 
-            #break
         }# FIN BOUCLE de parcours des volumes du BG
 
     }# FIN BOUCLE de parcours des BG
