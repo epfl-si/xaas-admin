@@ -102,7 +102,7 @@ try
 
 		# Liste des custom properties à check et des valeurs qu'elles devraient avoir
 		$customPropsToCheck = @{
-			$global:VRA_CUSTOM_PROP_VRA_BG_NAME = $bg.name
+			$global:VRA_CUSTOM_PROP_VRA_PROJECT_NAME = $bg.name
 			$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME = $targetTenant
 		}
 
