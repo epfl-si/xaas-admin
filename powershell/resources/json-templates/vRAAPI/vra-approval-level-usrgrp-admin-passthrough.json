@@ -12,7 +12,7 @@
     "criteria": {
         "type": "not",
         "subClause": {
-            "type": "and",
+            "type": "or",
             "subClauses": [
                 {
                     "type": "expression",
@@ -44,7 +44,7 @@
                         "type": "constant",
                         "value": {
                             "type": "string",
-                            "value": "{{tenantAPIUser}}"
+                            "value": "{{tenantAPIUser}}@vsphere.local"
                         }
                     }
                 }
