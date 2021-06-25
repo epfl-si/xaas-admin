@@ -812,6 +812,9 @@ class vRAAPI: RESTAPICurl
 		IN  : $activated	-> Pour dire si l'Entitlement doit être activé ou pas.
 		IN  : $onlyForGroups	-> Tableau avec la liste des noms des groupes auquels donner accès.
 									Si vide, on ne limite à personne, open bar pour tous.
+		IN  : $onlyPrepare	-> $true|$false pour dire si on faire juste la préparation ou réellement 
+								mettre à jour. Faire juste la préparation implique de juste modifier le 
+								contenu de l'objet $ent et le retourner, sans appeler l'API pour mettre à jour.
 
 		RET : Objet contenant l'entitlement mis à jour
 	#>
@@ -820,6 +823,10 @@ class vRAAPI: RESTAPICurl
 		return $this.updateEnt($ent, $newName, $newDesc, $activated, @())
 	}
 	[PSCustomObject] updateEnt([PSCustomObject] $ent, [string] $newName, [string] $newDesc, [bool]$activated, [Array]$onlyForGroups)
+	{
+		return $this.updateEnt($ent, $newName, $newDesc, $activated, $onlyForGroups, $false)
+	}
+	[PSCustomObject] updateEnt([PSCustomObject] $ent, [string] $newName, [string] $newDesc, [bool]$activated, [Array]$onlyForGroups, [bool]$onlyPrepare)
 	{
 		$uri = "{0}/catalog-service/api/entitlements/{1}" -f $this.baseUrl, $ent.id
 
@@ -875,7 +882,11 @@ class vRAAPI: RESTAPICurl
 			}
 		}# FIN si on doit limiter à certains groupes AD
 
-
+		# SI on devait juste faire la "préparation", on retourne tel quel
+		if($onlyPrepare)
+		{
+			return $ent
+		}
 		# Mise à jour des informations
 		$this.callAPI($uri, "Put", $ent) | Out-Null
 		
