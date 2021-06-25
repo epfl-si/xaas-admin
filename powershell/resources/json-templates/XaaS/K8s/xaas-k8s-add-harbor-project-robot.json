@@ -1,11 +1,7 @@
 {
     "access": [
       {
-        "action": "push",
-        "resource": "/project/{{projectId}}/repository"
-      },
-      {
-        "action": "pull",
+        "action": "{{robotType}}",
         "resource": "/project/{{projectId}}/repository"
       }
     ],

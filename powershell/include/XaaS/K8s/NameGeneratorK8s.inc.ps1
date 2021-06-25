@@ -308,20 +308,22 @@ class NameGeneratorK8s: NameGeneratorBase
       -------------------------------------------------------------------------------------
       BUT : Renvoie le nom d'un compte robot temporaire pour un projet Harbor
 
-      IN  : $nbDaysValidity	-> Nombre de jours de validité du compte
+      IN  : $robotType	      -> Type du robot
+      IN  : $nbDaysLifeTime   -> NB jours durée de vie
 
       RET : Tableau associatif avec:
             .name       -> le nom du robot
             .desc       -> la description
             .expireAt   -> Unix time de la date d'expiration
    #>
-   [Hashtable] getHarborRobotAccountInfos([string]$nbDaysValidity)
+   [Hashtable] getHarborRobotAccountInfos([HarborRobotType]$robotType, [int]$nbDaysLifeTime)
    {
+      
       # Et c'est avec cette expression barbare que nous ajoutons les X jours à la date courante
-		$dateInXDays = (Get-Date).AddDays($nbDaysValidity)
+		$dateInXDays = (Get-Date).AddDays($nbDaysLifeTime)
       $expireAt = [int][double]::Parse((Get-Date $dateInXDays -UFormat %s))
       
-      $robotName = "{0}{1}" -f $this.getHarborProjectName(), $expireAt
+      $robotName = "{0}{1}{2}" -f $this.getHarborProjectName(), $robotType.toString().toLower(), $expireAt
       $robotDesc = "Valid until {0}" -f $dateInXDays
       
       return @{

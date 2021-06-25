@@ -13,7 +13,7 @@ USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNSNbLB -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNSLB -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action extendNSStorage -clusterName <clusterName> -namespace <namespace> -extSizeGB <extSizeGB>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addHarborRobot -bgId <bgId> -clusterName <clusterName> -deploymentTag production|test|development
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addHarborRobot -bgId <bgId> -clusterName <clusterName> -deploymentTag production|test|development -robotType push|pull
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -56,7 +56,8 @@ param([string]$targetEnv,
       [string]$clusterName,
       [string]$clusterUUID,
       [string]$namespace,
-      [int]$extSizeGB)
+      [int]$extSizeGB,
+      [string]$robotType)
 
 
 # Inclusion des fichiers nécessaires (génériques)
@@ -113,7 +114,7 @@ $ACTION_EXTEND_NAMESPACE_STORAGE        = "extendNSStorage"
 $ACTION_GET_NAMESPACE_RESOURCES         = "getNSResources"
 $ACTION_ADD_HARBOR_ROBOT                = "addHarborRobot"
 
-$ROBOT_NB_DAYS_LIFETIME         = 7
+$ROBOT_NB_DAYS_INITIAL_LIFETIME         = 7
 
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
@@ -796,10 +797,23 @@ try
             }
             
             
-            $logHistory.addLine(("Adding temporary robot in Harbor Project '{0}'" -f $harborProjectName))
-            # Récupération des informations sur le robot (nom, description, temps unix de fin de validité)
-            $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($ROBOT_NB_DAYS_LIFETIME)
-            $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $robotInfos.expireAt)
+            $logHistory.addLine(("Adding temporary robots in Harbor Project '{0}'" -f $harborProjectName))
+
+            $allRobots = @{}
+
+            [System.Enum]::GetValues([HarborRobotType]) | ForEach-Object {
+            
+                $logHistory.addLine(("> Adding '{0}' robots in Harbor Project..." -f $_.toString()))
+                # Récupération des informations sur le robot (nom, description, temps unix de fin de validité)
+                $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($_, $ROBOT_NB_DAYS_INITIAL_LIFETIME)
+                $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $robotInfos.expireAt, $_)
+                $allRobots.($_.toString().toLower()) = @{
+                    name = $robot.name
+                    token = $robot.secret
+                    validityDays = $ROBOT_NB_DAYS_INITIAL_LIFETIME
+                }
+                
+            }
 
 
             # -----------
@@ -831,11 +845,7 @@ try
                 dnsHostName = $dnsHostNameFull
                 harbor = @{
                     project = $harborProjectName
-                    robot = @{
-                        name = $robot.name
-                        token = $robot.secret
-                        validityDays = $ROBOT_NB_DAYS_LIFETIME
-                    }
+                    robot = $allRobots
                 }
             }
         }# FIN CASE ajout cluster
@@ -882,6 +892,7 @@ try
                 namespaces = $namespaces
             }
         }
+
 
         <#
         --------------------------------------
@@ -1189,16 +1200,18 @@ try
             $harborProject = $harbor.getProject($harborProjectName)
 
             # Ajout du compte temporaire
-            $logHistory.addLine(("Adding temporary robots to project"))
+            $logHistory.addLine(("Adding temporary robot (type = '{0}') to project" -f $robotType.toString()))
+
             # Récupération des informations sur le robot (nom, description, temps unix de fin de validité)
-            $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($ROBOT_NB_DAYS_LIFETIME)
-            $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $robotInfos.expireAt)
+            $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($robotType, ([HarborRobotType]$robotType).value__)
+            $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $robotInfos.expireAt, $robotType)
 
             # Résultat
             $output.results += @{
                 name = $robot.name
                 token = $robot.secret
-                validityDays = $ROBOT_NB_DAYS_LIFETIME
+                validityDays = ([HarborRobotType]$robotType).value__
+                forActions = $robotType.toString().ToLower()
             }
         }
 

@@ -406,12 +406,13 @@ class HarborAPI: RESTAPICurl
 		IN  : $robotName		-> Nom du compte robot
 		IN  : $robotDesc		-> Description du robot
 		IN  : $expireAtUTime	-> Temps unix auquel le robot va expirer
+		IN  : $robotType		-> Type de robot (push|pull)
 
 		RET : Le robot créé
 
 		https://vsissp-harbor-t.epfl.ch/#/Robot%20Account/post_projects__project_id__robots
 	#>
-	[PSObject] addTempProjectRobotAccount([PSObject]$project, [string]$robotName, [string]$robotDesc, [int]$expireAtUTime)
+	[PSObject] addTempProjectRobotAccount([PSObject]$project, [string]$robotName, [string]$robotDesc, [int]$expireAtUTime, [HarborRobotType]$robotType)
 	{
 		
 		$uri = "{0}/projects/{1}/robots" -f $this.baseUrl, $project.project_id
@@ -421,6 +422,7 @@ class HarborAPI: RESTAPICurl
 			description = $robotDesc
 			projectId = $project.project_id
 			expireAt = @($expireAtUTime, $true)
+			robotType = $robotType.toString().toLower()
 		}
 
 		$body = $this.createObjectFromJSON("xaas-k8s-add-harbor-project-robot.json", $replace)
