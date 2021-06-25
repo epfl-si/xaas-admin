@@ -806,7 +806,7 @@ try
                 $logHistory.addLine(("> Adding '{0}' robots in Harbor Project..." -f $_.toString()))
                 # Récupération des informations sur le robot (nom, description, temps unix de fin de validité)
                 $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($_, $ROBOT_NB_DAYS_INITIAL_LIFETIME)
-                $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $robotInfos.expireAt, $_)
+                $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $ROBOT_NB_DAYS_INITIAL_LIFETIME, $_)
                 $allRobots.($_.toString().toLower()) = @{
                     name = $robot.name
                     token = $robot.secret
@@ -1204,7 +1204,7 @@ try
 
             # Récupération des informations sur le robot (nom, description, temps unix de fin de validité)
             $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($robotType, ([HarborRobotType]$robotType).value__)
-            $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $robotInfos.expireAt, $robotType)
+            $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, ([HarborRobotType]$robotType).value__, $robotType)
 
             # Résultat
             $output.results += @{

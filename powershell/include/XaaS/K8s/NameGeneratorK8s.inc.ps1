@@ -314,7 +314,6 @@ class NameGeneratorK8s: NameGeneratorBase
       RET : Tableau associatif avec:
             .name       -> le nom du robot
             .desc       -> la description
-            .expireAt   -> Unix time de la date d'expiration
    #>
    [Hashtable] getHarborRobotAccountInfos([HarborRobotType]$robotType, [int]$nbDaysLifeTime)
    {
@@ -329,7 +328,6 @@ class NameGeneratorK8s: NameGeneratorBase
       return @{
          name =$robotName
          desc = $robotDesc
-         expireAt = $expireAt
       }
    }
 

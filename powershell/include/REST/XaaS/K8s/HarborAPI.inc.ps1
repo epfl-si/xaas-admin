@@ -7,6 +7,7 @@
     
 	Documentation:
 	https://vsissp-harbor-t.epfl.ch/devcenter-api-2.0
+	https://editor.swagger.io/?url=https://raw.githubusercontent.com/goharbor/harbor/master/api/v2.0/swagger.yaml
 
 	
 	REMARQUES:
@@ -391,7 +392,7 @@ class HarborAPI: RESTAPICurl
 	#>
 	[Array] getProjectRobotList([PSObject]$project)
 	{
-		$uri = "{0}/projects/{1}/robots" -f $this.baseUrl, $project.project_id
+		$uri = "{0}/robots?q=Level=project,ProjectID={1}" -f $this.baseUrl, $project.project_id
 			
 		return $this.callAPI($uri, "GET", $null)
 	}
@@ -405,23 +406,23 @@ class HarborAPI: RESTAPICurl
 		IN  : $project			-> Objet représentant le projet
 		IN  : $robotName		-> Nom du compte robot
 		IN  : $robotDesc		-> Description du robot
-		IN  : $expireAtUTime	-> Temps unix auquel le robot va expirer
+		IN  : $durationDays		-> Nombre de jour de durée de vie
 		IN  : $robotType		-> Type de robot (push|pull)
 
 		RET : Le robot créé
 
 		https://vsissp-harbor-t.epfl.ch/#/Robot%20Account/post_projects__project_id__robots
 	#>
-	[PSObject] addTempProjectRobotAccount([PSObject]$project, [string]$robotName, [string]$robotDesc, [int]$expireAtUTime, [HarborRobotType]$robotType)
+	[PSObject] addTempProjectRobotAccount([PSObject]$project, [string]$robotName, [string]$robotDesc, [int]$durationDays, [HarborRobotType]$robotType)
 	{
 		
-		$uri = "{0}/projects/{1}/robots" -f $this.baseUrl, $project.project_id
+		$uri = "{0}/robots" -f $this.baseUrl
 
 		$replace = @{
 			name = $robotName
 			description = $robotDesc
-			projectId = $project.project_id
-			expireAt = @($expireAtUTime, $true)
+			projectName = $project.name
+			durationDays = @($durationDays, $true)
 			robotType = $robotType.toString().toLower()
 		}
 

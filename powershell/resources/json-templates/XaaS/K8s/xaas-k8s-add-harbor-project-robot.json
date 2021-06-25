@@ -1,11 +1,19 @@
 {
-    "access": [
-      {
-        "action": "{{robotType}}",
-        "resource": "/project/{{projectId}}/repository"
-      }
-    ],
-    "name": "{{name}}",
-    "expire_at": "{{expireAt}}",
-    "description": "{{description}}"
-  }
+  "name": "{{name}}",
+  "duration": "{{durationDays}}", // doit être un INT, pas un STRING
+  "description": "{{description}}",
+  "disable": false,
+  "level": "project",
+  "permissions": [
+    {
+      "namespace": "{{projectName}}",
+      "kind": "project",
+      "access": [
+        {
+          "resource": "repository",
+          "action": "{{robotType}}"
+        }
+      ]
+    }
+  ]
+}
