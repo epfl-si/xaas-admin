@@ -30,6 +30,7 @@ class vRAAPI: RESTAPICurl
 	hidden [string]$token
 	hidden [string]$tenant
 	hidden [Hashtable]$bgCustomIdMappingCache
+	hidden [string]$user
 
 	<#
 	-------------------------------------------------------------------------------------
@@ -37,13 +38,14 @@ class vRAAPI: RESTAPICurl
 
 		IN  : $server			-> Nom DNS du serveur
 		IN  : $tenant			-> Nom du tenant auquel se connecter
-		IN  : $userAtDomain	-> Nom d'utilisateur (user@domain)
+		IN  : $user				-> Nom d'utilisateur (use)
 		IN  : $password			-> Mot de passe
 
 	#>
-	vRAAPI([string] $server, [string] $tenant, [string] $userAtDomain, [string] $password) : base($server) # Ceci appelle le constructeur parent
+	vRAAPI([string] $server, [string] $tenant, [string] $user, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
 		$this.tenant = $tenant
+		$this.user = $user
 
 		# Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
 		$this.setJSONSubPath(@( (Get-PSCallStack)[0].functionName) )
@@ -54,7 +56,7 @@ class vRAAPI: RESTAPICurl
 		$this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
 
-		$replace = @{username = $userAtDomain
+		$replace = @{username = $user
 						 password = $password
 						 tenant = $tenant}
 
@@ -2116,10 +2118,13 @@ class vRAAPI: RESTAPICurl
 
 			$levelNo = $approvalLevels.Count + 1
 
-			$replace = @{preApprovalLevelName = ("{0}-{1}" -f $name, $levelNo)
-						 approverGroupAtDomain = $approverGroupAtDomain
-						 approverDisplayName = $approverDisplayName
-						 preApprovalLeveNumber = @($levelNo, $true)}
+			$replace = @{
+						preApprovalLevelName = ("{0}-{1}" -f $name, $levelNo)
+						approverGroupAtDomain = $approverGroupAtDomain
+						approverDisplayName = $approverDisplayName
+						preApprovalLeveNumber = @($levelNo, $true)
+						tenantAPIUser = $this.user # Pour donner également les droits "pass-through" à l'utilisateur employé pour faire les appels API
+					}
 
 			# Création du level d'approbation et ajout à la liste 
 			$approvalLevels += $this.createObjectFromJSON($approvalLevelJSON, $replace)

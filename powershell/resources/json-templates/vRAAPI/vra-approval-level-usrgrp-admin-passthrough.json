@@ -12,21 +12,43 @@
     "criteria": {
         "type": "not",
         "subClause": {
-            "type": "expression",
-            "operator": {
-                "type": "startsWith"
-            },
-            "leftOperand": {
-                "type": "path",
-                "path": "requestedBy~principalIdAsString"
-            },
-            "rightOperand": {
-                "type": "constant",
-                "value": {
-                    "type": "string",
-                    "value": "itadmin-"
+            "type": "and",
+            "subClauses": [
+                {
+                    "type": "expression",
+                    "operator": {
+                        "type": "startsWith"
+                    },
+                    "leftOperand": {
+                        "type": "path",
+                        "path": "requestedBy~principalIdAsString"
+                    },
+                    "rightOperand": {
+                        "type": "constant",
+                        "value": {
+                            "type": "string",
+                            "value": "itadmin-"
+                        }
+                    }
+                },
+                {
+                    "type": "expression",
+                    "operator": {
+                        "type": "equals"
+                    },
+                    "leftOperand": {
+                        "type": "path",
+                        "path": "requestedBy~principalIdAsString"
+                    },
+                    "rightOperand": {
+                        "type": "constant",
+                        "value": {
+                            "type": "string",
+                            "value": "{{tenantAPIUser}}"
+                        }
+                    }
                 }
-            }
+            ]
         }
     },
     "levelNumber": "{{preApprovalLeveNumber}}",

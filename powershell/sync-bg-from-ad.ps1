@@ -616,20 +616,33 @@ function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName
 	{
 		$ent = $ent[0]
 
-		# Si le nom a changé (car le nom du BG a changé) ou la description a changé 
+		# Si on NE DOIT PAS recréer les approval policies ET que
+		# le nom a changé (car le nom du BG a changé) ou la description a changé 
 		if(($ent.name -ne $entName) -or ($ent.description -ne $entDesc) -or `
-			((!$ent.allUsers) -and ($null -ne (Compare-Object $onlyForGroups ($ent.principals | Select-Object -ExpandProperty "value")))))
+		((!$ent.allUsers) -and ($null -ne (Compare-Object $onlyForGroups ($ent.principals | Select-Object -ExpandProperty "value")))))
 		{
-			$logHistory.addLineAndDisplay(("-> Updating Entitlement {0} for type {1}..." -f $ent.name, $entType.toString()))
-			# Mise à jour du nom/description de l'entitlement courant et on force la réactivation
-			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true, $onlyForGroups)
+			# SI on doit recréer les approval policies, on ne met pas à jour l'entitlement à cet instant car ça va foirer vu
+			# qu'on essaiera d'utiliser des ID d'approval policies incorrects
+			if(Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES)))
+			{
+				$logHistory.addWarningAndDisplay(("-> Entitlement {0} won't be updated because we are recreating approval policies..." -f $ent.name))
+			}
+			else
+			{
+				$logHistory.addLineAndDisplay(("-> Updating Entitlement {0} for type {1}..." -f $ent.name, $entType.toString()))
+				# Mise à jour du nom/description de l'entitlement courant et on force la réactivation
+				$ent = $vra.updateEnt($ent, $entName, $entDesc, $true, $onlyForGroups)
 
-			$counters.inc('EntUpdated')
+				$counters.inc('EntUpdated')
+			}
+			
 		}
 		else
 		{
 			$logHistory.addLineAndDisplay(("-> Entitlement {0} for type {1} is up-to-date" -f $ent.name, $entType.toString()))
 		}
+	
+		
 	}
 	return $ent
 }
