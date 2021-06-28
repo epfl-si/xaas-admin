@@ -1739,7 +1739,7 @@ class vRAAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie les infos d'un item de catalogue donné par son nom
 			  
-		IN  : $name			-> Nom de l'élément de cataloguq que l'on désire
+		IN  : $name			-> Nom de l'élément de catalogue que l'on désire
 
 		RET : Objet avec les détails de l'élément de catalogue
 				$null si pas trouvé
@@ -1838,7 +1838,20 @@ class vRAAPI: RESTAPICurl
 	#>
 	[Array] getWaitingCatalogItemRequest()
 	{
-		return $this.getCatalogItemRequestListQuery("`$filter=state eq 'PENDING_PRE_APPROVAL'")
+		$list = $this.getCatalogItemRequestListQuery("`$filter=state eq 'PENDING_PRE_APPROVAL'")
+
+		<# La liste qu'on a récupérée ci-dessus peut aussi contenir des demandes en attente pour des éléments
+			de catalogue qui n'existent plus, elles ne sont donc plus valables car plus visibles dans l'interface
+			graphique et donc plus "validable". Il faut donc que l'on filtre pour savoir quelles demandes sont
+			encore valables #>
+		
+		$result = @()
+		# Recherche de la liste des ID de catalog Items qui appartiennent réellement à des services "actifs"
+		$correctCatalogItemIDs = @($this.getCatalogItemListQuery("") | Where-Object { $null -ne $_.serviceRef } | ForEach-Object { $_.id })
+
+		# On ne retourne ensuite que les demandes en attente qui sont effectivement associés à un élément de catalogue appartenant à un Service
+		return $list | Where-Object { $_.catalogItemRef.id -in $correctCatalogItemIDs}
+
 	}
 
 
