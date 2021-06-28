@@ -1526,6 +1526,7 @@ try
 			$logHistory.addErrorAndDisplay(("There are {0} requests waiting for an approval. Approval policies can't be recreated now."))
 			exit
 		}
+		$logHistory.addLineAndDisplay("No waiting approval request found, approval policies can be recreated")
 	}#FIN SI on doit recréer les approval policies
 
 	$doneElementList = @()
