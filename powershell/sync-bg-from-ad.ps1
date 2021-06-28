@@ -1518,12 +1518,12 @@ try
 	# Si on doit recréer les approval policies, 
 	if(Test-Path -Path $recreatePoliciesFile)
 	{
-		$logHistory.addLineAndDisplay("Approval policies recreation has been requested, checking if there's any element waiting for an approval")
+		$logHistory.addLineAndDisplay("Approval policies recreation has been requested, checking if there's any element waiting for an approval...")
 		# On regarde qu'il n'y a rien en attente
 		$waitingRequests = $vra.getWaitingCatalogItemRequest()
 		if($waitingRequests.count -gt 0)
 		{
-			$logHistory.addErrorAndDisplay(("There are {0} requests waiting for an approval. Approval policies can't be recreated now."))
+			$logHistory.addErrorAndDisplay(("There are {0} requests waiting for an approval. Approval policies can't be recreated now." -f $waitingRequests.count))
 			exit
 		}
 		$logHistory.addLineAndDisplay("No waiting approval request found, approval policies can be recreated")
