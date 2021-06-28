@@ -1931,20 +1931,25 @@ try
 		}
 
 
-		# ----------------------------------------------------------------------------------
-		# --------------------------------- NSX
+		# Pour gagner du temps lorsque l'on recrée les approval policies, on ne passe pas par la partie NSX
+		if(!(Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))))
+		{
+			# ----------------------------------------------------------------------------------
+			# --------------------------------- NSX
 
-		# Création du NSGroup si besoin 
-		$nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
+			# Création du NSGroup si besoin 
+			$nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
 
-		# Création de la section de Firewall si besoin
-		$nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc -nsxNSGroup $nsxNSGroup
+			# Création de la section de Firewall si besoin
+			$nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc -nsxNSGroup $nsxNSGroup
 
-		# Création des règles dans la section de firewall
-		createFirewallSectionRulesIfNotExists -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
+			# Création des règles dans la section de firewall
+			createFirewallSectionRulesIfNotExists -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
 
-		# Verrouillage de la section de firewall (si elle ne l'est pas encore)
-		$nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
+			# Verrouillage de la section de firewall (si elle ne l'est pas encore)
+			$nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
+		}
+		
 
 		$doneElementList += @{
 			adGroup = $_.name
