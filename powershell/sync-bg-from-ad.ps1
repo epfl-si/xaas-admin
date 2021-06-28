@@ -1468,6 +1468,8 @@ try
 	$counters.add('NSXFWSectionRulesCreated', '# NSX Firewall Section Rules created')
 	$counters.add('NSXFWSectionRulesExisting', '# NSX Firewall Section Rules existing')
 
+	# Chemin jusqu'au fichier qui dit s'il faut recréer les approval policies
+	$recreatePoliciesFile = ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))
 
 	<# Pour enregistrer la liste des IDs des approval policies qui ont été traitées. Ceci permettra de désactiver les autres à la fin. #>
 	$processedApprovalPoliciesIDs = @()
@@ -1511,6 +1513,20 @@ try
 
 	# Pour faire les recherches dans LDAP
 	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))						 
+
+
+	# Si on doit recréer les approval policies, 
+	if(Test-Path -Path $recreatePoliciesFile)
+	{
+		$logHistory.addLineAndDisplay("Approval policies recreation has been requested, checking if there's any element waiting for an approval")
+		# On regarde qu'il n'y a rien en attente
+		$waitingRequests = $vra.getWaitingCatalogItemRequest()
+		if($waitingRequests.count -gt 0)
+		{
+			$logHistory.addErrorAndDisplay(("There are {0} requests waiting for an approval. Approval policies can't be recreated now."))
+			exit
+		}
+	}#FIN SI on doit recréer les approval policies
 
 	$doneElementList = @()
 
@@ -1932,7 +1948,7 @@ try
 
 
 		# Pour gagner du temps lorsque l'on recrée les approval policies, on ne passe pas par la partie NSX
-		if(!(Test-Path -Path ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))))
+		if(!(Test-Path -Path $recreatePoliciesFile))
 		{
 			# ----------------------------------------------------------------------------------
 			# --------------------------------- NSX
@@ -2021,7 +2037,6 @@ try
 
 	# Si le fichier qui demandait à ce que l'on force la recréation des policies existe, on le supprime, afin d'éviter 
 	# que le script ne s'exécute à nouveau en recréant les approval policies, ce qui ne serait pas très bien...
-	$recreatePoliciesFile = ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))
 	if(Test-Path -Path $recreatePoliciesFile)
 	{
 		Remove-Item -Path $recreatePoliciesFile
