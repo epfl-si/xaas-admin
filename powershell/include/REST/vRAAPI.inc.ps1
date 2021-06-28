@@ -1850,7 +1850,9 @@ class vRAAPI: RESTAPICurl
 		$correctCatalogItemIDs = @($this.getCatalogItemListQuery("") | Where-Object { $null -ne $_.serviceRef } | ForEach-Object { $_.id })
 
 		# On ne retourne ensuite que les demandes en attente qui sont effectivement associés à un élément de catalogue appartenant à un Service
-		return $list | Where-Object { $_.catalogItemRef.id -in $correctCatalogItemIDs}
+		# ET
+		# les demandes de type "ResourceActionRequest" qui sont en fait les requêtes Day-2 (qu'il faut aller chercher dans la donnée membre '@type' et c'est un peu chiant -_- )
+		return $list | Where-Object { ($_.catalogItemRef.id -in $correctCatalogItemIDs) -or ( ($_.PSObject.properties | Where-Object {$_.name -eq '@type'}).value -eq "ResourceActionRequest" )}
 
 	}
 
