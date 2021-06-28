@@ -616,20 +616,26 @@ function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName
 	{
 		$ent = $ent[0]
 
-		# Si le nom a changé (car le nom du BG a changé) ou la description a changé 
+		# Si on NE DOIT PAS recréer les approval policies ET que
+		# le nom a changé (car le nom du BG a changé) ou la description a changé 
 		if(($ent.name -ne $entName) -or ($ent.description -ne $entDesc) -or `
-			((!$ent.allUsers) -and ($null -ne (Compare-Object $onlyForGroups ($ent.principals | Select-Object -ExpandProperty "value")))))
+		((!$ent.allUsers) -and ($null -ne (Compare-Object $onlyForGroups ($ent.principals | Select-Object -ExpandProperty "value")))))
 		{
 			$logHistory.addLineAndDisplay(("-> Updating Entitlement {0} for type {1}..." -f $ent.name, $entType.toString()))
-			# Mise à jour du nom/description de l'entitlement courant et on force la réactivation
-			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true, $onlyForGroups)
+			# Mise à jour du nom/description de l'entitlement courant et on force la réactivation.
+			# NOTE: On met à jour uniquement l'objet en local, sans appeler l'API. Un appel à $vra.updateEnt(...) sera fait
+			# plus loin dans le code pour réellement le mettre à jour
+			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true, $onlyForGroups, $true)
 
 			$counters.inc('EntUpdated')
+			
 		}
 		else
 		{
 			$logHistory.addLineAndDisplay(("-> Entitlement {0} for type {1} is up-to-date" -f $ent.name, $entType.toString()))
 		}
+	
+		
 	}
 	return $ent
 }
