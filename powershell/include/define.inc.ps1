@@ -65,7 +65,6 @@ $global:APPROVE_POLICY_TYPE__ACTION_REQ   = 'reconfigure'
 
 # Information sur les services au sens vRA
 $global:VRA_SERVICE_SUFFIX__PUBLIC  =" (Public)"
-$global:VRA_SERVICE_SUFFIX__PRIVATE =" (Private)"
 
 # Nom des custom properties à utiliser
 $global:VRA_CUSTOM_PROP_EPFL_BG_ID                  = "ch.epfl.vra.bg.id"
