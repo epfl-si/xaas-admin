@@ -317,12 +317,30 @@ class NameGeneratorK8s: NameGeneratorBase
    #>
    [Hashtable] getHarborRobotAccountInfos([HarborRobotType]$robotType, [int]$nbDaysLifeTime)
    {
-      
+      $start = ""
+      switch($this.tenant)
+      {
+         $global:VRA_TENANT__EPFL
+         {
+            $start = $this.getDetail('unitID')
+         }
+
+         $global:VRA_TENANT__ITSERVICES
+         {
+            $start = $this.getDetail('snowServiceId')
+         }
+
+         $global:VRA_TENANT__RESEARCH
+         {
+            $start = $this.getDetail('projectId')
+         }
+      }
+
       # Et c'est avec cette expression barbare que nous ajoutons les X jours à la date courante
 		$dateInXDays = (Get-Date).AddDays($nbDaysLifeTime)
       $expireAt = [int][double]::Parse((Get-Date $dateInXDays -UFormat %s))
       
-      $robotName = "{0}{1}{2}" -f $this.getHarborProjectName(), $robotType.toString().toLower(), $expireAt
+      $robotName = "{0}-{1}-{2}" -f $start, $robotType.toString().toLower(), $expireAt
       $robotDesc = "Valid until {0}" -f $dateInXDays
       
       return @{
