@@ -1,6 +1,6 @@
 <#
 USAGES:
-	tools-update-vm-custom-props.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research
+	tools-update-vm-custom-props.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research [-bgName <bgName>]
 #>
 <#
 	BUT 		: Crée/met à jour les customs props des VMs en fonction du tenant et du BG où elles se trouvent.
@@ -13,6 +13,7 @@ USAGES:
 						dans le fichier "define.inc.ps1"
 		$targetTenant 	-> nom du tenant cible. Défini par les valeurs $global:VRA_TENANT__* dans le fichier
 						"define.inc.ps1"
+		$bgName			-> (optionnel) Nom du BG pour lequel limiter l'exécution du script	
 	
 	REMARQUE : Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy
 				  via Set-ExecutionPolicy. Normalement, si on met la valeur "Unrestricted",
@@ -22,7 +23,7 @@ USAGES:
 				  Ceci ne fonctionne pas ! A la place il faut à nouveau passer par la
 				  commande Set-ExecutionPolicy mais mettre la valeur "ByPass" en paramètre.
 #>
-param ( [string]$targetEnv, [string]$targetTenant)
+param ( [string]$targetEnv, [string]$targetTenant, [string]$bgName)
 
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -91,8 +92,21 @@ try
 						 $vraUser,
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
+	$logHistory.addLineAndDisplay("Getting BG list...")
+	$bgList = $vra.getBGList()
+
+	# Si on doit limiter à un BG,
+	if($bgName -ne "")
+	{
+		$logHistory.addLineAndDisplay(("Limiting to '{0}' BG" -f $bgName))
+		# Filtre
+		$bgList = @($bgList | Where-Object { $_.name -eq $bgName } )
+	}
+
+	$logHistory.addLineAndDisplay(("{0} BG to process" -f $bgList.count))
+
     # Parcours de la liste des BG
-    Foreach ($bg in $vra.getBGList())
+    Foreach ($bg in $bgList)
     {
         $logHistory.addLineAndDisplay(("Processing BG '{0}'..." -f $bg.name))
 
@@ -115,7 +129,7 @@ try
 			}
 		}
 		
-
+		# Parcours des VM du BG
 		Foreach($vm in $vmList)
         {
             $logHistory.addLineAndDisplay((">> Processing VM '{0}'..." -f $vm.name))
