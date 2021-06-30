@@ -188,7 +188,7 @@ class HarborAPI: RESTAPICurl
 		RET : Détails du projet
 				$null si pas trouvé
 	#>
-	[PSObject] getProject([string]$name)
+	[PSCustomObject] getProject([string]$name)
 	{
 		$res = $this.getProjectListQuery( ("name={0}" -f $name) )
 
@@ -209,7 +209,7 @@ class HarborAPI: RESTAPICurl
 
 		RET : Le projet créé
 	#>
-	[PSObject] addProject([string]$name, [HarborProjectSeverity]$severity)
+	[PSCustomObject] addProject([string]$name, [HarborProjectSeverity]$severity)
 	{
 		$uri = "{0}/projects" -f $this.baseUrl
 
@@ -233,7 +233,7 @@ class HarborAPI: RESTAPICurl
 
 		IN  : $project	-> Objet représentant le projet à supprimer
 	#>
-	[void] deleteProject([PSObject]$project)
+	[void] deleteProject([PSCustomObject]$project)
 	{
 		$uri = "{0}/projects/{1}" -f $this.baseUrl, $project.project_id
 			
@@ -277,7 +277,7 @@ class HarborAPI: RESTAPICurl
 
 		https://vsissp-harbor-t.epfl.ch/#/Products/get_projects__project_id__members
 	#>
-	[Array] getProjectMemberList([PSObject]$project)
+	[Array] getProjectMemberList([PSCustomObject]$project)
 	{
 		$uri = "{0}/projects/{1}/members" -f $this.baseUrl, $project.project_id
 			
@@ -297,7 +297,7 @@ class HarborAPI: RESTAPICurl
 
 		https://vsissp-harbor-t.epfl.ch/#/Products/post_projects__project_id__members
 	#>
-	[void] addProjectMember([PSObject]$project, [string]$userOrGroupName, [HarborProjectRole]$role)
+	[void] addProjectMember([PSCustomObject]$project, [string]$userOrGroupName, [HarborProjectRole]$role)
 	{
 		$adGroup = $this.ldap.getADGroup($userOrGroupName)
 		
@@ -366,7 +366,7 @@ class HarborAPI: RESTAPICurl
 
 		https://vsissp-harbor-t.epfl.ch/#/Products/delete_projects__project_id__members__mid_
 	#>
-	[void] deleteProjectMember([PSObject]$project, [int]$memberId)
+	[void] deleteProjectMember([PSCustomObject]$project, [int]$memberId)
 	{
 		$uri = "{0}/projects/{1}/members/{2}" -f $this.baseUrl, $project.project_id, $memberId
 			
@@ -382,6 +382,33 @@ class HarborAPI: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des robots qui existent parmi tous les projets
+
+		RET : Liste des robots
+
+		NOTE: Il existe aussi la possibilité de faire un "GET /robots" mais ça ne renvoie
+				rien du tout comme résultat... donc on doit obligatoirement boucler sur les
+				projets
+	#>
+	[Array] getRobotList()
+	{
+		$allRobots = @()
+
+		$projectList = $this.getProjectList()
+	
+		# Parcours des projets
+		ForEach($project in $projectList)
+		{
+			$allRobots += $this.getProjectRobotList($project)
+	
+		}# FIN BOUCLE de parcours des projets
+	
+		return $allRobots
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des robots d'un projet
 
 		IN  : $project			-> Objet représentant le projet
@@ -390,7 +417,7 @@ class HarborAPI: RESTAPICurl
 
 		https://vsissp-harbor-t.epfl.ch/#/Robot%20Account/get_projects__project_id__robots
 	#>
-	[Array] getProjectRobotList([PSObject]$project)
+	[Array] getProjectRobotList([PSCustomObject]$project)
 	{
 		$uri = "{0}/robots?q=Level=project,ProjectID={1}" -f $this.baseUrl, $project.project_id
 			
@@ -413,7 +440,7 @@ class HarborAPI: RESTAPICurl
 
 		https://vsissp-harbor-t.epfl.ch/#/Robot%20Account/post_projects__project_id__robots
 	#>
-	[PSObject] addTempProjectRobotAccount([PSObject]$project, [string]$robotName, [string]$robotDesc, [int]$durationDays, [HarborRobotType]$robotType)
+	[PSCustomObject] addTempProjectRobotAccount([PSCustomObject]$project, [string]$robotName, [string]$robotDesc, [int]$durationDays, [HarborRobotType]$robotType)
 	{
 		
 		$uri = "{0}/robots" -f $this.baseUrl
@@ -430,6 +457,21 @@ class HarborAPI: RESTAPICurl
 
 		return $this.callAPI($uri, "POST", $body) 
 		
+	}
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Efface un robot
+
+		IN  : $robot	-> Objet représentant le robot à effacer
+
+		https://vsissp-harbor-t.epfl.ch/#/robot/DeleteRobot
+	#>
+	[void] deleteRobot([PSCustomObject]$robot)
+	{
+		$uri = "{0}/robots/{1}" -f $this.baseUrl, $robot.id
+			
+		$this.callAPI($uri, "DELETE", $null) | Out-Null
 	}
 
 
@@ -449,7 +491,7 @@ class HarborAPI: RESTAPICurl
 
 		https://vsissp-harbor-t.epfl.ch/#/repository/listRepositories
 	#>
-	[Array] getProjectRepositoryList([PSObject]$project)
+	[Array] getProjectRepositoryList([PSCustomObject]$project)
 	{
 		$uri = "{0}/projects/{1}/repositories" -f $this.baseUrl, $project.name
 			
@@ -464,7 +506,7 @@ class HarborAPI: RESTAPICurl
 		IN  : $project			-> Objet représentant le projet
 		IN  : $repository		-> Objet représentant le repository
 	#>
-	[void] deleteProjectRepository([PSObject]$project, [PSObject]$repository)
+	[void] deleteProjectRepository([PSCustomObject]$project, [PSCustomObject]$repository)
 	{
 		$uri = "{0}/projects/{1}/repositories/{2}" -f $this.baseUrl, $project.name, $repository.name
 			
@@ -505,7 +547,7 @@ class HarborAPI: RESTAPICurl
 
 		https://vsissp-harbor-t.epfl.ch/#/Products/get_usergroups
 	#>
-	[PSObject] getUserGroup([string]$groupLDAPDN)
+	[PSCustomObject] getUserGroup([string]$groupLDAPDN)
 	{
 		return ($this.getUserGroupList() | Where-Object { $_.ldap_group_dn.toLower() -eq $groupLDAPDN.toLower()})
 	}
@@ -521,7 +563,7 @@ class HarborAPI: RESTAPICurl
 
 		https://vsissp-harbor-t.epfl.ch/#/Products/post_usergroups
 	#>
-	[PSObject] addUserGroup([string]$groupLDAPDN)
+	[PSCustomObject] addUserGroup([string]$groupLDAPDN)
 	{
 		$uri = "{0}/usergroups" -f $this.baseUrl
 			

@@ -350,6 +350,32 @@ class NameGeneratorK8s: NameGeneratorBase
    }
 
 
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie un objet avec les informations d'un robot à partir de son nom
+
+      IN  : $robotName  -> Nom du robot
+
+      RET : Objet avec les infos du robot, dans les données membres suivantes:
+            .projectName
+            .bgId
+            .type
+            .expirationTime
+   #>
+   [PSCustomObject] extractInfosFromRobotName([string]$robotName)
+   {
+      # Un nom de robot est au format "robot$<projectName>+<bgID>-<type>-<expirationTime>"
+      $dummy, $projectName, $bgId, $type, $expirationTime = [Regex]::Match($robotName, 'robot\$(.*?)\+(.*?)-(.*?)-(.*)').Groups | Select-Object -ExpandProperty value
+
+      return @{
+         projectName = $projectName
+         bgId = $bgId
+         type = $type
+         expirationTime = $expirationTime
+      }
+   }
+
+
    <# -------------------------------------------------------------------------------------
       ----------------------------------- NetWork -----------------------------------------
       ------------------------------------------------------------------------------------- #>
