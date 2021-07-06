@@ -71,7 +71,7 @@ $configVra = [ConfigReader]::New("config-vra.json")
 # Montant minimmum à partir duquel on facture
 $global:BILLING_MIN_MOUNT_CHF = 5
 # Nombre de jours pendant lesquels on garde les fichiers PDF générés avant de les effacer.
-$global:BILLING_KEEP_PDF_NB_DAYS = 60
+$global:BILLING_KEEP_PDF_NB_DAYS = 120
 
 # Actions possibles par le script
 $global:ACTION_EXTRACT_DATA = "extractData"
