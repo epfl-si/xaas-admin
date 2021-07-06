@@ -122,8 +122,6 @@ try
 			# Liste des custom properties à check et des valeurs qu'elles devraient avoir
 			$customPropsToCheck = @{
 				$global:VRA_CUSTOM_PROP_EPFL_BG_ID = (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
-				$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER = (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER)
-				$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME = (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME)
 				$global:VRA_CUSTOM_PROP_VRA_BG_NAME = $bg.name
 				$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME = $targetTenant
 			}
