@@ -700,6 +700,9 @@ try
                                         $billingObject.sendBillByMail($entity.entityFinanceCenter, $targetPDFPath, $mailSubject, $periodStartDate, $periodEndDate)
 
                                         $counters.inc('billSentByEmail')
+
+                                        # On dit que tous les items de la facture ont été facturés
+                                        $billingObject.setEntityItemTypesAsBilled($entity.entityId, $billedItemTypes, $billReference)
                                     }
                                     catch # Gestion des erreurs
                                     {
