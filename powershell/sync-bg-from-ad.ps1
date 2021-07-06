@@ -1528,7 +1528,7 @@ try
 		}
 		$logHistory.addLineAndDisplay("No waiting approval request found, approval policies can be recreated")
 
-		$logHistory.addWarningAndDisplay("Approval policies recreation will fail if some Services (ie: 'Private') have manually been added in Entitlements.`n Please manually remove approval policies for those Service and set them back when script execution is done.")
+		$logHistory.addWarningAndDisplay("Approval policies recreation will fail if some Services (ie: 'Private') have manually been added in Entitlements.`nPlease manually remove approval policies for those Service and set them back when script execution is done.")
 		Read-Host -Prompt "Press enter when all Approval Policies for manually added Services have been removed"
 	}#FIN SI on doit recréer les approval policies
 
