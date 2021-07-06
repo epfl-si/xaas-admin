@@ -612,12 +612,12 @@ try
                         # S'il faut envoyer à Copernic,
                         if($sendToCopernic)
                         {
-                            $logHistory.addLineAndDisplay("> We have to send bill in Copernic")
                             $billDescription = "{0} - du {1} au {2}" -f $serviceBillingInfos.serviceName, $periodStartDate, $periodEndDate
 
                             # Si le centre financier est un "vrai" centre financier (et donc que des chiffres)
                             if($entity.entityFinanceCenter -match '[0-9]+')
                             {
+                                $logHistory.addLineAndDisplay("> We have to send bill in Copernic")
 
                                 # Facture de base
                                 $PDFFiles = @( @{
