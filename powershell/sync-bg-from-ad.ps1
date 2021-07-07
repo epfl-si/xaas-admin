@@ -749,8 +749,7 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 	BUT : Créé ou met à jour une Day-2 policy
 
 	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
-	IN  : $name				-> Nom de la Day-2 policy
-	IN  : $description		-> Description de la Day-2 policy
+	IN  : $nameGenerator	-> Objet pour générer les noms
 	IN  : $project			-> Objet représentant le projet pour lequel ajouter la policy
 	IN  : $policyRole		-> Pour quel rôle vRA on veut ajouter la policy
 	IN  : $entitlementType	-> Type d'entitlement (admin|user) 
@@ -759,11 +758,12 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 	
 	RET : Objet représentant la day-2 policy
 #>
-function createOrUpdateDay2Policy([vRA8API]$vra, [string]$name, [string]$description, [PSCustomObject]$project, [PolicyRole]$policyRole, [EntitlementType]$entitlementType, [Array]$actionNameList)
+function createOrUpdateDay2Policy([vRA8API]$vra, [NameGenerator]$nameGenerator, [PSCustomObject]$project, [PolicyRole]$policyRole, [EntitlementType]$entitlementType, [Array]$actionNameList)
 {
-	
+	$day2PolName, $day2PolDesc = $nameGenerator.getPolicyNameAndDesc([PolicyType]::Action, $policyRole)
+
 	# On regarde si la policy existe déjà
-	$day2Policy = $vra.getPolicy($name)
+	$day2Policy = $vra.getPolicy($day2PolName)
 
 	# Si la policy exists
 	if($null -ne $day2Policy)
@@ -783,7 +783,7 @@ function createOrUpdateDay2Policy([vRA8API]$vra, [string]$name, [string]$descrip
 
 	$logHistory.addLineAndDisplay(("Adding Day2 Policy '{0}' with {1} Day2 actions for '{2}' role" -f $day2PolName, $actionNameList.count, $entitlementType.toString()))
 
-	$day2Policy = $vra.addDay2Policy($name, $description, $project, $policyRole, $actionNameList)
+	$day2Policy = $vra.addDay2Policy($day2PolName, $day2PolDesc, $project, $policyRole, $actionNameList)
 
 	return $day2Policy
 
@@ -1636,6 +1636,7 @@ try
 		$ent = createOrUpdateProjectEnt -vra $vra -project $project -entType ([EntitlementType]::User) -NameGenerator $nameGenerator `
 									-onlyForGroups @() -deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
 
+		#FIXME: A priori on devrait pouvoir supprimer cette partie car on passe maintenant par les "day-2 policies"
 		# # Pour les admins (actions VIP)
 		# $entAdm = createOrUpdateProjectEnt -vra $vra -bg $project -entName $entNameAdm -entDesc $entDescAdm -entType ([EntitlementType]::Admin) -NameGenerator $nameGenerator `
 		# 							-onlyForGroups $adminGrpList.split('@')[0] -deniedServices $deniedVRASvc -mandatoryItems $mandatoryEntItemsList
@@ -1645,19 +1646,15 @@ try
 		# --------------------------------- Day2 Actions
 
 		# -- Users
-		$day2PolName, $day2PolDesc = $nameGenerator.getPolicyNameAndDesc([PolicyType]::Action, [PolicyRole]::Member)
-
 		$actionNameList = @($secondDayActions.getActionList() | ForEach-Object { $_.name })
 
-		$day2Policy = createOrUpdateDay2Policy -vra $vra -name $day2PolName -description $day2PolDesc -project $project -policyRole ([PolicyRole]::Member) `
+		$day2Policy = createOrUpdateDay2Policy -vra $vra -nameGenerator $nameGenerator -project $project -policyRole ([PolicyRole]::Member) `
 												-entitlementType ([EntitlementType]::User) -actionNameList $actionNameList
 
 		# -- Admins
-		$day2PolName, $day2PolDesc = $nameGenerator.getPolicyNameAndDesc([PolicyType]::Action, [PolicyRole]::Administrator)
-
 		$actionNameList = @($secondDayActionsAdm.getActionList() | ForEach-Object { $_.name })
 
-		$day2PolicyAdm = createOrUpdateDay2Policy -vra $vra -name $day2PolName -description $day2PolDesc -project $project -policyRole ([PolicyRole]::Administrator) `
+		$day2PolicyAdm = createOrUpdateDay2Policy -vra $vra -nameGenerator $nameGenerator -project $project -policyRole ([PolicyRole]::Administrator) `
 												-entitlementType ([EntitlementType]::Admin) -actionNameList $actionNameList
 
 		#TODO: Continuer ici
