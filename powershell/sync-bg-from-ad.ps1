@@ -166,7 +166,7 @@ function getFullElementNameFromJSON([string]$baseName, [string]$JSONFile, [strin
 #>
 function createApprovalPolicyIfNotExists([vRA8API]$vra, [string]$name, [string]$desc, [string]$approvalLevelJSON, [Array]$approverGroupAtDomainList, [string]$approvalPolicyJSON, [psobject]$additionnalReplace, [ref]$processedApprovalPoliciesIDs)
 {
-	#TODO: continuer ici
+	#TODO: continuer ici une fois qu'on aura les informations sur comment qu'on fait pour les approval policies
 	# Recherche du nom complet de la policy depuis le fichier JSON
 	$fullName = getFullElementNameFromJSON -baseName $name -JSONFile $approvalPolicyJSON -replaceString "preApprovalName" -fieldName "name"
 
@@ -770,8 +770,16 @@ function createOrUpdateDay2Policy($vra, $name, $description, $project, $policyRo
 	{
 		$logHistory.addLineAndDisplay(("Day2 Policy '{0}' already exists. Deleting it to recreate it" -f $day2PolName))
 
+		# on l'efface pour la recréer après. C'est brutal mais on est sûr d'avoir quelque chose de correct
 		$vra.deletePolicy($day2Policy)
+
+		$counters.inc('day2PolicyUpdated')
 	}
+	else # La policy n'existe pas, on va donc la créer
+	{
+		$counters.inc('day2PolicyCreated')
+	}
+
 
 	$logHistory.addLineAndDisplay(("Adding Day2 Policy '{0}' with {1} Day2 actions for '{2}' role" -f $day2PolName, $actionNameList.count, $entitlementType.toString()))
 
@@ -1279,18 +1287,10 @@ try
 	$counters.add('projectGhost',	'# Project set as "ghost"')
 	$counters.add('projectRenamed',	'# Project renamed')
 	$counters.add('projectResurrected', '# Project set alive again')
-	# Entitlements
-	$counters.add('EntCreated', '# Entitlements created')
-	$counters.add('EntUpdated', '# Entitlements updated')
-	# Services
-	$counters.add('EntServices', '# Existing Entitlements Services')
-	$counters.add('EntServicesRemoved', '# Removed Entitlements Services (because denied)')
-	$counters.add('EntServicesAdded', '# Entitlements Services added')
-	$counters.add('EntServicesDenied', '# Entitlements Services denied')
-	# Reservations
-	$counters.add('ResCreated', '# Reservations created')
-	$counters.add('ResUpdated', '# Reservations updated')
-	$counters.add('ResDeleted', '# Reservations deleted')
+	# Day-2 policies
+	$counters.add('day2PolicyUpdated', '# Day-2 policy updated')
+	$counters.add('day2PolicyCreated', '# Day-2 policy created')
+	
 	# Approval policies 
 	$counters.add('AppPolCreated', '# Approval Policies created')
 	$counters.add('AppPolExisting', '# Approval Policies already existing')
@@ -1660,7 +1660,7 @@ try
 		$day2PolicyAdm = createOrUpdateDay2Policy -vra $vra -name $day2PolName -description $day2PolDesc -project $project -policyRole ([PolicyRole]::Administrator) `
 												-entitlementType ([EntitlementType]::Admin) -actionNameList $actionNameList
 
-		#TODO:
+		#TODO: Continuer ici
 		
 
 		# $logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for users...")
@@ -1772,7 +1772,7 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- NSX
 
-		Write-Warning "----------------------->>>>> UNCOMMENT NSX PART <<<<<---------------------------"
+		Write-host "----------------------->>>>> UNCOMMENT NSX PART <<<<<---------------------------" -ForegroundColor:Red
 		# Création du NSGroup si besoin 
 		# $nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
 
