@@ -114,7 +114,7 @@ $ACTION_SET_SNAPSHOTS       = "setSnapshots"
 $ACTION_GET_PRICE           = "getPrice"
 
 # Limites
-$global:MAX_VOL_PER_UNIT    = 99
+$global:MAX_VOL_PER_UNIT    = 999
 
 # Autre
 $global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"

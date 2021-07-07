@@ -63,7 +63,6 @@ $global:TARGET_TENANT_LIST = @($global:VRA_TENANT__EPFL, $global:VRA_TENANT__ITS
 # Information sur les services au sens vRA
 #FIXME: A priori on devrait pouvoir supprimer ceci
 $global:VRA_SERVICE_SUFFIX__PUBLIC  =" (Public)"
-$global:VRA_SERVICE_SUFFIX__PRIVATE =" (Private)"
 
 # Nom des custom properties à utiliser
 $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID             = "ch.epfl.vra.project.id"
