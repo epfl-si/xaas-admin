@@ -1,6 +1,6 @@
 <#
 USAGES:
-	tools-update-vm-custom-props.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research
+	tools-update-vm-custom-props.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research [-bgName <bgName>]
 #>
 <#
 	BUT 		: Crée/met à jour les customs props des VMs en fonction du tenant et du BG où elles se trouvent.
@@ -13,6 +13,7 @@ USAGES:
 						dans le fichier "define.inc.ps1"
 		$targetTenant 	-> nom du tenant cible. Défini par les valeurs $global:VRA_TENANT__* dans le fichier
 						"define.inc.ps1"
+		$bgName			-> (optionnel) Nom du BG pour lequel limiter l'exécution du script	
 	
 	REMARQUE : Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy
 				  via Set-ExecutionPolicy. Normalement, si on met la valeur "Unrestricted",
@@ -22,7 +23,7 @@ USAGES:
 				  Ceci ne fonctionne pas ! A la place il faut à nouveau passer par la
 				  commande Set-ExecutionPolicy mais mettre la valeur "ByPass" en paramètre.
 #>
-param ( [string]$targetEnv, [string]$targetTenant)
+param ( [string]$targetEnv, [string]$targetTenant, [string]$bgName)
 
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -53,7 +54,7 @@ $configGlobal = [ConfigReader]::New("config-global.json")
 try
 {
 	# Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-	$logPath = @('vra', ('update-vm-custom-props-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()))
+	$logPath = @('tools', ('update-vm-custom-props-{0}-{1}' -f $targetEnv.ToLower(), $targetTenant.ToLower()))
 	$logHistory =[LogHistory]::new($logPath, $global:LOGS_FOLDER, 120)
 
 	# On contrôle le prototype d'appel du script
@@ -84,12 +85,6 @@ try
 
 	$vraUser = $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user"))
 
-	if($vraUser -notlike "itadmin-*")
-	{
-		Write-Warning "Please change your vRA config (config/config-vra.json) to use an itadmin-* account to do the job. Otherwise, all Reconfigure actions will need an approval"
-		exit
-	}
-
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
 	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
@@ -97,8 +92,21 @@ try
 						 $vraUser,
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
+	$logHistory.addLineAndDisplay("Getting BG list...")
+	$bgList = $vra.getBGList()
+
+	# Si on doit limiter à un BG,
+	if($bgName -ne "")
+	{
+		$logHistory.addLineAndDisplay(("Limiting to '{0}' BG" -f $bgName))
+		# Filtre
+		$bgList = @($bgList | Where-Object { $_.name -eq $bgName } )
+	}
+
+	$logHistory.addLineAndDisplay(("{0} BG to process" -f $bgList.count))
+
     # Parcours de la liste des BG
-    Foreach ($bg in $vra.getBGList() )
+    Foreach ($bg in $bgList)
     {
         $logHistory.addLineAndDisplay(("Processing BG '{0}'..." -f $bg.name))
 
@@ -108,12 +116,18 @@ try
 
         $logHistory.addLineAndDisplay(("> {0} VMs found" -f $vmList.count))
 
-		# Liste des custom properties à check et des valeurs qu'elles devraient avoir
-		$customPropsToCheck = @{
-			$global:VRA_CUSTOM_PROP_VRA_BG_NAME = $bg.name
-			$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME = $targetTenant
+		# Pour ne pas récupérer ces données s'il n'y a aucune VM dans le BG (car c'est chronophage)
+		if($vmList.count -gt 0)
+		{
+			# Liste des custom properties à check et des valeurs qu'elles devraient avoir
+			$customPropsToCheck = @{
+				$global:VRA_CUSTOM_PROP_EPFL_BG_ID = (getBGCustomPropValue -bg $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BG_ID)
+				$global:VRA_CUSTOM_PROP_VRA_BG_NAME = $bg.name
+				$global:VRA_CUSTOM_PROP_VRA_TENANT_NAME = $targetTenant
+			}
 		}
-
+		
+		# Parcours des VM du BG
 		Foreach($vm in $vmList)
         {
             $logHistory.addLineAndDisplay((">> Processing VM '{0}'..." -f $vm.name))
