@@ -30,6 +30,10 @@ class APIUtils
 	# se trouvent les JSON
 	hidden [Array]$jsonSubPath
 
+	# Noms des fonctions à ignorer lorsque l'on cherche le nom de la fonction "appelante". Si on tombe sur l'une des
+	# fonction dans la liste, on continue à parcourir dans la pile d'appel pour trouver le "bon" nom de la fonction appelante
+	hidden [Array] $funcToIgnore
+
     <#
 	-------------------------------------------------------------------------------------
         BUT : Créer une instance de l'objet
@@ -42,6 +46,8 @@ class APIUtils
 		$this.logHistory = $null
 
 		$this.jsonSubPath = @()
+
+		$this.funcToIgnore= @("callAPI", "incFuncCall")
 	}
 
 
@@ -112,7 +118,7 @@ class APIUtils
 		$funcName = ""
 		ForEach($call in (Get-PSCallStack))
 		{
-			if(@("callAPI", "incFuncCall") -notcontains $call.FunctionName)
+			if($this.funcToIgnore -notcontains $call.FunctionName)
 			{
 				$funcName = $call.FunctionName
 				break
