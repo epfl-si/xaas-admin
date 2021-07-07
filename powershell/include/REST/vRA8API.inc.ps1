@@ -649,7 +649,7 @@ class vRA8API: RESTAPICurl
     <#
         ------------------------------------------------------------------------------------------------------
         ------------------------------------------------------------------------------------------------------
-                                                	ENTITLEMENTS
+                                            ENTITLEMENTS (Content Sharing)
         ------------------------------------------------------------------------------------------------------
         ------------------------------------------------------------------------------------------------------
     #>
@@ -740,6 +740,7 @@ class vRA8API: RESTAPICurl
 		$this.callAPI($uri, "DELETE", $null) | Out-Null
 	}
 
+
 	<#
         ------------------------------------------------------------------------------------------------------
         ------------------------------------------------------------------------------------------------------
@@ -811,6 +812,7 @@ class vRA8API: RESTAPICurl
     {
         return $this.getObjectListQuery("/catalog/api/admin/items", "") | Where-Object { $_.sourceId -eq $contentSource.id}
     }
+
 
 	<#
         ------------------------------------------------------------------------------------------------------
@@ -991,6 +993,7 @@ class vRA8API: RESTAPICurl
 	#>
 	[PSCustomObject] addCatalogProjectGitHubSource([string]$name, [PSCustomObject]$catalogProject, [string]$gitHubIntegrationId, [GitHubContentType]$contentType, [string]$repository, [string]$path, [string]$branch)
 	{
+		# FIXME:
 		Write-Warning "HARDCODED GITHUB INTEGRATION ID, PLEASE FIX IT AS SOON AS FUC***G API IS WELL DOCUMENTED !"
 		
 		$uri = "{0}/content/api/sources" -f $this.baseUrl
@@ -1170,5 +1173,41 @@ class vRA8API: RESTAPICurl
 		# Création du Content Source et retour
 		return $this.callAPI($uri, "Post", $body)
 	}
+
+
+
+	<#
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+                                            		DEPLOYMENTS
+        ------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------
+    #>
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des deployements
+
+		RET : Liste des déploiements
+	#>
+	[Array] getDeploymentList()
+	{
+		return @($this.getObjectListQuery("/deployment/api/deployments", ""))
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des deployements pour un projet donné
+
+		IN  : $project 		-> objet représentant le projet pour lequel on veut les déploiements
+
+		RET : Liste des déploiements
+	#>
+	[Array] getProjectDeploymentList([PSCustomObject]$project)
+	{
+		return @($this.getObjectListQuery("/deployment/api/deployments", ("`$filter=projectId eq '{0}'" -f $project.id )))
+	}
+
 
 }
