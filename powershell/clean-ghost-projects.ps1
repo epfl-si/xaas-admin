@@ -1,16 +1,14 @@
 <#
 USAGES:
-	clean-ghost-bg.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research [-projectName <projectName>]
+	clean-ghost-projects.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research [-projectName <projectName>]
 #>
 <#
-    BUT 		: Supprime les Business Groups qui sont en mode "ghost" s'ils sont vides.
+    BUT 		: Supprime les Projets qui sont en mode "ghost" s'ils sont vides.
                     Tous les éléments liés au BG sont aussi supprimés, dans l'ordre inverse
                     où ils ont été créés.
-                    1. Reservations
-					2. Entitlement
-					3. Business Group
+
 				
-					On peut aussi faire en sorte de spécifier manuellement quel BG on veut effacer.
+					On peut aussi faire en sorte de spécifier manuellement quel projet on veut effacer.
 
 	DATE 		: Mars 2020
 	AUTEUR 	: Lucien Chaboudez
