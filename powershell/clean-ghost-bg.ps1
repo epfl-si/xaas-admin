@@ -1,6 +1,6 @@
 <#
 USAGES:
-	clean-ghost-bg.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research [-bgName <bgName>]
+	clean-ghost-bg.ps1 -targetEnv prod|test|dev -targetTenant vsphere.local|itservices|epfl|research [-projectName <projectName>]
 #>
 <#
     BUT 		: Supprime les Business Groups qui sont en mode "ghost" s'ils sont vides.
@@ -14,12 +14,6 @@ USAGES:
 
 	DATE 		: Mars 2020
 	AUTEUR 	: Lucien Chaboudez
-
-	PARAMETRES : 
-		$targetEnv		-> nom de l'environnement cible. Ceci est défini par les valeurs $global:TARGET_ENV__* 
-						dans le fichier "define.inc.ps1"
-		$targetTenant 	-> nom du tenant cible. Défini par les valeurs $global:VRA_TENANT__* dans le fichier
-						"define.inc.ps1"
 	
 	REMARQUE : Avant de pouvoir exécuter ce script, il faudra changer la ExecutionPolicy
 				  via Set-ExecutionPolicy. Normalement, si on met la valeur "Unrestricted",
@@ -29,7 +23,7 @@ USAGES:
 				  Ceci ne fonctionne pas ! A la place il faut à nouveau passer par la
 				  commande Set-ExecutionPolicy mais mettre la valeur "ByPass" en paramètre.
 #>
-param ( [string]$targetEnv, [string]$targetTenant, [string]$bgName)
+param ( [string]$targetEnv, [string]$targetTenant, [string]$projectName)
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "functions.inc.ps1"))
@@ -46,7 +40,7 @@ param ( [string]$targetEnv, [string]$targetTenant, [string]$bgName)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "GroupsAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "NSXAPI.inc.ps1"))
 
@@ -54,7 +48,7 @@ param ( [string]$targetEnv, [string]$targetTenant, [string]$bgName)
 
 
 # Chargement des fichiers de configuration
-$configVra = [ConfigReader]::New("config-vra.json")
+$configVra = [ConfigReader]::New("config-vra8.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configGroups = [ConfigReader]::New("config-groups.json")
 $configNSX = [ConfigReader]::New("config-nsx.json")
@@ -70,117 +64,108 @@ $configNSX = [ConfigReader]::New("config-nsx.json")
 	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
 	IN  : $groupsApp		-> Objet de la classe GroupsAPI permettant d'accéder à "groups"
 	IN  : $nsx				-> Objet de la classe NSXAPI pour faire du ménage dans NSX
-	IN  : $bg				-> Objet contenant le BG a effacer. Cet objet aura été renvoyé
-					   			par un appel à une méthode de la classe vRAAPI
+	IN  : $project			-> Objet contenant le Projet a effacer. Cet objet aura été renvoyé
+					   			par un appel à une méthode de la classe vRA8API
 	IN  : $targetTenant		-> Le tenant sur lequel on se trouve
 	IN  : $nameGenerator	-> Objet de la classe NameGenerator 
 
 	RET : $true si effacé
 		  $false si pas effacé (mis en ghost)
 #>
-function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [NSXAPI]$nsx, [PSObject]$bg, [string]$targetTenant, [NameGenerator]$nameGenerator)
+function deleteProjectAndComponentsIfPossible([vRA8API]$vra, [GroupsAPI]$groupsApp, [NSXAPI]$nsx, [PSCustomObject]$project, [string]$targetTenant, [NameGenerator]$nameGenerator)
 {
+	
+	# Recherche des déploiement potentiellement présents dans le Projet
+	$projectDeploymentList = $vra.getProjectDeploymentList($project)
 
-	# Recherche des items potentiellement présents dans le BG
-	$bgItemList = $vra.getBGItemList($bg)
-
-	# S'il y a des items,
-	if($bgItemList.Count -gt 0)
+	# S'il y a des déploiements,
+	if($projectDeploymentList.Count -gt 0)
 	{
+		
+		$logHistory.addLineAndDisplay(("--> Contains {0} deployments, cannot be deleted, skipping..." -f $projectDeploymentList.Count))
 
-		$logHistory.addLineAndDisplay(("--> Contains {0} items, cannot be deleted, skipping..." -f $bgItemList.Count))
+		$counters.inc('projectNotEmpty')
 
-		$counters.inc('BGNotEmpty')
-
-		$notifications.bgNotDeleted += $bg.name
+		$notifications.projectNotDeleted += $project.name
 
 		$deleted = $false
 
 	}
-	else # Il n'y a aucun item dans le BG
+	else # Il n'y a aucun déploiement dans le projet
 	{
-		# Récupération des informations nécessaires pour les éléments à supprimer (afin de les filtrer)
-		$resNameBase = $nameGenerator.getBGResName($bg.name, "")
+
+		$nameGenerator.initDetailsFromProject($project)
+
 
 		# --------------
-		# Reservations
-		# Parcours des Reservations trouvées et suppression
-		$vra.getResListMatch($resNameBase, $false) | ForEach-Object {
+		# Day-2 policies
+		ForEach($policyRole in ([System.Enum]::getValues([PolicyRole])))
+		{
+			$day2PolName, $day2PolDesc = $nameGenerator.getPolicyNameAndDesc([PolicyType]::Action, $policyRole)
 
-			$logHistory.addLineAndDisplay(("--> Deleting Reservation '{0}'..." -f $_.Name))
-			$vra.deleteRes($_.id)
-		}
+			$day2Policy = $vra.getPolicy($day2PolName)
+
+			if($null -ne $day2Policy)
+			{
+				$logHistory.addLineAndDisplay(("--> Deleting Day-2 Policy '{0}'..." -f $day2PolName))
+				$vra.deletePolicy($day2Policy)
+			}
+
+		}# FIN BOUCLE de parcours des roles pour les policies
 
 
 		# --------------
 		# Entitlement
 
 		# Listing des entitlements et effacement
-		$vra.getBGEnt($bg.id) | Foreach-Object {
+		$vra.getProjectEntitlementList($project) | Foreach-Object {
 
 			# Suppression de l'entitlement (on le désactive au préalable)
-			$logHistory.addLineAndDisplay(("--> Deleting Entitlement '{0}'..." -f $_.name))
-			# Désactivation
-			$vra.updateEnt($_, $false) | Out-Null
-			$vra.deleteEnt($_.id)
+			$logHistory.addLineAndDisplay(("--> Deleting Entitlement for '{0}' source..." -f $_.definition.name))
+			
+			$vra.deleteEntitlement($_)
 		}
-		
-		# On initialise les détails depuis le nom du BG, cela nous permettra de récupérer
-		# le nom du préfix de machine.
-		$nameGenerator.initDetailsFromBG($bg)
-
+	
+# TODO: continue
 		# Seulement pour certains tenants et on doit obligatoirement le faire APRES avoir effacé le BG car sinon 
 		# y'a une monstre exception sur plein de lignes qui nous insulte et elle ferait presque peur.
 		if($targetTenant -eq $global:VRA_TENANT__RESEARCH)
 		{
-			# --------------
-			# Préfixe de VM
 
-
-			$machineNameTemplate = $nameGenerator.getVMNameTemplate()
-
-			$machinePrefix = $vra.getMachinePrefix($machineNameTemplate)
-
-			# Si on a trouvé un ID de machine
-			if($null -ne $machinePrefix)
-			{
-				$logHistory.addLineAndDisplay(("--> Deleting Machine Prefix '{0}'..." -f $machinePrefix.name))
-				$vra.deleteMachinePrefix($machinePrefix)
-			}
-
+			#FIXME: Voir pour mettre le nécessaire ici en fonction de ce qui sera mis en place pour l'approbation
 			# --------------
 			# Groupes "groups" des approval policies
 
-			# On va commencer la recherche des groupes d'approvation au niveau 2 seulement, car le 
+			# On va commencer la recherche des groupes d'approbation au niveau 2 seulement, car le 
 			# niveau 1, c'est le service manager IaaS
-			$level = 2
-			while($true)
-			{
-				# Recherche des infos du groupe "groups" pour les approbation
-				$approveGroupGroupsInfos = $nameGenerator.getApproveGroupsGroupName($level, $false)
+			# $level = 2
+			# while($true)
+			# {
+			# 	# Recherche des infos du groupe "groups" pour les approbation
+			# 	$approveGroupGroupsInfos = $nameGenerator.getApproveGroupsGroupName($level, $false)
 
-				# Si vide, c'est qu'on a atteint le niveau max pour les level
-				if($null -eq $approveGroupGroupsInfos)
-				{
-					break
-				}
+			# 	# Si vide, c'est qu'on a atteint le niveau max pour les level
+			# 	if($null -eq $approveGroupGroupsInfos)
+			# 	{
+			# 		break
+			# 	}
 
-				$logHistory.addLineAndDisplay(("--> Deleting approval groups group '{0}'..." -f $approveGroupGroupsInfos.name))
-				try
-				{
-					# On essaie d'effacer le groupe
-					$groupsApp.deleteGroup($approveGroupGroupsInfos.name)
-				}
-				catch
-				{
-					# Si exception, c'est qu'on n'a probablement pas les droits d'effacer parce que le owner du groupe n'est pas le bon
-					$notifications.groupsGroupsNotDeleted += $approveGroupGroupsInfos.name
-					$logHistory.addWarningAndDisplay("--> Cannot delete groups group maybe because not owner by correct person")
-				}
+			# 	$logHistory.addLineAndDisplay(("--> Deleting approval groups group '{0}'..." -f $approveGroupGroupsInfos.name))
+			# 	try
+			# 	{
+			# 		# On essaie d'effacer le groupe
+			# 		$groupsApp.deleteGroup($approveGroupGroupsInfos.name)
+			# 	}
+			# 	catch
+			# 	{
+			# 		# Si exception, c'est qu'on n'a probablement pas les droits d'effacer parce que le owner du groupe n'est pas le bon
+			# 		$notifications.groupsGroupsNotDeleted += $approveGroupGroupsInfos.name
+			# 		$logHistory.addWarningAndDisplay("--> Cannot delete groups group maybe because not owner by correct person")
+			# 	}
 
-				$level += 1
+			# 	$level += 1
 
-			} # FIN BOUCLE de parcours des niveaux d'approbation
+			# } # FIN BOUCLE de parcours des niveaux d'approbation
 
 		}# FIN SI c'est pour ces tenants qu'il faut effacer des éléments
 
@@ -188,41 +173,41 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 		$deleteForTenants = @($global:VRA_TENANT__ITSERVICES, $global:VRA_TENANT__RESEARCH)
 		if($deleteForTenants -contains $targetTenant)
 		{	
-			
-			# --------------
-			# Approval policies
-			$approvalPoliciesTypesToDelete = @([ApprovalPolicyType]::NewItem,
-											   [ApprovalPolicyType]::Day2Action])
-			ForEach($approvalPolicyType in $approvalPoliciesTypesToDelete)
-			{
-				# Recherche du nom
-				$approvalPolicyName, $approvalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($approvalPolicyType)
+			#FIXME: Voir pour mettre le nécessaire ici en fonction de ce qui sera mis en place pour l'approbation
+			# # --------------
+			# # Approval policies
+			# $approvalPoliciesTypesToDelete = @([ApprovalPolicyType]::NewItem,
+			# 								   [ApprovalPolicyType]::Day2Action])
+			# ForEach($approvalPolicyType in $approvalPoliciesTypesToDelete)
+			# {
+			# 	# Recherche du nom
+			# 	$approvalPolicyName, $approvalPolicyDesc = $nameGenerator.getApprovalPolicyNameAndDesc($approvalPolicyType)
 
-				$approvalPolicy = $vra.getApprovalPolicy($approvalPolicyName)
+			# 	$approvalPolicy = $vra.getApprovalPolicy($approvalPolicyName)
 				
-				if($null -ne $approvalPolicy)
-				{
-					$logHistory.addLineAndDisplay(("--> Deleting Approval Policy '{0}'..." -f $approvalPolicy.name))
-					$vra.deleteApprovalPolicy($approvalPolicy)
-				}
+			# 	if($null -ne $approvalPolicy)
+			# 	{
+			# 		$logHistory.addLineAndDisplay(("--> Deleting Approval Policy '{0}'..." -f $approvalPolicy.name))
+			# 		$vra.deleteApprovalPolicy($approvalPolicy)
+			# 	}
 
-			}# FIN BOUCLE de parcours des Approval Policies à effacer
+			# }# FIN BOUCLE de parcours des Approval Policies à effacer
 
-			# --------------
-			# Groupe "groups" pour les demandes
+			# # --------------
+			# # Groupe "groups" pour les demandes
 
-			$userGroupNameGroups = $nameGenerator.getRoleGroupsGroupName([UserRole]::User)
-			$logHistory.addLineAndDisplay(("--> Deleting customer groups group '{0}'..." -f $userGroupNameGroups))
-			try
-			{
-				$groupsApp.deleteGroup($userGroupNameGroups)
-			}
-			catch
-			{
-				# Si exception, c'est qu'on n'a probablement pas les droits d'effacer parce que le owner du groupe n'est pas le bon
-				$notifications.groupsGroupsNotDeleted += $userGroupNameGroups
-				$logHistory.addWarningAndDisplay("--> Cannot delete groups group maybe because not owner by correct person")
-			}
+			# $userGroupNameGroups = $nameGenerator.getRoleGroupsGroupName([UserRole]::User)
+			# $logHistory.addLineAndDisplay(("--> Deleting customer groups group '{0}'..." -f $userGroupNameGroups))
+			# try
+			# {
+			# 	$groupsApp.deleteGroup($userGroupNameGroups)
+			# }
+			# catch
+			# {
+			# 	# Si exception, c'est qu'on n'a probablement pas les droits d'effacer parce que le owner du groupe n'est pas le bon
+			# 	$notifications.groupsGroupsNotDeleted += $userGroupNameGroups
+			# 	$logHistory.addWarningAndDisplay("--> Cannot delete groups group maybe because not owner by correct person")
+			# }
 
 		}# FIN SI c'est pour ces tenants qu'il faut effacer des éléments
 
@@ -261,19 +246,19 @@ function deleteBGAndComponentsIfPossible([vRAAPI]$vra, [GroupsAPI]$groupsApp, [N
 			
 		}
 
-		$notifications.bgDeleted += $bg.name
+		$notifications.projectDeleted += $project.name
 
 		# --------------
-		# Business Group
-		$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}'..." -f $bg.name))
-		$vra.deleteBG($bg.id)
+		# Project
+		$logHistory.addLineAndDisplay(("--> Deleting Project '{0}'..." -f $project.name))
+		$vra.deleteProject($project)
 
 		# Incrémentation du compteur
-		$counters.inc('BGDeleted')
+		$counters.inc('projectDeleted')
 
 		$deleted = $true
 		
-	}# FIN S'il n'y a aucun item dans le BG
+	}# FIN S'il n'y a aucun déploiement dans le projet
 
 	return $deleted
 }
@@ -311,20 +296,20 @@ function handleNotifications
 			{
 				# ---------------------------------------
                 # BG effacés
-                'bgDeleted'
+                'projectDeleted'
                 {
-                    $valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
-                    $mailSubject = "Info - Business Group deleted"
-                    $templateName = "bg-deleted"
+                    $valToReplace.projectList = ($uniqueNotifications -join "</li>`n<li>")
+                    $mailSubject = "Info - Project(s) deleted"
+                    $templateName = "project-deleted"
                 }
 
 				# ---------------------------------------
-                # BG pas effacés (car toujours des éléments)
-                'bgNotDeleted'
+                # Projets pas effacés (car toujours des éléments)
+                'projectNotDeleted'
                 {
-                    $valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
-                    $mailSubject = "Info - Business Group NOT deleted (because not empty)"
-                    $templateName = "bg-not-deleted-because-not-empty"
+                    $valToReplace.projectList = ($uniqueNotifications -join "</li>`n<li>")
+                    $mailSubject = "Info - Project(s) NOT deleted (because not empty)"
+                    $templateName = "project-not-deleted-because-not-empty"
                 }
 				
 				# ---------------------------------------
@@ -373,8 +358,8 @@ try
 	. ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
 	$counters = [Counters]::new()
-	$counters.add('BGDeleted', '# Business Group deleted')
-	$counters.add('BGNotEmpty', '# Business Group not deleted because not empty')
+	$counters.add('projectDeleted', '# Business Group deleted')
+	$counters.add('projectNotEmpty', '# Business Group not deleted because not empty')
 
 	# Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
 	$nameGenerator = [NameGenerator]::new($targetEnv, $targetTenant)
@@ -401,8 +386,8 @@ try
 
 	(cette liste sera accédée en variable globale même si c'est pas propre XD)
 	#>
-	$notifications=@{bgDeleted = @()
-					bgNotDeleted =@()
+	$notifications=@{projectDeleted = @()
+					projectNotDeleted =@()
 					groupsGroupsNotDeleted = @()}
 
 
@@ -411,11 +396,11 @@ try
 	
 	# Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
-	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-						 $targetTenant, 
-						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
+	$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
+	
 	# Création d'une connexion au serveur NSX pour accéder aux API REST de NSX
 	$logHistory.addLineAndDisplay("Connecting to NSX-T...")
 	$nsx = [NSXAPI]::new($configNSX.getConfigValue(@($targetEnv, "server")), 
@@ -425,64 +410,65 @@ try
 
 	$logHistory.addLineAndDisplay("Cleaning 'old' Business Groups")
 
-	$bgList = $vra.getBGList()
+	
+	$projectList = $vra.getProjectList() | Where-Object { $_.name -eq 'its_excalt'}
 
+	
 	# Si on a entré un BG donné à effacer, 
-	if($bgName -ne "")
+	if($projectName -ne "")
 	{
 		# On extrait celui-ci de la liste
-		$bgList = $bgList | Where-Object { $_.name -eq $bgName }
+		$projectList = $projectList | Where-Object { $_.name -eq $projectName }
 	}
 
-	$logHistory.addLineAndDisplay(("{0} Business Group found" -f $bgList.count))
-	$bgNo = 1
+	$logHistory.addLineAndDisplay(("{0} Project(s) found" -f $projectList.count))
+	$projectNo = 1
 
 	# Recherche et parcours de la liste des BG commençant par le bon nom pour le tenant
-	$bgList | ForEach-Object {
+	$projectList | ForEach-Object {
 
-		$logHistory.addLineAndDisplay(("[{0}/{1}] Checking Business Group '{2}'..." -f $bgNo, $bglist.count, $_.name))
+		$logHistory.addLineAndDisplay(("[{0}/{1}] Checking Project '{2}'..." -f $projectNo, $projectList.count, $_.name))
 
 		# Si c'est un BG d'unité ou de service et s'il est déjà en Ghost
-		if((isProjectOfType -bg $_ -typeList @([ProjectType]::Service, [ProjectType]::Unit, [ProjectType]::Project)) -and `
-			((getProjectCustomPropValue -project $_ -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS) -eq $global:VRA_BG_STATUS__GHOST) -and `
-			($bgName -eq "" -or ($bgName -ne "" -and $bgName -eq $_.name)))
+		if((isProjectOfType -project $_ -typeList @([ProjectType]::Service, [ProjectType]::Unit, [ProjectType]::Project)) -and `
+			((getProjectCustomPropValue -project $_ -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS) -eq $global:VRA_BG_STATUS__GHOST))
 		{
-			$logHistory.addLineAndDisplay(("-> Business Group '{0}' is Ghost, deleting..." -f $_.name))
-			$deleted = deleteBGAndComponentsIfPossible -vra $vra -groupsApp $groupsApp -nsx $nsx -bg $_ -targetTenant $targetTenant -nameGenerator $nameGenerator
+			# TODO: continue
+			$logHistory.addLineAndDisplay(("-> Project '{0}' is Ghost, deleting..." -f $_.name))
+			$deleted = deleteProjectAndComponentsIfPossible -vra $vra -groupsApp $groupsApp -nsx $nsx -project $_ -targetTenant $targetTenant -nameGenerator $nameGenerator
 
 			# Si le BG a pu être complètement effacé, c'est qu'il n'y avait plus d'items dedans et que donc forcément aucune
 			# ISO ne pouvait être montée nulle part.
 			if($deleted)
 			{	
 				# Recherche de l'UNC jusqu'au dossier où se trouvent les ISO pour le BG
-				$bgISOFolder = $nameGenerator.getNASPrivateISOPath($_.name)
+				$projectISOFolder = $nameGenerator.getNASPrivateISOPath($_.name)
 				
 				# Si le dossier des ISO existe bien
-				if(Test-Path $bgISOFolder)
+				if(Test-Path $projectISOFolder)
 				{
-					$logHistory.addLineAndDisplay(("--> Deleting Business Group '{0}' ISO folder '{1}'... " -f $_.name, $bgISOFolder))
+					$logHistory.addLineAndDisplay(("--> Deleting Project '{0}' ISO folder '{1}'... " -f $_.name, $projectISOFolder))
 					# Suppression du dossier
-					Remove-Item -Path $bgISOFolder -Recurse -Force
+					Remove-Item -Path $projectISOFolder -Recurse -Force
 				}
 				else
 				{
-					$logHistory.addLineAndDisplay(("--> ISO folder '{0}' for Business Group '{1}' already deleted" -f $bgISOFolder, $_.name))
+					$logHistory.addLineAndDisplay(("--> ISO folder '{0}' for Project '{1}' already deleted" -f $projectISOFolder, $_.name))
 				}
 				
 			} # FIN Si le BG a pu être effacé
 
 
 		} 
-		else # Pas encore possible d'effacer le BG
+		else # Pas encore possible d'effacer le projet
 		{
 			$logHistory.addLineAndDisplay("-> Not eligible to be deleted now")
 		}
 
-		$bgNo++
+		$projectNo++
 
 	}# Fin BOUCLE parcours des business groups
 
-	$vra.disconnect()
 
 	# Gestion des erreurs s'il y en a
 	handleNotifications -notifications $notifications -targetEnv $targetEnv -targetTenant $targetTenant
