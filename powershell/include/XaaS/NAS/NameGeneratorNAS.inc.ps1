@@ -55,7 +55,7 @@ class NameGeneratorNAS: NameGeneratorBase
    {
       $this.type = [NASStorageType]::Collaborative
 
-      $details = $this.getDetailsFromBGName($bgName)
+      $details = $this.getDetailsFromProjectName($bgName)
 
       $this.details = @{
          faculty = $details.faculty.toLower()

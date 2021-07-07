@@ -131,7 +131,7 @@ class NameGeneratorBase
             Research
                 .projectId
     #>
-    [PSObject] getDetailsFromBGName([string]$bgName)
+    [PSObject] getDetailsFromProjectName([string]$bgName)
     {   
         $result = $null
 
@@ -199,21 +199,17 @@ class NameGeneratorBase
 
     <#
         -------------------------------------------------------------------------------------
-        BUT : initialise UNE PARTIE des détails depuis le nom du business group passé.
+        BUT : initialise UNE PARTIE des détails depuis le Projet passé.
                 Ceci permet d'utiliser UNIQUEMENT un sous ensemble des fonctions définies
-                dans cette classe car d'autres détails manqueront. A la base, on peut initialiser
-                les détails depuis le nom du BG pour pouvoir utiliser les fonctions suivante 
-                mais peut-être que d'autres peuvent aussi fonctionner:
-                - getVMNameTemplate 
-                - getApprovalPolicyNameAndDesc
+                dans cette classe car d'autres détails manqueront. 
 
-        IN  : $bg           -> Objet représentant le BG
+        IN  : $project           -> Objet représentant le projet
     #>
-    [void] initDetailsFromBG([PSCustomObject]$bg)
+    [void] initDetailsFromProject([PSCustomObject]$project)
     {
-        $bgCustomId = getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID
+        $bgCustomId = getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID
 
-        $bgDetails = $this.getDetailsFromBGName($bg.name)
+        $projectDetails = $this.getDetailsFromProjectName($project.name)
 
         $withDetails = @{}
         switch($this.tenant)
@@ -224,9 +220,9 @@ class NameGeneratorBase
                 
                 # le nom du BG est au format <tenantShort>_<faculty>_<unit>
                 $withDetails = @{
-                    facultyName = $bgDetails.faculty
+                    facultyName = $projectDetails.faculty
                     facultyID = ''
-                    unitName = $bgDetails.unit
+                    unitName = $projectDetails.unit
                     unitID = $bgCustomId
                 }
             }
@@ -236,8 +232,8 @@ class NameGeneratorBase
             { 
                 # le nom du BG est au format <tenantShort>_<serviceShort>
                 $withDetails = @{
-                    serviceShortName = $bgDetails.serviceShortName
-                    serviceName = $bg.description
+                    serviceShortName = $projectDetails.serviceShortName
+                    serviceName = $project.description
                     snowServiceId = $bgCustomId
                 }
             }
@@ -247,8 +243,8 @@ class NameGeneratorBase
             {
                 # le nom du BG est au format <tenantShort>_<projectId>
                 $withDetails = @{
-                    projectId = $bgDetails.projectId
-                    projectAcronym = $bg.description
+                    projectId = $projectDetails.projectId
+                    projectAcronym = $project.description
                 }
             }
 

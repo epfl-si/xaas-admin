@@ -1769,7 +1769,7 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- NSX
 
-		Write-host "----------------------->>>>> UNCOMMENT NSX PART <<<<<---------------------------" -ForegroundColor:Red
+		Write-host "=========================>>>>> UNCOMMENT NSX PART <<<<<=========================" -ForegroundColor:Red
 		# Création du NSGroup si besoin 
 		# $nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
 

@@ -870,7 +870,7 @@ try
         $ACTION_GET_SVM_LIST 
         {
             # Récupération du nom de la faculté et de l'unité
-            $details = $nameGeneratorNAS.getDetailsFromBGName($bg.name)
+            $details = $nameGeneratorNAS.getDetailsFromProjectName($bg.name)
             $faculty = $details.faculty
             $logHistory.addLine( ("Searching SVM for Faculty '{0}'" -f $faculty) )
 
