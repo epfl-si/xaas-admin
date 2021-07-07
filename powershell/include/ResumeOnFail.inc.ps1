@@ -38,7 +38,10 @@ class ResumeOnFail
 	#>
     [void] save([object]$progress)
     {
-       $progress | ConvertTo-Json | Out-File $this.progressFile
+        # On ne fait pas de "pipe" pour transformer $progress en JSON car si c'est un tableau avec un seul élément, on aura juste l'élément et on 
+        # perdra la notion de tableau... c'est un bug à la con de PowerShell... il faut le passer en paramètre à "ConvertTo-Json" pour que
+        # l'on ait bien un tableau comme résultat
+       (ConvertTo-Json $progress) | Out-File $this.progressFile
     }
 
 
