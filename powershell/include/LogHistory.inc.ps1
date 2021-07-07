@@ -110,8 +110,27 @@ class LogHistory
 	#>
     [void] addLine([string]$line)
     {
-        ("{0}: {1}" -f (Get-Date -format "yyyy-MM-dd HH:mm:ss"), $line) | `
-            Out-File -FilePath (Join-Path $this.logTodayFolderPath $this.logTodayFilename) -Append:$true 
+        $nbTriesLeft = 2
+        
+        Do
+        {
+            try
+            {
+                ("{0}: {1}" -f (Get-Date -format "yyyy-MM-dd HH:mm:ss"), $line) | `
+                    Out-File -FilePath (Join-Path $this.logTodayFolderPath $this.logTodayFilename) -Append:$true 
+                
+                # Pour sortir de la boucle et ne pas faire le boulot plusieurs fois
+                $nbTriesLeft = 0
+            }
+            catch
+            {
+                # Si on a une erreur (probablement dû à un lock sur le fichier... alors qu'il n'y a que ce script qui 
+                # y accède... mais les joies de Windows quoi). Ben on attend et on retry, tout simplement
+                $nbTriesLeft--
+                Start-Sleep -Milliseconds 500
+            }
+        } While($nbTriesLeft -gt 0)
+        
     }
 
 

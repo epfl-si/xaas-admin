@@ -616,20 +616,26 @@ function createOrUpdateBGEnt([vRAAPI]$vra, [PSCustomObject]$bg, [string]$entName
 	{
 		$ent = $ent[0]
 
-		# Si le nom a changé (car le nom du BG a changé) ou la description a changé 
+		# Si on NE DOIT PAS recréer les approval policies ET que
+		# le nom a changé (car le nom du BG a changé) ou la description a changé 
 		if(($ent.name -ne $entName) -or ($ent.description -ne $entDesc) -or `
-			((!$ent.allUsers) -and ($null -ne (Compare-Object $onlyForGroups ($ent.principals | Select-Object -ExpandProperty "value")))))
+		((!$ent.allUsers) -and ($null -ne (Compare-Object $onlyForGroups ($ent.principals | Select-Object -ExpandProperty "value")))))
 		{
 			$logHistory.addLineAndDisplay(("-> Updating Entitlement {0} for type {1}..." -f $ent.name, $entType.toString()))
-			# Mise à jour du nom/description de l'entitlement courant et on force la réactivation
-			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true, $onlyForGroups)
+			# Mise à jour du nom/description de l'entitlement courant et on force la réactivation.
+			# NOTE: On met à jour uniquement l'objet en local, sans appeler l'API. Un appel à $vra.updateEnt(...) sera fait
+			# plus loin dans le code pour réellement le mettre à jour
+			$ent = $vra.updateEnt($ent, $entName, $entDesc, $true, $onlyForGroups, $true)
 
 			$counters.inc('EntUpdated')
+			
 		}
 		else
 		{
 			$logHistory.addLineAndDisplay(("-> Entitlement {0} for type {1} is up-to-date" -f $ent.name, $entType.toString()))
 		}
+	
+		
 	}
 	return $ent
 }
@@ -1462,6 +1468,8 @@ try
 	$counters.add('NSXFWSectionRulesCreated', '# NSX Firewall Section Rules created')
 	$counters.add('NSXFWSectionRulesExisting', '# NSX Firewall Section Rules existing')
 
+	# Chemin jusqu'au fichier qui dit s'il faut recréer les approval policies
+	$recreatePoliciesFile = ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))
 
 	<# Pour enregistrer la liste des IDs des approval policies qui ont été traitées. Ceci permettra de désactiver les autres à la fin. #>
 	$processedApprovalPoliciesIDs = @()
@@ -1505,6 +1513,24 @@ try
 
 	# Pour faire les recherches dans LDAP
 	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))						 
+
+
+	# Si on doit recréer les approval policies, 
+	if(Test-Path -Path $recreatePoliciesFile)
+	{
+		$logHistory.addLineAndDisplay("Approval policies recreation has been requested, checking if there's any element waiting for an approval...")
+		# On regarde qu'il n'y a rien en attente
+		$waitingRequests = $vra.getWaitingCatalogItemRequest()
+		if($waitingRequests.count -gt 0)
+		{
+			$logHistory.addErrorAndDisplay(("There are {0} requests waiting for an approval. Approval policies can't be recreated now." -f $waitingRequests.count))
+			exit
+		}
+		$logHistory.addLineAndDisplay("No waiting approval request found, approval policies can be recreated")
+
+		$logHistory.addWarningAndDisplay("Approval policies recreation will fail if some Services (ie: 'Private') have manually been added in Entitlements.`nPlease manually remove approval policies for those Service and set them back when script execution is done.")
+		Read-Host -Prompt "Press enter when all Approval Policies for manually added Services have been removed"
+	}#FIN SI on doit recréer les approval policies
 
 	$doneElementList = @()
 
@@ -1925,20 +1951,25 @@ try
 		}
 
 
-		# ----------------------------------------------------------------------------------
-		# --------------------------------- NSX
+		# Pour gagner du temps lorsque l'on recrée les approval policies, on ne passe pas par la partie NSX
+		if(!(Test-Path -Path $recreatePoliciesFile))
+		{
+			# ----------------------------------------------------------------------------------
+			# --------------------------------- NSX
 
-		# Création du NSGroup si besoin 
-		$nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
+			# Création du NSGroup si besoin 
+			$nsxNSGroup = createNSGroupIfNotExists -nsx $nsx -nsxNSGroupName $nsxNSGroupName -nsxNSGroupDesc $nsxNSGroupDesc -nsxSecurityTag $nsxSTName
 
-		# Création de la section de Firewall si besoin
-		$nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc -nsxNSGroup $nsxNSGroup
+			# Création de la section de Firewall si besoin
+			$nsxFWSection = createFirewallSectionIfNotExists -nsx $nsx  -nsxFWSectionName $nsxFWSectionName -nsxFWSectionDesc $nsxFWSectionDesc -nsxNSGroup $nsxNSGroup
 
-		# Création des règles dans la section de firewall
-		createFirewallSectionRulesIfNotExists -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
+			# Création des règles dans la section de firewall
+			createFirewallSectionRulesIfNotExists -nsx $nsx -nsxFWSection $nsxFWSection -nsxNSGroup $nsxNSGroup -nsxFWRuleNames $nsxFWRuleNames
 
-		# Verrouillage de la section de firewall (si elle ne l'est pas encore)
-		$nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
+			# Verrouillage de la section de firewall (si elle ne l'est pas encore)
+			$nsxFWSection = $nsx.lockFirewallSection($nsxFWSection.id)
+		}
+		
 
 		$doneElementList += @{
 			adGroup = $_.name
@@ -2010,7 +2041,6 @@ try
 
 	# Si le fichier qui demandait à ce que l'on force la recréation des policies existe, on le supprime, afin d'éviter 
 	# que le script ne s'exécute à nouveau en recréant les approval policies, ce qui ne serait pas très bien...
-	$recreatePoliciesFile = ([IO.Path]::Combine("$PSScriptRoot", $global:SCRIPT_ACTION_FILE__RECREATE_APPROVAL_POLICIES))
 	if(Test-Path -Path $recreatePoliciesFile)
 	{
 		Remove-Item -Path $recreatePoliciesFile
