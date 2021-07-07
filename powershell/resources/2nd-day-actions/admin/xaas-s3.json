@@ -1,0 +1,13 @@
+[
+    {
+        "appliesTo": "S3_Bucket",
+        "_comment": "Actions sur les buckets S3",
+        "actions": [
+            {
+                "name": "Delete Imported Bucket",
+                "approvals": [],
+                "deniedTenants": []
+            }
+        ]
+    }
+]

@@ -185,7 +185,7 @@ class NameGeneratorNAS: NameGeneratorBase
 	#>
    [string] getCollaborativeVolDetailedRegex([bool]$isNFS)
    {
-      $regex = ("u{0}_{1}_[a-z]+_[0-9]{{2,2}}_files" -f $this.details.unitId, $this.details.faculty)
+      $regex = ("u{0}_{1}_[a-z]+_[0-9]{{3,3}}_files" -f $this.details.unitId, $this.details.faculty)
 
       if($isNFS)
       {
