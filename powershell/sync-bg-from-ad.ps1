@@ -759,7 +759,7 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 	
 	RET : Objet représentant la day-2 policy
 #>
-function createOrUpdateDay2Policy($vra, $name, $description, $project, $policyRole, $entitlementType, $actionNameList)
+function createOrUpdateDay2Policy([vRA8API]$vra, [string]$name, [string]$description, [PSCustomObject]$project, [PolicyRole]$policyRole, [EntitlementType]$entitlementType, [Array]$actionNameList)
 {
 	
 	# On regarde si la policy existe déjà
