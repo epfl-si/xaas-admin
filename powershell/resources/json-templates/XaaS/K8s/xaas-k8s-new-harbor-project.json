@@ -1,7 +1,7 @@
 {
     "project_name": "{{projectName}}",
     "metadata": {
-      "enable_content_trust": "true",
+      "enable_content_trust": "false",
       "auto_scan": "true",
       "severity": "{{severity}}",
       "reuse_sys_cve_whitelist": "false",

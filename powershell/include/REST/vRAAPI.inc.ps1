@@ -30,6 +30,7 @@ class vRAAPI: RESTAPICurl
 	hidden [string]$token
 	hidden [string]$tenant
 	hidden [Hashtable]$bgCustomIdMappingCache
+	hidden [string]$user
 
 	<#
 	-------------------------------------------------------------------------------------
@@ -37,13 +38,14 @@ class vRAAPI: RESTAPICurl
 
 		IN  : $server			-> Nom DNS du serveur
 		IN  : $tenant			-> Nom du tenant auquel se connecter
-		IN  : $userAtDomain	-> Nom d'utilisateur (user@domain)
+		IN  : $user				-> Nom d'utilisateur (use)
 		IN  : $password			-> Mot de passe
 
 	#>
-	vRAAPI([string] $server, [string] $tenant, [string] $userAtDomain, [string] $password) : base($server) # Ceci appelle le constructeur parent
+	vRAAPI([string] $server, [string] $tenant, [string] $user, [string] $password) : base($server) # Ceci appelle le constructeur parent
 	{
 		$this.tenant = $tenant
+		$this.user = $user
 
 		# Initialisation du sous-dossier où se trouvent les JSON que l'on va utiliser
 		$this.setJSONSubPath(@( (Get-PSCallStack)[0].functionName) )
@@ -54,7 +56,7 @@ class vRAAPI: RESTAPICurl
 		$this.headers.Add('Accept', 'application/json')
 		$this.headers.Add('Content-Type', 'application/json')
 
-		$replace = @{username = $userAtDomain
+		$replace = @{username = $user
 						 password = $password
 						 tenant = $tenant}
 
@@ -810,6 +812,9 @@ class vRAAPI: RESTAPICurl
 		IN  : $activated	-> Pour dire si l'Entitlement doit être activé ou pas.
 		IN  : $onlyForGroups	-> Tableau avec la liste des noms des groupes auquels donner accès.
 									Si vide, on ne limite à personne, open bar pour tous.
+		IN  : $onlyPrepare	-> $true|$false pour dire si on faire juste la préparation ou réellement 
+								mettre à jour. Faire juste la préparation implique de juste modifier le 
+								contenu de l'objet $ent et le retourner, sans appeler l'API pour mettre à jour.
 
 		RET : Objet contenant l'entitlement mis à jour
 	#>
@@ -818,6 +823,10 @@ class vRAAPI: RESTAPICurl
 		return $this.updateEnt($ent, $newName, $newDesc, $activated, @())
 	}
 	[PSCustomObject] updateEnt([PSCustomObject] $ent, [string] $newName, [string] $newDesc, [bool]$activated, [Array]$onlyForGroups)
+	{
+		return $this.updateEnt($ent, $newName, $newDesc, $activated, $onlyForGroups, $false)
+	}
+	[PSCustomObject] updateEnt([PSCustomObject] $ent, [string] $newName, [string] $newDesc, [bool]$activated, [Array]$onlyForGroups, [bool]$onlyPrepare)
 	{
 		$uri = "{0}/catalog-service/api/entitlements/{1}" -f $this.baseUrl, $ent.id
 
@@ -873,7 +882,11 @@ class vRAAPI: RESTAPICurl
 			}
 		}# FIN si on doit limiter à certains groupes AD
 
-
+		# SI on devait juste faire la "préparation", on retourne tel quel
+		if($onlyPrepare)
+		{
+			return $ent
+		}
 		# Mise à jour des informations
 		$this.callAPI($uri, "Put", $ent) | Out-Null
 		
@@ -1726,7 +1739,7 @@ class vRAAPI: RESTAPICurl
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie les infos d'un item de catalogue donné par son nom
 			  
-		IN  : $name			-> Nom de l'élément de cataloguq que l'on désire
+		IN  : $name			-> Nom de l'élément de catalogue que l'on désire
 
 		RET : Objet avec les détails de l'élément de catalogue
 				$null si pas trouvé
@@ -1825,7 +1838,22 @@ class vRAAPI: RESTAPICurl
 	#>
 	[Array] getWaitingCatalogItemRequest()
 	{
-		return $this.getCatalogItemRequestListQuery("`$filter=state eq 'PENDING_PRE_APPROVAL'")
+		$list = $this.getCatalogItemRequestListQuery("`$filter=state eq 'PENDING_PRE_APPROVAL'")
+
+		<# La liste qu'on a récupérée ci-dessus peut aussi contenir des demandes en attente pour des éléments
+			de catalogue qui n'existent plus, elles ne sont donc plus valables car plus visibles dans l'interface
+			graphique et donc plus "validable". Il faut donc que l'on filtre pour savoir quelles demandes sont
+			encore valables #>
+		
+		$result = @()
+		# Recherche de la liste des ID de catalog Items qui appartiennent réellement à des services "actifs"
+		$correctCatalogItemIDs = @($this.getCatalogItemListQuery("") | Where-Object { $null -ne $_.serviceRef } | ForEach-Object { $_.id })
+
+		# On ne retourne ensuite que les demandes en attente qui sont effectivement associés à un élément de catalogue appartenant à un Service
+		# ET
+		# les demandes de type "ResourceActionRequest" qui sont en fait les requêtes Day-2 (qu'il faut aller chercher dans la donnée membre '@type' et c'est un peu chiant -_- )
+		return $list | Where-Object { ($_.catalogItemRef.id -in $correctCatalogItemIDs) -or ( ($_.PSObject.properties | Where-Object {$_.name -eq '@type'}).value -eq "ResourceActionRequest" )}
+
 	}
 
 
@@ -2116,10 +2144,13 @@ class vRAAPI: RESTAPICurl
 
 			$levelNo = $approvalLevels.Count + 1
 
-			$replace = @{preApprovalLevelName = ("{0}-{1}" -f $name, $levelNo)
-						 approverGroupAtDomain = $approverGroupAtDomain
-						 approverDisplayName = $approverDisplayName
-						 preApprovalLeveNumber = @($levelNo, $true)}
+			$replace = @{
+						preApprovalLevelName = ("{0}-{1}" -f $name, $levelNo)
+						approverGroupAtDomain = $approverGroupAtDomain
+						approverDisplayName = $approverDisplayName
+						preApprovalLeveNumber = @($levelNo, $true)
+						tenantAPIUser = $this.user # Pour donner également les droits "pass-through" à l'utilisateur employé pour faire les appels API
+					}
 
 			# Création du level d'approbation et ajout à la liste 
 			$approvalLevels += $this.createObjectFromJSON($approvalLevelJSON, $replace)

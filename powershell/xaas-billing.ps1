@@ -71,7 +71,7 @@ $configVra = [ConfigReader]::New("config-vra.json")
 # Montant minimmum à partir duquel on facture
 $global:BILLING_MIN_MOUNT_CHF = 5
 # Nombre de jours pendant lesquels on garde les fichiers PDF générés avant de les effacer.
-$global:BILLING_KEEP_PDF_NB_DAYS = 60
+$global:BILLING_KEEP_PDF_NB_DAYS = 120
 
 # Actions possibles par le script
 $global:ACTION_EXTRACT_DATA = "extractData"
@@ -612,12 +612,12 @@ try
                         # S'il faut envoyer à Copernic,
                         if($sendToCopernic)
                         {
-                            $logHistory.addLineAndDisplay("> We have to send bill in Copernic")
                             $billDescription = "{0} - du {1} au {2}" -f $serviceBillingInfos.serviceName, $periodStartDate, $periodEndDate
 
                             # Si le centre financier est un "vrai" centre financier (et donc que des chiffres)
                             if($entity.entityFinanceCenter -match '[0-9]+')
                             {
+                                $logHistory.addLineAndDisplay("> We have to send bill in Copernic")
 
                                 # Facture de base
                                 $PDFFiles = @( @{
@@ -700,6 +700,9 @@ try
                                         $billingObject.sendBillByMail($entity.entityFinanceCenter, $targetPDFPath, $mailSubject, $periodStartDate, $periodEndDate)
 
                                         $counters.inc('billSentByEmail')
+
+                                        # On dit que tous les items de la facture ont été facturés
+                                        $billingObject.setEntityItemTypesAsBilled($entity.entityId, $billedItemTypes, $billReference)
                                     }
                                     catch # Gestion des erreurs
                                     {
