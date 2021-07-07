@@ -22,6 +22,7 @@ class vRA8API: RESTAPICurl
 {
 	hidden [string]$token
 	hidden [Hashtable]$projectCustomIdMappingCache
+	
 
 
     <#
@@ -75,6 +76,8 @@ class vRA8API: RESTAPICurl
 
 		# Mise à jour des headers
 		$this.headers.Add('Authorization', ("Bearer {0}" -f $this.token))
+
+		$this.funcToIgnore += @("getObject", "getObjectListQuery")
 
 	}
 
@@ -153,13 +156,22 @@ class vRA8API: RESTAPICurl
     hidden [PSCustomObject] getObject([string]$uri)
     {
 		$uri = "{0}{1}" -f $this.baseUrl, $uri
-        $res = ($this.callAPI($uri, "Get", $null)).content
+        $res = ($this.callAPI($uri, "Get", $null))
 
-        if($res.count -eq 0)
+
+		# Ces burnasses de développeurs vRA ne sont pas cohérents et parfois le résultat est dans "content" 
+		# et parfois il n'y a pas de "content", c'est à la racine... (les cons...)
+		if(objectPropertyExists -obj $res -propertyName "content")
+		{
+			$res = $res.content
+		}
+
+		if($res.count -eq 0)
         {
             return $null
         }
-        return $res[0]
+
+		return $res
     }
 
     <#
@@ -1068,6 +1080,20 @@ class vRA8API: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Supprime une policy 
+
+		IN  : $policy	-> Objet représentant la policy à supprimer
+	#>
+	[void] deletePolicy([PSCustomObject]$policy)
+	{
+		$uri = "{0}/policy/api/policies/{1}" -f $this.baseUrl, $policy.id
+
+		$this.callAPI($uri, "DELETE", $null) | Out-Null
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des policies d'un type donné
 
 		IN  : $type	-> Type de la Policy
@@ -1103,7 +1129,7 @@ class vRA8API: RESTAPICurl
 			orgId = (getProjectOrganizationID -project $project)
 			projectId = $project.id
 			role = $role.toString().toLower()
-			actionNameList = @(($actionNameList | ConvertTo-Json), $true)
+			actionNameList = @((ConvertTo-Json $actionNameList), $true)
         }
 
 		$body = $this.createObjectFromJSON("vra-policy-day2.json", $replace)

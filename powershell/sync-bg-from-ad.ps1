@@ -558,21 +558,21 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 	$contentSourcePrivacy = [CatalogProjectPrivacy]::Public
 
 	#FIXME: Gérer les "mandatory catalog items" une fois qu'on saura les gérer un par un
-	$logHistory.addLineAndDisplay(("Getting '{0}' Content Source list..." -f $contentSourcePrivacy))
+	$logHistory.addLineAndDisplay(("-> Getting '{0}' Content Source list..." -f $contentSourcePrivacy))
 
 	$contentSourceList = $vra.getContentSourcesList($contentSourcePrivacy)
 	
-	$logHistory.addLineAndDisplay(("{0} {1} Content Sources found" -f $contentSourceList.count, $contentSourcePrivacy))
+	$logHistory.addLineAndDisplay(("-> {0} {1} Content Sources found" -f $contentSourceList.count, $contentSourcePrivacy))
 
 	# Parcours des Content Sources trouvées
 	ForEach($contentSource in $contentSourceList)
 	{
-		$logHistory.addLineAndDisplay(("-> Processing Content Source '{0}'..." -f $contentSource.name))
+		$logHistory.addLineAndDisplay(("--> Processing Content Source '{0}'..." -f $contentSource.name))
 
 		# S'il n'y a pas d'items dans la Content Source
 		if($contentSource.itemsImported -eq 0)
 		{
-			$logHistory.addWarningAndDisplay(("-> No item found in Content Source '{0}', skipping it" -f $contentSource.name))
+			$logHistory.addWarningAndDisplay(("--> No item found in Content Source '{0}', skipping it" -f $contentSource.name))
 			continue
 		}
 
@@ -583,30 +583,30 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 		# L'entitlement n'existe pas encore
 		if($null -eq $ent)
 		{
-			$logHistory.addLineAndDisplay(("--> Entilement doesn't exists" -f $entName))
+			$logHistory.addLineAndDisplay(("---> Entilement doesn't exists" -f $entName))
 
 			# Si le Content Source n'est pas dans ceux qui ne sont pas autorisés pour le Projet
 			if($deniedServicesNames -notcontains $contentSource.name)
 			{
-				$logHistory.addLineAndDisplay(("--> Creating Entitlement for Content Source '{0}'..." -f $contentSource.name))
+				$logHistory.addLineAndDisplay(("---> Creating Entitlement for Content Source '{0}'..." -f $contentSource.name))
 				# Ajout de l'entitlement (appelé "content sharing" dans la GUI WEB)
 				$ent = $vra.addEntitlement($contentSource, [ContentSourceType]::CatalogSourceIdentifier, $project)	
 				
 			}
 			else # Le ContentSource n'est pas autorisé
 			{
-				$logHistory.addLineAndDisplay(("--> Content Source '{0}' not allowed for Project '{1}', skipping Entitlement creation" -f $contentSource.name, $project.name))
+				$logHistory.addLineAndDisplay(("---> Content Source '{0}' not allowed for Project '{1}', skipping Entitlement creation" -f $contentSource.name, $project.name))
 			}
 			
 		}
 		else # L'Entitlement existe déjà
 		{
-			$logHistory.addLineAndDisplay(("--> Entitlement '{0}' already exists" -f $entName))
+			$logHistory.addLineAndDisplay(("---> Entitlement '{0}' already exists" -f $entName))
 
 			# Si le content Source n'est pas autorisé pour le projet courant, on le supprime
 			if(($deniedServicesNames -contains $contentSource.name) -and ($currentEntitlementIdList -contains $contentSource.name))
 			{
-				$logHistory.addLineAndDisplay(("--> Content Source '{0}' not allowed for Project '{1}', removing Entitlement..." -f $contentSource.name, $projectName))
+				$logHistory.addLineAndDisplay(("---> Content Source '{0}' not allowed for Project '{1}', removing Entitlement..." -f $contentSource.name, $projectName))
 				$vra.deleteEntitlement($ent)
 			}
 
@@ -621,7 +621,7 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 			# Si c'est seulement certains items du catalogue pour le service courant qui ne doivent pas être affichés (mais que d'autres oui)
 			if($deniedSvcInfos.items.count -gt 0)
 			{
-				$logHistory.addLineAndDisplay(("--> Content Source '{0}' has been denied but only for {1} catalog item(s), adding the others" -f $contentSource.name, $deniedSvcInfos.items.count))
+				$logHistory.addLineAndDisplay(("---> Content Source '{0}' has been denied but only for {1} catalog item(s), adding the others" -f $contentSource.name, $deniedSvcInfos.items.count))
 
 				# Recherche de la liste des items de catalogue disponibles dans le service courant
 				$catalogItemList = $vra.getContentSourceCatalogItemList($contentSource)
@@ -638,13 +638,13 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 						# Si l'entitlement n'est pas encore présent
 						if($null -eq $ent)
 						{
-							$logHistory.addLineAndDisplay(("--> Creating Entitlement for Catalog Item '{0}'... " -f $catalogItem.name))
+							$logHistory.addLineAndDisplay(("---> Creating Entitlement for Catalog Item '{0}'... " -f $catalogItem.name))
 							# Ajout de l'élément de catalogue "non défendu"
 							$ent = $vra.addEntitlement($catalogItem, [ContentSourceType]::CatalogItemIdentifier, $project)
 						}
 						else # L'entitlement est déjà présent
 						{
-							$logHistory.addLineAndDisplay(("--> Entitlement for Catalog Item '{0}' already exists" -f $catalogItem.name))
+							$logHistory.addLineAndDisplay(("---> Entitlement for Catalog Item '{0}' already exists" -f $catalogItem.name))
 						}
 					}
 					else # L'item courant n'est pas autorisé pour le projet
@@ -652,7 +652,7 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 						# Si l'item est déjà dans les Entitlements,
 						if($null -ne $ent)
 						{
-							$logHistory.addLineAndDisplay(("--> Catalog Item '{0}' not allowd, removing it..." -f $catalogItem.name))
+							$logHistory.addLineAndDisplay(("---> Catalog Item '{0}' not allowd, removing it..." -f $catalogItem.name))
 							$vra.deleteEntitlement($ent)
 						}
 					}# FIN SI l'élélment courant n'est pas autorisé pour le projet
@@ -681,7 +681,7 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 	# Ajout des Items de catalogue "mandatory" s'il y en a
 	if($mandatoryItems.count -gt 0)
 	{
-		$logHistory.addLineAndDisplay(("-> Adding {0} mandatory catalog items..." -f $mandatoryItems.count))
+		$logHistory.addLineAndDisplay(("--> Adding {0} mandatory catalog items..." -f $mandatoryItems.count))
 
 		# Parcours et ajout
 		$mandatoryItems | ForEach-Object {
@@ -696,7 +696,7 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 				# Elément de catalogue pas trouvé dans vRA
 				if($null -eq $catalogItem)
 				{
-					$logHistory.addWarningAndDisplay(("--> Catalog Item '{0}' not found!" -f $_.name))
+					$logHistory.addWarningAndDisplay(("---> Catalog Item '{0}' not found!" -f $_.name))
 					$notifications.mandatoryItemsNotFound += $_.name
 				}
 				else # L'élément de catalogue existe
@@ -708,7 +708,7 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 					# Si l'élément n'a pas d'entitlement
 					if($null -eq $ent)
 					{
-						$logHistory.addLineAndDisplay(("--> Adding Entitlement for mandatory Catalog Item '{0}'..." -f $_.name))
+						$logHistory.addLineAndDisplay(("---> Adding Entitlement for mandatory Catalog Item '{0}'..." -f $_.name))
 
 						$ent = $vra.addEntitlement($catalogItem, [ContentSourceType]::CatalogItemIdentifier, $project)
 
@@ -725,7 +725,7 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 					}
 					else
 					{
-						$logHistory.addLineAndDisplay(("--> Mandatory Catalog Item '{0}' already has an Entitlement" -f $_.name))
+						$logHistory.addLineAndDisplay(("---> Mandatory Catalog Item '{0}' already has an Entitlement" -f $_.name))
 					}
 					
 				}# FIN SI l'élément de catalogue existe dans vRA 
@@ -733,7 +733,7 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 			}
 			else # L'élément de catalogue n'est pas autorisé pour le BG courant
 			{
-				$logHistory.addWarningAndDisplay(("--> Catalog item '{0}' not allowed for Project '{1}'" -f $_.name, $project.name))
+				$logHistory.addWarningAndDisplay(("---> Catalog item '{0}' not allowed for Project '{1}'" -f $_.name, $project.name))
 			}
 			
 		}# FIN BOUCLE de parcours des éléments de catalogue obligatoires
@@ -743,6 +743,43 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 	return $ent
 }
 
+
+<#
+-------------------------------------------------------------------------------------
+	BUT : Créé ou met à jour une Day-2 policy
+
+	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $name				-> Nom de la Day-2 policy
+	IN  : $description		-> Description de la Day-2 policy
+	IN  : $project			-> Objet représentant le projet pour lequel ajouter la policy
+	IN  : $policyRole		-> Pour quel rôle vRA on veut ajouter la policy
+	IN  : $entitlementType	-> Type d'entitlement (admin|user) 
+	IN  : $actionNameList	-> Tableau avec la liste des noms des actions day-2 à ajouter à 
+								la policy
+	
+	RET : Objet représentant la day-2 policy
+#>
+function createOrUpdateDay2Policy($vra, $name, $description, $project, $policyRole, $entitlementType, $actionNameList)
+{
+	
+	# On regarde si la policy existe déjà
+	$day2Policy = $vra.getPolicy($name)
+
+	# Si la policy exists
+	if($null -ne $day2Policy)
+	{
+		$logHistory.addLineAndDisplay(("Day2 Policy '{0}' already exists. Deleting it to recreate it" -f $day2PolName))
+
+		$vra.deletePolicy($day2Policy)
+	}
+
+	$logHistory.addLineAndDisplay(("Adding Day2 Policy '{0}' with {1} Day2 actions for '{2}' role" -f $day2PolName, $actionNameList.count, $entitlementType.toString()))
+
+	$day2Policy = $vra.addDay2Policy($name, $description, $project, $policyRole, $actionNameList)
+
+	return $day2Policy
+
+}
 
 <#
 -------------------------------------------------------------------------------------
@@ -1238,7 +1275,7 @@ try
 	$counters.inc('projectExisting', '# Project already existing')
 	$counters.add('projectNotCreated', '# Project not created (because of an error)')
 	$counters.add('projectNotRenamed', '# Project not renamed')
-	$counters.add('ProjectResumeSkipped', '#Project skipped because of resume')
+	$counters.add('ProjectResumeSkipped', '# Project skipped because of resume')
 	$counters.add('projectGhost',	'# Project set as "ghost"')
 	$counters.add('projectRenamed',	'# Project renamed')
 	$counters.add('projectResurrected', '# Project set alive again')
@@ -1607,17 +1644,23 @@ try
 		# ----------------------------------------------------------------------------------
 		# --------------------------------- Day2 Actions
 
+		# -- Users
 		$day2PolName, $day2PolDesc = $nameGenerator.getPolicyNameAndDesc([PolicyType]::Action, [PolicyRole]::Member)
 
 		$actionNameList = @($secondDayActions.getActionList() | ForEach-Object { $_.name })
 
-		$logHistory.addLineAndDisplay(("Adding Day2 Policy '{0}' with {1} Day2 actions for '{2}' role" -f $day2PolName, $actionNameList.count, ([EntitlementType]::User).toString()))
+		$day2Policy = createOrUpdateDay2Policy -vra $vra -name $day2PolName -description $day2PolDesc -project $project -policyRole ([PolicyRole]::Member) `
+												-entitlementType ([EntitlementType]::User) -actionNameList $actionNameList
 
-		$day2Policy = $vra.addDay2Policy($day2PolName, $day2PolDesc, $project, [PolicyRole]::Member, $actionNameList)
+		# -- Admins
+		$day2PolName, $day2PolDesc = $nameGenerator.getPolicyNameAndDesc([PolicyType]::Action, [PolicyRole]::Administrator)
+
+		$actionNameList = @($secondDayActionsAdm.getActionList() | ForEach-Object { $_.name })
+
+		$day2PolicyAdm = createOrUpdateDay2Policy -vra $vra -name $day2PolName -description $day2PolDesc -project $project -policyRole ([PolicyRole]::Administrator) `
+												-entitlementType ([EntitlementType]::Admin) -actionNameList $actionNameList
+
 		#TODO:
-
-
-
 		
 
 		# $logHistory.addLineAndDisplay("-> (prepare) Adding 2nd day Actions to Entitlement for users...")
