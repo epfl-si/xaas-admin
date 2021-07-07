@@ -308,26 +308,70 @@ class NameGeneratorK8s: NameGeneratorBase
       -------------------------------------------------------------------------------------
       BUT : Renvoie le nom d'un compte robot temporaire pour un projet Harbor
 
-      IN  : $nbDaysValidity	-> Nombre de jours de validité du compte
+      IN  : $robotType	      -> Type du robot
+      IN  : $nbDaysLifeTime   -> NB jours durée de vie
 
       RET : Tableau associatif avec:
             .name       -> le nom du robot
             .desc       -> la description
-            .expireAt   -> Unix time de la date d'expiration
    #>
-   [Hashtable] getHarborRobotAccountInfos([string]$nbDaysValidity)
+   [Hashtable] getHarborRobotAccountInfos([HarborRobotType]$robotType, [int]$nbDaysLifeTime)
    {
+      $start = ""
+      switch($this.tenant)
+      {
+         $global:VRA_TENANT__EPFL
+         {
+            $start = $this.getDetail('unitID')
+         }
+
+         $global:VRA_TENANT__ITSERVICES
+         {
+            $start = $this.getDetail('snowServiceId')
+         }
+
+         $global:VRA_TENANT__RESEARCH
+         {
+            $start = $this.getDetail('projectId')
+         }
+      }
+
       # Et c'est avec cette expression barbare que nous ajoutons les X jours à la date courante
-		$dateInXDays = (Get-Date).AddDays($nbDaysValidity)
+		$dateInXDays = (Get-Date).AddDays($nbDaysLifeTime)
       $expireAt = [int][double]::Parse((Get-Date $dateInXDays -UFormat %s))
       
-      $robotName = "{0}{1}" -f $this.getHarborProjectName(), $expireAt
+      $robotName = "{0}-{1}-{2}" -f $start, $robotType.toString().toLower(), $expireAt
       $robotDesc = "Valid until {0}" -f $dateInXDays
       
       return @{
          name =$robotName
          desc = $robotDesc
-         expireAt = $expireAt
+      }
+   }
+
+
+   <#
+      -------------------------------------------------------------------------------------
+      BUT : Renvoie un objet avec les informations d'un robot à partir de son nom
+
+      IN  : $robotName  -> Nom du robot
+
+      RET : Objet avec les infos du robot, dans les données membres suivantes:
+            .projectName
+            .bgId
+            .type
+            .expirationTime
+   #>
+   [PSCustomObject] extractInfosFromRobotName([string]$robotName)
+   {
+      # Un nom de robot est au format "robot$<projectName>+<bgID>-<type>-<expirationTime>"
+      $dummy, $projectName, $bgId, $type, $expirationTime = [Regex]::Match($robotName, 'robot\$(.*?)\+(.*?)-(.*?)-(.*)').Groups | Select-Object -ExpandProperty value
+
+      return @{
+         projectName = $projectName
+         bgId = $bgId
+         type = $type
+         expirationTime = $expirationTime
       }
    }
 

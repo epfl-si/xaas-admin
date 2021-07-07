@@ -28,3 +28,10 @@ $global:CONTOUR_NAMESPACE = "projectcontour"
 $global:PSP_PRIVILEGED = $false
 $global:PSP_ALLOW_PRIVILEGE_ESCALATION = $false
 $global:RESOURCE_QUOTA_LB_AND_NODEPORTS = 0
+
+# Type de robot pour Harbor et leur durée de vie en jours
+enum HarborRobotType
+{
+   Push = 182
+   Pull = 365
+}
