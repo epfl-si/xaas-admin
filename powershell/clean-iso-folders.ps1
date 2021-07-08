@@ -285,7 +285,3 @@ if($null -ne $vcenter)
 {
 	Disconnect-VIServer -Server $vCenter -Confirm:$false 
 }
-if($null -ne $vra)
-{
-	$vra.disconnect()
-}
