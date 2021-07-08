@@ -31,13 +31,13 @@ param ( [string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "SnowAPI.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
 $configGlobal   = [ConfigReader]::New("config-global.json")
-$configVra      = [ConfigReader]::New("config-vra.json")
+$configVra      = [ConfigReader]::New("config-vra8.json")
 $configVSphere  = [ConfigReader]::New("config-vsphere.json")
 $configSnow     = [ConfigReader]::New("config-snow.json")
 
@@ -80,10 +80,9 @@ try
     $vCenter = Connect-VIServer -Server $configVSphere.getConfigValue(@($targetEnv, "server")) -Credential $credObject
 
     $logHistory.addLineAndDisplay("Connecting to vRA...")
-    $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-                        $targetTenant, 
-                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
-                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+    $vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
     # Pour accéder à ServiceNow
     $logHistory.addLineAndDisplay("Connecting to ServiceNow...")
@@ -106,36 +105,36 @@ try
             "State",
             "OS",
             "Svc longName",
-            "BG snowId",
+            "Project snowId",
             "Service manager",
-            "Business Group")
+            "Project")
 
     $cols -join ";" | Out-File $outFile -Encoding:utf8
 
 
-    $logHistory.addLineAndDisplay("Getting BG List...")
+    $logHistory.addLineAndDisplay("Getting Project List...")
 
-    $bgList = $vra.getBGList()
+    $projectList = $vra.getProjectList()
 
     $vmFound = $false
-    Foreach($bg in $bgList)
+    Foreach($project in $projectList)
     {
-        $logHistory.addLineAndDisplay(("-> Processing BG '{0}'..." -f $bg.name))
+        $logHistory.addLineAndDisplay(("-> Processing Project '{0}'..." -f $project.name))
 
-        # Si c'est un BG admin
-        if(($bgId -eq "SVC0000") -or ((getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE) -eq "admin"))
+        # Recherche de l'ID
+        $projectId = (getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID)
+        $logHistory.addLineAndDisplay(("-> Custom ID is '{0}'" -f $projectId))
+
+        # Si c'est un Project admin
+        if(($projectId -eq "SVC0000") -or ((getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE) -eq "admin"))
         {
-            $logHistory.addLineAndDisplay("-> Is admin BG, skipping!")
+            $logHistory.addLineAndDisplay("-> Is admin Project, skipping!")
             continue
         }
         
-        # Recherche de l'ID
-        $bgId = (getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID)
-        $logHistory.addLineAndDisplay(("-> Custom ID is '{0}'" -f $bgId))
+        $logHistory.addLineAndDisplay(("-> Getting Item List for Project '{0}'..." -f $project.name))
 
-        $logHistory.addLineAndDisplay(("-> Getting Item List for BG '{0}'..." -f $bg.name))
-
-        $vmList = $vra.getBGItemList($bg, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
+        $vmList = $vra.getProjectDeploymentList($project, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
 
         # Parcours des VM
         ForEach($vm in $vmList)
@@ -153,11 +152,11 @@ try
             {
                 $logHistory.addLineAndDisplay("---> Windows VM")
 
-                if($serviceManagerList.Keys -notcontains $bgId)
+                if($serviceManagerList.Keys -notcontains $projectId)
                 {
-                    $serviceManagerList.Add($bgId, $snow.getServiceManager($bgId))
+                    $serviceManagerList.Add($projectId, $snow.getServiceManager($projectId))
                 }
-                $serviceManager = $serviceManagerList.Item($bgId).FullName
+                $serviceManager = $serviceManagerList.Item($projectId).FullName
 
                 # On commence par chercher le tag de déploiement dans vSphere
                 $deploymentTag = ($vSphereVM| Get-Annotation -customattribute $global:VRA_CUSTOM_PROP_EPFL_DEPLOYMENT_TAG).value
@@ -183,10 +182,10 @@ try
                         $deploymentTag,
                         $vmView.Summary.Runtime.PowerState,
                         $osFullName,
-                        $bg.description,
-                        $bgId,
+                        $project.description,
+                        $projectId,
                         $serviceManager,
-                        $bg.name)
+                        $project.name)
 
                 $values -join ";" | Out-File $outFile -Encoding:utf8 -Append
 
@@ -207,7 +206,7 @@ try
         $logHistory.addLineAndDisplay(("Sending result mail to '{0}'..." -f $mail))
 
         $mailFrom = ("noreply+{0}" -f $configGlobal.getConfigValue(@("mail", "admin")))
-        $mailSubject = "ITServices per BG Windows VM List"
+        $mailSubject = "ITServices per Project Windows VM List"
         $mailMessage = "Bonjour,<br><br>Voici la liste des VM Windows qui existent actuellement dans le tenant ITServices.<br><br>Salutations<br><br>vRA Bot"
 
         Send-MailMessage -From $mailFrom -To $mail -Subject $mailSubject -Attachments $outFile `
