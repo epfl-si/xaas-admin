@@ -2,8 +2,8 @@
 USAGES:
     tools-vm-with-snapshots.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices|research
     tools-vm-with-snapshots.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices|research [-sendNotifMail -maxAgeDays <maxAgeDays>]
-    tools-vm-with-snapshots.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices|research -bgList <bgList>
-    tools-vm-with-snapshots.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices|research -bgRegex <bgRegex>
+    tools-vm-with-snapshots.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices|research -projectList <projectList>
+    tools-vm-with-snapshots.ps1 -targetEnv prod|test|dev -targetTenant epfl|itservices|research -projectRegex <projectRegex>
 #>
 <#
     BUT 		: Script permettant d'afficher les VMs qui ont un snapshot, soit pour tous les BG, soit pour une
@@ -23,8 +23,8 @@ USAGES:
 #>
 param([string]$targetEnv, 
       [string]$targetTenant,
-      [string]$bgList, # Liste des BG, séparés par des virgules. Il faut mettre cette liste entre simple quotes ''
-      [string]$bgRegex, # Expression régulière pour le filtre des noms de BG. Il faut mettre entre simple quotes ''
+      [string]$projectList, # Liste des Projets, séparés par des virgules. Il faut mettre cette liste entre simple quotes ''
+      [string]$projectRegex, # Expression régulière pour le filtre des noms de Projet. Il faut mettre entre simple quotes ''
       [int]$maxAgeDays, # Âge maximum des snapshots (en jours) à partir duquel on envoie un mail
       [switch]$sendNotifMail)
 
@@ -45,12 +45,12 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
 $configGlobal   = [ConfigReader]::New("config-global.json")
-$configVra 		= [ConfigReader]::New("config-vra.json")
+$configVra 		= [ConfigReader]::New("config-vra8.json")
 
 
 <#
@@ -143,26 +143,25 @@ try
 	$notifications = @{}
 	$notifications.unknownMailboxes = @()
 
-    $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-                    $targetTenant, 
-                    $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
-                    $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+    $vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
-    # Recherche de la liste des BG en fonction des noms donnés
-    $targetBgList = $vra.getBGList()
+    # Recherche de la liste des Projets en fonction des noms donnés
+    $targetProjectList = $vra.getProjectList()
 
     # Si on doit filtrer sur des BG,
-    if($bgList -ne "") 
+    if($projectList -ne "") 
     {
         # On transforme le paramètre en tableau
-        $bgListNames = $bgList.split(",")
+        $projectListNames = $projectList.split(",")
 
-        $targetBgList = $targetBgList | Where-Object { $bgListNames -contains $_.name }
+        $targetProjectList = $targetProjectList | Where-Object { $projectListNames -contains $_.name }
     }
     # Si on a passé une regex
-    elseif($bgRegex -ne "")
+    elseif($projectRegex -ne "")
     {
-        $targetBgList = $targetBgList | Where-Object { $_.name -match $bgRegex }
+        $targetProjectList = $targetProjectList | Where-Object { $_.name -match $projectRegex }
     }
 
     # Liste des VM avec des snapshots
@@ -179,11 +178,11 @@ try
     
 
     # Parcours des BG
-    Foreach($bg in $targetBgList)
+    Foreach($project in $targetProjectList)
     {
-        
-        $logHistory.addLineAndDisplay(("Processing BG '{0}'..." -f $bg.name))
-        $vmList = $vra.getBGItemList($bg, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
+        # TODO: Continuer ici. Voir pour récupérer les déploiements depuis le blueprint id pour avoir le type
+        $logHistory.addLineAndDisplay(("Processing Project '{0}'..." -f $project.name))
+        $vmList = $vra.getProjectDeploymentList($project, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
 
         # Parcours des VM
         ForEach($vm in $vmList)
@@ -218,7 +217,7 @@ try
                             {
                                 # Ajout au tableau avec les infos nécessaires pour envoyer les mails par la suite
                                 $vmWithSnap.add([PSCustomObject]@{
-                                    bgName = $bg.name
+                                    bgName = $project.name
                                     VM = $vm.name
                                     snapshotDate = $createDate.toString("dd.MM.yyyy HH:mm:ss")
                                     ageDays = $dateDiff.days
@@ -235,7 +234,7 @@ try
 
                     # Ajout au tableau pour un affichage propre à la fin
                     $vmWithSnap.add([PSCustomObject]@{
-                        bgName = $bg.name
+                        bgName = $project.name
                         VM = $vm.name
                         snapshotDate = $createDate.toString("dd.MM.yyyy HH:mm:ss")
                         ageDays = $dateDiff.days
