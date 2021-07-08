@@ -1268,7 +1268,7 @@ class vRA8API: RESTAPICurl
 			les données avec les déploiements présents.
 		#>
 		$catalogItemListId = @($this.getCatalogItemListByType($catalogItemType) | ForEach-Object { $_.id} )
-		return @( $this.getDeploymentList() | Where-Object { $catalogItemListId -contains $_.catalogItemId })
+		return @( $this.getDeploymentList() | Where-Object { ($catalogItemListId -contains $_.catalogItemId) -and ($_.status -notlike "CREATE_FAILED") })
 	}
 
 	<#
@@ -1281,7 +1281,8 @@ class vRA8API: RESTAPICurl
 	#>
 	[Array] getProjectDeploymentList([PSCustomObject]$project)
 	{
-		return @($this.getObjectListQuery("/deployment/api/deployments", ("`$filter=projectId eq '{0}'" -f $project.id )))
+		return @($this.getObjectListQuery("/deployment/api/deployments", ("`$filter=projectId eq '{0}'" -f $project.id )) | 
+				Where-Object { $_.status -notlike "CREATE_FAILED" })
 	}
 
 	<#
@@ -1308,7 +1309,7 @@ class vRA8API: RESTAPICurl
 		#>
 		$catalogItemListId = @($this.getCatalogItemListByType($catalogItemType) | ForEach-Object { $_.id} )
 		return @($this.getObjectListQuery("/deployment/api/deployments", ("`$filter=projectId eq '{0}'" -f $project.id )) | `
-					Where-Object { $catalogItemListId -contains $_.catalogItemId })
+					Where-Object { ($catalogItemListId -contains $_.catalogItemId) -and ($_.status -notlike "CREATE_FAILED") })
 	}
 
 
