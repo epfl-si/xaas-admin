@@ -1674,18 +1674,6 @@ class NameGenerator: NameGeneratorBase
         }
     }
 
-    <#
-    -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du directory qui permet de faire la synchro des groupes AD
-                dans vRA
-
-        RET : Le nom du directory
-    #>
-    [string]getDirectoryName()
-    {
-        return [NameGenerator]::AD_DOMAIN_NAME
-    }
-
 
     <#
     -------------------------------------------------------------------------------------

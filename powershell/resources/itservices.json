@@ -6,7 +6,7 @@
             "shortName":  "Antivirus",
             "snowId":  "SVC0062",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -14,7 +14,7 @@
             "shortName":  "MySQL",
             "snowId":  "SVC0020",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         }
     ],
     "test": [
@@ -24,7 +24,7 @@
             "shortName":  "erpe",
             "snowId":  "SVC0642",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -32,7 +32,7 @@
             "shortName":  "Antivirus",
             "snowId":  "SVC0062",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -40,7 +40,7 @@
             "shortName":  "MySQL",
             "snowId":  "SVC0020",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -48,7 +48,7 @@
             "shortName":  "vs",
             "snowId":  "SVC0080",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
 		{
             "active": true,
@@ -56,7 +56,7 @@
             "shortName":  "grpguestst",
             "snowId":  "SVC0007",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
 		{
             "active": true,
@@ -64,7 +64,7 @@
             "shortName":  "wbhstt",
             "snowId":  "SVC0041",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
 		{
             "active": true,
@@ -72,7 +72,7 @@
             "shortName":  "presst",
             "snowId":  "SVC0046",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -80,7 +80,7 @@
             "shortName":  "bkpt",
             "snowId":  "SVC0003",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -88,7 +88,7 @@
             "shortName":  "s3t",
             "snowId":  "SVC1057",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -96,7 +96,7 @@
             "shortName":  "Media",
             "snowId":  "SVC0067",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
 		{
             "active": true,
@@ -104,7 +104,7 @@
             "shortName":  "excalt",
             "snowId":  "SVC0088",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
 		{
             "active": true,
@@ -112,7 +112,7 @@
             "shortName":  "wnet",
             "snowId":  "SVC0101",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -120,7 +120,7 @@
             "shortName":  "k8st",
             "snowId":  "SVC1219",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -128,7 +128,7 @@
             "shortName":  "sddc",
             "snowId":  "SVC0166",
             "additionalGroupsAdminSciperList": ["287589"],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -141,7 +141,7 @@
             "shortName":  "lnx",
             "snowId":  "SVC1215",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -149,7 +149,7 @@
             "shortName":  "blgwk",
             "snowId":  "SVC0070",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -157,7 +157,7 @@
             "shortName":  "mprntt",
             "snowId":  "SVC0056",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         }
         
     ],
@@ -168,7 +168,7 @@
             "shortName":  "Antivirus",
             "snowId":  "SVC0062",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -176,7 +176,7 @@
             "shortName":  "aspam",
             "snowId":  "SVC0058",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -184,7 +184,7 @@
             "shortName":  "audit",
             "snowId":  "SVC0091",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -192,7 +192,7 @@
             "shortName":  "bkp",
             "snowId":  "SVC0003",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -200,7 +200,7 @@
             "shortName":  "cert",
             "snowId":  "SVC0011",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -208,7 +208,7 @@
             "shortName":  "cnfl",
             "snowId":  "SVC0108",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -216,7 +216,7 @@
             "shortName":  "CRI",
             "snowId":  "SVC0069",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -224,7 +224,7 @@
             "shortName":  "diod",
             "snowId":  "SVC0040",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -232,7 +232,7 @@
             "shortName":  "e2e",
             "snowId":  "SVC0345",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -240,7 +240,7 @@
             "shortName":  "erpe",
             "snowId":  "SVC0642",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -248,7 +248,7 @@
             "shortName":  "ldap",
             "snowId":  "SVC0052",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -256,7 +256,7 @@
             "shortName":  "mail",
             "snowId":  "SVC0082",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -264,7 +264,7 @@
             "shortName":  "Media",
             "snowId":  "SVC0067",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -272,7 +272,7 @@
             "shortName":  "mlist",
             "snowId":  "SVC0004",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -280,7 +280,7 @@
             "shortName":  "moodle",
             "snowId":  "SVC0060",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -288,7 +288,7 @@
             "shortName":  "mssql",
             "snowId":  "SVC0021",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -296,7 +296,7 @@
             "shortName":  "MyNAS",
             "snowId":  "SVC0047",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -304,7 +304,7 @@
             "shortName":  "MySQL",
             "snowId":  "SVC0020",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -312,7 +312,7 @@
             "shortName":  "NAS",
             "snowId":  "SVC0075",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -320,7 +320,7 @@
             "shortName":  "S3",
             "snowId":  "SVC1057",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -328,7 +328,7 @@
             "shortName":  "safenet",
             "snowId":  "SVC0094",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -336,7 +336,7 @@
             "shortName":  "sap",
             "snowId":  "SVC0196",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -344,7 +344,7 @@
             "shortName":  "sapf",
             "snowId":  "SVC0649",
             "additionalGroupsAdminSciperList": ["318328"],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -352,7 +352,7 @@
             "shortName":  "saph",
             "snowId":  "SVC0099",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -360,7 +360,7 @@
             "shortName":  "sapr",
             "snowId":  "SVC0651",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -368,7 +368,7 @@
             "shortName":  "search",
             "snowId":  "SVC0012",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -376,7 +376,7 @@
             "shortName":  "shrp",
             "snowId":  "SVC0128",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -384,7 +384,7 @@
             "shortName":  "suphack",
             "snowId":  "SVC0015",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -392,7 +392,7 @@
             "shortName":  "uc",
             "snowId":  "SVC0029",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -400,7 +400,7 @@
             "shortName":  "vdic",
             "snowId":  "SVC0116",
             "additionalGroupsAdminSciperList": ["115218"],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -408,7 +408,7 @@
             "shortName":  "vdie",
             "snowId":  "SVC0019",
             "additionalGroupsAdminSciperList": ["115218"],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -416,7 +416,7 @@
             "shortName":  "vs",
             "snowId":  "SVC0080",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -424,7 +424,7 @@
             "shortName":  "winop",
             "snowId":  "SVC1168",
             "additionalGroupsAdminSciperList": ["102753"],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -432,7 +432,7 @@
             "shortName":  "wnet",
             "snowId":  "SVC0101",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -440,7 +440,7 @@
             "shortName":  "wproxy",
             "snowId":  "SVC0066",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -448,7 +448,7 @@
             "shortName":  "isa",
             "snowId":  "SVC0034",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -456,7 +456,7 @@
             "shortName":  "ora",
             "snowId":  "SVC0072",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -464,7 +464,7 @@
             "shortName":  "actu",
             "snowId":  "SVC0016",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -472,7 +472,7 @@
             "shortName":  "plan",
             "snowId":  "SVC0028",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -480,7 +480,7 @@
             "shortName":  "wbhst",
             "snowId":  "SVC0041",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -488,7 +488,7 @@
             "shortName":  "pktcmp",
             "snowId":  "SVC0086",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -496,7 +496,7 @@
             "shortName":  "memto",
             "snowId":  "SVC0095",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -504,7 +504,7 @@
             "shortName":  "sddc",
             "snowId":  "SVC0166",
             "additionalGroupsAdminSciperList": ["287589"],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -512,7 +512,7 @@
             "shortName":  "mprnt",
             "snowId":  "SVC0056",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -520,7 +520,7 @@
             "shortName":  "press",
             "snowId":  "SVC0046",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -528,7 +528,7 @@
             "shortName":  "peopl",
             "snowId":  "SVC0033",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -536,7 +536,7 @@
             "shortName":  "ad",
             "snowId":  "SVC0026",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -544,7 +544,7 @@
             "shortName":  "accred",
             "snowId":  "SVC0055",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -552,7 +552,7 @@
             "shortName":  "my",
             "snowId":  "SVC0024",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -560,7 +560,7 @@
             "shortName":  "cadi",
             "snowId":  "SVC0074",
             "additionalGroupsAdminSciperList": ["147362"],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -568,7 +568,7 @@
             "shortName":  "gaspar",
             "snowId":  "SVC0085",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -576,7 +576,7 @@
             "shortName":  "tequila",
             "snowId":  "SVC0018",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": false,
@@ -584,7 +584,7 @@
             "shortName":  "gouvge",
             "snowId":  "SVC0141",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -597,7 +597,7 @@
             "shortName":  "dsi",
             "snowId":  "SVC0173",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -610,7 +610,7 @@
             "shortName":  "idevam",
             "snowId":  "SVC0174",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -623,7 +623,7 @@
             "shortName":  "idevfsd",
             "snowId":  "SVC0176",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -636,7 +636,7 @@
             "shortName":  "sdesk",
             "snowId":  "SVC0178",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -649,7 +649,7 @@
             "shortName":  "supr",
             "snowId":  "SVC0179",
             "additionalGroupsAdminSciperList": ["115218"],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -662,7 +662,7 @@
             "shortName":  "infr",
             "snowId":  "SVC0181",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -675,7 +675,7 @@
             "shortName":  "gifge",
             "snowId":  "SVC0182",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -688,7 +688,7 @@
             "shortName":  "MWS",
             "snowId":  "SVC0183",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -701,7 +701,7 @@
             "shortName":  "idevge",
             "snowId":  "SVC0184",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -714,7 +714,7 @@
             "shortName":  "ge",
             "snowId":  "SVC0185",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -727,7 +727,7 @@
             "shortName":  "idevrh",
             "snowId":  "SVC0602",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -740,7 +740,7 @@
             "shortName":  "idevfin",
             "snowId":  "SVC0606",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": [
+            "deniedCatalogList": [
                 {
                     "svc": "NAS (Public)",
                     "items": ["NAS collaborative volume"]
@@ -753,7 +753,7 @@
             "shortName":  "inform",
             "snowId":  "SVC0092",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -761,7 +761,7 @@
             "shortName":  "archi",
             "snowId":  "SVC1203",
             "additionalGroupsAdminSciperList": ["102753"],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -769,7 +769,7 @@
             "shortName":  "camip",
             "snowId":  "SVC0117",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -777,7 +777,7 @@
             "shortName":  "dcops",
             "snowId":  "SVC1388",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -785,7 +785,7 @@
             "shortName":  "crm",
             "snowId":  "SVC0955",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -793,7 +793,7 @@
             "shortName":  "softsup",
             "snowId":  "SVC0006",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -801,7 +801,7 @@
             "shortName":  "svcdsk",
             "snowId":  "SVC0017",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -809,7 +809,7 @@
             "shortName":  "psdn",
             "snowId":  "SVC0025",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -817,7 +817,7 @@
             "shortName":  "sscsup",
             "snowId":  "SVC0043",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -825,7 +825,7 @@
             "shortName":  "pur",
             "snowId":  "SVC0187",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -833,7 +833,7 @@
             "shortName":  "snow",
             "snowId":  "SVC0048",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -841,7 +841,7 @@
             "shortName":  "blgwk",
             "snowId":  "SVC0070",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -849,7 +849,7 @@
             "shortName":  "dstlg",
             "snowId":  "SVC0084",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -857,7 +857,7 @@
             "shortName":  "bi",
             "snowId":  "SVC0647",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -865,7 +865,7 @@
             "shortName":  "infosc",
             "snowId":  "SVC0089",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -873,7 +873,7 @@
             "shortName":  "xact",
             "snowId":  "SVC0723",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
 		{
             "active": true,
@@ -881,7 +881,7 @@
             "shortName":  "lhdadl",
             "snowId":  "SVC1172",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
 		{
             "active": true,
@@ -889,7 +889,7 @@
             "shortName":  "excal",
             "snowId":  "SVC0088",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -897,7 +897,7 @@
             "shortName":  "prjalu",
             "snowId":  "PRJ0012176",
             "additionalGroupsAdminSciperList": ["296747"],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -905,7 +905,7 @@
             "shortName":  "grants",
             "snowId":  "SVC0002",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -913,7 +913,7 @@
             "shortName":  "k8s",
             "snowId":  "SVC1219",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -921,7 +921,7 @@
             "shortName":  "lnx",
             "snowId":  "SVC1215",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -929,7 +929,7 @@
             "shortName":  "alumni",
             "snowId":  "SVC1375",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -937,7 +937,7 @@
             "shortName":  "save",
             "snowId":  "SVC1307",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         
         {
@@ -946,7 +946,7 @@
             "shortName":  "dcm",
             "snowId":  "SVC1344",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -954,7 +954,7 @@
             "shortName":  "prjsam",
             "snowId":  "PRJ0011982",
             "additionalGroupsAdminSciperList": ["318457"],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -962,7 +962,7 @@
             "shortName": "genelec",
             "snowId": "SVC1365",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -970,7 +970,7 @@
             "shortName": "cmsazure",
             "snowId": "SVC1211",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -978,7 +978,7 @@
             "shortName":  "crstl",
             "snowId":  "SVC1369",
             "additionalGroupsAdminSciperList": ["296747"],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         },
         {
             "active": true,
@@ -986,7 +986,7 @@
             "shortName":  "dchst",
             "snowId":  "SVC0051",
             "additionalGroupsAdminSciperList": [],
-            "deniedVRAServiceList": []
+            "deniedCatalogList": []
         }
 
     ]

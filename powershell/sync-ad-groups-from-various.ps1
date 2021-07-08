@@ -345,13 +345,13 @@ function removeInexistingADAccounts([Array] $accounts)
 	IN  : $sqldb		-> Objet permettant d'accéder à la DB
 	IN  : $ADGroup		-> Groupe AD avec les utilisateurs à ajouter
 	IN  : $role			-> Role à donner aux utilisateurs du groupe
-	IN  : $bgName		-> Nom du Business Group qui est accessible
+	IN  : $projectName	-> Nom du Projet qui est accessible
 					   		Peut être de la forme basique epfl_<faculty>_<unit>
 					   		Ou alors simplement un seul élément si c'est un nom de faculté
 	IN  : $targetTenant	-> Nom du tenant sur lequel on est.
 							On gère uniquement les tenants ITServices et EPFL
 #>
-function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$role, [string]$bgName, [string]$targetTenant)
+function updateVRAUsersForProject([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$role, [string]$projectName, [string]$targetTenant)
 {
 
 	switch($role)
@@ -374,7 +374,7 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 			}
 			
 			# Extraction des infos ($dummy va contenir le nom comple du BG, dont on n'a pas besoin)
-			$dummy, $criteriaList = [regex]::Match($bgName, $regex).Groups | Select-Object -ExpandProperty value
+			$dummy, $criteriaList = [regex]::Match($projectName, $regex).Groups | Select-Object -ExpandProperty value
 		}
 
 		AdminFac
@@ -389,13 +389,13 @@ function updateVRAUsersForBG([SQLDB]$sqldb, [Array]$userList, [TableauRoles]$rol
 				Throw ("Tenant '{0}' not handled" -f $targetTenant)
 			}
 			# Extraction des infos ($dummy va contenir le nom complte du BG, dont on n'a pas besoin)
-			$dummy, $criteriaList = [regex]::Match($bgName, $regex).Groups | Select-Object -ExpandProperty value
+			$dummy, $criteriaList = [regex]::Match($projectName, $regex).Groups | Select-Object -ExpandProperty value
 		}
 
 		AdminEPFL
 		{
-			# Pas besoin d'extraire les infos, car dans ce cas-là, $bgName contiendra juste "all"
-			$criteriaList = @($bgName)
+			# Pas besoin d'extraire les infos, car dans ce cas-là, $projectName contiendra juste "all"
+			$criteriaList = @($projectName)
 		}
 	}
 	
@@ -796,8 +796,8 @@ try
 	$notifications.missingADGroups = @()
 
 	# Chargement des informations sur les unités qu'il faut ajouter manuellement à une faculté donnée
-	$adminBGFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "admin-bg.json"))
-	$adminBGList = loadFromCommentedJSON -jsonFile $adminBGFile
+	$adminProjectsFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "admin-projects.json"))
+	$adminProjectList = loadFromCommentedJSON -jsonFile $adminProjectsFile
 
 	switch($targetTenant)
 	{
@@ -831,9 +831,9 @@ try
 			$billToMailFile = ([IO.Path]::Combine($global:DATA_FOLDER, "billing", "bill-to-mail.json"))
 			$billToMailList = loadFromCommentedJSON -jsonFile $billToMailFile
 			
-			# Chargement des informations sur les unités qui ont potentiellement des services vRA "non autorisés"
-			$deniedVRASvcListFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "epfl-deny-vra-services.json"))
-			$deniedVRASvcList = loadFromCommentedJSON -jsonFile $deniedVRASvcListFile
+			# Chargement des informations sur les unités qui ont potentiellement des Catalogues "non autorisés"
+			$deniedCatalogListFile = ([IO.Path]::Combine($global:RESOURCES_FOLDER, "epfl-deny-catalogs.json"))
+			$deniedCatalogList = loadFromCommentedJSON -jsonFile $deniedCatalogListFile
 			
 
 			# Parcours des facultés trouvées
@@ -941,7 +941,7 @@ try
 				$unitList.add([ADGroupCreateSourceType]::User, $ldap.getFacultyUnitList($faculty.name, $EPFL_FAC_UNIT_NB_LEVEL)) # | Where-Object { $_['name'] -eq 'OSUL'} # Décommenter et adapter pour limiter à une unité donnée
 					
 				# On regarde si on a des unités à ajouter en tant que BG "admin" à la faculté courante. 
-				$manualUnitsFacInfos = $adminBGList.$targetTenant | Where-Object { $_.faculty -eq $faculty.name }
+				$manualUnitsFacInfos = $adminProjectList.$targetTenant | Where-Object { $_.faculty -eq $faculty.name }
 				if(($null -ne $manualUnitsFacInfos) -and ($manualUnitsFacInfos.manualUnits.count -gt 0))
 				{
 					$logHistory.addLineAndDisplay(("Adding {0} 'admin units' to faculty {1} unit list" -f $manualUnitsFacInfos.manualUnits.count, $faculty.name))
@@ -975,19 +975,19 @@ try
 						$financeCenter = determineUnitFinanceCenter -unit $unit -unitList $unitList.$sourceType -billToMailList $billToMailList `
 										-sourceType $sourceType
 
-						$vRAServicesToDeny = @()
+						$catalogsToDeny = @()
 						# On ne gère les "deny" de service/items de catalogue uniquement si on est dans une source pour les utilisateurs
 						if($sourceType -eq [ADGroupCreateSourceType]::User)
 						{
 							$hasApproval = $true
 							# Parcours des OU pour lequelles on veut empêcher l'accès à certains services vRA
-							ForEach($denyInfos in $deniedVRASvcList)
+							ForEach($denyInfos in $deniedCatalogList)
 							{
 								# Si l'unité courante est dans l'arborescence où il faut empêcher l'accès à certains services
 								if($unit.path -match ("{0}$" -f $denyInfos.ldapOU))
 								{
 									# Mise à jour de la liste des services "non" autorisés et on sort
-									$vRAServicesToDeny = $denyInfos.deniedVRAServiceList
+									$catalogsToDeny = $denyInfos.deniedCatalogList
 									break
 								}
 							}
@@ -1020,7 +1020,7 @@ try
 						# Création du nom du groupe AD et de la description
 						$adGroupName = $nameGenerator.getRoleADGroupName([UserRole]::User, $false)
 						$additionalDetails = @{
-							deniedVRASvc = $vRAServicesToDeny
+							deniedVRASvc = $catalogsToDeny
 							financeCenter = $financeCenter
 							hasApproval = $hasApproval
 						}
@@ -1138,7 +1138,7 @@ try
 						if($ldapMemberList.Count -gt 0)
 						{
 							$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $ldapMemberList.Count, [TableauRoles]::User.ToString()))
-							updateVRAUsersForBG -sqldb $sqldb -userList $ldapMemberList -role User -bgName $nameGenerator.getProjectName() -targetTenant $targetTenant
+							updateVRAUsersForProject -sqldb $sqldb -userList $ldapMemberList -role User -projectName $nameGenerator.getProjectName() -targetTenant $targetTenant
 						}
 
 						# Mise à jour des compteurs
@@ -1176,7 +1176,7 @@ try
 					$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $facApprovalMembers.Count, [TableauRoles]::AdminFac.ToString() ))
 					if(-not $SIMULATION_MODE)
 					{
-						updateVRAUsersForBG -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -bgName ("epfl_{0}" -f $faculty.name.toLower()) -targetTenant $targetTenant
+						updateVRAUsersForProject -sqldb $sqldb -userList $facApprovalMembers -role AdminFac -projectName ("epfl_{0}" -f $faculty.name.toLower()) -targetTenant $targetTenant
 					}
 				}
 
@@ -1206,7 +1206,7 @@ try
 				$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
 				if(-not $SIMULATION_MODE)
 				{
-					updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
+					updateVRAUsersForProject -sqldb $sqldb -userList $adminMembers -role AdminEPFL -projectName "all" -targetTenant $targetTenant
 				}
 			}
 			
@@ -1238,8 +1238,8 @@ try
 			$servicesList.add([ADGroupCreateSourceType]::User, $itServices.getServiceList($targetEnv))
 			
 			# Ajout des services à ajouter en tant que "Admin"
-			$logHistory.addLineAndDisplay(("Adding {0} 'admin services'" -f $adminBGList.$targetTenant.count))
-			$servicesList.add([ADGroupCreateSourceType]::Admin, @($adminBGList.$targetTenant))
+			$logHistory.addLineAndDisplay(("Adding {0} 'admin services'" -f $adminProjectList.$targetTenant.count))
+			$servicesList.add([ADGroupCreateSourceType]::Admin, @($adminProjectList.$targetTenant))
 			
 
 			# Parcours des types de sources
@@ -1271,7 +1271,7 @@ try
 					# Service de type "User"
 					if($sourceType -eq [ADGroupCreateSourceType]::User)
 					{
-						$deniedVRAServiceList = $service.deniedVRAServiceList
+						$deniedCatalogList = $service.deniedCatalogList
 						$hasApproval = $true
 
 						# Si c'est un "vrai" service dans ServiceNow (et pas un machin créé pour les projets là...)
@@ -1304,7 +1304,7 @@ try
 						# du fait qu'on a mis un nom de service bidon
 
 						# Aucun service restreint
-						$deniedVRAServiceList = @()
+						$deniedCatalogList = @()
 						$hasApproval = $false
 					}
 
@@ -1377,7 +1377,7 @@ try
 					# Génération de nom du groupe dont on va avoir besoin pour les rôles "User" et "Shared" (même groupe).
 					$userGroupNameAD = $nameGenerator.getRoleADGroupName([UserRole]::User, $false)
 					$additionalDetails = @{
-						deniedVRASvc = $deniedVRAServiceList
+						deniedVRASvc = $deniedCatalogList
 						hasApproval = $hasApproval
 					}
 					$userGroupDescAD = $nameGenerator.getRoleADGroupDesc([UserRole]::User, $additionalDetails)
@@ -1412,7 +1412,7 @@ try
 					# if(($groupsUsernameList = Get-ADGroupMember $userGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).count -gt 0)
 					# {
 					# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $groupsUsernameList.Count, [TableauRoles]::User.ToString() ))
-					# 	updateVRAUsersForBG -sqldb $sqldb -userList $groupsUsernameList -role User -bgName $nameGenerator.getProjectName() -targetTenant $targetTenant
+					# 	updateVRAUsersForProject -sqldb $sqldb -userList $groupsUsernameList -role User -projectName $nameGenerator.getProjectName() -targetTenant $targetTenant
 					# }
 					
 					# # ###### Roles pour Tableau --> Admin du service
@@ -1420,7 +1420,7 @@ try
 					# if(($adminMembers = Get-ADGroupMember $admSupGroupNameAD -Recursive | ForEach-Object {$_.SamAccountName} | Get-Unique).Count -gt 0)
 					# {
 					# 	$logHistory.addLineAndDisplay(("--> Adding {0} members with '{1}' role to vraUsers table " -f $adminMembers.Count, [TableauRoles]::AdminEPFL.ToString() ))
-					# 	updateVRAUsersForBG -sqldb $sqldb -userList $adminMembers -role AdminEPFL -bgName "all" -targetTenant $targetTenant
+					# 	updateVRAUsersForProject -sqldb $sqldb -userList $adminMembers -role AdminEPFL -projectName "all" -targetTenant $targetTenant
 					# }
 					
 		
@@ -1659,7 +1659,7 @@ try
 					if(-not $SIMULATION_MODE)
 					{
 						# Suppression des accès pour le business group correspondant au groupe AD courant.
-						updateVRAUsersForBG -sqldb $sqldb -userList @() -role User -bgName $nameGenerator.getProjectName() -targetTenant $targetTenant
+						updateVRAUsersForProject -sqldb $sqldb -userList @() -role User -projectName $nameGenerator.getProjectName() -targetTenant $targetTenant
 					}
 				}
 
@@ -1687,9 +1687,10 @@ try
 						Remove-ADGroup $approveADGroupName -Confirm:$false	
 					}
 				}
-			}
+
+			}# FIN SWITCH en fonction du tenant
 			
-		}
+		}# FIN SI le groupe AD ne fait pas partie de ceux créés par la source de données
 
 	}# FIN BOUCLE de parcours des groupes AD qui sont dans l'OU de l'environnement donné
 	
@@ -1698,36 +1699,37 @@ try
 	handleNotifications -notifications $notifications -targetEnv $targetEnv -targetTenant $targetTenant
 
 
-	if($SIMULATION_MODE)
-	{
-		$logHistory.addWarningAndDisplay("***************************************")
-		$logHistory.addWarningAndDisplay("** Script running in simulation mode **")
-		$logHistory.addWarningAndDisplay("***************************************")
-	}
-	else # Si on n'est pas en mode "Simulation", c'est qu'on a créé des éléments dans AD
-	{
-		# On lance donc une synchro mais après quelques secondes d'attente histoire que les groupes créés soient répliqués sur les autres DC. Si on va trop vite,
-		# les groupes créés ne seront potentiellement pas synchronisés avec vRA... et ne pourront donc pas être utilisés pour les rôles des BG.
-		$sleepDurationSec = 315
-		$logHistory.addLineAndDisplay( ("Sleeping for {0} seconds to let Active Directory DC synchro working..." -f $sleepDurationSec))
-		Start-Sleep -Seconds $sleepDurationSec
-		try {
-			# Création d'une connexion au serveur
-			$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "server")),
-								 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
-								 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
-		}
-		catch {
-			Write-Error "Error connecting to vRA API !"
-			Write-Error $_.ErrorDetails.Message
-			exit
-		}
+	# FIXME: voir si cette partie de synchro de directory est encore utile ou pas.
+	# if($SIMULATION_MODE)
+	# {
+	# 	$logHistory.addWarningAndDisplay("***************************************")
+	# 	$logHistory.addWarningAndDisplay("** Script running in simulation mode **")
+	# 	$logHistory.addWarningAndDisplay("***************************************")
+	# }
+	# else # Si on n'est pas en mode "Simulation", c'est qu'on a créé des éléments dans AD
+	# {
+	# 	# On lance donc une synchro mais après quelques secondes d'attente histoire que les groupes créés soient répliqués sur les autres DC. Si on va trop vite,
+	# 	# les groupes créés ne seront potentiellement pas synchronisés avec vRA... et ne pourront donc pas être utilisés pour les rôles des BG.
+	# 	$sleepDurationSec = 315
+	# 	$logHistory.addLineAndDisplay( ("Sleeping for {0} seconds to let Active Directory DC synchro working..." -f $sleepDurationSec))
+	# 	Start-Sleep -Seconds $sleepDurationSec
+	# 	try {
+	# 		# Création d'une connexion au serveur
+	# 		$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "server")),
+	# 							 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+	# 							 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+	# 	}
+	# 	catch {
+	# 		Write-Error "Error connecting to vRA API !"
+	# 		Write-Error $_.ErrorDetails.Message
+	# 		exit
+	# 	}
 
-		$logHistory.addLineAndDisplay("Syncing directory...")
-		$vra.syncDirectory($nameGenerator.getDirectoryName())
+	# 	$logHistory.addLineAndDisplay("Syncing directory...")
+	# 	$vra.syncDirectory($nameGenerator.getDirectoryName())
 
-		$vra.disconnect()
-	}
+	# 	$vra.disconnect()
+	# }
 
 	if($TEST_MODE)
 	{

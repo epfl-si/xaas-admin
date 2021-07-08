@@ -458,16 +458,6 @@
     },
 
     {
-        "name": "getDirectoryName",
-        "tests":[
-            {
-                "params": [],
-                "expected": "intranet.epfl.ch"
-            }
-        ]
-    },
-
-    {
         "name": "getReservationTemplatePrefix",
         "tests":[
             {
