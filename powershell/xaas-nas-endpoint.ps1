@@ -411,6 +411,12 @@ function getVolumeSizeInfos([NetAppAPI]$netapp, [PSObject]$volObj)
 }
 
 
+function getNASVolTypeFromVolName([string]$volName)
+{
+
+}
+
+
 <#
     -------------------------------------------------------------------------------------
     BUT : Renvoie toutes les infos d'un volume
@@ -485,6 +491,14 @@ try
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new(@('xaas','nas', 'endpoint'), $global:LOGS_FOLDER, 120)
     
+    # Objet pour pouvoir envoyer des mails de notification
+	$valToReplace = @{
+		targetEnv = $targetEnv
+		targetTenant = $targetTenant
+    }
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
+                                                    ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
+                                                    
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
@@ -517,13 +531,7 @@ try
         $vra.activateDebug($logHistory)
     }
 
-    # Objet pour pouvoir envoyer des mails de notification
-	$valToReplace = @{
-		targetEnv = $targetEnv
-		targetTenant = $targetTenant
-    }
-    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
-                                                    ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
+    
 
     # Si on nous a passé un ID de BG,
     if($bgId -ne "")
@@ -672,8 +680,12 @@ try
                 # ------------ CIFS
                 cifs
                 {
-                    $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $volName, $mountPoint))
-                    $netapp.addCIFSShare($volName, $svmObj, $mountPoint)
+                    
+                    # Génération du nom du share
+                    $shareName = $nameGeneratorNAS.getVolDefaultCIFSShareName($volName)
+
+                    $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $shareName, $mountPoint))
+                    $netapp.addCIFSShare($shareName, $svmObj, $mountPoint)
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
                     $result.mountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name, [NetAppProtocol]::cifs) 

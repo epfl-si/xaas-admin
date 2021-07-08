@@ -21,6 +21,9 @@ enum NASStorageType
    Collaborative
 }
 
+# Nombre de digits présents dans les volumes collaboratifs
+$global:XAAS_NAS_COL_VOL_NB_DIGITS = 3
+
 class NameGeneratorNAS: NameGeneratorBase
 {
    hidden [NASStorageType] $type
@@ -59,6 +62,8 @@ class NameGeneratorNAS: NameGeneratorBase
 
       $this.details = @{
          faculty = $details.faculty.toLower()
+         # On garde le nom de l'unité "original"
+         origUnitName = $details.unit.toLower()
          # On reformate le nom d'unité
          unitName = ($details.unit.toLower() -replace "-", "")
          unitId = $unitId
@@ -82,6 +87,32 @@ class NameGeneratorNAS: NameGeneratorBase
       }
    }
 
+   
+   <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le Type d'un volume en fonction de son nom
+
+      IN  : $volName       -> Le nom du volume
+      
+      RET : Le type de volume
+	#>
+   hidden [XaaSNASVolType] getVolType($volName)
+   {
+      # Si collaboratif
+      if($volName -match '_files(_nfs)?')
+      {
+         return [XaaSNASVolType]::col
+      }
+      elseif($volName -match '_app$')
+      {
+         return [XaaSNASVolType]::app
+      }
+      else
+      {
+         Throw ("Impossible to find Volume Type for '{0}'" -f $volName)
+      }
+   }
+
 
    <#
 		-------------------------------------------------------------------------------------
@@ -94,15 +125,9 @@ class NameGeneratorNAS: NameGeneratorBase
 	#>
    [string] getVolName([int]$volNumber, [bool]$isNFSVolume)
    {
-      # Pour avoir un 0 si le chiffre est plus petit que 10
-      if($volNumber -lt 10)
-      {
-         $volNum = "0{0}" -f $volNumber
-      }
-      else
-      {
-         $volNum = $volNumber.ToString()
-      }
+      # Ajout des zéro nécessaires au début du nom du volume
+      $volNum = $volNumber.ToString().PadLeft($global:XAAS_NAS_COL_VOL_NB_DIGITS,"0")
+      
       $volName = ("u{0}_{1}_{2}_{3}_files" -f $this.details.unitId, $this.details.faculty, $this.details.unitName, $volNum)
 
       if($isNFSVolume)
@@ -128,6 +153,45 @@ class NameGeneratorNAS: NameGeneratorBase
 
    <#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie le nom du share CIFS par défaut pour un volume donné
+
+      IN  : $volName    -> le nom du volume, sous la forme définie par getVolName($volNumber, $isNFSVolume) plus haut
+
+      RET : Le nom du volume
+	#>
+   [string] getVolDefaultCIFSShareName([string]$volName)
+   {
+      $shareName = ""
+      # En fonction du type du volume
+      switch($this.getVolType($volName))
+      {
+         # Collaboratif
+         col
+         {
+            $dummy, $volNo = [Regex]::Match($volName, ".*?_([0-9]+)_files").Groups | Select-Object -ExpandProperty value
+
+            if($null -eq $volNo)
+            {
+               Throw ("Impossible to determine volume number for '{0}'" -f $volName)
+            }
+
+            $shareName = "{0}-{1}" -f $this.details.origUnitName, $volNo
+         }
+
+         # Applicatif
+         app
+         {
+            $shareName = $volName
+         }
+      }
+
+      return $shareName
+      
+   }
+
+
+   <#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie le chemin de montage d'un volume en fonction de son protocol
 
       IN  : $volName       -> Le nom du volume
@@ -143,7 +207,7 @@ class NameGeneratorNAS: NameGeneratorBase
       {
          cifs
          {
-            "\\{0}\{1}" -f $svm, $volName
+            "\\{0}\{1}" -f $svm, $this.getVolDefaultCIFSShareName($volName)
          }
 
          nfs3
@@ -159,6 +223,8 @@ class NameGeneratorNAS: NameGeneratorBase
 
       return $mountPath
    }
+
+
 
 
    <#
@@ -185,7 +251,7 @@ class NameGeneratorNAS: NameGeneratorBase
 	#>
    [string] getCollaborativeVolDetailedRegex([bool]$isNFS)
    {
-      $regex = ("u{0}_{1}_[a-z]+_[0-9]{{3,3}}_files" -f $this.details.unitId, $this.details.faculty)
+      $regex = ("u{0}_{1}_[a-z]+_[0-9]{{{2},{2}}}_files" -f $this.details.unitId, $this.details.faculty, $global:XAAS_NAS_COL_VOL_NB_DIGITS)
 
       if($isNFS)
       {
