@@ -38,13 +38,13 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vSphereAPI.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
 $configGlobal   = [ConfigReader]::New("config-global.json")
-$configVra      = [ConfigReader]::New("config-vra.json")
+$configVra      = [ConfigReader]::New("config-vra8.json")
 $configVSphere  = [ConfigReader]::New("config-vsphere.json")
 
 
@@ -67,10 +67,9 @@ $vsphereApi = [vSphereAPI]::new($configVSphere.getConfigValue(@($targetEnv, "ser
 									$configVSphere.getConfigValue(@($targetEnv, "password")))
 
 
-$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-                $targetTenant, 
-                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
-                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
+                                    $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+                                    $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
 # Pour accéder à la base de données
 $sqldb = [SQLDB]::new([DBType]::MSSQL, 
@@ -83,20 +82,20 @@ $sqldb = [SQLDB]::new([DBType]::MSSQL,
 
 $counters = [Counters]::new()                        
 
-$counters.add("nbBG", "# Processed BG")
+$counters.add("nbProjects", "# Processed Projects")
 $counters.add("nbVM", "# Processed VM")
 $counters.add("nbVMNics", "# Processed VM NICs")
 $counters.add("nbDBUpdates", "# Updates in DB")
 
-$bgList = $vra.getBGList()
+$projectList = $vra.getProjectList()
 
-# Parcours des BG
-Foreach($bg in $bgList)
+# Parcours des Projets
+Foreach($project in $projectList)
 {
-    $counters.inc('nbBG')
+    $counters.inc('nbProjects')
     
-    $logHistory.addLineAndDisplay(("Processing BG '{0}'..." -f $bg.name))
-    $vmList = $vra.getBGItemList($bg, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
+    $logHistory.addLineAndDisplay(("Processing Project '{0}'..." -f $project.name))
+    $vmList = $vra.getProjectDeploymentList($project, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
 
     # Parcours des VM du BG
     ForEach($vm in $vmList)
@@ -143,12 +142,11 @@ Foreach($bg in $bgList)
 
         }# FIN BOUCLE de parcours des NICs de la VM
 
-    }# FIN BOUCLE de parcours des VM du BG
+    }# FIN BOUCLE de parcours des VM du Projet
 
-}# FIN BOUCLE de parcours des BG
+}# FIN BOUCLE de parcours des Projet
 
 $logHistory.addLineAndDisplay(($counters.getDisplay("Counters summary")))
 
 $sqldb.disconnect()
-$vra.disconnect()
 $vsphereApi.disconnect()
