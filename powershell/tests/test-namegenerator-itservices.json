@@ -507,7 +507,7 @@
     },
 
     {
-        "name": "getNASPrivateISOPathBGName",
+        "name": "getNASPrivateISOPathProjectName",
         "tests":[
             {
                 "params": ["\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\itservices\\its_vs"],

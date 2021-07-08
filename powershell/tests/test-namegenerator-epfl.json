@@ -514,7 +514,7 @@
     },
 
     {
-        "name": "getNASPrivateISOPathBGName",
+        "name": "getNASPrivateISOPathProjectName",
         "tests":[
             {
                 "params": ["\\\\nassvmmix01\\si_vsissp_iso_priv_repo_t02_app\\epfl\\epfl_entr_idev_ing"],

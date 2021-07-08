@@ -1749,17 +1749,17 @@ class NameGenerator: NameGeneratorBase
 
     <#
     -------------------------------------------------------------------------------------
-        BUT : Renvoie le nom du BG qui est lié au chemin UNC passé en paramètre. A savoir que l'utilisateur
+        BUT : Renvoie le nom du Projet qui est lié au chemin UNC passé en paramètre. A savoir que l'utilisateur
               peut créer des sous-dossiers dans le dossier du BG.
 
         IN  : Le chemin UNC depuis lequel il faut récupérer le nom du BG. ça peut être le chemin jusqu'à un dossier
               ou simplement jusqu'à un fichier ISO
 
-        RET : Le nom du BG
+        RET : Le nom du Projet
     #>
-    [string] getNASPrivateISOPathBGName([string]$path)
+    [string] getNASPrivateISOPathProjectName([string]$path)
     {
-        # Le chemin a le look suivant \\<server>\<share>\<tenant>\<bg>[\<subfolder>[\<subfolder>]...][\<isoFilename>]
+        # Le chemin a le look suivant \\<server>\<share>\<tenant>\<project>[\<subfolder>[\<subfolder>]...][\<isoFilename>]
 
         # On commence par virer le début du chemin d'accès
         $cleanPath = $path -replace [regex]::Escape($this.getNASPrivateISORootPath()), ""
@@ -1777,7 +1777,7 @@ class NameGenerator: NameGeneratorBase
         }
 
         # Si on arrive ici, c'est qu'on n'a pas trouvé donc erreur 
-        Throw ("Error extracting BG name from given path '{0}'" -f $path)
+        Throw ("Error extracting Project name from given path '{0}'" -f $path)
     }
 
 

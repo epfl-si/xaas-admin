@@ -39,11 +39,11 @@ param ( [string]$targetEnv, [string]$targetTenant)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
-$configVra = [ConfigReader]::New("config-vra.json")
+$configVra = [ConfigReader]::New("config-vra8.json")
 $configVSphere = [ConfigReader]::New("config-vsphere.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 
@@ -152,17 +152,16 @@ try
     ForEach($isoFile in $isoFileList)
     {
 		# Recherche du nom du BG auquel l'ISO est associée 
-		$bgName = $nameGenerator.getNASPrivateISOPathBGName($isoFile.FullName)
+		$projectName = $nameGenerator.getNASPrivateISOPathProjectName($isoFile.FullName)
 		
-		$logHistory.addLineAndDisplay(("ISO file {0} in BG {1} folder" -f $isoFile.FullName, $bgName))
+		$logHistory.addLineAndDisplay(("ISO file {0} in BG {1} folder" -f $isoFile.FullName, $projectName))
 		$counters.inc('ISOFound')
 
 		# Si on n'a pas encore de connexion à vRA, là, ça serait bien d'en ouvrir une histoire pouvoir continuer.
 		if($null -eq $vra)
 		{
-			$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-								$targetTenant, 
-								$configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
+			$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
+								$configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
 								$configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 		}	
 
@@ -183,17 +182,18 @@ try
 			$vCenter = Connect-VIServer -Server $configVSphere.getConfigValue(@($targetEnv, "server")) -Credential $credObject
 		}
 		
-		# Recherche des infos du BG
-		$bg = $vra.getBG($bgName)
+		# Recherche des infos du Projet
+		$project = $vra.getProject($projectName)
 
-		# Si on trouve un BG, on regarde si celui-ci contient des VM et si l'un d'eux pourrait monter l'ISO. 
-		# A noter que si le BG n'existe pas, bah, y'a pas de VM dedans et aucune ne peux monter une ISO, forcément... donc on peut l'effacer.
-		if($null -ne $bg)
+		# Si on trouve un Projet, on regarde si celui-ci contient des VM et si l'un d'eux pourrait monter l'ISO. 
+		# A noter que si le Projet n'existe pas, bah, y'a pas de VM dedans et aucune ne peux monter une ISO, forcément... donc on peut l'effacer.
+		if($null -ne $project)
 		{
+			
 			# Recherche de la liste des VM existantes dans le Tenant
-			$vmList = $vra.getBGItemList($bg, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
+			$vmList = $vra.getProjectDeploymentList($project, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
 
-			$logHistory.addLineAndDisplay( ("Looking for VM in BG {0} to see if ISO file is mounted" -f $bgName) )
+			$logHistory.addLineAndDisplay( ("Looking for VM in Project {0} to see if ISO file is mounted" -f $projectName) )
 			# Parcours des VM
 			ForEach($vm in $vmList)
 			{
@@ -234,9 +234,9 @@ try
 			}# FIN BOUCLE de parcours des VM du Business Group
 
 		} 
-		else # Le BG n'existe pas 
+		else # Le Projet n'existe pas 
 		{
-			$logHistory.addLineAndDisplay(("Business Group not found in vRA '{0}'" -f $bgName))
+			$logHistory.addLineAndDisplay(("Project not found in vRA '{0}'" -f $projectName))
 		}
 		
 		# Quand on arrive ici, on assure que l'ISO n'est plus utilisée par aucune VM si c'était le cas auparavant avant.

@@ -102,7 +102,7 @@ $global:NAS_PRIVATE_ISO_PROD = "\\nassvmmix01\si_vsissp_iso_priv_repo_p01_app"
 $global:PRIVATE_ISO_LIFETIME_DAYS = 30
 
 # Type d'élément géré nativement par vRA
-$global:VRA_ITEM_TYPE_VIRTUAL_MACHINE = "Virtual Machine"
+$global:VRA_ITEM_TYPE_VIRTUAL_MACHINE = "VMware Cloud Templates"
 
 ## Fonctionnement alternatif
 # Fichiers utilisés pour "altérer" le fonctionnement des scripts
@@ -233,3 +233,4 @@ enum ApprovalPolicyType
     NewItem
     Day2Action
 }
+
