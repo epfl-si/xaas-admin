@@ -35,12 +35,12 @@ param ( [string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vSphereAPI.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
-$configVra = [ConfigReader]::New("config-vra.json")
+$configVra = [ConfigReader]::New("config-vra8.json")
 
 # Liste des propriétés à extraire de la VM
 $propList = @(
@@ -76,16 +76,14 @@ if(!(Test-Path $outFolder))
 }
 
 
-
-$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-                        $targetTenant, 
-                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
-                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
           
 
 # Recherche de la VM vRA
 Write-Host ("Getting vRA VM '{0}' on {1} tenant in {2} infrastructure..." -f $vmName, $targetTenant, $targetEnv)
-$vraVm = $vra.getItem($global:VRA_ITEM_TYPE_VIRTUAL_MACHINE, $vmName) 
+$vraVm = $vra.getDeployment($global:VRA_ITEM_TYPE_VIRTUAL_MACHINE, $vmName) 
 
 if($null -eq $vraVm)
 {
@@ -100,7 +98,7 @@ if(Test-Path $outFile)
 }
 
 Write-host "Extracting informations..." -NoNewline
-
+# TODO: Continuer ici
 ("Owner;{0}" -f $vraVm.owners[0].ref) | Out-File -Append -Encoding:utf8 $outFile
 ("DeploymentName;{0}" -f $vraVm.parentResourceRef.label) | Out-File -Append -Encoding:utf8 $outFile
 

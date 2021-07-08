@@ -1200,6 +1200,42 @@ class vRA8API: RESTAPICurl
 
 	<#
 		-------------------------------------------------------------------------------------
+		BUT : Renvoie un déploiement donné par son type et son nom
+
+		IN  : $catalogItemType		-> Identifiant du type d'élément de catalogue.
+										Ex: $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE
+		IN  : $name					-> Nom du déploiement
+
+		RET : Objet avec le déploiement
+				$null si pas trouvé
+	#>
+	[PSCustomObject] getDeployment([string]$catalogItemType, [string]$name)
+	{
+		<# FIXME: La manière de faire (croisement des données) ne fonctionne pas si on retire un élément de catalogue
+			qui a des déploiements existants car du coup le champ "catalogItemId" du déploiement disparaît à tout 
+			jamais dans les lymbes de vRA et on ne peut plus jamais remonter au type d'élément... à voir si ceci
+			est corrigé dans le futur ou pas...
+		#>
+
+		<# Comme on ne peut pas filtrer sur un "type" de déploiement (aucun champ présent pour faire ça),
+			il faut récupérer la liste des éléments de catalogue pour un type donner et ensuite croiser
+			les données avec les déploiements présents.
+		#>
+		$catalogItemListId = @($this.getCatalogItemListByType($catalogItemType) | ForEach-Object { $_.id} )
+
+		$res = @($this.getObjectListQuery("/deployment/api/deployments", ("`$filter=name eq '{0}'" -f $name)) | `
+				Where-Object { $catalogItemListId -contains $_.catalogItemId })
+		
+		if($res.count -eq 0)
+		{
+			return $null
+		}
+		return $res[0]
+	}
+
+
+	<#
+		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des deployements
 
 		RET : Liste des déploiements
