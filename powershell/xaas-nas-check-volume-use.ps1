@@ -40,7 +40,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 
 # Chargement des fichiers propres au NAS NetApp
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "NAS", "NetAppAPI.inc.ps1"))
@@ -52,7 +52,7 @@ param([string]$targetEnv,
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
-$configVra = [ConfigReader]::New("config-vra.json")
+$configVra = [ConfigReader]::New("config-vra8.json")
 $configNAS = [ConfigReader]::New("config-xaas-nas.json")
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
@@ -74,6 +74,14 @@ try
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new(@('xaas','nas', 'check-volume-use'), $global:LOGS_FOLDER, 120)
     
+    # Objet pour pouvoir envoyer des mails de notification
+	$valToReplace = @{
+		targetEnv = $targetEnv
+		targetTenant = $targetTenant
+    }
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
+                                                    ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
+
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
@@ -85,8 +93,7 @@ try
     $targetTenant = $targetTenant.ToLower()
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
-	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-						 $targetTenant, 
+	$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
@@ -103,15 +110,6 @@ try
         $vra.activateDebug($logHistory)
     }
 
-    # Objet pour pouvoir envoyer des mails de notification
-	$valToReplace = @{
-		targetEnv = $targetEnv
-		targetTenant = $targetTenant
-    }
-    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
-                                                    ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
-
-
     # S'il a été demandé d'envoyer des mails
     if($sendNotifMail)
     {
@@ -121,17 +119,18 @@ try
         $mailMessageTemplate = (Get-Content -Raw -Path ( Join-Path $global:NAS_MAIL_TEMPLATE_FOLDER "volume-use.html" ) -Encoding:UTF8)
     }
 
-    $BGList = $vra.getBGList()
+    $projectList = $vra.getProjectList()
 
-    # Parcours des BG
-    Foreach($bg in $BGList)
+    # Parcours des Projets
+    Foreach($project in $projectList)
     {
         
-        $logHistory.addLineAndDisplay(("Processing BG '{0}'..." -f $bg.name))
+        $logHistory.addLineAndDisplay(("Processing Project '{0}'..." -f $project.name))
 
         $logHistory.addLineAndDisplay("> Getting volumes list...")
 
-        $volList = $vra.getBGItemList($bg, $global:VRA_XAAS_NAS_DYNAMIC_TYPE)
+        # TODO: Continuer ici. On a besoin de pouvoir récupérer la liste des éléments d'un certain type dans vRA via REST pour continuer
+        $volList = $vra.getBGItemList($project, $global:VRA_XAAS_NAS_DYNAMIC_TYPE)
 
         $volNo = 1
         ForEach($vol in $volList)
@@ -216,10 +215,9 @@ try
 
             $volNo++
 
-            #break
-        }# FIN BOUCLE de parcours des volumes du BG
+        }# FIN BOUCLE de parcours des volumes du Projet
 
-    }# FIN BOUCLE de parcours des BG
+    }# FIN BOUCLE de parcours des Projets
 
     $logHistory.addLineAndDisplay("Script execution done!")
 
