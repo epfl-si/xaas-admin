@@ -42,38 +42,39 @@ function displayJSONOutput
     BUT : Renvoie les groupes d'accès à utiliser pour donner les droits sur un cluster
 
     IN  : $vra          -> Objet permettant d'accéder à vRA
-    IN  : $bg           -> Objet représentant le Business Group auquel le cluster est lié
+    IN  : $project      -> Objet représentant le Projet auquel le cluster est lié
     IN  : $targetTenant -> Tenant sur lequel se trouve le BusinessGroup
 
     RET : Tableau avec la liste des groupes d'accès à utiliser
         $null si pas trouvé
 #>
-function getBGAccessGroupList([vRAAPI]$vra, [PSObject]$bg, [string]$targetTenant)
+function getProjectAccessGroupList([vRAAPI]$vra, [PSObject]$project, [string]$targetTenant)
 {
-    if($null -eq $bg)
+    if($null -eq $project)
     {
-        Throw "Business Group cannot be NULL"
+        Throw "Project cannot be NULL"
     }
-    <# On explose l'infos <group>@intranet.epfl.ch pour n'extraire que le nom du groupe
-        Récupération des utilisateurs qui ont le droit de demander des cluster, ça sera ceux
-        qui pourront gérer le cluster #>
-        # FIXME: Trouver par quoi remplacer "CSP_CONSUMER"
-    $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
-    $groupName, $null = $userAndGroupList[0] -split '@'
+
+    # Les éléments sont sous la forme suivante donc il faut extraire juste le nom court du groupe:
+    # "vra_t_adm_sup_its@intranet.epfl.ch@intranet.epfl.ch@intranet.epfl.ch"
+    $memberGroupList = @($project.members | Where-Object {$_.type -eq "group" } | Foreach-Object { $_.email -replace '@intranet.epfl.ch','' })
 
     # Si on est dans le tenant ITS
     if($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
     {
-        # Récupération de la liste des groupes qui sont présents dans le 1er groupe qui est dans les CONSUMER du BusinessGroup
+        $accessGroupList = @()
+        # Récupération de la liste des groupes qui sont présents dans le 1er groupe qui est dans les CONSUMER du Projet
         # NOTE: On fait ceci car TKGI/Harbor ne gèrent pas les groupes nested... 
         # FIXME: A supprimer une fois que TKGI/Harbor pourra gérer le groupes nested
-        $accessGroupList = Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
-
+        ForEach($groupName in $memberGroupList)
+        {
+            $accessGroupList += Get-ADGroupMember $groupName | Where-Object { $_.objectClass -eq "group"} | Select-Object -ExpandProperty name
+        }
     }
     else # Autres tenants
     {
         # On prent le groupe tel quel
-        $accessGroupList = @($groupName)
+        $accessGroupList = $memberGroupList
     }
 
     return $accessGroupList

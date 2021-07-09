@@ -1,11 +1,11 @@
 <#
 USAGES:
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -bgId <bgId> -plan <plan> -deploymentTag production|test|development
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -bgId <bgId> -clusterName <clusterName> -deploymentTag production|test|development [-clusterUUID <clusterUUID>]
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action create -projectId <projectId> -plan <plan> -deploymentTag production|test|development
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -projectId <projectId> -clusterName <clusterName> -deploymentTag production|test|development [-clusterUUID <clusterUUID>]
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getClusterInfos -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action setNbWorkers -clusterName <clusterName> -nbWorkers <nbWorkers>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNbWorkers -clusterName <clusterName>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addNS -bgId <bgId> -clusterName <clusterName> -namespace <namespace> -deploymentTag production|test|development
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addNS -projectId <projectId> -clusterName <clusterName> -namespace <namespace> -deploymentTag production|test|development
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNSList -clusterName <clusterName>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNS -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNSResources -clusterName <clusterName> -namespace <namespace>
@@ -13,7 +13,7 @@ USAGES:
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getNSNbLB -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delNSLB -clusterName <clusterName> -namespace <namespace>
     xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action extendNSStorage -clusterName <clusterName> -namespace <namespace> -extSizeGB <extSizeGB>
-    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addHarborRobot -bgId <bgId> -clusterName <clusterName> -deploymentTag production|test|development -robotType push|pull
+    xaas-k8s-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action addHarborRobot -projectId <projectId> -clusterName <clusterName> -deploymentTag production|test|development -robotType push|pull
 #>
 <#
     BUT 		: Script appelé via le endpoint défini dans vRO. Il permet d'effectuer diverses
@@ -49,7 +49,7 @@ USAGES:
 param([string]$targetEnv,
       [string]$targetTenant,
       [string]$action,
-      [string]$bgId,
+      [string]$projectId,
       [string]$plan,
       [int]$nbWorkers,
       [string]$deploymentTag,
@@ -83,7 +83,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "NSXAPI.inc.ps1"))
 
 # Chargement des fichiers propres au PKS VMware
@@ -92,7 +92,7 @@ param([string]$targetEnv,
 
 # Chargement des fichiers de configuration
 $configGlobal   = [ConfigReader]::New("config-global.json")
-$configVra      = [ConfigReader]::New("config-vra.json")
+$configVra      = [ConfigReader]::New("config-vra8.json")
 $configK8s      = [ConfigReader]::New("config-xaas-k8s.json")
 $configLdapAD   = [ConfigReader]::New("config-ldap-ad.json")
 
@@ -504,10 +504,9 @@ try
 	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))      
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
-	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
-						 $targetTenant, 
+	$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
-                         $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
     
     # Création d'une connexion au serveur PKS pour accéder à ses API REST
 	$pks = [PKSAPI]::new($configK8s.getConfigValue(@($targetEnv, "pks", "server")),
@@ -555,22 +554,22 @@ try
     
     
 
-    # Si on nous a passé un ID de BG,
-    if($bgId -ne "")
+    # Si on nous a passé un ID de Projet,
+    if($projectId -ne "")
     {
-        $logHistory.addLine(("Business group ID given ({0}), looking for object in vRA..." -f $bgId))
+        $logHistory.addLine(("Project ID given ({0}), looking for object in vRA..." -f $projectId))
         # Récupération de l'objet représentant le BG dans vRA
-        $bg = $vra.getBGByCustomId($bgId)
+        $project = $vra.getProjectByCustomId($projectId)
 
         # On check si pas trouvé (on ne sait jamais...)
-        if($null -eq $bg)
+        if($null -eq $project)
         {
-            Throw ("Business Group with ID '{0}' not found on {1} tenant" -f $bgId, $targetTenant)
+            Throw ("Project with ID '{0}' not found on {1} tenant" -f $projectId, $targetTenant)
         }
-        $logHistory.addLine(("Business Group found, name={0}" -f $bg.name))
+        $logHistory.addLine(("Project found, name={0}" -f $project.name))
 
         # Initialisation pour récupérer les noms des éléments
-        $nameGeneratorK8s.initDetailsFromProject($bg)
+        $nameGeneratorK8s.initDetailsFromProject($project)
     }
 
     # On efface le cache DNS pour ne pas avoir de surprise par la suite
@@ -643,8 +642,9 @@ try
             # ---- Droits d'accès 
             # Ajout des droits d'accès mais uniquement pour le premier groupe de la liste, et on admet que c'est un nom de groupe et pas
             # d'utilisateur. 
-            $accessGroupList = @(getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant)
-            if($null -eq $accessGroupList)
+            # TODO: Continuer ici
+            $accessGroupList = @(getProjectAccessGroupList -vra $vra -project $project -targetTenant $targetTenant)
+            if(($null -eq $accessGroupList) -or ($accessGroupList.count -eq 0))
             {
                 $output.error = "Access group list not found"
                 break
@@ -653,7 +653,7 @@ try
             # Si on a plus d'un groupe (ce qui ne devrait pas arriver), on met quand même un warning dans les logs, pour avoir l'info
             if($accessGroupList.count -gt 1)
             {
-                $logHistory.addWarning(("{0} groups found in ActiveDirectory group for '{1}' BG access. Only one group will be taken ({2}) for ClusterRoleBinding" -f $accessGroupList.count, $bg.name, $accessGroupList[0]))
+                $logHistory.addWarning(("{0} groups found in ActiveDirectory group for '{1}' Project access. Only one group will be taken ({2}) for ClusterRoleBinding" -f $accessGroupList.count, $project.name, $accessGroupList[0]))
             }
 
 
@@ -987,8 +987,8 @@ try
             $logHistory.addLine(("Adding namespace '{0}' to cluster '{1}'..." -f $namespace, $clusterName))
             $tkgiKubectl.addClusterNamespace($clusterName, $namespace, $deploymentTag, $true)
 
-            $logHistory.addLine(("Getting access group list for Business Group '{0}'..." -f $bg.name))
-            $accessGroupList = @(getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant)
+            $logHistory.addLine(("Getting access group list for Project '{0}'..." -f $project.name))
+            $accessGroupList = @(getProjectAccessGroupList -vra $vra -project $project -targetTenant $targetTenant)
             if($null -eq $accessGroupList)
             {
                 $output.error = "Access group list not found"

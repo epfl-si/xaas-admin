@@ -196,7 +196,7 @@ try
                 $bg = $vra.getBGByCustomId($bgId)
                 $logHistory.addLineAndDisplay(("> BG ID '{0}' => '{1}'" -f $bgId, $bg.name))
 
-                $accessGroupList = @(getBGAccessGroupList -vra $vra -bg $bg -targetTenant $targetTenant)
+                $accessGroupList = @(getProjectAccessGroupList -vra $vra -project $bg -targetTenant $targetTenant)
                 $logHistory.addLineAndDisplay(("> Access groups are:`n- {0}" -f ($accessGroupList -join '`n- ')))
 
                 #TODO: Finaliser
