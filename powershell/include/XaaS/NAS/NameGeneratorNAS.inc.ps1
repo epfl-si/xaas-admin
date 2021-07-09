@@ -21,30 +21,32 @@ enum NASStorageType
    Collaborative
 }
 
-# Nombre de digits présents dans les volumes collaboratifs
-$global:XAAS_NAS_COL_VOL_NB_DIGITS = 3
 
 class NameGeneratorNAS: NameGeneratorBase
 {
    hidden [NASStorageType] $type
+   # Nombre max de digit dans la numérotation des volumes collaboratifs
+   hidden [int] $colVolNbDigits
    
    <#
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
 
-        IN  : $env      -> Environnement sur lequel on travaille
+         IN  : $env      -> Environnement sur lequel on travaille
                            $TARGET_ENV_DEV
                            $TARGET_ENV_TEST
                            $TARGET_ENV_PROD
-        IN  : $tenant   -> Tenant sur lequel on travaille
+         IN  : $tenant   -> Tenant sur lequel on travaille
                            $VRA_TENANT_DEFAULT
                            $VRA_TENANT_EPFL
                            $VRA_TENANT_ITSERVICES
+         IN  : colVolNbDigits -> Nombre de digits pour la numérotation des volumes collaboratifs
 
 		RET : Instance de l'objet
 	#>
-   NameGeneratorNAS([string]$env, [string]$tenant): base($env, $tenant)
+   NameGeneratorNAS([string]$env, [string]$tenant, [int]$colVolNbDigits): base($env, $tenant)
    {
+      $this.colVolNbDigits = $colVolNbDigits
    }
 
    <#
@@ -126,7 +128,7 @@ class NameGeneratorNAS: NameGeneratorBase
    [string] getVolName([int]$volNumber, [bool]$isNFSVolume)
    {
       # Ajout des zéro nécessaires au début du nom du volume
-      $volNum = $volNumber.ToString().PadLeft($global:XAAS_NAS_COL_VOL_NB_DIGITS,"0")
+      $volNum = $volNumber.ToString().PadLeft($this.colVolNbDigits,"0")
       
       $volName = ("u{0}_{1}_{2}_{3}_files" -f $this.getDetail('unitId'), $this.getDetail('faculty'), $this.getDetail('unitName'), $volNum)
 
@@ -263,7 +265,7 @@ class NameGeneratorNAS: NameGeneratorBase
 	#>
    [string] getCollaborativeVolDetailedRegex([bool]$isNFS)
    {
-      $regex = ("u{0}_{1}_[a-z]+_[0-9]{{{2},{2}}}_files" -f $this.getDetail('unitId'), $this.getDetail('faculty'), $global:XAAS_NAS_COL_VOL_NB_DIGITS)
+      $regex = ("u{0}_{1}_[a-z]+_[0-9]{{{2},{2}}}_files" -f $this.getDetail('unitId'), $this.getDetail('faculty'), $this.colVolNbDigits)
 
       if($isNFS)
       {

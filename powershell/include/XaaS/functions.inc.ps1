@@ -55,10 +55,9 @@ function getProjectAccessGroupList([vRAAPI]$vra, [PSObject]$project, [string]$ta
         Throw "Project cannot be NULL"
     }
 
-    # Les éléments sont sous la forme suivante donc il faut extraire juste le nom court du groupe:
-    # "vra_t_adm_sup_its@intranet.epfl.ch@intranet.epfl.ch@intranet.epfl.ch"
-    $memberGroupList = @($project.members | Where-Object {$_.type -eq "group" } | Foreach-Object { $_.email -replace '@intranet.epfl.ch','' })
-
+    # Recherche des membres du Projet
+    $memberGroupList = getProjectRoleContent -project $project -userRole ([vRAUserRole]::Members)
+    
     # Si on est dans le tenant ITS
     if($targetTenant -eq $global:VRA_TENANT__ITSERVICES)
     {

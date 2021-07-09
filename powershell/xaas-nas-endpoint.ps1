@@ -1,14 +1,14 @@
 <#
 USAGES:
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgId <bgId> -access cifs -svm <svm> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -bgId <bgId> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action create -volType app -sizeGB <sizeGB> -bgId <bgId> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -projectId <projectId> -access cifs -svm <svm> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action create -volType col -sizeGB <sizeGB> -projectId <projectId> -access nfs3 -svm <svm> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -snapPercent <snapPercent> -snapPolicy <snapPolicy>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action create -volType app -sizeGB <sizeGB> -projectId <projectId> -access cifs|nfs3 -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action delete -volName <volName>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action appVolExists -volName <volName> -bgId <bgId>
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action canHaveNewVol -bgId <bgId> -access cifs|nfs3
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|research -action appVolExists -volName <volName> -projectId <projectId>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action canHaveNewVol -projectId <projectId> -access cifs|nfs3
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action resize -sizeGB <sizeGB> -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolSize [-volName <volName>]
-    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action getSVMList -bgId <bgId>
+    xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant epfl|research -action getSVMList -projectId <projectId>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getIPList -volName <volName>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action updateIPList -volName <volName> -IPsRoot <IPsRoot> -IPsRO <IPsRO> -IPsRW <IPsRW>
     xaas-nas-endpoint.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl|research -action getVolInfos -volName <volName>
@@ -52,7 +52,7 @@ param([string]$targetEnv,
       [string]$volType,
       # Pour la localisation
       [string]$svm,
-      [string]$bgId, # ID d'unité, no de service (SVCxxx) ou numéro de projet
+      [string]$projectId, # ID d'unité, no de service (SVCxxx) ou numéro de projet
       # Volume
       [string]$volName,
       [int]$sizeGB,
@@ -82,7 +82,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 
 # Chargement des fichiers propres au NAS NetApp
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "NAS", "NetAppAPI.inc.ps1"))
@@ -94,7 +94,7 @@ param([string]$targetEnv,
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
-$configVra = [ConfigReader]::New("config-vra.json")
+$configVra = [ConfigReader]::New("config-vra8.json")
 $configNAS = [ConfigReader]::New("config-xaas-nas.json")
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
@@ -113,8 +113,6 @@ $ACTION_GET_VOL_INFOS       = "getVolInfos"
 $ACTION_SET_SNAPSHOTS       = "setSnapshots"
 $ACTION_GET_PRICE           = "getPrice"
 
-# Limites
-$global:MAX_VOL_PER_UNIT    = 999
 
 # Autre
 $global:EXPORT_POLICY_DENY_NFS_ON_CIFS = "deny_nfs_on_cifs"
@@ -543,11 +541,10 @@ try
     $targetTenant = $targetTenant.ToLower()
 
     # Création de l'objet qui permettra de générer les noms des groupes AD et "groups"
-    $nameGeneratorNAS = [NameGeneratorNAS]::new($targetEnv, $targetTenant)
+    $nameGeneratorNAS = [NameGeneratorNAS]::new($targetEnv, $targetTenant, ($global:MAX_VOL_PER_UNIT).toString().length)
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
-	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-						 $targetTenant, 
+	$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
@@ -566,19 +563,19 @@ try
 
     
 
-    # Si on nous a passé un ID de BG,
-    if($bgId -ne "")
+    # Si on nous a passé un ID de Projet,
+    if($projectId -ne "")
     {
-        $logHistory.addLine(("Business group ID given ({0}), looking for object in vRA..." -f $bgId))
-        # Récupération de l'objet représentant le BG dans vRA
-        $bg = $vra.getProjectByCustomId($bgId)
+        $logHistory.addLine(("Project ID given ({0}), looking for object in vRA..." -f $projectId))
+        # Récupération de l'objet représentant le Projet dans vRA
+        $project = $vra.getProjectByCustomId($projectId)
 
         # On check si pas trouvé (on ne sait jamais...)
-        if($null -eq $bg)
+        if($null -eq $project)
         {
-            Throw ("Business Group with ID '{0}' not found on {1} tenant" -f $bgId, $targetTenant)
+            Throw ("Project with ID '{0}' not found on {1} tenant" -f $projectId, $targetTenant)
         }
-        $logHistory.addLine(("Business Group found, name={0}" -f $bg.name))
+        $logHistory.addLine(("Project found, name={0}" -f $project.name))
 
     }
 
@@ -601,7 +598,7 @@ try
                 # ---- Volume Applicatif
                 app
                 {
-                    $nameGeneratorNAS.setApplicativeDetails($bgId, $volName)
+                    $nameGeneratorNAS.setApplicativeDetails($projectId, $volName)
 
                     # Chargement des informations sur le mapping des facultés
                     $appSVMFile = ([IO.Path]::Combine($global:DATA_FOLDER, "XaaS", "NAS", "applicative-svm.json"))
@@ -631,7 +628,7 @@ try
                     }
 
                     # Initialisation des détails
-                    $nameGeneratorNAS.setCollaborativeDetails($bg.name, $bgId)
+                    $nameGeneratorNAS.setCollaborativeDetails($project.name, $projectId)
 
                     $logHistory.addLine( "Generating volume name..." )
                     # Recheche du prochain nom de volume
@@ -750,8 +747,8 @@ try
                             # --- ACLs
 
                             # Récupération des utilisateurs qui ont le droit de demander des volumes
-                            $userAndGroupList = $vra.getBGRoleContent($bg.id, "CSP_CONSUMER")
-
+                            $userAndGroupList = getProjectRoleContent -project $project -userRole ([vRAUserRole]::Members)
+                            
                             <# Pour modifier les ACLs, on pourrait accéder directement via le chemin UNC \\<svm>.epfl.ch\<share> et ça fonctionne... MAIS ... 
                                 ça ne fonctionne par contre plus dès que le script est exécuté depuis vRO... pourquoi? aucune foutue idée... semblerait que même
                                 s'il est "soi-disant" exécuté avec un utilisateur du domaine, bah celui-ci n'a en fait aucun credential lui permettant par exemple
@@ -775,11 +772,10 @@ try
                             }
                             
                             # Parcours des utilisateurs/groupes à ajouter
-                            ForEach($userOrGroupFQDN in $userAndGroupList)
+                            ForEach($userOrGroup in $userAndGroupList)
                             {
-                                # $userOrGroup contient un groupe ou un utilisateur au format <userOrGroup>@intranet.epfl.ch.
+                                # $userOrGroup contient un groupe ou un utilisateur au format <userOrGroup>
                                 # Il faut donc reformater ceci pour avoir INTRANET\<userOrGroup>
-                                $userOrGroup, $null = $userOrGroupFQDN -split '@'
                                 $userOrGroup = "INTRANET\{0}" -f $userOrGroup
                                 $logHistory.addLine(("> Preparing ACL for '{0}'..." -f $userOrGroup))
                                 $ar = New-Object  system.security.accesscontrol.filesystemaccessrule($userOrGroup,  "FullControl", "ContainerInherit,ObjectInherit",  "None", "Allow")
@@ -915,7 +911,7 @@ try
         $ACTION_GET_SVM_LIST 
         {
             # Récupération du nom de la faculté et de l'unité
-            $details = $nameGeneratorNAS.getDetailsFromProjectName($bg.name)
+            $details = $nameGeneratorNAS.getDetailsFromProjectName($project.name)
             $faculty = $details.faculty
             $logHistory.addLine( ("Searching SVM for Faculty '{0}'" -f $faculty) )
 
@@ -964,7 +960,7 @@ try
             }
 
             # Si on veut savoir pour un volume applicatif, 
-            $nameGeneratorNAS.setApplicativeDetails($bgId, $volName)
+            $nameGeneratorNAS.setApplicativeDetails($projectId, $volName)
                 
             # on regarde quel nom devrait avoir le volume applicatif
             $volName = $nameGeneratorNAS.getVolName()
@@ -983,14 +979,14 @@ try
         $ACTION_CAN_HAVE_NEW_VOL
         {
            
-            $nameGeneratorNAS.setCollaborativeDetails($bg.name, $bgId)
+            $nameGeneratorNAS.setCollaborativeDetails($project.name, $projectId)
 
             $logHistory.addLine( "Looking for next volume name..." )
             # Recheche du prochain nom de volume
             $volName = getNextColVolName -netapp $netapp -nameGeneratorNAS $nameGeneratorNAS -access $access
             if($null -eq $volName)
             {
-                $logHistory.addLine(("Maximum number of volume reached for BG {0} ({1})" -f $bg.name, $bgId))
+                $logHistory.addLine(("Maximum number of volume reached ({0}) for Project {1} (ID={2})" -f $global:MAX_VOL_PER_UNIT, $project.name, $projectId))
             }
             else
             {
@@ -1294,9 +1290,4 @@ catch
 
     # Envoi d'un message d'erreur aux admins 
     $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
-}
-
-if($null -ne $vra)
-{
-    $vra.disconnect()
 }

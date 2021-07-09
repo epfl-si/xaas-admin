@@ -28,3 +28,6 @@ Enum XaaSNASVolType {
 # Identifiant du type dynamique dans vRA
 $global:VRA_XAAS_NAS_DYNAMIC_TYPE = "NAS_Volume"
 $global:VRA_XAAS_NAS_CUSTOM_PROPERTY_WEBDAV_ACCESS = "webdavAccess"
+
+# Limites
+$global:MAX_VOL_PER_UNIT = 999
