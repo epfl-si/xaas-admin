@@ -37,7 +37,7 @@ param([string]$targetEnv)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 
 # Chargement des fichiers propres au NAS NetApp
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "NAS", "NetAppAPI.inc.ps1"))
@@ -47,7 +47,7 @@ param([string]$targetEnv)
 
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
-$configVra = [ConfigReader]::New("config-vra.json")
+$configVra = [ConfigReader]::New("config-vra8.json")
 $configNAS = [ConfigReader]::New("config-xaas-nas.json")
 
 
@@ -303,16 +303,18 @@ function updateVServerVirtualDirectory([NetAppAPI]$netapp, [string] $vServerName
             .vserver        -> nom du vServer
             .share          -> nom du share
 #>
-function getWebDAVShareList([vRAAPI]$vra, [NetAppAPI]$netapp)
+function getWebDAVShareList([vRA8API]$vra, [NetAppAPI]$netapp)
 {
 
     $shareList = @()
-    # Parcours des Business Groups
-    $vra.getBGList() | ForEach-Object {
+    # Parcours des Projets
+    $vra.getProjectList() | ForEach-Object {
 
-        $logHistory.addLineAndDisplay("Processing BG {0} ..." -f $_.Name)
-        $counters.inc('BGProcessed')
+        $logHistory.addLineAndDisplay("Processing Project {0} ..." -f $_.Name)
+        $counters.inc('projectProcessed')
         
+        # TODO: Continuer ici. On a besoin de pouvoir récupérer les éléments d'un type donné dans vRA
+
         # Parcours des Volumes NAS se trouvant dans le Business Group
         $vra.getBGItemList($_, $global:VRA_XAAS_NAS_DYNAMIC_TYPE) | ForEach-Object {
 
@@ -421,11 +423,18 @@ try
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new($logPath, $global:LOGS_FOLDER, 120)
 
-    # On commence par contrôler le prototype d'appel du script
-    . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+    # Objet pour pouvoir envoyer des mails de notification
+	$valToReplace = @{
+		targetEnv = $targetEnv
+		targetTenant = "all"
+	}
 
     $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:NAS_MAIL_TEMPLATE_FOLDER, `
                                                 $global:NAS_MAIL_SUBJECT_PREFIX , $valToReplace)
+
+    # On commence par contrôler le prototype d'appel du script
+    . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+    
 
     # Contrôle que l'utilisateur pour exécuter le script soit correct
     $domain, $username = $global:WEBDAV_AD_USER -split '\\'
@@ -436,7 +445,7 @@ try
 
     # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $counters = [Counters]::new()
-    $counters.add('BGProcessed', '# BG Processed')
+    $counters.add('projectProcessed', '# Project(s) Processed')
     $counters.add('VolProcessed', '# Volumes processed')
     $counters.add('VolWebDAVProcessed', '# Volumes with WebDAV processed')
     $counters.add('VolNoWebDAVProcessed', '# Volumes without WebDAV processed')
@@ -451,13 +460,6 @@ try
     $netapp = [NetAppAPI]::new($configNAS.getConfigValue(@($targetEnv, "serverList")),
                                 $configNAS.getConfigValue(@($targetEnv, "user")),
                                 $configNAS.getConfigValue(@($targetEnv, "password")))
-
-            
-    # Objet pour pouvoir envoyer des mails de notification
-	$valToReplace = @{
-		targetEnv = $targetEnv
-		targetTenant = "all"
-	}
                                                 
     <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -492,11 +494,11 @@ try
     ForEach($targetTenant in $tenantToProcess)
     {
         # Création d'une connexion au serveur vRA pour accéder à ses API REST
-        $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
-                                $targetTenant, 
-                                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
-                                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+        $vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
+        # TODO: Continuer ici. 
         # Récupération des informations sur les FS qui doivent être accédés en WebDav 
         $webdavShareList = [Array](getWebDAVShareList -vra $vra -netapp $netapp)
 
