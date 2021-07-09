@@ -46,11 +46,11 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vSphereAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 
 
 # Chargement des fichiers de configuration
-$configVra = [ConfigReader]::New("config-vra.json")
+$configVra = [ConfigReader]::New("config-vra8.json")
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configXaaSBackup = [ConfigReader]::New("config-xaas-backup.json")
 
@@ -91,19 +91,6 @@ try
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new($logPath, $global:LOGS_FOLDER, 120)
 
-    # On commence par contrôler le prototype d'appel du script
-    . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
-
-    $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
-
-    # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
-    $counters = [Counters]::new()
-    $counters.add('BGProcessed', '# BG Processed')
-    $counters.add('UpdatedTags', '# VM Updated tags')
-    $counters.add('CorrectTags', '# VM Correct tags')
-    $counters.add('ProcessedVM', '# VM Processed')
-    $counters.add('VMNotInvSphere', '# VM not in vSphere')
-
     # Objet pour pouvoir envoyer des mails de notification
 	$valToReplace = @{
 		targetEnv = $targetEnv
@@ -111,6 +98,21 @@ try
 	}
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
 												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
+
+    # On commence par contrôler le prototype d'appel du script
+    . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+
+    $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
+
+    # Création d'un objet pour gérer les compteurs (celui-ci sera accédé en variable globale même si c'est pas propre XD)
+    $counters = [Counters]::new()
+    $counters.add('projectProcessed', '# Project(s) Processed')
+    $counters.add('UpdatedTags', '# VM Updated tags')
+    $counters.add('CorrectTags', '# VM Correct tags')
+    $counters.add('ProcessedVM', '# VM Processed')
+    $counters.add('VMNotInvSphere', '# VM not in vSphere')
+
+    
 
     # -------------------------------------------------------------------------------------------
 
@@ -123,8 +125,7 @@ try
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
 	$logHistory.addLineAndDisplay("Connecting to vRA...")
-	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
-						 $targetTenant, 
+	$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
@@ -133,14 +134,15 @@ try
         $logHistory.addLineAndDisplay("!!! Synchronizing from vSphere to vRA !!!")
     }
 
-    # Parcours des Business Groups
-    $vra.getBGList() | ForEach-Object {
+    # Parcours des Projets
+    $vra.getProjectList() | ForEach-Object {
 
-        $logHistory.addLineAndDisplay("Processing BG {0} ..." -f $_.Name)
-        $counters.inc('BGProcessed')
+        $logHistory.addLineAndDisplay("Processing Project {0} ..." -f $_.Name)
+        $counters.inc('projectProcessed')
         
-        # Parcours des VM se trouvant dans le Business Group
-        $vra.getBGItemList($_, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE) | ForEach-Object {
+        # Parcours des VM se trouvant dans le Projet
+        # TODO: Continuer ici. On ne peut toujours pas récupérer de manière pertinente les éléments par leur type
+        $vra.getProjectDeploymentList($_, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE) | ForEach-Object {
 
             $vmName = $_.Name
 
