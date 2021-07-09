@@ -128,7 +128,7 @@ class NameGeneratorNAS: NameGeneratorBase
       # Ajout des zéro nécessaires au début du nom du volume
       $volNum = $volNumber.ToString().PadLeft($global:XAAS_NAS_COL_VOL_NB_DIGITS,"0")
       
-      $volName = ("u{0}_{1}_{2}_{3}_files" -f $this.details.unitId, $this.details.faculty, $this.details.unitName, $volNum)
+      $volName = ("u{0}_{1}_{2}_{3}_files" -f $this.getDetail('unitId'), $this.getDetail('faculty'), $this.getDetail('unitName'), $volNum)
 
       if($isNFSVolume)
       {
@@ -147,7 +147,7 @@ class NameGeneratorNAS: NameGeneratorBase
 	#>
    [string] getVolName()
    {
-      return ("{0}_{1}_app" -f $this.details.svcId, $this.details.desiredVolName)
+      return ("{0}_{1}_app" -f $this.getDetail('svcId'), $this.getDetail('desiredVolName'))
    }
 
 
@@ -175,7 +175,7 @@ class NameGeneratorNAS: NameGeneratorBase
                Throw ("Impossible to determine volume number for '{0}'" -f $volName)
             }
 
-            $shareName = "{0}-{1}" -f $this.details.origUnitName, $volNo
+            $shareName = "{0}-{1}" -f $this.getDetail('origUnitName'), $volNo
          }
 
          # Applicatif
@@ -225,6 +225,18 @@ class NameGeneratorNAS: NameGeneratorBase
    }
 
 
+   <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le junction path (point de montage interne à NetApp) pour un volume
+
+      IN  : $forVolumeName -> Nom du volume pour lequel on veut le nom de l'export policy
+
+      RET : Le chemin du junction path
+	#>
+   [string] getJunctionPath([string]$forVolumeName)
+   {
+      return ("/{0}" -f $forVolumeName)
+   }
 
 
    <#
@@ -251,7 +263,7 @@ class NameGeneratorNAS: NameGeneratorBase
 	#>
    [string] getCollaborativeVolDetailedRegex([bool]$isNFS)
    {
-      $regex = ("u{0}_{1}_[a-z]+_[0-9]{{{2},{2}}}_files" -f $this.details.unitId, $this.details.faculty, $global:XAAS_NAS_COL_VOL_NB_DIGITS)
+      $regex = ("u{0}_{1}_[a-z]+_[0-9]{{{2},{2}}}_files" -f $this.getDetail('unitId'), $this.getDetail('faculty'), $global:XAAS_NAS_COL_VOL_NB_DIGITS)
 
       if($isNFS)
       {

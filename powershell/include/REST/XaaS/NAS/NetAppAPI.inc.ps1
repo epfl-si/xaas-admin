@@ -990,7 +990,7 @@ class NetAppAPI: RESTAPICurl
 	#>
     hidden [Array] getCIFSShareListQuery([string]$queryParams)
     {
-        $uri = "/api/protocols/cifs/shares?max_records=9999"
+        $uri = "/api/protocols/cifs/shares?max_records=9999&fields=path"
 
         # Si un filtre a été passé, on l'ajoute
 		if($queryParams -ne "")
