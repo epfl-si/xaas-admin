@@ -65,10 +65,9 @@ try
 
 
     $logHistory.addLineAndDisplay("Connecting to vRA...")
-    $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-                        $targetTenant, 
-                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")), 
-                        $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+    $vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
 
     $logHistory.addLineAndDisplay("Getting waiting requests list...")

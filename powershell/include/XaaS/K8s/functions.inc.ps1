@@ -14,14 +14,13 @@
     -------------------------------------------------------------------------------------
     BUT : Renvoie les groupes d'accès à utiliser pour donner les droits sur un cluster
 
-    IN  : $vra          -> Objet permettant d'accéder à vRA
     IN  : $project      -> Objet représentant le Projet auquel le cluster est lié
     IN  : $targetTenant -> Tenant sur lequel se trouve le BusinessGroup
 
     RET : Tableau avec la liste des groupes d'accès à utiliser
         $null si pas trouvé
 #>
-function getProjectAccessGroupList([vRAAPI]$vra, [PSObject]$project, [string]$targetTenant)
+function getProjectAccessGroupList([PSObject]$project, [string]$targetTenant)
 {
     if($null -eq $project)
     {

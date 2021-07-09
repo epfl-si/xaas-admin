@@ -117,10 +117,9 @@ try
 	$ldap = [EPFLLDAP]::new($configLdapAd.getConfigValue(@("user")), $configLdapAd.getConfigValue(@("password")))      
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
-	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
-						 $targetTenant, 
+	$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
-                         $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 
     # Création d'une connexion au serveur Harbor pour accéder à ses API REST
 	$harbor = [HarborAPI]::new($configK8s.getConfigValue(@($targetEnv, "harbor", "server")),
@@ -197,7 +196,7 @@ try
                 $bg = $vra.getBGByCustomId($bgId)
                 $logHistory.addLineAndDisplay(("> BG ID '{0}' => '{1}'" -f $bgId, $bg.name))
 
-                $accessGroupList = @(getProjectAccessGroupList -vra $vra -project $bg -targetTenant $targetTenant)
+                $accessGroupList = @(getProjectAccessGroupList -project $bg -targetTenant $targetTenant)
                 $logHistory.addLineAndDisplay(("> Access groups are:`n- {0}" -f ($accessGroupList -join '`n- ')))
 
                 #TODO: Finaliser

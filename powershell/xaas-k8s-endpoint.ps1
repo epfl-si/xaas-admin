@@ -644,7 +644,7 @@ try
             # Ajout des droits d'accès mais uniquement pour le premier groupe de la liste, et on admet que c'est un nom de groupe et pas
             # d'utilisateur. 
             
-            $accessGroupList = @(getProjectAccessGroupList -vra $vra -project $project -targetTenant $targetTenant)
+            $accessGroupList = @(getProjectAccessGroupList -project $project -targetTenant $targetTenant)
             if($null -eq $accessGroupList)
             {
                 $output.error = "Access group list not found"
@@ -991,7 +991,7 @@ try
             $tkgiKubectl.addClusterNamespace($clusterName, $namespace, $deploymentTag, $true)
 
             $logHistory.addLine(("Getting access group list for Project '{0}'..." -f $project.name))
-            $accessGroupList = @(getProjectAccessGroupList -vra $vra -project $project -targetTenant $targetTenant)
+            $accessGroupList = @(getProjectAccessGroupList -project $project -targetTenant $targetTenant)
             if($null -eq $accessGroupList)
             {
                 $output.error = "Access group list not found"

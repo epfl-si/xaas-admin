@@ -59,7 +59,7 @@ $configNSX = [ConfigReader]::New("config-nsx.json")
 		  
 		  Si le BG contient des items, on va simplement le marquer comme "ghost" et changer les droits d'accès
 
-	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $vra 				-> Objet de la classe vRA8API permettant d'accéder aux API vRA
 	IN  : $groupsApp		-> Objet de la classe GroupsAPI permettant d'accéder à "groups"
 	IN  : $nsx				-> Objet de la classe NSXAPI pour faire du ménage dans NSX
 	IN  : $project			-> Objet contenant le Projet a effacer. Cet objet aura été renvoyé

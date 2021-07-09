@@ -78,8 +78,7 @@ try
     $targetTenant = $targetTenant.ToLower()
 
     # Création d'une connexion au serveur vRA pour accéder à ses API REST
-	$vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")), 
-						 $targetTenant, 
+	$vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
 						 $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
 

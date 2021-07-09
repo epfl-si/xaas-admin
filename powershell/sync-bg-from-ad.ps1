@@ -141,7 +141,7 @@ function getFullElementNameFromJSON([string]$baseName, [string]$JSONFile, [strin
 -------------------------------------------------------------------------------------
 	BUT : Créé (si inexistant) une approval policy
 
-	IN  : $vra 							-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $vra 							-> Objet de la classe vRA8API permettant d'accéder aux API vRA
 	IN  : $name							-> Le nom de l'approval policy à créer
 	IN  : $desc							-> Description de l'approval policy
 	IN  : $approvalLevelJSON			-> Le nom court du fichier JSON (template) à utiliser pour créer les
@@ -224,7 +224,7 @@ function createApprovalPolicyIfNotExists([vRA8API]$vra, [string]$name, [string]$
 	BUT : Créé (si inexistantes) toutes les Approval Policies qui sont listées dans le fichier décrivant
 			les 2nd day actions
 
-	IN  : $vra 							-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $vra 							-> Objet de la classe vRA8API permettant d'accéder aux API vRA
 	IN  : $secondDayActions				-> Objet de la classe SecondDayActions contenant la liste des actions
 											2nd day à ajouter.
 	IN  : $baseName						-> Le nom de base de l'approval policy à créer (vu qu'il peut y 
@@ -268,7 +268,7 @@ function create2ndDayActionApprovalPolicies([vRA8API]$vra, [SecondDayActions]$se
 -------------------------------------------------------------------------------------
 	BUT : Créé (si inexistant) ou met à jour un Project (si existant)
 
-	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $vra 					-> Objet de la classe vRA8API permettant d'accéder aux API vRA
 	IN  : $tenantName			-> Nom du tenant sur lequel on bosse
 	IN  : $projectEPFLID		-> ID du Project défini par l'EPFL et pas vRA. Valable pour les Project qui sont sur tous les tenants
 	IN  : $projectName			-> Nom du BG
@@ -479,7 +479,7 @@ function createOrUpdateProject([vRA8API]$vra, [string]$tenantName, [string]$proj
 -------------------------------------------------------------------------------------
 	BUT : Créé (si inexistants) ou met à jour les roles d'un Project (si existants)
 
-	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $vra 					-> Objet de la classe vRA8API permettant d'accéder aux API vRA
 	IN  : $project				-> Objet contenant le Projet à mettre à jour
 	IN  : $manageGrpList		-> (optionnel) Tableau avec la liste des adresses mail à mettre pour les
 								   managers. Si pas passé ou $null, on ne change rien dans la liste spécifiée
@@ -531,7 +531,7 @@ function createOrUpdateProjectRoles([vRA8API]$vra, [PSCustomObject]$project, [Ar
 	BUT : Créé (si inexistant) ou met à jour un Entitlement de Project (si existant).
 			Ajoute aussi les content source avec le niveau de confidentialité donné
 
-	IN  : $vra 					-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $vra 					-> Objet de la classe vRA8API permettant d'accéder aux API vRA
 	IN  : $project				-> Objet Project auquel l'entitlement est attaché
 	IN  : $entType				-> Type d'entitlement
 	IN  : $nameGenerator		-> Objet faisant office de générateur de noms
@@ -748,7 +748,7 @@ function createOrUpdateProjectEnt([vRA8API]$vra, [PSCustomObject]$project, [Enti
 -------------------------------------------------------------------------------------
 	BUT : Créé ou met à jour une Day-2 policy
 
-	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $vra 				-> Objet de la classe vRA8API permettant d'accéder aux API vRA
 	IN  : $nameGenerator	-> Objet pour générer les noms
 	IN  : $project			-> Objet représentant le projet pour lequel ajouter la policy
 	IN  : $policyRole		-> Pour quel rôle vRA on veut ajouter la policy
@@ -811,9 +811,9 @@ function sendErrorMailNoResTemplateFound
 	BUT : Met un Project en mode "ghost" dans le but qu'il soit effacé par la suite.
 			On change aussi les droits d'accès
 
-	IN  : $vra 				-> Objet de la classe vRAAPI permettant d'accéder aux API vRA
+	IN  : $vra 				-> Objet de la classe vRA8API permettant d'accéder aux API vRA
 	IN  : $bg				-> Objet contenant le Project a effacer. Cet objet aura été renvoyé
-					   			par un appel à une méthode de la classe vRAAPI
+					   			par un appel à une méthode de la classe vRA8API
 	IN  : $targetTenant		-> Tenant sur lequel on se trouve	
 	
 	RET : $true si mis en ghost
