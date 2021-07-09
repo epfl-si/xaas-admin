@@ -483,7 +483,16 @@ function getVolumeInfos([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS,
             # Recherche du premier nom du share qu'on trouve et qui pointe sur le junction path
             $shareName = @($netappShareList | Where-Object { $_.path -eq $junctionPath } )[0] | Select-Object -ExpandProperty name
 
-            $result.access.rootMountPath = ("\\{0}\{1}" -f $svmObj.name, $shareName)
+            # Si aucun share CIFS ne pointe sur la racine du volume
+            if($null -eq $shareName)
+            {
+                $result.access.rootMountPath = "there's no CIFS share pointing to volume root mountpoint"
+            }
+            else
+            {
+                $result.access.rootMountPath = ("\\{0}\{1}" -f $svmObj.name, $shareName)
+            }
+            
         }
 
         nfs3
