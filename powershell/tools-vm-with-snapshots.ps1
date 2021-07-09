@@ -180,13 +180,16 @@ try
     # Parcours des BG
     Foreach($project in $targetProjectList)
     {
-        # TODO: Continuer ici. Voir pour récupérer les déploiements depuis le blueprint id pour avoir le type
+        # TODO: Continuer ici. Voir pour récupérer les déploiements depuis le blueprint id pour avoir le type => pas possible 
+        # pour le moment d'avoir un type de déploiement. On dirait que le type "VMware Cloud Templates" regroupe tout... VM et types dynamiques, à confirmer
         $logHistory.addLineAndDisplay(("Processing Project '{0}'..." -f $project.name))
         $vmList = $vra.getProjectDeploymentList($project, $global:VRA_ITEM_TYPE_VIRTUAL_MACHINE)
 
         # Parcours des VM
         ForEach($vm in $vmList)
         {
+            # TODO: Pour la partie récupération d'info de snapshot. A priori rien de dispo comme données dans
+                # la partie REST. Et pas possible de récupérer la VM dans vSphere (pour avoir les snapshots) car on n'a pas son nom qui est retourné via REST...
             # Parcours des snapshots de la VM courante
             ForEach($snap in ($vm.resourceData.entries | Where-Object { $_.key -eq "SNAPSHOT_LIST"}).value.items)
             {

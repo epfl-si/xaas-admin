@@ -69,7 +69,7 @@ param ( [string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "APIUtils.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vSphereAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "XaaS", "Backup", "NetBackupAPI.inc.ps1"))
 
@@ -77,7 +77,7 @@ param ( [string]$targetEnv,
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configXaaSBackup = [ConfigReader]::New("config-xaas-backup.json")
-$configVra = [ConfigReader]::New("config-vra.json")
+$configVra = [ConfigReader]::New("config-vra8.json")
 
 # -------------------------------------------- CONSTANTES ---------------------------------------------------
 
@@ -114,11 +114,6 @@ try
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new(@('xaas','backup', 'endpoint'), $global:LOGS_FOLDER, 120)
 
-    # On commence par contrôler le prototype d'appel du script
-    . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
-   
-    $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
-
     # Objet pour pouvoir envoyer des mails de notification
 	$valToReplace = @{
 		targetEnv = $targetEnv
@@ -126,6 +121,13 @@ try
 	}
 	$notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
 												($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
+
+    # On commence par contrôler le prototype d'appel du script
+    . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
+   
+    $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
+
+    
 
     # -------------------------------------------------------------------------------------------
 
@@ -167,10 +169,9 @@ try
 
         $ACTION_VM_HAS_RUNNING_SNAPSHOT {
             # Création d'une connexion au serveur vRA pour accéder à ses API REST
-            $vra = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
-                                $targetTenant, 
-                                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
-                                $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
+            $vra = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $targetTenant, "server")),
+                                    $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "user")),
+                                    $configVra.getConfigValue(@($targetEnv, "infra", $targetTenant, "password")))
         
             # Si on doit activer le Debug,
             if(Test-Path (Join-Path $PSScriptRoot "$($MyInvocation.MyCommand.Name).debug"))
@@ -180,7 +181,6 @@ try
             }
         }
     }
-
 
 
     # Ajout d'informations dans le log
@@ -302,7 +302,7 @@ try
         # Savoir si la VM a un snapshot en cours
         $ACTION_VM_HAS_RUNNING_SNAPSHOT {
 
-            $vm = $vra.getItem($global:VRA_ITEM_TYPE_VIRTUAL_MACHINE, $vmName)
+            $vm = $vra.getDeployment($global:VRA_ITEM_TYPE_VIRTUAL_MACHINE, $vmName)
 
             # Si pas trouvée 
             if($null -eq $vm)
@@ -312,6 +312,8 @@ try
             else
             {
 
+                # TODO: Continuer ici, pour la partie récupération d'info de snapshot. A priori rien de dispo comme données dans
+                # la partie REST. Et pas possible de récupérer la VM dans vSphere (pour avoir les snapshots) car on n'a pas son nom qui est retourné via REST...
                 $output.results += @{
                                         vmName = $vmName
                                         hasSnapshot = ($vm.resourceData.entries | Where-Object { $_.key -eq "SNAPSHOT_LIST"}).value.items.length -gt 0
