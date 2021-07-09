@@ -52,7 +52,7 @@ param([string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "RESTAPICurl.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "CopernicAPI.inc.ps1"))
-. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
+. ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRA8API.inc.ps1"))
 
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "billing", "Billing.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "billing", "BillingS3Bucket.inc.ps1"))
@@ -64,7 +64,7 @@ param([string]$targetEnv,
 # Chargement des fichiers de configuration
 $configGlobal = [ConfigReader]::New("config-global.json")
 $configBilling = [ConfigReader]::New("config-billing.json")
-$configVra = [ConfigReader]::New("config-vra.json")
+$configVra = [ConfigReader]::New("config-vra8.json")
 
 ##### Constantes
 
@@ -286,10 +286,9 @@ try
     {
         # Création d'une connexion au serveur vRA pour accéder à ses API REST
         $logHistory.addLineAndDisplay(("Connecting to vRA tenant {0}...") -f $tenant)
-        $vraTenantList.$tenant = [vRAAPI]::new($configVra.getConfigValue(@($targetEnv, "infra", "server")),
-                                            $tenant, 
+        $vraTenantList.$tenant = [vRA8API]::new($configVra.getConfigValue(@($targetEnv, "infra",  $tenant, "server")),
                                             $configVra.getConfigValue(@($targetEnv, "infra", $tenant, "user")),
-                                            $configVra.getConfigValue(@($targetEnv, "infra", $tenant, "password")))
+                                            $configVra.getConfigValue(@($targetEnv, "infra", $tenant, "password")))                                            
     }
 
 
