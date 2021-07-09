@@ -200,12 +200,13 @@ class NameGeneratorK8s: NameGeneratorBase
 
       IN  : $clusterName   -> Nom du cluster
       IN  : $namespace     -> Nom du namespace
+      IN  : $index         -> Index du Role Binding pour le cluster et namespace donné
 
       RET : Le nom du Role Binding
    #>
-   [string] getRoleBindingName([string]$clusterName, [string]$namespace)
+   [string] getRoleBindingName([string]$clusterName, [string]$namespace, [string]$index)
    {
-      return "robi-{0}-{1}" -f $clusterName, $namespace
+      return "robi-{0}-{1}-{2}" -f $clusterName, $namespace, $index
    }
 
 
@@ -244,16 +245,17 @@ class NameGeneratorK8s: NameGeneratorBase
       BUT : Renvoie le nom d'un Cluster Role Binding pour un cluster
 
       IN  : $clusterName         -> Nom du cluster
+      IN  : $index               -> index du Cluster Role Binding pour le cluster
       IN  : $forServiceAccount   -> (optionnel) pour dire si on veut le nom pour les
                                     service accounts
 
       RET : Le nom du Cluster Role Binding
    #>
-   [string] getClusterRoleBindingName([string]$clusterName)
+   [string] getClusterRoleBindingName([string]$clusterName, [int]$index)
    {
-      return $this.getClusterRoleBindingName($clusterName, $false)
+      return $this.getClusterRoleBindingName($clusterName, $index, $false)
    }
-   [string] getClusterRoleBindingName([string]$clusterName, [bool]$forServiceAccounts)
+   [string] getClusterRoleBindingName([string]$clusterName, [string]$index, [bool]$forServiceAccounts)
    {
       if($forServiceAccounts)
       {

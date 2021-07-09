@@ -279,7 +279,7 @@ function deleteCluster([PKSAPI]$pks, [NSXAPI]$nsx, [EPFLDNS]$EPFLDNS, [NameGener
     #     <# Rien besoin de faire pour ce tenant car il y a un projet Harbor par faculté donc on n'a pas besoin 
     #         de supprimer quoi que ce soit. On pourrait supprimer le groupe AD correspondant au BG mais il n'est 
     #         pertinent de supprimer ce groupe d'accès uniquement si on vient de supprimer le tout dernier cluster
-    #         pour le Business Group #>
+    #         pour le Projet #>
     #     $logHistory.addLine("> We're on EPFL tenant, one project per Faculty so no cleaning")
     # }
     # else # Tenant ITServices ou Research
@@ -372,13 +372,13 @@ function configureNamespaceElements([string]$clusterName, [string]$namespace, [s
     # - RoleBinding
     $logHistory.addLine("Adding RoleBinding...")
     
-    # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au BG dans vRA
+    # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au Projet dans vRA
     $adGroupList | ForEach-Object {
         $logHistory.addLine(("> For group '{0}'" -f $_))
         $tkgiKubectl.addClusterNamespaceRoleBinding($clusterName, 
                                                     $namespace,
                                                     $nameGeneratorK8s.getRoleName($namespace), 
-                                                    $nameGeneratorK8s.getRoleBindingName($clusterName, $namespace), 
+                                                    $nameGeneratorK8s.getRoleBindingName($clusterName, $namespace, ($adGroupList.IndexOf($_)+1)), 
                                                     $_)
     }
 }
@@ -558,7 +558,7 @@ try
     if($projectId -ne "")
     {
         $logHistory.addLine(("Project ID given ({0}), looking for object in vRA..." -f $projectId))
-        # Récupération de l'objet représentant le BG dans vRA
+        # Récupération de l'objet représentant le Projet dans vRA
         $project = $vra.getProjectByCustomId($projectId)
 
         # On check si pas trouvé (on ne sait jamais...)
@@ -642,20 +642,18 @@ try
             # ---- Droits d'accès 
             # Ajout des droits d'accès mais uniquement pour le premier groupe de la liste, et on admet que c'est un nom de groupe et pas
             # d'utilisateur. 
-            # TODO: Continuer ici
+            
             $accessGroupList = @(getProjectAccessGroupList -vra $vra -project $project -targetTenant $targetTenant)
-            if(($null -eq $accessGroupList) -or ($accessGroupList.count -eq 0))
+            if($null -eq $accessGroupList)
             {
                 $output.error = "Access group list not found"
                 break
             }
-
-            # Si on a plus d'un groupe (ce qui ne devrait pas arriver), on met quand même un warning dans les logs, pour avoir l'info
-            if($accessGroupList.count -gt 1)
+            if($accessGroupList.count -eq 0)
             {
-                $logHistory.addWarning(("{0} groups found in ActiveDirectory group for '{1}' Project access. Only one group will be taken ({2}) for ClusterRoleBinding" -f $accessGroupList.count, $project.name, $accessGroupList[0]))
+                $output.error = "Access group list empty"
+                break
             }
-
 
             # Génération des noms pour le DNS
             $logHistory.addLine("Generating DNS hostnames...")
@@ -704,13 +702,17 @@ try
 
             # - Cluster Role Binding
             $logHistory.addLine("Adding ClusterRoleBinding...")
-            # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au BG dans vRA
-            $logHistory.addLine(("> For group '{0}'" -f $accessGroupList[0]))
+            $accessGroupList | ForEach-Object {
             
-            $tkgiKubectl.addClusterRoleBinding($clusterName, 
-                                                $nameGeneratorK8s.getClusterRoleName(), 
-                                                $nameGeneratorK8s.getClusterRoleBindingName($clusterName), 
-                                                ("oidc:{0}" -f $accessGroupList[0]))
+                # Ajout des droits pour chaque groupe "groups" se trouvant dans le groupe AD utilisé pour les accès au Projet dans vRA
+                $logHistory.addLine(("> For group '{0}'" -f $_))
+                
+                $tkgiKubectl.addClusterRoleBinding($clusterName, 
+                                                    $nameGeneratorK8s.getClusterRoleName(), 
+                                                    $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $accessGroupList.IndexOf($_)+1), 
+                                                    ("oidc:{0}" -f $_))
+            }
+            
 
             $logHistory.addLine("> C2C Gentlemen agreement")
             # Pour que C2C puisse accéder au cluster via Prometheus et ArgoCD
@@ -723,7 +725,7 @@ try
             # Pour les services accounts
             $tkgiKubectl.addClusterRoleBinding($clusterName, 
                                                $nameGeneratorK8s.getClusterRoleName(), 
-                                               $nameGeneratorK8s.getClusterRoleBindingName($clusterName, $true), 
+                                               $nameGeneratorK8s.getClusterRoleBindingName($clusterName, 1, $true), 
                                                "system:serviceaccounts")
 
             # ------------
@@ -992,6 +994,11 @@ try
             if($null -eq $accessGroupList)
             {
                 $output.error = "Access group list not found"
+                break
+            }
+            if($accessGroupList.count -eq 0)
+            {
+                $output.error = "Access group list empty"
                 break
             }
             
@@ -1267,10 +1274,5 @@ catch
 
     # Envoi d'un message d'erreur aux admins 
     $notificationMail.send("Error in script '{{scriptName}}'", "global-error", $valToReplace) 
-}
-
-if($null -ne $vra)
-{
-    $vra.disconnect()
 }
 
