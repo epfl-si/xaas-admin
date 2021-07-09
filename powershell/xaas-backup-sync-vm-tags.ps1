@@ -265,8 +265,5 @@ catch
 }
 
 # Déconnexion des API 
-$logHistory.addLineAndDisplay("Disconnecting from vRA...")
-$vra.disconnect()
-
 $logHistory.addLineAndDisplay("Disconnecting from vSphere...")
 $vsphereApi.disconnect()

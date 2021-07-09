@@ -1728,7 +1728,6 @@ try
 	# 	$logHistory.addLineAndDisplay("Syncing directory...")
 	# 	$vra.syncDirectory($nameGenerator.getDirectoryName())
 
-	# 	$vra.disconnect()
 	# }
 
 	if($TEST_MODE)

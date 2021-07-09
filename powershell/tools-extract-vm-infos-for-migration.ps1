@@ -156,7 +156,3 @@ Write-Host "done"
 Write-host ("Informations can be found in following CSV file: {0}" -f $outFile)
 
 Write-Warning "Don't forget to reclaim IP address after VM unregistration process"
-                    
-$vra.disconnect()
-
-

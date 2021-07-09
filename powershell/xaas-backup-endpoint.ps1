@@ -343,9 +343,6 @@ try
             $nbu.disconnect()
         }
 
-        $ACTION_VM_HAS_RUNNING_SNAPSHOT {
-            $vra.disconnect()
-        }
     }
 
 

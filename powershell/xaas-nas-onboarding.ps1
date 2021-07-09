@@ -901,9 +901,4 @@ catch
 
     
 }
-
-if($null -ne $vra)
-{
-    $vra.disconnect()
-}
-                                                
+                                            

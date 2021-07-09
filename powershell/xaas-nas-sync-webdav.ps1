@@ -522,8 +522,6 @@ try
 
         }# FIN BOUCLE de parcours des lignes renvoyées
 
-        # On peut se déconnecter du tenant courant
-        $vra.disconnect()
     }
     
 
