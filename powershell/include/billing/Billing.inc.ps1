@@ -347,17 +347,17 @@ class Billing
 
         IN  : $entityType   -> Type de l'entité
         IN  : $targetTenant -> Tenant sur lequel se trouve le BG
-        IN  : $bgId         -> ID du BG tel que défini par l'EPFL. Soit ID d'unité, soit SVCxxxx, etc...
+        IN  : $projectId    -> ID du Projet tel que défini par l'EPFL. Soit ID d'unité, soit SVCxxxx, etc...
         IN  : $itemName     -> Nom de l'item à facturer
 
         RET : ID de l'entité
                 0 si pas trouvé (vu que les id démarrent à 1 dans la DB, on n'a pas de risque de faire faux)
     #>
-    hidden [int] initAndGetEntityId([BillingEntityType]$entityType, [string]$targetTenant, [string]$bgId, [string]$itemName)
+    hidden [int] initAndGetEntityId([BillingEntityType]$entityType, [string]$targetTenant, [string]$projectId, [string]$itemName)
     {
-        # Recherche du BG avec son ID unique. 
+        # Recherche du Projet avec son ID unique. 
         # NOTE: On utilise le cache pour faire cette action car on est dans un script qui ne modifie pas la liste des BG
-        $bg = $this.vraTenantList.$targetTenant.getProjectByCustomId($bgId, $true)
+        $bg = $this.vraTenantList.$targetTenant.getProjectByCustomId($projectId, $true)
 
         # Si le BG n'est pas trouvé dans vRA, c'est qu'il a été supprimé
         if($null -eq $bg)
@@ -367,7 +367,7 @@ class Billing
             $entity = $this.getItemEntity($itemName)
 
             # Si on n'a pas trouvé l'entité, c'est que l'item n'a encore jamais été rencontré dans un des mois
-            # écoulés et que le BG a été supprimé entre temps. Donc impossible de récupérer quelque information
+            # écoulés et que le Projet a été supprimé entre temps. Donc impossible de récupérer quelque information
             # que ce soit... 
             if($null -eq $entity)
             {
@@ -377,10 +377,10 @@ class Billing
 
             $entityId = $entity.entityId
         }
-        else # On a trouvé les infos du BG dans vRA donc on ajoute/met à jour l'entité
+        else # On a trouvé les infos du Projet dans vRA donc on ajoute/met à jour l'entité
         {
             # Ajout de l'entité à la base de données (si pas déjà présente)
-            $entityId = $this.addEntity($entityType, $bgId, `
+            $entityId = $this.addEntity($entityType, $projectId, `
                                         (getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME), `
                                         (getProjectCustomPropValue -project $bg -customPropName $global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER))
         }
