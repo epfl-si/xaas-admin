@@ -146,15 +146,15 @@ try
     # En fonction de l'action demandée
     switch ($action)
     {
-        <#
-        ----------------------------------
-        ------------- CLUSTER ------------
-        #>
-
+        
         # --- Rappel sur les robots qui vont bientôt expirer
         $ACTION_ROBOT_REMINDER
         {
             Throw "To finalize !"
+            # TODO: gérer le fait que le script est appelé pour chaque tenant mais que tout est regroupé au même 
+            # endroit dans Harbor. Sous-entendu qu'il faut donc chercher "différemment" le BG/Projet lié dans vRA
+            # et admettre que celui-ci peut potentiellement ne pas être trouvé si on n'est pas sur le bon tenant
+
             # Pour savoir à quel BG est attaché chaque robot
             $bgToRobots = @{}
 
