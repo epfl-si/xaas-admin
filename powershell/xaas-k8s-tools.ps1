@@ -1,7 +1,7 @@
 <#
 USAGES:
     xaas-k8s-tools.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl -action robotReminder
-    xaas-k8s-tools.ps1 -targetEnv prod|test|dev -targetTenant itservices|epfl -action delOldRobots
+    xaas-k8s-tools.ps1 -targetEnv prod|test|dev -action delOldRobots
 #>
 <#
     BUT 		: Script contenant diverses commandes pour effectuer des actinos sur l'infrastructure K8s
