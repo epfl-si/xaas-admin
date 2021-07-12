@@ -114,8 +114,6 @@ $ACTION_EXTEND_NAMESPACE_STORAGE        = "extendNSStorage"
 $ACTION_GET_NAMESPACE_RESOURCES         = "getNSResources"
 $ACTION_ADD_HARBOR_ROBOT                = "addHarborRobot"
 
-$ROBOT_NB_DAYS_INITIAL_LIFETIME         = 7
-
 
 # -------------------------------------------- FONCTIONS ---------------------------------------------------
 
@@ -805,12 +803,12 @@ try
             
                 $logHistory.addLine(("> Adding '{0}' robots in Harbor Project..." -f $_.toString()))
                 # Récupération des informations sur le robot (nom, description, temps unix de fin de validité)
-                $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($_, $ROBOT_NB_DAYS_INITIAL_LIFETIME)
-                $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, $ROBOT_NB_DAYS_INITIAL_LIFETIME, $_)
+                $robotInfos = $nameGeneratorK8s.getHarborRobotAccountInfos($_, ([HarborRobotType]$_).value__)
+                $robot = $harbor.addTempProjectRobotAccount($harborProject, $robotInfos.name, $robotInfos.desc, ([HarborRobotType]$_).value__, $_)
                 $allRobots.($_.toString().toLower()) = @{
                     name = $robot.name
                     token = $robot.secret
-                    validityDays = $ROBOT_NB_DAYS_INITIAL_LIFETIME
+                    validityDays = ([HarborRobotType]$_).value__
                 }
                 
             }
