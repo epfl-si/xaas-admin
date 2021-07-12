@@ -170,20 +170,20 @@ try
                 
                 $robotInfos = $nameGeneratorK8s.extractInfosFromRobotName($robot.name)
                 
-                $logHistory.addLineAndDisplay((">> Belongs to BG id '{0}'" -f $robotInfos.bgId))
+                $logHistory.addLineAndDisplay((">> Belongs to Project id '{0}'" -f $robotInfos.projectId))
 
                 # Si le robot va expirer bientôt
                 if(( $now -gt ($robotInfos.expirationTime - $expireBeforeNbSec)) -and ($now -lt $robotInfos.expirationTime))
                 {
                     $logHistory.addLineAndDisplay((">> Robot will expire in less than {0} days" -f $BEFORE_EXPIRE_NB_DAYS_REMINDER))
                     # SI on n'a pas encore d'infos pour le BG du robot
-                    if($bgToRobots.keys -notcontains $robotInfos.bgId)
+                    if($bgToRobots.keys -notcontains $robotInfos.projectId)
                     {
                         # Ajout d'une liste vide
-                        $bgToRobots.add($robotInfos.bgId, @())
+                        $bgToRobots.add($robotInfos.projectId, @())
                     }
 
-                    $bgToRobots.($robotInfos.bgId) += $robotInfos
+                    $bgToRobots.($robotInfos.projectId) += $robotInfos
 
                 }# FIN SI le robot expire bientôt
 
@@ -191,12 +191,12 @@ try
 
             $logHistory.addLineAndDisplay(("There is/are {0} BG with robots" -f $bgToRobots.Count))
             # Parcours des BG pour lequels on a des robots
-            ForEach($bgId in $bgToRobots.keys)
+            ForEach($projectId in $bgToRobots.keys)
             {
-                $bg = $vra.getBGByCustomId($bgId)
-                $logHistory.addLineAndDisplay(("> BG ID '{0}' => '{1}'" -f $bgId, $bg.name))
+                $project = $vra.getProjectByCustomId($projectId)
+                $logHistory.addLineAndDisplay(("> Project ID '{0}' => '{1}'" -f $projectId, $bg.name))
 
-                $accessGroupList = @(getProjectAccessGroupList -project $bg -targetTenant $targetTenant)
+                $accessGroupList = @(getProjectAccessGroupList -project $project -targetTenant $targetTenant)
                 $logHistory.addLineAndDisplay(("> Access groups are:`n- {0}" -f ($accessGroupList -join '`n- ')))
 
                 #TODO: Finaliser

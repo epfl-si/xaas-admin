@@ -360,18 +360,18 @@ class NameGeneratorK8s: NameGeneratorBase
 
       RET : Objet avec les infos du robot, dans les données membres suivantes:
             .projectName
-            .bgId
+            .projectId
             .type
             .expirationTime
    #>
    [PSCustomObject] extractInfosFromRobotName([string]$robotName)
    {
-      # Un nom de robot est au format "robot$<projectName>+<bgID>-<type>-<expirationTime>"
-      $dummy, $projectName, $bgId, $type, $expirationTime = [Regex]::Match($robotName, 'robot\$(.*?)\+(.*?)-(.*?)-(.*)').Groups | Select-Object -ExpandProperty value
+      # Un nom de robot est au format "robot$<projectName>+<projectID>-<type>-<expirationTime>"
+      $dummy, $projectName, $projectId, $type, $expirationTime = [Regex]::Match($robotName, 'robot\$(.*?)\+(.*?)-(.*?)-(.*)').Groups | Select-Object -ExpandProperty value
 
       return @{
          projectName = $projectName
-         bgId = $bgId
+         projectId = $projectId
          type = $type
          expirationTime = $expirationTime
       }

@@ -6,7 +6,7 @@
 #>
 <#
 USAGES:
-    xaas-sample-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -friendlyName <friendlyName> [-linkedTo <linkedTo>] [-bucketTag <bucketTag>]
+    xaas-sample-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -projectId <projectId> -friendlyName <friendlyName> [-linkedTo <linkedTo>] [-bucketTag <bucketTag>]
  
 #>
 <#
@@ -41,7 +41,7 @@ USAGES:
 param([string]$targetEnv, 
       [string]$targetTenant, 
       [string]$action, 
-      [string]$bgId,
+      [string]$projectId,
       [string]$bucketTag,
       [switch]$status)
 
