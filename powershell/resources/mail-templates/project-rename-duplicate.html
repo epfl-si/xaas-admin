@@ -1,0 +1,14 @@
+Les renommage des Projets suivants n'ont pas pu être effectués car il existait déjà un Projet avec le nouveau nom.<br>
+Il se peut qu'un changement au niveau des sources de données fasse que le Projet avec le nom "cible" soit en fait un Projet qui est passé en "ghost" car devant être supprimé. Et donc, vu qu'il garde
+son nom "normal" pendant qu'il est en mode "ghost", il n'est pas possible de renommer l'autre BG pour qu'il prenne son nouveau nom.<br>
+Pour la résolution, il faut faire les étapes suivantes:
+<ol>
+    <li>Se connecter à vRA pour vérifier que le Projet qui porte le nouveau nom soit effectivement passé en "ghost"</li>
+    <li>Si le Projet est effectivement passé en "ghost", utiliser le script <i>clean-ghost-project.ps1</i> en lui passant en paramètre le nom du Projet à supprimer (voir le USAGE du script pour les paramètres)</li>
+</ol>
+
+Liste des renommages concernés:
+<br>
+<ul>
+    <li>{{projectRenameList}}</li>
+</ul>

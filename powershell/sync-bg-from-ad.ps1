@@ -861,7 +861,7 @@ function setProjectAsGhostIfNot([vRA8API]$vra, [PSObject]$project, [string]$targ
 	# Si le Project est toujours actif
 	if(isProjectAlive -project $project)
 	{
-		$notifications.bgSetAsGhost += $project.name
+		$notifications.projectSetAsGhost += $project.name
 		
 		# On marque le Project comme "Ghost"
 		$vra.updateProjectCustomProperties($project, @{"$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS" = $global:VRA_BG_STATUS__GHOST})
@@ -964,29 +964,29 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				# Project sans "custom property" permettant de définir le statut
 				'projectWithoutCustomPropStatus'
 				{
-					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.projectList = ($uniqueNotifications -join "</li>`n<li>")
 					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS
 					$mailSubject = "Warning - Project without '{{customProperty}}' custom property"
-					$templateName = "bg-without-custom-prop"
+					$templateName = "project-without-custom-prop"
 				}
 
 				# ---------------------------------------
 				# Project sans "custom property" permettant de définir le type
 				'projectWithoutCustomPropType'
 				{
-					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.projectList = ($uniqueNotifications -join "</li>`n<li>")
 					$valToReplace.customProperty = $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE
 					$mailSubject = "Warning - Project without '{{customProperty}}' custom property"
-					$templateName = "bg-without-custom-prop"
+					$templateName = "project-without-custom-prop"
 				}
 
 				# ---------------------------------------
 				# Project marqué comme étant des 'ghost'
-				'bgSetAsGhost'
+				'projectSetAsGhost'
 				{
-					$valToReplace.bgList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.projectList = ($uniqueNotifications -join "</li>`n<li>")
 					$mailSubject = "Info - Project marked as 'ghost'"
-					$templateName = "bg-set-as-ghost"
+					$templateName = "project-set-as-ghost"
 				}
 
 				# ---------------------------------------
@@ -1004,7 +1004,7 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				{
 					$valToReplace.groupList = ($uniqueNotifications -join "</li>`n<li>")
 					$mailSubject = "Error - AD groups not found for Project"
-					$templateName = "ad-groups-not-found-for-bg"
+					$templateName = "ad-groups-not-found-for-project"
 				}
 
 				# ---------------------------------------
@@ -1038,18 +1038,18 @@ function handleNotifications([System.Collections.IDictionary] $notifications, [s
 				# Pas possible de renommer un Project car le nouveau nom existe déjà
 				'projectNameDuplicate'
 				{
-					$valToReplace.bgRenameList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.projectRenameList = ($uniqueNotifications -join "</li>`n<li>")
 					$mailSubject = "Error - Project cannot be renamed because of duplicate name"
-					$templateName = "bg-rename-duplicate"
+					$templateName = "project-rename-duplicate"
 				}
 
 				# ---------------------------------------
 				# Pas possible de créer un Project car le nom existe déjà
 				'projectNameAlreadyTaken'
 				{
-					$valToReplace.bgCreateList = ($uniqueNotifications -join "</li>`n<li>")
+					$valToReplace.projectCreateList = ($uniqueNotifications -join "</li>`n<li>")
 					$mailSubject = "Error - Project cannot be created because of duplicate name"
-					$templateName = "bg-create-duplicate"
+					$templateName = "project-create-duplicate"
 				}
 
 				default
@@ -1354,7 +1354,7 @@ try
 	#>
 	$notifications=@{projectWithoutCustomPropStatus = @()
 					projectWithoutCustomPropType = @()
-					bgSetAsGhost = @()
+					projectSetAsGhost = @()
 					projectNameDuplicate = @()
 					projectNameAlreadyTaken = @()
 					emptyADGroups = @()

@@ -1,0 +1,15 @@
+La création des Projets suivants n'a pas pu être effectués car il existait déjà un Projet avec le nom.<br>
+Il se peut qu'un changement au niveau des sources de données fasse que le Projet avec le nom "existant" soit en fait un Projet qui est passé en "ghost" car devant être supprimé. Et donc, vu qu'il garde
+son nom "normal" pendant qu'il est en mode "ghost", il n'est pas possible de créer l'autre Projet pour qu'il prenne son nouveau nom.<br>
+Pour la résolution, il faut faire les étapes suivantes:
+<ol>
+    <li>Attendre une journée pour voir si ce mail d'erreur est à nouveau envoyé. Il se peut en effet qu'il y ait eu marchage sur le sachet dans la gestion des unités ou des ITServices à créer et que ça va être corrigé par quelque'un.</li>
+    <li>Se connecter à vRA pour vérifier que le Projet qui porte le nom posant problème soit effectivement passé en "ghost"</li>
+    <li>Si le BG est effectivement passé en "ghost", utiliser le script <i>clean-ghost-project.ps1</i> en lui passant en paramètre le nom du Projet à supprimer (voir le USAGE du script pour les paramètres)</li>
+</ol>
+
+Liste des Projet concernés:
+<br>
+<ul>
+    <li>{{projectCreateList}}</li>
+</ul>
