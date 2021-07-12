@@ -24,7 +24,7 @@ class BillingNASVolume: Billing
 		-------------------------------------------------------------------------------------
 		BUT : Constructeur de classe.
 
-        IN  : $vraTenantList        -> Hashtable avec des objets de la classe VRAAPI pour interroger vRA.
+        IN  : $vraTenantList        -> Hashtable avec des objets de la classe VRA8API pour interroger vRA.
                                         Chaque objet a pour clef le nom du tenant et comme "contenu" le 
                                         nécessaire pour interroger le tenant
         IN  : $db                   -> Objet de la classe SQLDB permettant d'accéder aux données.
