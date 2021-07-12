@@ -34,6 +34,7 @@ param ( [string]$targetEnv,
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "vRAAPI.inc.ps1"))
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "REST", "SnowAPI.inc.ps1"))
 
+Throw ("To finalize")
 
 # Chargement des fichiers de configuration
 $configGlobal   = [ConfigReader]::New("config-global.json")
