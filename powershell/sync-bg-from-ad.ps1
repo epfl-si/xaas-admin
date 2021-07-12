@@ -298,6 +298,9 @@ function createOrUpdateProject([vRA8API]$vra, [string]$tenantName, [string]$proj
 		}
 	}
 
+	# Recherche de la liste des CloudZones qui sont notée comme devant être ajoutées à un projet
+	$zoneList = $vra.getCloudZoneList("epfl:add-to-project")
+
 	<# Si le Project n'existe pas, ce qui peut arriver dans les cas suivants :
 		Tenant EPFL:
 		- nouvelle unité (avec éventuellement nouvelle faculté)
@@ -308,13 +311,13 @@ function createOrUpdateProject([vRA8API]$vra, [string]$tenantName, [string]$proj
 	{
 		$customProperties = @{}
 
-		$customProperties["$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS"] 	 	= $global:VRA_PROJECT_STATUS__ALIVE
-		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE"] 			= $global:VRA_BG_RES_MANAGE__AUTO
-		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE"] = $global:VRA_BG_RES_MANAGE__AUTO
-		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID"] 			= $projectEPFLID
-		$customProperties["$global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE"] 			= $projectType.toString()
-		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER"]= $financeCenter
-		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME"] 	= $nameGenerator.getBillingEntityName()
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS"] 	 		= $global:VRA_PROJECT_STATUS__ALIVE
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_PROJECT_CLOUD_ZONE_MANAGE"] 	= $global:VRA_PROJECT_MANAGE__AUTO
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE"] 	= $global:VRA_PROJECT_MANAGE__AUTO
+		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID"] 				= $projectEPFLID
+		$customProperties["$global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE"] 				= $projectType.toString()
+		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_FINANCE_CENTER"]	= $financeCenter
+		$customProperties["$global:VRA_CUSTOM_PROP_EPFL_BILLING_ENTITY_NAME"] 		= $nameGenerator.getBillingEntityName()
 		
 
 		# Ajout aussi des informations sur le Tenant et le Project car les mettre ici, c'est le seul moyen que l'on pour récupérer cette information
@@ -341,9 +344,8 @@ function createOrUpdateProject([vRA8API]$vra, [string]$tenantName, [string]$proj
 		else # Le Nom est libre, on peut aller de l'avant
 		{
 			$logHistory.addLineAndDisplay(("-> Project '{0}' (ID={1}) doesn't exists, creating..." -f $projectName, $projectEPFLID))
-			# Création du BG
 			
-			$zoneList = $vra.getCloudZoneList()
+			# Création du Projet
 			$project = $vra.addProject($projectName, $projectDesc, $machineNameTemplate, $customProperties, $zoneList, $adminGrpList, $userGrpList)
 
 			$counters.inc('projectCreated')
@@ -380,12 +382,45 @@ function createOrUpdateProject([vRA8API]$vra, [string]$tenantName, [string]$proj
 
 		# ==========================================================================================
 
+		# Pour la liste des zones à mettre à jour. On met $null si pas besoin de mettre à jour comme ça le code
+		# ne gérera pas le cas de figure
+		$zoneListUpdate = $null
+
+		# Si la gestion des Cloud Zones est automatique
+		if(getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_VRA_PROJECT_CLOUD_ZONE_MANAGE -eq $global:VRA_PROJECT_MANAGE__AUTO)
+		{
+			# Si le nombre de zones est différent
+			if($zoneList.count -ne $project.zones.count)
+			{
+				$zoneListUpdate = $zoneList
+			}
+			else # Le nombre de zones est identique
+			{
+				$projectZoneIdList = @($project.zones | ForEach-Object { $_.zoneId })
+				# On regarde si la liste des CloudZones du projet est différente de celles qui doit être mise
+				ForEach($mandatoryZoneId in ($zoneList | ForEach-Object { $_.id }))
+				{
+					# Si la zone n'est pas présente dans la liste
+					if($projectZoneIdList -notcontains $mandatoryZoneId)
+					{
+						$zoneListUpdate = $zoneList
+						break
+					}
+				}# FIN BOUCLE de parcours des Cloud Zones qui doivent être dans le projet
+
+			} # FIN SI le nombre de Cloud Zones est identique 
+
+		}# FIN SI La gestion des Cloud Zones est automatique
+
+
 		# Si le nom du Project est incorrect, (par exemple si le nom de l'unité ou celle de la faculté a changé)
 		# Note: Dans le cas du tenant ITServices, vu qu'on fait une recherche avec le nom, ce test ne retournera
 		# 		jamais $true
 		# OU
 		# Si le Project est désactivé
-		if(($project.name -ne $projectName) -or ($project.description -ne $projectDesc) -or (!(isProjectAlive -project $project)))
+		# OU 
+		# S'il faut mettre à jour les zones
+		if(($project.name -ne $projectName) -or ($project.description -ne $projectDesc) -or (!(isProjectAlive -project $project)) -or ($null -ne $zoneListUpdate))
 		{
 			$logHistory.addLineAndDisplay(("-> Project '{0}' has changed" -f $project.name))
 
@@ -457,7 +492,8 @@ function createOrUpdateProject([vRA8API]$vra, [string]$tenantName, [string]$proj
 			}
 			
 			# Mise à jour des informations
-			$project = $vra.updateProject($project, $projectName, $projectDesc, $machineNameTemplate, @{"$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS" = $global:VRA_PROJECT_STATUS__ALIVE})
+			$project = $vra.updateProject($project, $projectName, $projectDesc, $machineNameTemplate, `
+										@{"$global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS" = $global:VRA_PROJECT_STATUS__ALIVE}, $zoneListUpdate)
 
 			$projectUpdated = $true
 			
@@ -1707,7 +1743,7 @@ try
 			# OU
 			# que c'est un Project avec le groupe de support qui est managé
 			if($ISOFolderCreated -or $forceACLsUpdate -or `
-				(getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -ne $global:VRA_BG_RES_MANAGE__AUTO)
+				(getProjectCustomPropValue -project $project -customPropName $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE) -ne $global:VRA_PROJECT_MANAGE__AUTO)
 			{
 				$logHistory.addLineAndDisplay(("--> Preparing ACLs for ISO folder '{0}'..." -f $bgISOFolder))
 				# Récupération et modification des ACL pour ajouter les groupes AD qui sont pour le Role "Shared" dans le BG

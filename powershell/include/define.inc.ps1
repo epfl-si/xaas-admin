@@ -68,7 +68,7 @@ $global:VRA_SERVICE_SUFFIX__PUBLIC  =" (Public)"
 $global:VRA_CUSTOM_PROP_EPFL_PROJECT_ID             = "ch.epfl.vra.project.id"
 $global:VRA_CUSTOM_PROP_VRA_PROJECT_TYPE            = "ch.epfl.vra.project.type"
 $global:VRA_CUSTOM_PROP_VRA_PROJECT_STATUS          = "ch.epfl.vra.project.status"
-$global:VRA_CUSTOM_PROP_VRA_BG_RES_MANAGE           = "ch.epfl.vra.project.res.manage"
+$global:VRA_CUSTOM_PROP_VRA_PROJECT_CLOUD_ZONE_MANAGE           = "ch.epfl.vra.project.res.manage"
 $global:VRA_CUSTOM_PROP_VRA_BG_ROLE_SUPPORT_MANAGE  = "ch.epfl.vra.project.roles.support.manage"
 $global:VRA_CUSTOM_PROP_VRA_TENANT_NAME             = "ch.epfl.vra.tenant.name"
 $global:VRA_CUSTOM_PROP_VRA_PROJECT_NAME            = "ch.epfl.vra.project.name"
@@ -84,7 +84,7 @@ $global:VRA_PROJECT_STATUS__ALIVE = "alive"
 $global:VRA_BG_STATUS__GHOST = "ghost"
 
 # Valeurs possibles pour la gestion des Réservations du Business Group
-$global:VRA_BG_RES_MANAGE__AUTO  = "auto"
+$global:VRA_PROJECT_MANAGE__AUTO  = "auto"
 $global:VRA_BG_RES_MANAGE__MAN   = "man"
  
 # Pour filtrer et ne prendre que les groupes AD modifiés durant les X derniers jours pour la création des éléments dans vRA

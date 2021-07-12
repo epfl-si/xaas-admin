@@ -404,7 +404,11 @@ class vRA8API: RESTAPICurl
 	#>
 	[PSCustomObject] updateProject([PSCustomObject]$project, [string] $newName, [string] $newDesc, [string]$vmNamingTemplate, [Hashtable]$customProperties)
 	{
-		return $this.updateProject($project, $newName, $newDesc, $vmNamingTemplate, $customProperties, $null, $null, $null)
+		return $this.updateProject($project, $newName, $newDesc, $vmNamingTemplate, $customProperties, $null)
+	}
+	[PSCustomObject] updateProject([PSCustomObject]$project, [string] $newName, [string] $newDesc, [string]$vmNamingTemplate, [Hashtable]$customProperties, [Array]$zoneList)
+	{
+		return $this.updateProject($project, $newName, $newDesc, $vmNamingTemplate, $customProperties, $zoneList, $null, $null)
 	}
 	[PSCustomObject] updateProject([PSCustomObject]$project, [string] $newName, [string] $newDesc, [string]$vmNamingTemplate, [Hashtable]$customProperties, [Array]$zoneList, [Array]$adminGroups, [Array]$userGroups)
 	{
@@ -634,6 +638,7 @@ class vRA8API: RESTAPICurl
         return $this.getObjectListQuery("/iaas/api/zones", $queryParams)
     }
 
+
     <#
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie la liste des Cloud Zones
@@ -645,6 +650,31 @@ class vRA8API: RESTAPICurl
         return $this.getCloudZoneListQuery()
     }
 
+
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la liste des Cloud Zones qui matchent un tag donné (ou plusieurs tags)
+
+		IN  : $matchingTag		-> Le tag à matcher, au format "<key>:<value>"
+
+		RET : La liste des Cloud Zones
+	#>
+	[Array] getCloudZoneList([string]$matchingTag)
+	{
+		return $this.getCloudZoneList(@($matchingTag))
+	}
+	[Array] getCloudZoneList([Array]$matchingTagList)
+	{
+		$list = @($this.getCloudZoneListQuery())
+
+		$matchingTagList | ForEach-Object {
+			$tagKey, $tagValue = $_.split(":")
+			$list =  @( $list | Where-Object { $_.tags | Where-Object { $_.key -eq $tagKey -and $_.value -eq $tagValue } })
+		}
+
+		return $list
+	}
+    
 
     <#
         ------------------------------------------------------------------------------------------------------
