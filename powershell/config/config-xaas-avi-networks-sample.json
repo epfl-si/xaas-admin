@@ -13,6 +13,11 @@
             "password": ""
         },
         "names": {
+            "sslProfile": {
+                "security": "",
+                "compatibility":""                
+            },
+            "sslKeyAndCertificate": "",
             "alertSyslogConfig":"",
             "applicationProfile":"", 
             "cloudType":"",
@@ -103,6 +108,11 @@
             "password": ""
         },
         "names": {
+            "sslProfile": {
+                "security": "",
+                "compatibility":""                
+            },
+            "sslKeyAndCertificate": "",
             "alertSyslogConfig":"",
             "applicationProfile":"",
             "cloudType":"",
@@ -193,6 +203,11 @@
             "password": ""
         },
         "names": {
+            "sslProfile": {
+                "security": "",
+                "compatibility":""                
+            },
+            "sslKeyAndCertificate": "",
             "alertSyslogConfig":"",
             "applicationProfile":"",
             "cloudType":"",
