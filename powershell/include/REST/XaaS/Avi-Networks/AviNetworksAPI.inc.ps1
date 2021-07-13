@@ -881,17 +881,17 @@ class AviNetworksAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
 		BUT : Ajoute une alerte pour un événement sur un élément (statut qui change)
 
+		IN  : $name				-> Nom de l'alert config
 		IN  : $tenant			-> Objet représentant le tenant sur lequel créer le niveau d'alerte
 		IN  : $alertActionLevel	-> Objet représentant le niveaud d'alerte à lier (obtenue par addActionGroupConfig() )
 		IN  : $element			-> Element sur lequel l'alerte s'applique
 		IN  : $status			-> Le statut pour lequel on veut une alerte
-		IN  : $name				-> Nom de l'alert config
-
+		
 		RET : Objet représentant la configuration d'alerte créée
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_alertconfig
 	#>
-	[PSCustomObject] addAlertConfig([PSCustomObject]$tenant, [PSCustomObject]$alertActionLevel, [XaaSAviNetworksMonitoredElements]$element, [XaaSAviNetworksMonitoredStatus]$status, [string]$name)
+	[PSCustomObject] addAlertConfig([string]$name, [PSCustomObject]$tenant, [PSCustomObject]$alertActionLevel, [XaaSAviNetworksMonitoredElements]$element, [XaaSAviNetworksMonitoredStatus]$status)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -1093,23 +1093,51 @@ class AviNetworksAPI: RESTAPICurl
 	}
 
 
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute un pool
 
-	# [PSCustomObject] addPool([PSCustomObject]$tenant)
-	# {
-	# 	$this.setActiveTenant($tenant.name)
+		IN  : $name				-> Nom du pool
+		IN  : $tenant			-> Objet représentant le tenant sur lequel ajouter le pool
+		IN  : $cloud			-> Objet représentant le cloud
+		IN  : $nsxSecGroup		-> Objet représentant le NSX-T Security Group
+		IN  : $lbAlgo			-> Algorithme de load balancing
+		IN  : $lbAlgoHash		-> Hash utilisé pour l'algo de load balancing
+		IN  : $tier1Lr			-> Nom du tier1
+		IN  : $healthMonList	-> Tableau avec les objets représentant les health monitor à ajouter
+		IN  : $analyticsProfile	-> Objet représentant le Analytics profile
+		
+		RET : Objet avec les infos du pool ajouté
 
-	# 	$uri = "{0}/pool" -f $this.baseUrl
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_pool
+	#>
+	[PSCustomObject] addPool([string]$name, [PSCustomObject]$tenant, [PSCustomObject]$cloud, [PSCustomObject]$nsxSecGroup, [XaaSAviNetworksLBAlgorithm]$lbAlgo, [XaaSAviNetworksLBAlgorithmHash]$lbAlgoHash, `
+							[string]$tier1Lr, [Array]$healthMonList, [PSCustomObject]$vrfContext, [PSCustomObject]$analyticsProfile)
+	{
+		$this.setActiveTenant($tenant.name)
 
-	# 	$replace = @{
-	# 		actionGroupRef = $alertActionLevel.url
-	# 		name = $name
-	# 	}
+		$uri = "{0}/pool" -f $this.baseUrl
 
-	# 	$body = $this.createObjectFromJSON($jsonFile, $replace)
+		$replace = @{
+			tenantRef = $tenant.url
+			cloudRef = $cloud.url
+			nsxSecurityGroupRef = $nsxSecGroup.url
+			lbAlgo = $lbAlgo.toString()
+			lbAlgoHash = $lbAlgoHash.toString()
+			tier1Lr = $tier1Lr
+			healthMonRefArray = @((ConvertTo-Json ($healthMonList | ForEach-Object{ $_.url })), $true)
+			vrfContextRef = $vrfContext.url
+			analyticsProfileRef = $analyticsProfile.url
+			name = $name
+		}
 
-	# 	$res = $this.callAPI($uri, "POST", $body).results
-	# 	$this.setDefaultTenant()
-	# }
+		$body = $this.createObjectFromJSON("xaas-avi-networks-pool.json", $replace)
+
+		$res = $this.callAPI($uri, "POST", $body).results
+		$this.setDefaultTenant()
+
+		return $res
+	}
 
 
 	<#
@@ -1203,6 +1231,7 @@ class AviNetworksAPI: RESTAPICurl
 	-------------------------------------------------------------------------------------
 		BUT : Ajoute une virtual service
 
+		IN  : $name				-> Nom du virtual service
 		IN  : $tenant			-> Objet représentant le tenant sur lequel créer le virtual service
 		IN  : $analyticsProfile	-> Objet représentant le Analytics Profile à utiliser
 		IN  : $appProfile		-> Objet représentant le Application Profile à utiliser
@@ -1213,14 +1242,13 @@ class AviNetworksAPI: RESTAPICurl
 		IN  : $sslProfile		-> Objet représentant le SSL profile
 		IN  : $vrfContext		-> Objet représentant le VRF Context
 		IN  : $vsVIP			-> Objet représentant la VIP à associer virtual service
-		IN  : $name				-> Nom du virtual service
-
+		
 		RET : Objet représentant le virtual service
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_virtualservice
 	#>
-	[PSCustomObject] addVirtualService([PSCustomObject]$tenant, [PSCustomObject]$analyticsProfile, [PSCustomObject]$appProfile, [PSCustomObject]$cloud, [PSCustomObject]$netProfile, `
-										[PSCustomObject]$seGroup, [PSCustomObject]$sslKeyAndCert, [PSCustomObject]$sslProfile, [PSCustomObject]$vrfContext, [PSCustomObject]$vsVIP, [string]$name)
+	[PSCustomObject] addVirtualService([string]$name, [PSCustomObject]$tenant, [PSCustomObject]$analyticsProfile, [PSCustomObject]$appProfile, [PSCustomObject]$cloud, [PSCustomObject]$netProfile, `
+										[PSCustomObject]$seGroup, [PSCustomObject]$sslKeyAndCert, [PSCustomObject]$sslProfile, [PSCustomObject]$vrfContext, [PSCustomObject]$vsVIP)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -1462,22 +1490,20 @@ class AviNetworksAPI: RESTAPICurl
 
 	
 	<# --------------------------------------------------------------------------------------------------------- 
-												TIERS
+											NSX-T TIERS
        --------------------------------------------------------------------------------------------------------- #>
 
 	<#
 	-------------------------------------------------------------------------------------
-		BUT : Renvoie un tier de cloud donné par son nom
+		BUT : Renvoie un tier NSX-T de cloud donné par son nom
 
-		IN  : $vrfContext	-> Objet réprésentant le cloud
+		IN  : $cloud		-> Objet réprésentant le cloud
 		IN  : $name			-> Le nom du tier que l'on cherche
 
 		RET : Objet avec le tier
 				$null si pas trouvé
-
-		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_network
 	#>
-	[PSCustomObject] getTier([PSCustomObject]$cloud, [string]$name)
+	[PSCustomObject] getNSXTTier([PSCustomObject]$cloud, [string]$name)
 	{
 		$uri = "{0}/nsxt/tier1s" -f $this.baseUrl
 
@@ -1492,6 +1518,41 @@ class AviNetworksAPI: RESTAPICurl
 		if($null -ne $res)
 		{
 			$res = $res.resource.nsxt_tier1routers | Where-Object { $_.name -eq $name }
+		}
+		return $res
+
+	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+											NSX-T GROUPS
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un groupe NSX-T de cloud donné par son nom
+
+		IN  : $cloud		-> Objet réprésentant le cloud
+		IN  : $name			-> Le nom du groupe que l'on cherche
+
+		RET : Objet avec le groupe
+				$null si pas trouvé
+	#>
+	[PSCustomObject] getNSXTGroup([PSCustomObject]$cloud, [string]$name)
+	{
+		$uri = "{0}/nsxt/groups" -f $this.baseUrl
+
+		$replace = @{
+			cloudUUID = $cloud.uuid
+		}
+
+		$body = $this.createObjectFromJSON("xaas-avi-networks-group.json", $replace)
+
+        $res = $this.callAPI($uri, "POST", $body)
+
+		if($null -ne $res)
+		{
+			$res = $res.resource.nsxt_groups | Where-Object { $_.name -eq $name }
 		}
 		return $res
 
@@ -1527,27 +1588,27 @@ class AviNetworksAPI: RESTAPICurl
 
         IN  : $name         -> Nom de la VIP
 		IN  : $fqdn			-> FQDN de la VIP
-		IN  : $vrfContext	-> Référence du contexte VRF
-		IN  : $tenant		-> Référence du tenant
-		IN  : $cloud		-> Référence du cloud
-		IN  : $network		-> Référence du network
+		IN  : $vrfContext	-> Objet représentant le contexte VRF
+		IN  : $tenant		-> Objet représentant le tenant
+		IN  : $cloud		-> Objet représentant le cloud
+		IN  : $network		-> Objet représentant le network
 		IN  : $tier1Lr		-> Chemin jusqu'au Tier 1 LR
         
         RET : Objet représentant la Vip du Virtual Service
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_vsvip
 	#>
-    [PSCustomObject] addVSVip([string]$name, [string]$fqdn, [string]$vrfContextRef, [string]$tenantRef, [string]$cloudRef, [string]$networkRef, [string]$tier1Lr)
+    [PSCustomObject] addVSVip([string]$name, [string]$fqdn, [PSCustomObject]$vrfContext, [PSCustomObject]$tenant, [PSCustomObject]$cloud, [PSCustomObject]$network, [string]$tier1Lr)
     {
         $uri = "{0}/vsvip" -f $this.baseUrl
 
         $replace = @{
 			name = $name
 			vipFqdn = $fqdn
-			vrfContextRef = $vrfContextRef
-			tenantRef = $tenantRef
-			cloudRef = $cloudRef
-			networkRef = $networkRef
+			vrfContextRef = $vrfContext.url
+			tenantRef = $tenant.url
+			cloudRef = $cloud.url
+			networkRef = $network.url
 			tier1Lr = $tier1Lr
 		}
 
@@ -1637,6 +1698,29 @@ class AviNetworksAPI: RESTAPICurl
 	[PSCustomObject] getSSLProfile([string]$name)
 	{
 		$uri = "{0}/sslprofile?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri)
+	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+											ANALYTICS PROFILE
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un "analytics profile" donné par son nom
+
+		IN  : $name		-> Nom du "analytics profile"
+
+		RET : Objet avec le analytics Profile
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_analyticsprofile
+	#>
+	[PSCustomObject] getAnalyticsProfile([string]$name)
+	{
+		$uri = "{0}/analyticsprofile?name={1}" -f $this.baseUrl, $name
 
 		return $this.getObject($uri)
 	}

@@ -524,7 +524,7 @@ try
                         {
                             $logHistory.addLine((">>>> Adding monitored element '{0}'..." -f $_.toString()))
                             # Ajout du nécessaire pour le statut défini
-                            $alertConfig = $aviNetworks.addAlertConfig($tenant, $alertActionLevel, $_, $monitoredStatus, $alertConfigName)
+                            $alertConfig = $aviNetworks.addAlertConfig($alertConfigName, $tenant, $alertActionLevel, $_, $monitoredStatus)
                         }
                         else
                         {

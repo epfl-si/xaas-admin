@@ -1,0 +1,50 @@
+{
+    "name": "{{name}}",
+    "enabled": true,
+    "tenant_ref": "{{tenantRef}}",
+    "cloud_ref": "{{cloudRef}}",
+    "default_server_port": 443,
+    "graceful_disable_timeout": 1,
+    "connection_ramp_duration": 10,
+    "max_concurrent_connections_per_server": 0,
+    "nsx_securitygroup": [
+        "{{nsxSecurityGroupRef}}"
+    ],
+    "lb_algorithm": "{{lbAlgo}}",
+    "lb_algorithm_hash": "{{lbAlgoHash}}",
+    "inline_health_monitor": true,
+    "use_service_port": false,
+    "fail_action": {
+        "type": "FAIL_ACTION_HTTP_REDIRECT",
+        "redirect": {
+            "protocol": "HTTPS",
+            "host": "sorryserver.epfl.ch",
+            "path": "/",
+            "status_code": "HTTP_REDIRECT_STATUS_CODE_302"
+        }
+    },
+    "host_check_enabled": false,
+    "sni_enabled": true,
+    "rewrite_host_header_to_sni": false,
+    "rewrite_host_header_to_server_name": false,
+    "lb_algorithm_core_nonaffinity": 2,
+    "lookup_server_by_name": false,
+    "analytics_policy": {
+        "enable_realtime_metrics": false
+    },
+    "server_timeout": 0,
+    "conn_pool_properties": {
+        "upstream_connpool_server_max_cache": 0,
+        "upstream_connpool_conn_max_reuse": 0,
+        "upstream_connpool_conn_idle_tmo": 60000,
+        "upstream_connpool_conn_life_tmo": 600000
+    },
+    "delete_server_on_dns_refresh": true,
+    "enable_http2": false,
+    "ignore_server_port": false,
+    "routing_pool": false,
+    "tier1_lr": "{{tier1Lr}}",
+    "health_monitor_refs": "{{healthMonRefArray}}",
+    "vrf_ref": "{{vrfContextRef}}",
+    "analytics_profile_ref": "{{analyticsProfileRef}}"
+}
