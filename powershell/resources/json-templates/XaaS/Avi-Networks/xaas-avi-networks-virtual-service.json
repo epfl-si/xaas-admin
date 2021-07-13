@@ -1,0 +1,39 @@
+{
+    "analytics_policy": {
+         "all_headers": true
+     },
+     "analytics_profile_ref": "{{analyticsProfileRef}}",
+     "application_profile_ref": "{{appProfileRef}}",
+     "cloud_ref": "{{cloudRef}}",
+     "cloud_type": "CLOUD_NSXT",
+     "enable_autogw": true,
+     "enabled": true,
+     "name": "{{name}}",
+     "network_profile_ref": "{{netProfileRef}}",
+     "scaleout_ecmp": true,
+     "se_group_ref": "{{seGroupRef}}",
+     "services": [
+         {
+             "enable_http2": false,
+             "enable_ssl": false,
+             "port": 80,
+             "port_range_end": 80
+         },
+         {
+             "enable_http2": true,
+             "enable_ssl": true,
+             "port": 443,
+             "port_range_end": 443
+         }
+     ],
+     "ssl_key_and_certificate_refs": [
+         "{{sslKeyAndCertRef}}"
+     ],
+     "ssl_profile_ref": "{{sslProfileRef}}",
+     "tenant_ref": "{{tenantRef}}",
+     "traffic_enabled": true,
+     "type": "VS_TYPE_NORMAL",
+     "vrf_context_ref": "{{vrfContextRef}}",
+     "vsvip_ref": "{{vsVipRef}}",
+     "weight": 1
+ }

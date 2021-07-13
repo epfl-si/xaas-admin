@@ -1199,6 +1199,58 @@ class AviNetworksAPI: RESTAPICurl
 	}
 
 
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute une virtual service
+
+		IN  : $tenant			-> Objet représentant le tenant sur lequel créer le virtual service
+		IN  : $analyticsProfile	-> Objet représentant le Analytics Profile à utiliser
+		IN  : $appProfile		-> Objet représentant le Application Profile à utiliser
+		IN  : $cloud			-> Objet représentant le Cloud à utiliser
+		IN  : $netProfile		-> Objet représentant le Network profile à utiliser
+		IN  : $seGroup			-> Objet représentant le Service Engine Group à utiliser
+		IN  : $sslKeyAndCert	-> Objet représentant le SSL Key and Cert à utiliser
+		IN  : $sslProfile		-> Objet représentant le SSL profile
+		IN  : $vrfContext		-> Objet représentant le VRF Context
+		IN  : $vsVIP			-> Objet représentant la VIP à associer virtual service
+		IN  : $name				-> Nom du virtual service
+
+		RET : Objet représentant le virtual service
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_virtualservice
+	#>
+	[PSCustomObject] addVirtualService([PSCustomObject]$tenant, [PSCustomObject]$analyticsProfile, [PSCustomObject]$appProfile, [PSCustomObject]$cloud, [PSCustomObject]$netProfile, `
+										[PSCustomObject]$seGroup, [PSCustomObject]$sslKeyAndCert, [PSCustomObject]$sslProfile, [PSCustomObject]$vrfContext, [PSCustomObject]$vsVIP, [string]$name)
+	{
+		$this.setActiveTenant($tenant.name)
+
+		$uri = "{0}/virtualservice" -f $this.baseUrl
+
+		$replace = @{
+			analyticsProfileRef = $analyticsProfile.url
+			appProfileRef = $appProfile.url
+			cloudRef = $cloud.url
+			netProfileRef = $netProfile.url
+			seGroupRef = $seGroup.url
+			sslKeyAndCertRef = $sslKeyAndCert.url
+			sslProfileRef = $sslProfile.url
+			tenantRef = $tenant.url
+			vrfContextRef = $vrfContext.url
+			vsVipRef = $vsVIP.url
+			name = $name
+		}
+
+		$body = $this.createObjectFromJSON("xaas-avi-networks-virtual-service.json", $replace)
+
+		$res = $this.callAPI($uri, "POST", $body)
+
+		$this.setDefaultTenant()
+
+		return $res
+	}
+
+
+
 	<# --------------------------------------------------------------------------------------------------------- 
                                             		CLOUDS
        --------------------------------------------------------------------------------------------------------- #>
@@ -1519,4 +1571,73 @@ class AviNetworksAPI: RESTAPICurl
 
         $this.callAPI($uri, "DELETE", $null) | Out-Null
     }
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+											NETWORK PROFILE
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un network profile donné par son nom
+
+		IN  : $name		-> Nom du network profile
+
+		RET : Objet avec le network
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_networkprofile
+	#>
+	[PSCustomObject] getNetworkProfile([string]$name)
+	{
+		$uri = "{0}/networkprofile?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri)
+	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+											SSL KEY AND CERTIFICATE
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un "ssl key and certificate" donné par son nom
+
+		IN  : $name		-> Nom du "ssl key and certificate"
+
+		RET : Objet avec le "ssl key and certificate"
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_sslkeyandcertificate
+	#>
+	[PSCustomObject] getSSLKeyAndCertificate([string]$name)
+	{
+		$uri = "{0}/sslkeyandcertificate?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri)
+	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+											SSL PROFILE
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un "ssl profile" donné par son nom
+
+		IN  : $name		-> Nom du "ssl profile"
+
+		RET : Objet avec le SSL Profile
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_sslprofile
+	#>
+	[PSCustomObject] getSSLProfile([string]$name)
+	{
+		$uri = "{0}/sslprofile?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri)
+	}
 }
