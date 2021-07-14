@@ -150,3 +150,11 @@ enum EntitlementType
     User
     Admin
 }
+
+# Tags de déploiement possibles
+enum DeploymentTag 
+{
+    Production
+    Test
+    Development
+}
