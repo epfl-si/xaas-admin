@@ -344,7 +344,7 @@ class NameGeneratorK8s: NameGeneratorBase
       $robotDesc = "Valid until {0}" -f $dateInXDays
       
       return @{
-         name =$robotName
+         name =$robotName.ToLower()
          desc = $robotDesc
       }
    }

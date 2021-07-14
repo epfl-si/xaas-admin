@@ -15,16 +15,6 @@
 
 #>
 
-enum DeploymentTag 
-{
-    Production
-    Test
-    Development
-    # On n'a pas la possibilité de mettre $null à une variable de ce type pour dire qu'elle n'est pas 
-    # initialisée. Donc on ajoute cette possibilité au type
-    UnInitialized
-}
-
 class NameGeneratorBase
 {
     hidden [string]$tenant  # Tenant sur lequel on est en train de bosser 
@@ -34,7 +24,12 @@ class NameGeneratorBase
     # les informations en fonction des noms à générer.
     hidden [System.Collections.IDictionary]$details 
 
-    hidden [DeploymentTag]$deploymentTag
+    <# Cette variable va contenir un type énuméré par la suite ([DeploymentTag]). Mais on ne spécifie pas
+    celui-ci à la déclaration de la variable car on ne pourra pas lui affecter la valeur $null. Et si on ne
+    l'initialise pas dans le constructeur de classe, ça prendra automatiquement la première valeur du type
+    énuméré, ce qui n'est pas désirable.
+    #>
+    hidden [PSCustomObject]$deploymentTag
 
     <#
 		-------------------------------------------------------------------------------------
@@ -69,7 +64,7 @@ class NameGeneratorBase
 
         $this.details = @{}
 
-        $this.deploymentTag = [DeploymentTag]::UnInitialized
+        $this.deploymentTag = $null
     }
 
 
@@ -95,7 +90,7 @@ class NameGeneratorBase
     #>
     hidden [DeploymentTag] getDeploymentTag()
     {
-        if($this.deploymentTag -eq [DeploymentTag]::UnInitialized)
+        if($null -eq $this.deploymentTag)
         {
             Throw "DeploymentTag not initialized!"
         }

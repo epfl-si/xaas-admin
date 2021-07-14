@@ -423,6 +423,7 @@ function getVolumeSizeInfos([NetAppAPI]$netapp, [PSObject]$volObj)
 #>
 function getVolumeInfos([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS, [PSObject]$volObj)
 {
+    
     # Première partie des infos
     $result = @{
         volume = @{
@@ -438,8 +439,7 @@ function getVolumeInfos([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS,
     # -- Accès
     $result.access = getExportPolicyInfos -volObj $volObj -svmObj $svmObj
     $result.access.svm = $svmObj.name
-    $result.access.rootMountPath = $nameGeneratorNAS.getVolMountPath($volObj.name, $svmObj.name, $result.access.protocol) 
-
+    
     # -- Taille
     $result.size = getVolumeSizeInfos -netapp $netapp -volObj $volObj
 
@@ -458,7 +458,8 @@ function getVolumeInfos([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS,
     }
 
     # -- Share CIFS
-    $shareList = $netapp.getVolCIFSShareList($volObj) | Select-Object -ExpandProperty name
+    $netappShareList = $netapp.getVolCIFSShareList($volObj)
+    $shareList = $netappShareList | Select-Object -ExpandProperty name
     # Si la liste est vide, le fait de sélectionner 'name' va renvoyer $null en fait, et pas un tableau vide
     if($null -eq $shareList)
     {
@@ -468,6 +469,44 @@ function getVolumeInfos([NetAppAPI]$netapp, [NameGeneratorNAS]$nameGeneratorNAS,
     # Sélection du nom du share et transformation en tableau pour éviter de se retrouver avec un objet uniquement s'il n'y a qu'un share
     $result.access.cifsShares = $shareList 
 
+
+    # -- Point de montage
+
+    switch($result.access.protocol)
+    {
+        cifs
+        {
+            # Pour le CIFS, étant donné que l'utilisateur peut avoir créé/supprimé des shares, on va rechercher le premier qui pointe sur
+            # le junction path du volume, tout simplement
+            $junctionPath = $nameGeneratorNAS.getJunctionPath($volObj.name)
+
+            # Recherche du premier nom du share qu'on trouve et qui pointe sur le junction path
+            $shareName = @($netappShareList | Where-Object { $_.path -eq $junctionPath } )[0] | Select-Object -ExpandProperty name
+
+            # Si aucun share CIFS ne pointe sur la racine du volume
+            if($null -eq $shareName)
+            {
+                $result.access.rootMountPath = "there's no CIFS share pointing to volume root mountpoint"
+            }
+            else
+            {
+                $result.access.rootMountPath = ("\\{0}\{1}" -f $svmObj.name, $shareName)
+            }
+            
+        }
+
+        nfs3
+        {
+            # Pour le NFS, on peut utiliser cette fonction
+            $result.access.rootMountPath = $nameGeneratorNAS.getVolMountPath($volObj.name, $svmObj.name, $result.access.protocol)
+        }
+
+        default
+        {
+            Throw ("Unsupported protocol '{0}'" -f $result.access.protocol)
+        }
+    }
+    
     return $result
 }
 
@@ -485,6 +524,14 @@ try
     # Création de l'objet pour logguer les exécutions du script (celui-ci sera accédé en variable globale même si c'est pas propre XD)
     $logHistory = [LogHistory]::new(@('xaas','nas', 'endpoint'), $global:LOGS_FOLDER, 120)
     
+    # Objet pour pouvoir envoyer des mails de notification
+	$valToReplace = @{
+		targetEnv = $targetEnv
+		targetTenant = $targetTenant
+    }
+    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
+                                                    ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
+                                                    
     # On commence par contrôler le prototype d'appel du script
     . ([IO.Path]::Combine("$PSScriptRoot", "include", "ArgsPrototypeChecker.inc.ps1"))
 
@@ -517,13 +564,7 @@ try
         $vra.activateDebug($logHistory)
     }
 
-    # Objet pour pouvoir envoyer des mails de notification
-	$valToReplace = @{
-		targetEnv = $targetEnv
-		targetTenant = $targetTenant
-    }
-    $notificationMail = [NotificationMail]::new($configGlobal.getConfigValue(@("mail", "admin")), $global:MAIL_TEMPLATE_FOLDER, `
-                                                    ($global:VRA_MAIL_SUBJECT_PREFIX -f $targetEnv, $targetTenant), $valToReplace)
+    
 
     # Si on nous a passé un ID de BG,
     if($bgId -ne "")
@@ -645,13 +686,13 @@ try
             $logHistory.addLine( ("Creating Volume {0} on SVM {1} and aggregate {2}..." -f $volName, $svmObj.name, $svmObj.aggregates[0].name) )
 
             # Définition du chemin de montage du volume
-            $mountPoint = "/{0}" -f $volName
+            $junctionPath = $nameGeneratorNAS.getJunctionPath($volName)
 
             # Redéfinition de la taille du volume en fonction du pourcentage à conserver pour les snapshots
             $sizeWithSnapGB = getCorrectVolumeSize -requestedSizeGB $sizeGB -snapSpacePercent $snapPercent
 
             # Création du nouveau volume
-            $newVol = $netapp.addVolume($volName, $sizeWithSnapGB, $svmObj, $svmObj.aggregates[0], $securityStyle, $mountPoint, $snapPercent)
+            $newVol = $netapp.addVolume($volName, $sizeWithSnapGB, $svmObj, $svmObj.aggregates[0], $securityStyle, $junctionPath, $snapPercent)
 
             # Pour le retour du script
             $result = @{
@@ -672,8 +713,12 @@ try
                 # ------------ CIFS
                 cifs
                 {
-                    $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $volName, $mountPoint))
-                    $netapp.addCIFSShare($volName, $svmObj, $mountPoint)
+                    
+                    # Génération du nom du share
+                    $shareName = $nameGeneratorNAS.getVolDefaultCIFSShareName($volName)
+
+                    $logHistory.addLine( ("Adding CIFS share '{0}' to point on '{1}'..." -f $shareName, $junctionPath))
+                    $netapp.addCIFSShare($shareName, $svmObj, $junctionPath)
 
                     # On ajoute le nom du share CIFS au résultat renvoyé par le script
                     $result.mountPath = $nameGeneratorNAS.getVolMountPath($volName, $svmObj.name, [NetAppProtocol]::cifs) 
