@@ -24,13 +24,11 @@ class NameGeneratorAviNetworks: NameGeneratorBase
                                 $VRA_TENANT_DEFAULT
                                 $VRA_TENANT_EPFL
                                 $VRA_TENANT_ITSERVICES
-        IN  : $deploymentTag -> Le tag de déploiement    
 
 		RET : Instance de l'objet
 	#>
-    NameGeneratorAviNetworks([string]$vraEnv, [string]$vraTenant, [DeploymentTag]$deploymentTag): base($vraEnv, $vraTenant)
+    NameGeneratorAviNetworks([string]$vraEnv, [string]$vraTenant): base($vraEnv, $vraTenant)
     {
-        $this.initDeploymentTag($deploymentTag)
     }
 
 

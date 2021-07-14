@@ -38,7 +38,7 @@ param([string]$targetEnv,
       [string]$targetTenant, 
       [string]$action, 
       [string]$bgId,
-      [string]$deploymentTag,
+      [string]$deploymentTag,   # Valeurs de [DeploymentTag]
       [string]$targetElement,
       [Array]$hostnameList,     # Le fait de mettre [Array] et de passer une liste de valeurs séparées par des virgules va automatiquement mettre le tout dans un tableau
       [string]$lbType,          # Valeurs de [XaaSAviLBType]
@@ -364,7 +364,7 @@ try
     # Ajout d'informations dans le log
     $logHistory.addLine(("Script executed as '{0}' with following parameters: `n{1}" -f $env:USERNAME, ($PsBoundParameters | ConvertTo-Json)))
     
-    $nameGeneratorAviNetworks = [NameGeneratorAviNetworks]::new($targetEnv, $targetTenant, [DeploymentTag]::UnInitialized)
+    $nameGeneratorAviNetworks = [NameGeneratorAviNetworks]::new($targetEnv, $targetTenant)
     
     <# Pour enregistrer des notifications à faire par email. Celles-ci peuvent être informatives ou des erreurs à remonter
 	aux administrateurs du service
@@ -428,6 +428,9 @@ try
         # -- Création d'un nouveau LoadBalancer
         $ACTION_CREATE {
             
+            # Initialisation
+            $nameGeneratorAviNetworks.initDeploymentTag([DeploymentTag]$deploymentTag)
+
             # Labels à ajouter. On a fait le choix de reprendre ceux qui sont utilisés dans vRA car ils auront en fait
             # la même valeur et seront mis à jour par un script de synchro
             $initialLabels = @{}
