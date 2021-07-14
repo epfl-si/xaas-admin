@@ -133,6 +133,26 @@ class AviNetworksAPI: RESTAPICurl
 	}
 
 
+	<#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie le prochain index libre dans la liste passée
+
+		IN  : $usedIndexList		-> Tableau avec la liste des index utilisés
+		
+		RET : Index libre
+	#>
+	hidden [int] getNextFreeIndex([Array]$usedIndexList)
+	{
+		# Index de départ (aucune idée si on peut partir à 0 donc on part à 1)
+		$freeIndex = 1
+		# Recherche du premier index libre
+		While($usedIndexList -contains $freeIndex) {
+			$freeIndex++
+		}
+
+		return $freeIndex
+	}
+
     <#
 		-------------------------------------------------------------------------------------
 		BUT : Effectue un appel à l'API REST via Curl
@@ -213,6 +233,25 @@ class AviNetworksAPI: RESTAPICurl
 		}
 
 		return $res[0]
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie l'ID d'un élément depuis l'URL qui pointe dessus (la "Ref" comme appelée dans AVI)
+
+		IN  : $url	-> URL dans laquelle chercher l'ID
+
+        RET : ID de l'élément
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_tenant
+	#>
+	[string] getIDFromUrl([string]$url)
+	{
+		# L'id est en fait le dernier élément de l'URL. 
+		# EX: https://vsissp-avi-ctrl-t.epfl.ch/api/cloud/cloud-90d10d1c-7480-4d01-b48f-4f79d83d48de
+		# devra retourner: cloud-90d10d1c-7480-4d01-b48f-4f79d83d48de
+		return $url.split("/")[-1]
 	}
 
     <# --------------------------------------------------------------------------------------------------------- 
@@ -352,7 +391,7 @@ class AviNetworksAPI: RESTAPICurl
                 Exception si plusieurs résultats trouvés
 				$null si pas trouvé
 	#>
-	[PSCustomObject] getTenant([string]$bgId, [XaaSAviNetworksTenantType]$tenantType)
+	[PSCustomObject] getTenant([string]$bgId, [XaaSAviTenantType]$tenantType)
 	{
 		# Création des filtres pour la recherche
 		$labelFilters = @{
@@ -422,7 +461,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		RET : Le tenant modifié
 
-		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/patch_tenant__uuid_
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/put_tenant__uuid_
 	#>
 	[PSCustomObject] updateTenant([PSCustomObject]$tenant, [string]$newName, [HashTable]$labels)
 	{
@@ -534,14 +573,7 @@ class AviNetworksAPI: RESTAPICurl
 		if($ruleIndex -eq -1)
 		{
 			# Recherche du prochain index dispo
-			$usedIndexList = @($systemConfig.admin_auth_configuration.mapping_rules | Select-Object -ExpandProperty index | Sort-Object)
-
-			# Index de départ (aucune idée si on peut partir à 0 donc on part à 1)
-			$ruleIndex = 1
-			# Recherche du premier index libre
-			While($usedIndexList -contains $ruleIndex) {
-				$ruleIndex++
-			}
+			$ruleIndex = $this.getNextFreeIndex(@($systemConfig.admin_auth_configuration.mapping_rules | Select-Object -ExpandProperty index))
 		}		
 
 		$replace = @{
@@ -891,7 +923,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_alertconfig
 	#>
-	[PSCustomObject] addAlertConfig([string]$name, [PSCustomObject]$tenant, [PSCustomObject]$alertActionLevel, [XaaSAviNetworksMonitoredElements]$element, [XaaSAviNetworksMonitoredStatus]$status)
+	[PSCustomObject] addAlertConfig([string]$name, [PSCustomObject]$tenant, [PSCustomObject]$alertActionLevel, [XaaSAviMonitoredElements]$element, [XaaSAviMonitoredStatus]$status)
 	{
 		$this.setActiveTenant($tenant.name)
 
@@ -970,7 +1002,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_alertconfig
 	#>
-	[Array] getAlertConfigList([PSCustomObject]$tenant, [XaaSAviNetworksMonitoredElements]$forElement)
+	[Array] getAlertConfigList([PSCustomObject]$tenant, [XaaSAviMonitoredElements]$forElement)
 	{
 		return @($this.getAlertConfigList($tenant) | Where-Object { $_.object_type -eq $forElement.toString()})
 	}
@@ -1111,7 +1143,7 @@ class AviNetworksAPI: RESTAPICurl
 
 		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/post_pool
 	#>
-	[PSCustomObject] addPool([string]$name, [PSCustomObject]$tenant, [PSCustomObject]$cloud, [PSCustomObject]$nsxSecGroup, [XaaSAviNetworksLBAlgorithm]$lbAlgo, [XaaSAviNetworksLBAlgorithmHash]$lbAlgoHash, `
+	[PSCustomObject] addPool([string]$name, [PSCustomObject]$tenant, [PSCustomObject]$cloud, [PSCustomObject]$nsxSecGroup, [XaaSAviLBAlgorithm]$lbAlgo, [XaaSAviLBAlgorithmHash]$lbAlgoHash, `
 							[string]$tier1Lr, [Array]$healthMonList, [PSCustomObject]$vrfContext, [PSCustomObject]$analyticsProfile)
 	{
 		$this.setActiveTenant($tenant.name)
@@ -1724,4 +1756,87 @@ class AviNetworksAPI: RESTAPICurl
 
 		return $this.getObject($uri)
 	}
+
+
+	<# --------------------------------------------------------------------------------------------------------- 
+											HTTP POLICY SET
+       --------------------------------------------------------------------------------------------------------- #>
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un "http policy set" donné par son nom
+
+		IN  : $name		-> Nom du "http policy set"
+
+		RET : Objet avec le http Policy set
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_httppolicyset
+	#>
+	[PSCustomObject] getHttpPolicySet([string]$name)
+	{
+		$uri = "{0}/httppolicyset?name={1}" -f $this.baseUrl, $name
+
+		return $this.getObject($uri)
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Renvoie un "http policy set" donné par son ID
+
+		IN  : $id		-> ID du "http policy set"
+
+		RET : Objet avec le http Policy set
+				$null si pas trouvé
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/get_httppolicyset__uuid_
+	#>
+	[PSCustomObject] getHttpPolicySetById([string]$id)
+	{
+		$uri = "{0}/httppolicyset/{1}" -f $this.baseUrl, $id
+
+		return $this.getObject($uri)
+	}
+
+
+	<#
+	-------------------------------------------------------------------------------------
+		BUT : Ajoute une règle d'un HTTP Policy Set qui fait "pointer" un nom de virtual service
+				sur un pool donné (uniquement pour Virtual Service Standard L7)
+
+		IN  : $httpPolicySet	-> Objet à mettre à jour
+		IN  : $virtualService	-> Objet représentant le Virtual Service lié
+		IN  : $svcFriendlyName	-> Friendly name du virtual service
+		IN  : $pool				-> Objet représentant le Pool sur lequel on veut pointer
+
+        RET : Tableau avec la liste des règles après ajout des nouvelles
+
+		https://vsissp-avi-ctrl-t.epfl.ch/swagger/#/default/patch_httppolicyset__uuid_
+	#>
+	hidden [Array] addHttpPolicySetRules([PSCustomObject]$httpPolicySet, [PSCustomObject]$virtualService, [string]$svcFriendlyName, [PSCustomObject]$pool)
+	{
+		$uri = "{0}/httppolicyset/{1}" -f $this.baseUrl, $httpPolicySet.uuid
+
+		# Recherche du prochain index dispo
+		$secRuleIndex = $this.getNextFreeIndex(@($httpPolicySet.http_security_policy.rules | Select-Object -ExpandProperty index))
+		$reqRuleIndex = $this.getNextFreeIndex(@($httpPolicySet.http_request_policy.rules | Select-Object -ExpandProperty index))
+
+		$replace = @{
+			vsName = $virtualService.name
+			secRuleIndex = @($secRuleIndex, $true)
+			reqRuleIndex = @($reqRuleIndex, $true)
+			svcFriendlyName = $svcFriendlyName
+			poolRef = $pool.url
+		}
+
+		$body = $this.createObjectFromJSON("xaas-avi-networks-new-httppolicyset.json", $replace)
+
+		$this.callAPI($uri, "PATCH", $body) | Out-Null
+		
+		# Retour de la liste mise à jour
+		return $this.getHttpPolicySetById($httpPolicySet.uuid)
+	}
+
+
 }

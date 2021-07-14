@@ -1,10 +1,10 @@
 <#
 USAGES:
-    xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId>
-    xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -ipList <ipList> -lbAlgo  <lbAlgo>
-    xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action modify -bgId <bgId> -lbName <lbName> -ipList <ipList>
-    xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action delete -bgId <bgId> -lbName <lbName>
- 
+    xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -deploymentTag test|development|production -targetElement vm|tkgi -hostnameList <hostNameList> -lbType standard -svcFriendlyName <svcFriendlyName> -vipType public|private [-lbPersist <lbPersist>] [-lbAlgo <lbAlgo>] 
+    xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -deploymentTag test|development|production -targetElement vm|tkgi -hostnameList <hostNameList> -lbType standard -svcFriendlyName <svcFriendlyName> -vipType public|private [-lbPersist <lbPersist>] -lbAlgo LB_ALGORITHM_CONSISTENT_HASH -lbAlgoHash <lbAlgoHash>
+    xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -deploymentTag test|development|production -targetElement vm|tkgi -hostnameList <hostNameList> -lbType custom -lbLayer L4|L7 -lbFrontPorts <lbFrontPorts> -svcFriendlyName <svcFriendlyName> -vipType public|private [-lbPersist <lbPersist>] [-lbAlgo <lbAlgo>] [-lbHealMon <lbHealMon>]
+    xaas-avi-networks-endpoint.ps1 -targetEnv prod|test|dev -targetTenant test|itservices|epfl|research -action create -bgId <bgId> -deploymentTag test|development|production -targetElement vm|tkgi -hostnameList <hostNameList> -lbType custom -lbLayer L4|L7 -lbFrontPorts <lbFrontPorts> -svcFriendlyName <svcFriendlyName> -vipType public|private [-lbPersist <lbPersist>] -lbAlgo LB_ALGORITHM_CONSISTENT_HASH -lbAlgoHash <lbAlgoHash> [-lbHealMon <lbHealMon>]
+    
 #>
 <#
     BUT 		: Permet de gérer le service AVI Network qui fourni des Load Balancers
@@ -38,9 +38,19 @@ param([string]$targetEnv,
       [string]$targetTenant, 
       [string]$action, 
       [string]$bgId,
-      [string]$ipList,
-      [string]$lbName,
-      [string]$lbAlgo)
+      [string]$deploymentTag,
+      [string]$targetElement,
+      [Array]$hostnameList,     # Le fait de mettre [Array] et de passer une liste de valeurs séparées par des virgules va automatiquement mettre le tout dans un tableau
+      [string]$lbType,          # Valeurs de [XaaSAviLBType]
+      [string]$lbLayer,         # Valeurs de [XaaSAviLBLayer]
+      [Array]$lbFrontPorts,
+      [string]$vipType,
+      [string]$svcFriendlyName,
+      [string]$lbAlgo,          # Valeurs de [XaaSAviLBAlgorithm]
+      [string]$lbAlgoHash,      # Valeurs de [XaaSAviLBAlgorithmHash]
+      [string]$lbPersist,
+      [string]$lbPersistValue,
+      [Array]$lbHealMon)
 
 # Inclusion des fichiers nécessaires (génériques)
 . ([IO.Path]::Combine("$PSScriptRoot", "include", "define.inc.ps1"))
@@ -167,7 +177,7 @@ function deleteBGTenants([PSObject]$bg, [NameGeneratorAviNetworks]$nameGenerator
     $supportRule = $aviNetWorks.getAdminAuthRuleList() | Where-Object { ($_.group_match.groups.count -eq 1) -and ($_.group_match.groups -contains $supportGroup) }
     
     # Parcours des types de tenant
-    [enum]::getValues([XaaSAviNetworksTenantType]) | ForEach-Object {
+    [enum]::getValues([XaaSAviTenantType]) | ForEach-Object {
         $name, $desc = $nameGeneratorAviNetworks.getTenantNameAndDesc($bg.name, $_)
 
         $logHistory.addLine(("Processing tenant {0}..." -f $name))
@@ -287,7 +297,7 @@ function deleteLB([AviNetworksAPI]$aviNetworks, [string]$bgId, [string]$lbName)
     # TODO:
     # $ruleDeleted = $false
 
-    # [enum]::getValues([XaaSAviNetworksTenantType]) | ForEach-Object {
+    # [enum]::getValues([XaaSAviTenantType]) | ForEach-Object {
 
     #     $name, $desc = $nameGeneratorAviNetworks.getTenantNameAndDesc($bgId, $_)
 
@@ -446,7 +456,7 @@ try
 
             $deleteTenants = $true
             # Parcours des types de tenant (notion Avi Networks) possibles pour un BG
-            [enum]::getValues([XaaSAviNetworksTenantType]) | ForEach-Object {
+            [enum]::getValues([XaaSAviTenantType]) | ForEach-Object {
 
                 $name, $desc = $nameGeneratorAviNetworks.getTenantNameAndDesc($bg.name, $_)
 
@@ -485,7 +495,7 @@ try
 
                 
                 # Création des niveaux d'alerte
-                [enum]::getValues([XaaSAviNetworksAlertLevel]) | ForEach-Object {
+                [enum]::getValues([XaaSAviAlertLevel]) | ForEach-Object {
                     $alertName, $alertLevelName = $nameGeneratorAviNetworks.getAlertNameAndLevel($_)
 
                     # -- Alert action level
@@ -505,14 +515,14 @@ try
                     # En fonction du niveau d'alerte, on défini le status que l'on va monitorer
                     $monitoredStatus = switch($_)
                     {
-                        Medium { [XaaSAviNetworksMonitoredStatus]::Up } 
-                        High {[XaaSAviNetworksMonitoredStatus]::Down }
+                        Medium { [XaaSAviMonitoredStatus]::Up } 
+                        High {[XaaSAviMonitoredStatus]::Down }
                     }
 
                     $logHistory.addLine((">>> Adding monitored elements when status is '{0}" -f $monitoredStatus.toString()))
 
                     # Parcours des éléments à monitorer
-                    [enum]::getValues([XaaSAviNetworksMonitoredElements]) | ForEach-Object {
+                    [enum]::getValues([XaaSAviMonitoredElements]) | ForEach-Object {
 
                         # Récupération du nom
                         $alertConfigName = $nameGeneratorAviNetworks.getAlertConfigName($_, $monitoredStatus)
@@ -572,10 +582,10 @@ try
             }
             $logHistory.addLine(("Adding rights for security Group {0}" -f $groupList[0] ))
 
-
-
             $ruleList = $aviNetworks.addAdminAuthRule($tenantList, $role, $groupList[0])
 
+            # TODO: continuer avec création LB
+            # Check si VS avec nom donné existe déjà
 
         }# FIN Action Create
 

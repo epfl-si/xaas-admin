@@ -42,7 +42,7 @@ class NameGeneratorAviNetworks: NameGeneratorBase
         
 		RET : Le nom court du type
 	#>
-    hidden [string] getVSVipTypeShortName([XaaSAviNetworksVipType]$vipType)
+    hidden [string] getVSVipTypeShortName([XaaSAviVipType]$vipType)
     {
         $res = switch($vipType)
         {
@@ -50,6 +50,20 @@ class NameGeneratorAviNetworks: NameGeneratorBase
             Public { "pub" }
         }
         return $res
+    }
+
+
+    <#
+		-------------------------------------------------------------------------------------
+		BUT : Renvoie la première lettre du profil SSL
+
+        IN  : $sslProfile     -> Profil SSL
+
+		RET : Première lettre du profil
+	#>
+    hidden [string] getSSLProfileFirstLetter([XaaSAviSSLProfile]$sslProfile)
+    {
+        return $sslProfile.ToString().toLower()[0]
     }
 
 
@@ -64,7 +78,7 @@ class NameGeneratorAviNetworks: NameGeneratorBase
                 - Nom du tenant
                 - Description du tenant
 	#>
-    [Array] getTenantNameAndDesc([string]$bgName, [XaaSAviNetworksTenantType]$tenantType)
+    [Array] getTenantNameAndDesc([string]$bgName, [XaaSAviTenantType]$tenantType)
     {
         return @(
             ("{0}-{1}" -f $bgName, $tenantType.ToString()),
@@ -83,7 +97,7 @@ class NameGeneratorAviNetworks: NameGeneratorBase
                 - Nom de l'alerte
                 - Nom du niveau
 	#>
-    [Array] getAlertNameAndLevel([XaaSAviNetworksAlertLevel]$level)
+    [Array] getAlertNameAndLevel([XaaSAviAlertLevel]$level)
     {
         return @(
             ("Alert-{0}-Email" -f $level.toString()),
@@ -101,7 +115,7 @@ class NameGeneratorAviNetworks: NameGeneratorBase
 
 		RET : Nom de l'Alert Config.
 	#>
-    [string] getAlertConfigName([XaaSAviNetworksMonitoredElements]$element, [XaaSAviNetworksMonitoredStatus]$status)
+    [string] getAlertConfigName([XaaSAviMonitoredElements]$element, [XaaSAviMonitoredStatus]$status)
     {
         $elementStr = switch($element)
         {
@@ -117,13 +131,19 @@ class NameGeneratorAviNetworks: NameGeneratorBase
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie le nom du virtual service.
 
-        IN  : $friendlyName     -> Nom entré par l'utilisateur
+        IN  : $friendlyNameOrBgId   -> Nom entré par l'utilisateur ou ID du Business Group
+        IN  : $targetElement        -> Element cible pour le Virtual Service  
 
 		RET : Nom du virtual service
 	#>
-    [string] getVirtualServiceName([string]$friendlyName)
+    [string] getVirtualServiceName([string]$friendlyNameOrBgId, [XaaSAviTargetElement]$targetElement, [XaaSAviVipType]$vipType, [XaaSAviSSLProfile]$sslProfile)
     {
-        return "{0}-{1}" -f $friendlyName, $this.getDeploymentTagShortname()
+        return "{0}-{1}-{2}-{3}-{4}" -f `
+            $friendlyNameOrBgId, 
+            $this.getDeploymentTagShortname(), 
+            $targetElement.toString().toLower(),
+            $this.getVSVipTypeShortName($vipType),
+            $this.getSSLProfileFirstLetter($sslProfile)
     }
 
 
@@ -137,21 +157,7 @@ class NameGeneratorAviNetworks: NameGeneratorBase
 	#>
     [string] getPoolName([string]$virtualServiceName)
     {
-        return "{0}-pool" -f $virtualServiceName
-    }
-
-
-    <#
-		-------------------------------------------------------------------------------------
-		BUT : Renvoie la première lettre du profil SSL
-
-        IN  : $sslProfile     -> Profil SSL
-
-		RET : Première lettre du profil
-	#>
-    [string] getSSLProfileFirstLetter([XaaSAviNetworksSSLProfile]$sslProfile)
-    {
-        return $sslProfile.ToString().toLower()[0]
+        return "pool-{0}" -f $virtualServiceName
     }
 
 
@@ -159,25 +165,20 @@ class NameGeneratorAviNetworks: NameGeneratorBase
 		-------------------------------------------------------------------------------------
 		BUT : Renvoie le nom de la VIP d'un Virtual Service
 
-        IN  : $$targetElement   -> Type d'élément qui sera derrière le virtual service
-        IN  : $vipType          -> Type de la VIP
-        IN  : $sslProfile       -> Profile SSL que l'on veut pour la VIP
+        IN  : $lbType               -> Type de load balancer  
+        IN  : $virtualServiceName   -> Nom du virtual service auquel la VIP est liée.
 
 		RET : Tableau avec:
                 -> Nom de la VIP
                 -> FQDN de la VIP
 	#>
-    [Array] getVSVipInfos([XaaSAviNetworksTargetElement]$targetElement, [XaaSAviNetworksVipType]$vipType, [XaaSAviNetworksSSLProfile]$sslProfile)
+    [Array] getVSVipInfos([XaaSAviLBType]$lbType, [string]$virtualServiceName)
     {
         
         # Documentation sur le format ici: https://confluence.epfl.ch:8443/display/SIAC/%5BIaaS%5D+AVI+Networks  
               
-        $vipName = "vsvip-{0}-{1}-{2}-{3}-{4}-NSX-T-{5}" -f `
-                        $this.getBGId(), `
-                        $this.getDeploymentTagShortname(), `
-                        $targetElement.toString().toLower(), `
-                        $this.getVSVipTypeShortName($vipType), `
-                        $sslProfile.toString().toLower(), `
+        $vipName = "vsvip-{0}-NSX-T-{1}" -f `
+                        $virtualServiceName, 
                         # Nom de l'environnement avec première lettre en majuscule
                         (Get-Culture).textInfo.toTitleCase($this.getEnvShortName())
 
@@ -188,14 +189,36 @@ class NameGeneratorAviNetworks: NameGeneratorBase
             $testInfra = "-t"
         }
 
-        $vipFQDN = "{0}{1}-{2}-{3}-{4}-{5}.lb{6}.xaas.epfl.ch" -f `
-                        $this.getTenantStartLetter(), `
-                        $this.getBGId(), `
-                        $this.getDeploymentTagShortname(), `
-                        $targetElement.toString().toLower(), `
-                        $this.getVSVipTypeShortName($vipType), `
-                        $this.getSSLProfileFirstLetter($sslProfile), `
-                        $testInfra
+        $vipFQDN = ""
+        switch($lbType)
+        {
+            standard
+            {
+                $vipFQDN = switch($this.tenant)
+                {
+                    $global:VRA_TENANT__EPFL
+                    {
+                        "u{0}.lb{1}.xaas.epfl.ch" -f $virtualServiceName, $testInfra
+                    }
+
+                    $global:VRA_TENANT__ITSERVICES
+                    {
+                        "{0}.lb{1}.xaas.epfl.ch" -f $virtualServiceName, $testInfra
+                    }
+
+                    default 
+                    {
+                        Throw ("Incorrect tenant given '{0}'" -f $this.tenant)
+                    }
+                }
+            }
+
+            custom
+            {
+                $vipFQDN = "{0}.lb{1}.xaas.epfl.ch" -f $virtualServiceName, $testInfra
+            }
+        }
+        
         
         return @($vipName, $vipFQDN)
     }

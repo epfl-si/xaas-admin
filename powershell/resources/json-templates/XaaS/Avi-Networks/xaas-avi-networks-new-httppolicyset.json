@@ -1,0 +1,52 @@
+{
+    "add": {
+        "http_security_policy": {
+            "rules": [
+                {
+                    "name": "Allowed-{{vsName}}",
+                    "index": "{{secRuleIndex}}",
+                    "enable": true,
+                    "match": {
+                        "host_hdr": {
+                            "match_criteria": "HDR_EQUALS",
+                            "match_case": "INSENSITIVE",
+                            "value": [
+                                "{{svcFriendlyName}}.epfl.ch",
+                                "{{vsName}}.lb.xaas.epfl.ch"
+                            ]
+                        }
+                    },
+                    "action": {
+                        "action": "HTTP_SECURITY_ACTION_CLOSE_CONN"
+                    }
+                }
+            ]
+        },
+        "http_request_policy": {
+            "rules": [
+                {
+                    "name": "HostSwitching-{{vsName}}",
+                    "index": "{{reqRuleIndex}}",
+                    "enable": true,
+                    "match": {
+                        "host_hdr": {
+                            "match_criteria": "HDR_EQUALS",
+                            "match_case": "INSENSITIVE",
+                            "value": [
+                                "{{svcFriendlyName}}.epfl.ch",
+                                "{{vsName}}.lb.xaas.epfl.ch"
+                            ]
+                        }
+                    },
+                    "switching_action": {
+                        "action": "HTTP_SWITCHING_SELECT_POOL",
+                        "status_code": "HTTP_LOCAL_RESPONSE_STATUS_CODE_200",
+                        "pool_ref": "{{poolRef}}"
+                    },
+                    "log": true,
+                    "all_headers": true
+                }
+            ]
+        }
+    }
+}
