@@ -4,11 +4,11 @@
                 "dateChanged":  ""
             },
     "test":  {
-                 "version":  "20.1.5",
-                 "dateChanged":  "2021-06-07"
+                 "version":  "20.1.6",
+                 "dateChanged":  "2021-07-14"
              },
     "prod":  {
-                 "version":  "20.1.4",
-                 "dateChanged":  ""
+                 "version":  "20.1.6",
+                 "dateChanged":  "2021-07-14"
              }
 }
