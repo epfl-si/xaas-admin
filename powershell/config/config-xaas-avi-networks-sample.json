@@ -13,14 +13,7 @@
             "password": ""
         },
         "names": {
-            "sslProfile": {
-                "security": "",
-                "compatibility":""                
-            },
-            "sslKeyAndCertificate": "",
             "alertSyslogConfig":"",
-            "applicationProfile":"", 
-            "cloudType":"",
             "tenants":{
                 "epfl": {
                     "development":{
@@ -108,14 +101,7 @@
             "password": ""
         },
         "names": {
-            "sslProfile": {
-                "security": "",
-                "compatibility":""                
-            },
-            "sslKeyAndCertificate": "",
             "alertSyslogConfig":"",
-            "applicationProfile":"",
-            "cloudType":"",
             "tenants":{
                 "epfl": {
                     "development":{
@@ -203,14 +189,7 @@
             "password": ""
         },
         "names": {
-            "sslProfile": {
-                "security": "",
-                "compatibility":""                
-            },
-            "sslKeyAndCertificate": "",
             "alertSyslogConfig":"",
-            "applicationProfile":"",
-            "cloudType":"",
             "tenants":{
                 "epfl": {
                     "development":{
